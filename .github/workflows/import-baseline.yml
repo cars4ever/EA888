@@ -37,7 +37,7 @@ jobs:
           cp README.md /tmp/README.md.keep
           cp .gitignore /tmp/gitignore.keep
 
-          rsync -a --delete-excluded \
+          rsync -a \
             --exclude '.git/' \
             --exclude 'CLAUDE.md' \
             --exclude 'README.md' \
