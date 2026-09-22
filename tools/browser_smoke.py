@@ -341,6 +341,47 @@ def main() -> None:
         click(page, '.modal button[data-action="close-modal"]')
 
         print('CHECKPOINT data done', flush=True)
+        # Dyno abort consistency: a pull that knocks out at 5900 rpm (v1.2.0 still
+        # showed a "peak" at 7900 rpm) must only present data it actually reached.
+        click(page, '[data-nav="dyno"]')
+        page.evaluate("""() => __EA888_DEBUG__.configureBuildForTest({
+          preset: 'hx52', selections: {fuel: 'ron95'},
+          tune: {ignitionTrimDeg: 2, knockControl: false, boostHighBar: EA888Core.PRESETS.hx52.tune.boostHighBar + 0.6}
+        })""")
+        wear_before = page.evaluate("() => __EA888_DEBUG__.dyno()")
+        click(page, '[data-action="start-dyno"]')
+        page.wait_for_selector('.v4-result-card[data-dyno-status="aborted"]', timeout=12000)
+        aborted = page.evaluate("() => __EA888_DEBUG__.dyno()")
+        card_text = page.locator('.v4-result-card').first.inner_text()
+        report['aborted_dyno'] = {k: aborted[k] for k in ('status', 'abortRpm', 'abortReason', 'peakHp', 'peakHpRpm', 'reliabilityScore', 'sampleCount', 'maxSampleRpm')}
+        report['checks']['dyno_abort_status'] = aborted['status'] == 'aborted' and aborted['abortRpm'] == 5900 and 'knock' in aborted['abortReason'].lower()
+        report['checks']['dyno_abort_no_future_samples'] = aborted['maxSampleRpm'] == aborted['abortRpm'] and (aborted['peakHpRpm'] or 0) <= aborted['abortRpm']
+        report['checks']['dyno_abort_no_future_rpm_in_ui'] = not re.search(r'@ (6[0-9]{3}|[7-9][0-9]{3}) rpm', card_text) and 'Afgebroken @ 5900 rpm' in card_text
+        report['checks']['dyno_abort_labelled_partial'] = 'Hoogst waargenomen' in card_text and 'partieel' in card_text.lower()
+        report['checks']['dyno_abort_no_reliability'] = aborted['reliabilityScore'] is None and page.locator('.v4-result-card .score-badge.none').count() == 1
+        report['checks']['dyno_abort_damage_recorded'] = aborted['damage']['engine'] > wear_before['damage']['engine'] and aborted['wear']['engine'] > wear_before['wear']['engine']
+        report['checks']['dyno_abort_history_partial'] = page.locator('.run-row.current.partial').count() == 1
+        if screenshots:
+            page.screenshot(path=str(screenshots / 'EA888-Lab-dyno-aborted.png'), full_page=False, animations='disabled', timeout=12000)
+        click(page, '[data-nav="drag"]')
+        report['checks']['dyno_abort_blocks_race'] = 'Race geblokkeerd.' in page.locator('.page').first.inner_text()
+
+        # Operator abort mid-pull stores a partial run ending at the reached rpm.
+        click(page, '[data-nav="dyno"]')
+        page.evaluate("() => __EA888_DEBUG__.configureBuildForTest({preset: 'randy'})")
+        click(page, '[data-action="start-dyno"]')
+        page.wait_for_timeout(700)
+        click(page, '[data-action="abort-dyno"]')
+        page.wait_for_selector('.v4-result-card[data-dyno-status="aborted"]', timeout=6000)
+        manual = page.evaluate("() => __EA888_DEBUG__.dyno()")
+        report['manual_abort_dyno'] = {k: manual[k] for k in ('status', 'abortKind', 'abortRpm', 'sampleCount', 'maxSampleRpm', 'reliabilityScore')}
+        report['checks']['dyno_manual_abort_partial'] = manual['abortKind'] == 'operator' and manual['maxSampleRpm'] == manual['abortRpm'] and manual['abortRpm'] < 8000 and manual['reliabilityScore'] is None
+        # A completed pull restores the normal state.
+        click(page, '[data-action="start-dyno"]')
+        page.wait_for_function("document.body.innerText.includes('Curve is geldig.')", timeout=12000)
+        report['checks']['dyno_completed_after_abort'] = page.evaluate("() => __EA888_DEBUG__.dyno().status") == 'completed'
+        print('CHECKPOINT dyno abort done', flush=True)
+
         # Explicitly confirm the navigation does not overlap the main content area.
         overlap = page.evaluate("""
           () => {

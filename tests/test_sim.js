@@ -65,7 +65,7 @@ const noAssist = C.simulateEngine(noAssistState, { noise: false });
 const assistedState = C.normalizeState(noAssistState);
 assistedState.selections.spool = 'n2o_150';
 const assisted = C.simulateEngine(assistedState, { noise: false });
-const boostAt = (r, rpm) => r.curve.find(p => p.rpm === rpm)?.boostBar ?? 0;
+const boostAt = (r, rpm) => r.samples.find(p => p.rpm === rpm)?.boostBar ?? 0;
 assert(boostAt(assisted, 7000) > boostAt(noAssist, 7000) * 1.2, 'nitrous spool assistance is too weak');
 
 // Assembly and lubrication are actual constraints, not cosmetic fields.
@@ -146,6 +146,9 @@ assert.strictEqual(migrated.vehicle.raceMode, 'heads_up', 'race mode default mis
 assert.strictEqual(migrated.vehicle.rivalLevel, 'street', 'rival default missing');
 assert.strictEqual(migrated.vehicle.steeringSensitivityPct, 100, 'steering sensitivity default missing');
 
+// Strict dyno result model (abort consistency) regression suite.
+const dynoResultSuite = require('./test_dyno_result.js');
+
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
 
@@ -159,7 +162,8 @@ const report = {
     hx52: { hp: Math.round(hx52.result.peakHp), nm: Math.round(hx52.result.peakTorqueNm), reliability: hx52.result.reliabilityScore }
   },
   benchConfidence: confidence,
-  selfTestChecks: self.checks.length
+  selfTestChecks: self.checks.length,
+  dynoAbortSweepCases: dynoResultSuite.abortedSweepCount
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

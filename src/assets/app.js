@@ -75,6 +75,8 @@
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
   const num = (value, decimals = 0) => Number(value || 0).toFixed(decimals);
+  // Measured values: missing data is shown as '—', never as a fabricated 0.
+  const mnum = (value, decimals = 0) => (Number.isFinite(value) ? Number(value).toFixed(decimals) : '—');
   const euro = value => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value || 0);
   const clamp = C.clamp;
 
@@ -105,7 +107,7 @@
   }
 
   function buildRivalSimulation() {
-    if (!raceIsHeadsUp() || !state.lastDyno) return null;
+    if (!raceIsHeadsUp() || !currentCompletedDyno()) return null;
     const profile = selectedRival();
     const rivalState = C.normalizeState(cloneJson(state));
     rivalState.vehicle = {
@@ -120,11 +122,9 @@
     };
     if (C.CATEGORY_MAP.transmission.items.some(item => item.id === 'dq250')) rivalState.selections.transmission = 'dq250';
     const dyno = cloneJson(state.lastDyno);
-    dyno.failureRpm = null;
-    dyno.failureReason = '';
     dyno.peakHp = Number(dyno.peakHp || 0) * profile.powerScale;
     dyno.peakTorqueNm = Number(dyno.peakTorqueNm || 0) * profile.torqueScale;
-    dyno.curve = (dyno.curve || []).map(point => ({
+    dyno.samples = (dyno.samples || []).map(point => ({
       ...point,
       hp:Number(point.hp || 0) * profile.powerScale,
       torqueNm:Number(point.torqueNm || 0) * profile.torqueScale,
@@ -700,12 +700,36 @@
   }
 
   function currentDyno() { return C.isDynoCurrent(state); }
+  // Only a current AND completed pull may be presented as the build's result.
+  function currentCompletedDyno() { return currentDyno() && C.isCompletedDyno(state.lastDyno); }
+  function dynoIsPartial(r) { return !!r && !C.isCompletedDyno(r); }
+  // Measured value text: completed runs show the value, aborted runs the
+  // highest value observed before the abort (labelled), otherwise '—'.
+  function dynoMetricText(r, key, unit, decimals = 0) {
+    const v = r ? r[key] : null;
+    if (!Number.isFinite(v)) return '—';
+    return `${Number(v).toFixed(decimals)}${unit}${dynoIsPartial(r) ? '*' : ''}`;
+  }
+  function dynoHeadline(r) {
+    if (!r) return 'Nog geen meting';
+    if (r.status === C.DYNO_STATUS.FAILED_TO_START) return 'Pull niet gestart';
+    if (r.status === C.DYNO_STATUS.ABORTED) return `Pull afgebroken @ ${r.abortRpm} rpm`;
+    return `${Math.round(r.peakHp)} pk · ${Math.round(r.peakTorqueNm)} Nm`;
+  }
+  function dynoScopeLabel(r) {
+    if (!r) return '';
+    if (r.status === C.DYNO_STATUS.FAILED_TO_START) return 'geen data';
+    if (r.status === C.DYNO_STATUS.ABORTED) return `* partieel: waargenomen t/m ${r.abortRpm} rpm`;
+    return `volledig ${r.startRpm}–${r.targetRpm} rpm`;
+  }
 
   function statusInfo() {
     const r = state.lastDyno;
     if (!r) return { label: 'ONGEMETEN', detail: 'Voer een dynopull uit', cls: 'stale' };
     if (!currentDyno()) return { label: 'ONGETEST', detail: 'Hardware, tune of olie gewijzigd', cls: 'stale' };
+    if (r.status === C.DYNO_STATUS.FAILED_TO_START) return { label: 'START MISLUKT', detail: r.abortReason, cls: 'danger' };
     if (r.failureRpm) return { label: 'SCHADE', detail: `Pull afgebroken @ ${r.failureRpm} rpm`, cls: 'danger' };
+    if (!C.isCompletedDyno(r)) return { label: 'ONVOLLEDIG', detail: `Pull afgebroken @ ${r.abortRpm} rpm`, cls: 'stale' };
     if (r.reliabilityScore >= 82) return { label: 'STERKE MARGE', detail: `${Math.round(r.peakHp)} pk · ${Math.round(r.peakTorqueNm)} Nm`, cls: 'good' };
     if (r.reliabilityScore >= 65) return { label: 'BEWAAK MARGE', detail: `${Math.round(r.peakHp)} pk · score ${r.reliabilityScore}/100`, cls: 'warn' };
     return { label: 'RISICOVOL', detail: `${Math.round(r.peakHp)} pk · score ${r.reliabilityScore}/100`, cls: 'danger' };
@@ -797,7 +821,7 @@
 
   function workflow() {
     const buildDone = true;
-    const dynoDone = currentDyno() && !state.lastDyno?.failureRpm;
+    const dynoDone = currentCompletedDyno();
     const dragDone = !!state.lastDrag && dynoDone;
     return `<div class="workflow" aria-label="Spelvoortgang">
       <button data-go="build" class="workflow-step ${buildDone ? 'done' : ''}"><span>1</span><b>Bouw</b><small>Hardware</small></button>
@@ -971,8 +995,8 @@
     const turbo = C.getPart(state, 'turbo');
     const r = state.lastDyno;
     const clean = currentDyno();
-    const hp = clean && r ? `${Math.round(r.peakHp)} pk` : '? pk';
-    const nm = clean && r ? `${Math.round(r.peakTorqueNm)} Nm` : '? Nm';
+    const hp = clean && r ? dynoMetricText(r, 'peakHp', ' pk') : '? pk';
+    const nm = clean && r ? dynoMetricText(r, 'peakTorqueNm', ' Nm') : '? Nm';
     return `<div class="realistic-engine-scene ${running ? 'is-running' : ''}">
       <img class="realistic-engine-image" src="images/engine-realistic.webp" alt="Realistische 3D-render van de opgebouwde EA888 Gen 1 op een motortestbank">
       <div class="realistic-engine-vignette"></div>
@@ -982,7 +1006,7 @@
       </div>
       <div class="realistic-turbo-card">
         <span class="mini-turbo-icon">◉</span>
-        <div><strong>${esc(turbo.name)}</strong><small>${turbo.compressorMm || 'OEM'} mm compressor · ${clean ? 'gemeten' : 'ongetest'}</small></div>
+        <div><strong>${esc(turbo.name)}</strong><small>${turbo.compressorMm || 'OEM'} mm compressor · ${!clean ? 'ongetest' : dynoIsPartial(r) ? 'pull onvolledig' : 'gemeten'}</small></div>
       </div>
       <div class="realistic-dyno-readout">
         <span><i>PK</i><b>${hp}</b></span>
@@ -1042,10 +1066,11 @@
     const unlocked = Object.values(state.achievements || {}).filter(Boolean).length;
     const oil = C.OIL_MAP[state.service.oilId];
     const oilPct = Math.round(C.oilHealth(state) * 100);
-    const score = clean && r ? r.reliabilityScore : null;
+    const score = clean && r && Number.isFinite(r.reliabilityScore) ? r.reliabilityScore : null;
     const lastPass = clean && state.lastDrag?.valid ? state.lastDrag : null;
-    const measuredHp = clean && r ? `${Math.round(r.peakHp)} pk` : '? pk';
-    const measuredNm = clean && r ? `${Math.round(r.peakTorqueNm)} Nm` : '? Nm';
+    const measuredHp = clean && r ? dynoMetricText(r, 'peakHp', ' pk') : '? pk';
+    const measuredNm = clean && r ? dynoMetricText(r, 'peakTorqueNm', ' Nm') : '? Nm';
+    const completed = clean && C.isCompletedDyno(r);
 
     return `<section class="page garage-page v5-garage-page">
       <div class="v5-garage-heading">
@@ -1056,7 +1081,7 @@
       <div class="v5-engine-dashboard">
         <div class="v5-engine-dashboard-head">
           <div><span>EA888 GEN 1 · RANDY CAWB</span><b>${Math.round(geometry.displacementCc)} cc · ${geometry.boreMm.toFixed(2)} × ${geometry.strokeMm.toFixed(1)}</b></div>
-          <button class="v5-turbo-summary" data-open-category="turbo"><span>◉</span><div><b>${esc(turbo.name)}</b><small>${turbo.compressorMm || 'OEM'} mm · ${clean ? `${Math.round(r.peakHp)} pk gemeten` : 'resultaat verborgen'}</small></div>${icon('chevron')}</button>
+          <button class="v5-turbo-summary" data-open-category="turbo"><span>◉</span><div><b>${esc(turbo.name)}</b><small>${turbo.compressorMm || 'OEM'} mm · ${completed ? `${Math.round(r.peakHp)} pk gemeten` : clean ? 'pull onvolledig' : 'resultaat verborgen'}</small></div>${icon('chevron')}</button>
         </div>
         ${engineVisual({ mode: 'garage', view: engineView })}
       </div>
@@ -1073,11 +1098,11 @@
       </div>
 
       <div class="v5-status-grid">
-        <button class="v5-status-card ${clean ? 'good' : 'stale'}" data-go="dyno">
-          <span class="v5-status-icon">${icon('engine')}</span><div><small>BUILD STATUS</small><b>${clean ? 'GEMETEN BUILD' : 'ONGETESTE BUILD'}</b><p>${clean ? `${measuredHp} · ${measuredNm}` : 'Vermogen verborgen tot een nieuwe dynorun.'}</p></div>${icon('chevron')}
+        <button class="v5-status-card ${completed ? 'good' : clean ? 'danger' : 'stale'}" data-go="dyno">
+          <span class="v5-status-icon">${icon('engine')}</span><div><small>BUILD STATUS</small><b>${completed ? 'GEMETEN BUILD' : clean ? 'PULL ONVOLLEDIG' : 'ONGETESTE BUILD'}</b><p>${completed ? `${measuredHp} · ${measuredNm}` : clean ? `${esc(dynoHeadline(r))} · ${esc(r.abortReason || '')}` : 'Vermogen verborgen tot een nieuwe dynorun.'}</p></div>${icon('chevron')}
         </button>
         <button class="v5-status-card ${score == null ? 'stale' : score >= 80 ? 'good' : score >= 65 ? 'warn' : 'danger'}" data-go="dyno">
-          <span class="v5-status-icon">◇</span><div><small>BETROUWBAARHEID</small><b>${score == null ? '— / 100' : `${score} / 100`}</b><div class="v5-meter"><i style="--v:${score == null ? 0 : score}%"></i></div><p>${score == null ? 'Pas zichtbaar na de meting.' : r.weakestLink}</p></div>${icon('chevron')}
+          <span class="v5-status-icon">◇</span><div><small>BETROUWBAARHEID</small><b>${score == null ? '— / 100' : `${score} / 100`}</b><div class="v5-meter"><i style="--v:${score == null ? 0 : score}%"></i></div><p>${score == null ? (clean && r ? 'Geen score: de pull is niet voltooid.' : 'Pas zichtbaar na de meting.') : esc(r.bottleneck || '')}</p></div>${icon('chevron')}
         </button>
         <button class="v5-status-card ${oilPct >= 80 ? 'good' : oilPct >= 65 ? 'warn' : 'danger'}" data-go="service">
           <span class="v5-status-icon">${icon('service')}</span><div><small>OLIE & SERVICE</small><b>${oilPct >= 80 ? 'GOED' : oilPct >= 65 ? 'CONTROLEREN' : 'VERVANGEN'}</b><p>${esc(oil.name)} · ${state.service.liters.toFixed(1)} L · ${oilPct}% conditie</p></div>${icon('chevron')}
@@ -1458,14 +1483,20 @@
     const clean = currentDyno();
     const r = state.lastDyno;
     const active = !!dynoRunning;
-    const point = active ? dynoRunning.result.curve[0] : (r?.curve?.length ? C.interpolateCurve(r.curve, r.peakHpRpm) : null);
+    const point = active
+      ? dynoRunning.result.samples[0] || null
+      : !r?.samples?.length ? null
+      : C.isCompletedDyno(r) ? C.interpolateCurve(r.samples, r.peakHpRpm)
+      : r.samples[r.samples.length - 1];
     const bench = C.benchConfidence(state);
     const previous = state.dynoRuns?.[1] || null;
     const cfg = state.dynoConfig;
 
     return `<section class="page dyno-page">
       <div class="page-title-row"><div><span class="eyebrow">Instrumented engine dyno</span><h1>Meet, log en diagnoseer</h1><p>Ramp rate, luchtcondities en koeling beïnvloeden de meting. De nieuwe curve wordt pas zichtbaar wanneer de pull werkelijk loopt.</p></div></div>
-      ${clean ? '<div class="notice success"><strong>Curve is geldig.</strong> Hardware, montage, tune, olie en dynocondities komen overeen met deze meting.</div>' : staleNotice()}
+      ${!clean ? staleNotice()
+        : C.isCompletedDyno(r) ? '<div class="notice success"><strong>Curve is geldig.</strong> Hardware, montage, tune, olie en dynocondities komen overeen met deze meting.</div>'
+        : `<div class="notice danger"><strong>Geen geldige meting.</strong> De laatste pull is ${r.status === C.DYNO_STATUS.FAILED_TO_START ? 'niet gestart' : `afgebroken @ ${r.abortRpm} rpm`}. Alleen partiële telemetrie is beschikbaar; de dragstrip blijft gesloten tot een volledige pull.</div>`}
 
       <div class="dyno-preflight">
         <div class="preflight-card ${bench.failed ? 'danger' : bench.complete ? 'good' : 'warn'}"><span>BENCH CONFIDENCE</span><b>${bench.score || 0}/100</b><small>${bench.current}/${bench.total} actueel · ${bench.failed} fail</small></div>
@@ -1498,7 +1529,7 @@
         </div>
         ${dynoChannelTabs()}
         <div class="dyno-chart-wrap"><canvas id="dyno-chart" aria-label="Dynografiek voor geselecteerde datakanalen"></canvas></div>
-        <div class="dyno-progress"><i id="dyno-progress"></i><span id="dyno-live-status">${active ? 'PULL START' : clean ? 'LAATSTE VOLLEDIGE PULL' : 'WACHT OP NIEUWE PULL'}</span></div>
+        <div class="dyno-progress"><i id="dyno-progress"></i><span id="dyno-live-status">${active ? 'PULL START' : !clean ? 'WACHT OP NIEUWE PULL' : C.isCompletedDyno(r) ? 'LAATSTE VOLLEDIGE PULL' : r.status === C.DYNO_STATUS.FAILED_TO_START ? 'PULL NIET GESTART' : `AFGEBROKEN @ ${r.abortRpm} RPM · PARTIËLE DATA`}</span></div>
       </div>
 
       <div class="dyno-action-row">
@@ -1511,41 +1542,57 @@
     </section>`;
   }
 
+  function scoreBadge(r) {
+    const score = r ? r.reliabilityScore : null;
+    if (!Number.isFinite(score)) return '<div class="score-badge none" title="Geen betrouwbaarheidsscore: de pull is niet voltooid"><b>—</b><span>n.v.t.</span></div>';
+    return `<div class="score-badge ${score >= 82 ? 'good' : score >= 65 ? 'warn' : 'danger'}"><b>${score}</b><span>/100</span></div>`;
+  }
+
   function renderDynoResult(r, clean) {
     const warnings = (r.warnings || []).map(w => `<div class="warning-item ${w.severity === 'danger' ? 'danger' : ''}"><span>!</span><p>${esc(w.text || w)}</p></div>`).join('');
     const cam = r.camTiming || C.camTimingHealth(state);
     const diagnostics = C.diagnoseDyno(r);
     const bench = r.benchConfidence || C.benchConfidence(state);
-    return `<div class="result-card v4-result-card ${r.failureRpm ? 'failed' : ''} ${!clean ? 'old' : ''}">
-      <div class="result-head"><div><span class="eyebrow">${clean ? 'Gemeten resultaat' : 'Historische configuratie'}</span><h2>${r.failureRpm ? 'Pull afgebroken' : `${Math.round(r.peakHp)} pk · ${Math.round(r.peakTorqueNm)} Nm`}</h2><p>${esc(r.status || '')}</p></div><div class="score-badge ${r.reliabilityScore >= 82 ? 'good' : r.reliabilityScore >= 65 ? 'warn' : 'danger'}"><b>${r.reliabilityScore}</b><span>/100</span></div></div>
-      ${r.failureRpm ? `<div class="notice danger"><strong>Afgebroken @ ${r.failureRpm} rpm.</strong> ${esc(r.failureReason)}</div>` : ''}
+    const completed = C.isCompletedDyno(r);
+    const failedStart = r.status === C.DYNO_STATUS.FAILED_TO_START;
+    const peakLabel = completed ? 'Piek' : 'Hoogst waargenomen';
+    const at = rpm => (Number.isFinite(rpm) ? `@ ${rpm} rpm` : 'onvoldoende data');
+    const eyebrow = !clean ? 'Historische configuratie' : completed ? 'Gemeten resultaat' : failedStart ? 'Geen meting' : 'Partiële meting';
+    return `<div class="result-card v4-result-card ${completed ? '' : 'failed partial'} ${!clean ? 'old' : ''}" data-dyno-status="${esc(r.status)}">
+      <div class="result-head"><div><span class="eyebrow">${eyebrow}</span><h2>${esc(dynoHeadline(r))}</h2><p>${esc(r.rating || '')}${completed ? '' : ` · ${esc(dynoScopeLabel(r))}`}</p></div>${scoreBadge(r)}</div>
+      ${completed ? '' : `<div class="notice danger dyno-abort-notice"><strong>${failedStart ? 'Pull niet gestart.' : `Afgebroken @ ${r.abortRpm} rpm${r.abortKind === 'operator' ? ' (handmatig)' : ''}.`}</strong> ${esc(r.abortReason)} ${failedStart ? '' : `Waarden hieronder zijn alleen waargenomen tot ${r.abortRpm} rpm en zijn geen volledige meting. Er is geen betrouwbaarheidsscore.`}</div>`}
+      ${r.legacyMigrated && !completed ? '<div class="notice stale"><strong>Oude meting gecorrigeerd.</strong> Data boven het afbreekpunt uit een eerdere versie is verwijderd.</div>' : ''}
       <div class="result-metrics v4-result-metrics">
-        <div><span>Piekvermogen</span><b>${Math.round(r.peakHp)} pk</b><small>@ ${r.peakHpRpm} rpm</small></div>
-        <div><span>Piekkoppel</span><b>${Math.round(r.peakTorqueNm)} Nm</b><small>@ ${r.peakTorqueRpm} rpm</small></div>
-        <div><span>Airflow</span><b>${num(r.estimatedAirflowLbMin,1)} lb/min</b><small>${num(r.airDensityKgM3,3)} kg/m³</small></div>
-        <div><span>Turbo-as</span><b>${Math.round(r.maxTurboShaftRpm/1000)}k rpm</b><small>${num(r.maxEmpBar,2)} bar max EMP</small></div>
-        <div><span>Fuel duty</span><b>${num(r.maxFuelDuty,0)}%</b><small>${num(r.maxIatC,0)}°C max IAT</small></div>
-        <div><span>Bench confidence</span><b>${bench.score || 0}/100</b><small>${bench.current}/${bench.total} test(s)</small></div>
+        <div><span>${peakLabel} vermogen</span><b>${dynoMetricText(r, 'peakHp', ' pk')}</b><small>${at(r.peakHpRpm)}</small></div>
+        <div><span>${peakLabel} koppel</span><b>${dynoMetricText(r, 'peakTorqueNm', ' Nm')}</b><small>${at(r.peakTorqueRpm)}</small></div>
+        <div><span>Airflow</span><b>${mnum(r.estimatedAirflowLbMin,1)} lb/min</b><small>${num(r.airDensityKgM3,3)} kg/m³</small></div>
+        <div><span>Turbo-as</span><b>${Number.isFinite(r.maxTurboShaftRpm) ? `${Math.round(r.maxTurboShaftRpm/1000)}k` : '—'} rpm</b><small>${mnum(r.maxEmpBar,2)} bar max EMP</small></div>
+        <div><span>Fuel duty</span><b>${mnum(r.maxFuelDuty,0)}%</b><small>${mnum(r.maxIatC,0)}°C max IAT</small></div>
+        <div><span>Bench confidence</span><b>${bench.score || 0}/100</b><small>${bench.current}/${bench.total} test(s) vóór de pull</small></div>
       </div>
       <div class="technical-grid">
-        <div><span>Zwakste schakel</span><b>${esc(r.bottleneck)}</b></div>
+        <div><span>${completed ? 'Zwakste schakel' : 'Oorzaak'}</span><b>${esc(r.bottleneck)}</b></div>
         <div><span>Motor</span><b>${num(r.displacementCc,0)} cc · ${num(r.boreMm,2)} × ${num(r.strokeMm,1)} · ${num(r.compressionRatio,1)}:1</b></div>
         <div><span>Nokkenmatch</span><b>${Math.round((cam.score || 1)*100)}% · fout ${num(cam.exhaustErrorMm,2)} / ${num(cam.intakeErrorMm,2)} mm</b></div>
-        <div><span>Mechanisch</span><b>${num(r.maxBmepBar,1)} bar BMEP · ${num(r.maxMeanPistonSpeed,1)} m/s zuigersnelheid</b></div>
-        <div><span>Thermisch</span><b>EGT ${num(r.maxEgtC,0)}°C · olie ${num(r.maxOilTempC,0)}°C</b></div>
-        <div><span>Oliesysteem</span><b>min ${num(r.minOilPressureBar,1)} bar · aeratie ${num(r.maxOilAerationPct,0)}%</b></div>
+        <div><span>Mechanisch</span><b>${mnum(r.maxBmepBar,1)} bar BMEP · ${mnum(r.maxMeanPistonSpeed,1)} m/s zuigersnelheid</b></div>
+        <div><span>Thermisch</span><b>EGT ${mnum(r.maxEgtC,0)}°C · olie ${mnum(r.maxOilTempC,0)}°C</b></div>
+        <div><span>Oliesysteem</span><b>min ${mnum(r.minOilPressureBar,1)} bar · aeratie ${mnum(r.maxOilAerationPct,0)}%</b></div>
+        ${r.wear ? `<div><span>Slijtage van deze pull</span><b>motor +${num(r.wear.engine,2)}% · turbo +${num(r.wear.turbo,2)}% · ${num(r.wear.durationS,1)} s belast${r.damage && (r.damage.engine || r.damage.turbo) ? ` · schade motor +${num(r.damage.engine,0)}% / turbo +${num(r.damage.turbo,0)}%` : ''}</b></div>` : ''}
       </div>
-      <div class="section-head small diagnostic-title"><div><span class="eyebrow">Automatische diagnose</span><h3>Wat begrenst deze combinatie?</h3></div></div>
+      <div class="section-head small diagnostic-title"><div><span class="eyebrow">Automatische diagnose</span><h3>${completed ? 'Wat begrenst deze combinatie?' : 'Waarom stopte de pull?'}</h3></div></div>
       <div class="diagnostic-grid">${diagnostics.map(d => `<article class="diagnostic-card ${d.severity}"><span>${esc(d.system)}</span><b>${esc(d.observation)}</b><p>${esc(d.action)}</p></article>`).join('')}</div>
-      ${warnings ? `<div class="warning-list">${warnings}</div>` : '<div class="notice success"><strong>Geen extra hoofdwaarschuwingen.</strong> De run bleef binnen de gemodelleerde systeemgrenzen.</div>'}
+      ${warnings ? `<div class="warning-list">${warnings}</div>` : completed ? '<div class="notice success"><strong>Geen extra hoofdwaarschuwingen.</strong> De run bleef binnen de gemodelleerde systeemgrenzen.</div>' : ''}
     </div>`;
   }
 
   function renderDynoHistory() {
     const runs = Array.isArray(state.dynoRuns) ? state.dynoRuns.slice(0, 8) : [];
     if (!runs.length) return '';
-    return `<div class="card history-card"><div class="section-head small"><div><span class="eyebrow">Dynohistorie</span><h3>Laatste runs</h3></div><span class="history-hint">run 1 is de actieve referentie</span></div>
-      <div class="run-table">${runs.map((r, i) => `<div class="run-row ${i === 0 ? 'current' : ''}"><span>${String(i + 1).padStart(2,'0')}</span><div><b>${esc(r.label || 'Dynopull')}</b><small>${new Date(r.measuredAt || Date.now()).toLocaleString('nl-NL')} · ${r.dynoConfig ? `${Math.round(r.dynoConfig.rampRpmPerSec)} rpm/s · ${Math.round(r.dynoConfig.ambientTempC)}°C` : 'oude meting'}</small></div><strong>${Math.round(r.peakHp)} pk<br><small>${Math.round(r.peakTorqueNm)} Nm · ${r.reliabilityScore}/100</small></strong></div>`).join('')}</div>
+    const summary = r => C.isCompletedDyno(r)
+      ? `${Math.round(r.peakHp)} pk<br><small>${Math.round(r.peakTorqueNm)} Nm · ${r.reliabilityScore}/100</small>`
+      : `${dynoMetricText(r, 'peakHp', ' pk')}<br><small>${r.status === C.DYNO_STATUS.FAILED_TO_START ? 'niet gestart' : `partieel t/m ${r.abortRpm} rpm`}</small>`;
+    return `<div class="card history-card"><div class="section-head small"><div><span class="eyebrow">Dynohistorie</span><h3>Laatste runs</h3></div><span class="history-hint">run 1 is de actieve referentie · * = partieel</span></div>
+      <div class="run-table">${runs.map((r, i) => `<div class="run-row ${i === 0 ? 'current' : ''} ${C.isCompletedDyno(r) ? '' : 'partial'}"><span>${String(i + 1).padStart(2,'0')}</span><div><b>${esc(r.label || 'Dynopull')}</b><small>${new Date(r.measuredAt || Date.now()).toLocaleString('nl-NL')} · ${r.dynoConfig ? `${Math.round(r.dynoConfig.rampRpmPerSec)} rpm/s · ${Math.round(r.dynoConfig.ambientTempC)}°C` : 'oude meting'}</small></div><strong>${summary(r)}</strong></div>`).join('')}</div>
     </div>`;
   }
 
@@ -1580,8 +1627,11 @@
     return defs[channel] || defs.power;
   }
 
+  // progress = fraction of the result's own samples to draw. The axis always
+  // spans the planned pull; scales use only the samples drawn so far, so a live
+  // pull never reveals values it has not reached yet.
   function drawDynoChart(canvas, result, progress = 1, faded = false, channel = dynoChannel, comparison = null) {
-    if (!canvas || !result?.curve?.length) return;
+    if (!canvas || !result) return;
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(280, rect.width || 360);
@@ -1594,11 +1644,11 @@
     const pad = { l: 45, r: 15, t: 46, b: 31 };
     const plotW = width - pad.l - pad.r;
     const plotH = height - pad.t - pad.b;
-    const curve = result.curve;
-    const limit = Math.max(2, Math.floor(curve.length * clamp(progress, 0, 1)));
-    const visible = curve.slice(0, limit);
-    const rpmMin = curve[0].rpm;
-    const rpmMax = curve[curve.length - 1].rpm;
+    const samples = Array.isArray(result.samples) ? result.samples : [];
+    const limit = samples.length ? Math.max(1, Math.round(1 + (samples.length - 1) * clamp(progress, 0, 1))) : 0;
+    const visible = samples.slice(0, limit);
+    const rpmMin = Number(result.startRpm) || samples[0]?.rpm || 1500;
+    const rpmMax = Math.max(rpmMin + 500, Number(result.targetRpm) || samples[samples.length - 1]?.rpm || 8000);
     const x = rpm => pad.l + (rpm - rpmMin) / Math.max(1, rpmMax - rpmMin) * plotW;
     const defs = chartSeries(channel);
 
@@ -1612,12 +1662,18 @@
     for (let i=0;i<=4;i++) { const yy = pad.t + plotH - i/4*plotH; ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(width-pad.r,yy);ctx.stroke();ctx.fillText(`${i*25}%`,4,yy+3); }
     for (let rpm = Math.ceil(rpmMin / 1000) * 1000; rpm <= rpmMax; rpm += 1000) { const xx=x(rpm);ctx.beginPath();ctx.moveTo(xx,pad.t);ctx.lineTo(xx,pad.t+plotH);ctx.stroke();ctx.fillText(`${rpm/1000}k`,xx-8,height-9); }
 
+    if (!visible.length) {
+      ctx.fillStyle = '#ff5365'; ctx.font = '800 13px system-ui,sans-serif';
+      ctx.fillText(result.status === C.DYNO_STATUS.FAILED_TO_START ? 'PULL NIET GESTART · GEEN DATA' : 'GEEN DATA', pad.l + 10, pad.t + plotH / 2);
+      return;
+    }
+
     const extents = {};
     defs.forEach(def => {
-      const vals = curve.map(p => Number(p[def.key])).filter(Number.isFinite);
+      const vals = visible.map(p => Number(p[def.key])).filter(Number.isFinite);
       let min = Math.min(...vals), max = Math.max(...vals);
-      if (def.key === 'hp' || def.key === 'torqueNm') { min = 0; max = Math.ceil(Math.max(result.peakHp,result.peakTorqueNm)/100)*100; }
-      else if (def.key === 'boostBar' || def.key === 'empBar') { min=0; max=Math.max(1,Math.ceil(Math.max(...curve.map(p=>Math.max(p.boostBar||0,p.empBar||0)))*2)/2); }
+      if (def.key === 'hp' || def.key === 'torqueNm') { min = 0; max = Math.max(100, Math.ceil(Math.max(...visible.map(p => Math.max(p.hp || 0, p.torqueNm || 0)))/100)*100); }
+      else if (def.key === 'boostBar' || def.key === 'empBar') { min=0; max=Math.max(1,Math.ceil(Math.max(...visible.map(p=>Math.max(p.boostBar||0,p.empBar||0)))*2)/2); }
       else if (def.key === 'railBar') { min=0; max=Math.max(200,Math.ceil(max/25)*25); }
       else if (def.key === 'fuelDutyPct' || def.key === 'turboLoadPct' || def.key === 'spoolPct' || def.key === 'oilAerationPct') { min=0; max=Math.max(100,Math.ceil(max/25)*25); }
       else if (def.key === 'lambda') { min=.65; max=1.0; }
@@ -1631,11 +1687,12 @@
     const yFor=(def,v)=>{const ex=extents[def.key];return pad.t+plotH-clamp((Number(v)-ex.min)/(ex.max-ex.min),0,1)*plotH;};
 
     const drawRun=(run,alpha=.25,dashed=true)=>{
-      if(!run?.curve?.length)return;
+      if(!run?.samples?.length)return;
       ctx.save();ctx.globalAlpha=alpha;if(dashed)ctx.setLineDash([6,6]);
-      defs.forEach(def=>{ctx.beginPath();run.curve.forEach((p,i)=>{const xx=x(p.rpm),yy=yFor(def,p[def.key]);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});ctx.strokeStyle=def.color;ctx.lineWidth=1.6;ctx.stroke();});ctx.restore();
+      defs.forEach(def=>{ctx.beginPath();run.samples.forEach((p,i)=>{const xx=x(p.rpm),yy=yFor(def,p[def.key]);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});ctx.strokeStyle=def.color;ctx.lineWidth=1.6;ctx.stroke();});ctx.restore();
     };
-    if (comparison && state.settings?.dynoCompare !== false && progress >= 1) drawRun(comparison,.22,true);
+    const showComparison = !!(comparison?.samples?.length && state.settings?.dynoCompare !== false && progress >= 1);
+    if (showComparison) drawRun(comparison,.22,true);
 
     defs.forEach(def => {
       ctx.beginPath(); visible.forEach((p,i)=>{const xx=x(p.rpm),yy=yFor(def,p[def.key]);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});
@@ -1643,28 +1700,53 @@
       ctx.globalAlpha=faded?.38:1;ctx.strokeStyle=def.color;ctx.lineWidth=2.7;ctx.stroke();ctx.globalAlpha=1;
     });
 
+    // Abort point: telemetry ends here; the rest of the planned pull was never run.
+    if (result.status === C.DYNO_STATUS.ABORTED && progress >= 1 && Number.isFinite(result.abortRpm)) {
+      const ax = x(result.abortRpm);
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,60,80,.10)'; ctx.fillRect(ax, pad.t, width - pad.r - ax, plotH);
+      ctx.strokeStyle = '#ff3c50'; ctx.lineWidth = 2; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(ax, pad.t); ctx.lineTo(ax, pad.t + plotH); ctx.stroke();
+      ctx.fillStyle = '#ff3c50'; ctx.beginPath(); ctx.arc(ax, pad.t + 4, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '800 10px system-ui,sans-serif';
+      const text = `ABORT ${result.abortRpm} RPM`;
+      const tw = ctx.measureText(text).width;
+      ctx.fillText(text, Math.min(ax + 6, width - pad.r - tw - 2), pad.t + 16);
+      ctx.fillStyle = 'rgba(255,120,130,.7)'; ctx.font = '700 9px system-ui,sans-serif';
+      if (width - pad.r - ax > 70) ctx.fillText('NIET GEMETEN', ax + 6, pad.t + plotH - 8);
+      ctx.restore();
+    }
+
     let lx=pad.l; ctx.font='800 10px system-ui,sans-serif';
     defs.forEach(def=>{const vals=visible.map(p=>Number(p[def.key])).filter(Number.isFinite);const last=vals[vals.length-1]||0;ctx.fillStyle=def.color;const precision=Math.abs(last)<10?2:0;const text=`${def.label} ${last.toFixed(precision)} ${def.unit}`;ctx.fillText(text,lx,22);lx+=ctx.measureText(text).width+14;});
     ctx.fillStyle='#8290a4';ctx.font='700 9px system-ui,sans-serif';ctx.fillText(channel.toUpperCase(),pad.l,37);
     if (faded) { ctx.fillStyle='#aab4c2';ctx.font='800 11px system-ui,sans-serif';ctx.fillText('OUDE CONFIGURATIE',width-142,37); }
+    else if (dynoIsPartial(result) && progress >= 1) { ctx.fillStyle='#ff7c8a';ctx.font='800 11px system-ui,sans-serif';ctx.fillText('PARTIËLE DATA',width-116,37); }
+    if (showComparison) { ctx.fillStyle='#8290a4';ctx.font='700 9px system-ui,sans-serif';ctx.fillText('- - VORIGE RUN',pad.l+8,pad.t+plotH-6); }
   }
 
+  // The pull is simulated up front but revealed sample by sample at the
+  // configured ramp rate; an aborted pull stops being revealed at its abort
+  // sample, so the display never runs ahead of what the engine reached.
   function startDyno() {
     if (dynoRunning) return;
     activeTab = 'dyno';
     haptic([18, 40, 18]);
     const result = C.simulateEngine(state);
-    dynoRunning = { result, start: performance.now(), duration: state.settings?.reducedMotion ? 1450 : 5600 };
+    const planned = Math.max(2, result.plannedSampleCount || result.samples.length);
+    const fullDuration = state.settings?.reducedMotion ? 1450 : 5600;
+    dynoRunning = { result, start: performance.now(), msPerSample: fullDuration / (planned - 1), shown: 0 };
+    if (!result.samples.length) { finishDyno(result); return; }
     startEngineAudio();
     render();
     requestAnimationFrame(() => {
       const tick = now => {
         if (!dynoRunning || activeTab !== 'dyno') return;
-        const p = clamp((now - dynoRunning.start) / dynoRunning.duration, 0, 1);
-        const curve = dynoRunning.result.curve;
-        const idx = Math.min(curve.length - 1, Math.floor(p * (curve.length - 1)));
-        const point = curve[idx];
-        drawDynoChart($('#dyno-chart'), dynoRunning.result, p, false, dynoChannel, null);
+        const samples = dynoRunning.result.samples;
+        const idx = Math.min(samples.length - 1, Math.floor((now - dynoRunning.start) / dynoRunning.msPerSample));
+        dynoRunning.shown = idx;
+        const point = samples[idx];
+        drawDynoChart($('#dyno-chart'), dynoRunning.result, samples.length > 1 ? idx / (samples.length - 1) : 1, false, dynoChannel, null);
         updateEngineAudio(point.rpm, point.turboLoadPct / 100);
         const set = (id, value) => { const n = $(id); if (n) n.innerHTML = value; };
         set('#live-rpm', Math.round(point.rpm));
@@ -1673,43 +1755,41 @@
         set('#live-egt', `${Math.round(point.egtC)}<small> °C</small>`);
         set('#live-oil', `${num(point.oilPressureBar,1)}<small> bar</small>`);
         set('#live-rail', `${Math.round(point.railBar)}<small> bar</small>`);
-        const bar = $('#dyno-progress'); if (bar) bar.style.width = `${p * 100}%`;
+        const planned = Math.max(2, dynoRunning.result.plannedSampleCount || samples.length);
+        const bar = $('#dyno-progress'); if (bar) bar.style.width = `${clamp(idx / (planned - 1), 0, 1) * 100}%`;
         const status = $('#dyno-live-status');
         if (status) status.textContent = `${Math.round(point.torqueNm)} Nm · λ ${num(point.lambda,2)} · duty ${Math.round(point.fuelDutyPct)}% · as ${Math.round(point.turboShaftRpm/1000)}k`;
-        if (p < 1) dynoRunning.raf = requestAnimationFrame(tick); else finishDyno(dynoRunning.result);
+        if (idx < samples.length - 1) dynoRunning.raf = requestAnimationFrame(tick); else finishDyno(dynoRunning.result);
       };
       dynoRunning.raf = requestAnimationFrame(tick);
     });
   }
 
+  // Operator abort: the pull is re-simulated up to the last revealed sample
+  // (same seed, so identical samples) and stored as a partial measurement.
   function abortDyno() {
     if (!dynoRunning) return;
     if (dynoRunning.raf) cancelAnimationFrame(dynoRunning.raf);
-    dynoRunning = null; stopEngineAudio({ hard: true }); haptic([40,30,40]); showToast('Dynopull handmatig afgebroken; geen resultaat opgeslagen.'); render();
+    const reached = dynoRunning.result.samples[dynoRunning.shown || 0];
+    const partial = reached ? C.simulateEngine(state, { stopAtRpm: reached.rpm }) : null;
+    haptic([40,30,40]);
+    if (partial && partial.status !== C.DYNO_STATUS.COMPLETED) finishDyno(partial);
+    else if (partial) finishDyno(dynoRunning.result);
+    else { dynoRunning = null; stopEngineAudio({ hard: true }); render(); }
   }
 
   function finishDyno(result) {
     stopEngineAudio({ hard: true });
-    state.lastDyno = result;
-    state.lastDynoSignature = C.engineSignature(state);
-    state.dynoRuns = Array.isArray(state.dynoRuns) ? state.dynoRuns : [];
-    state.dynoRuns.unshift({ ...result, label: result.failureRpm ? `Afgebroken @ ${result.failureRpm} rpm` : `${state.buildName} dynopull` });
-    state.dynoRuns = state.dynoRuns.slice(0, 20);
-    state.wear.engine = clamp(state.wear.engine + result.wearPerDynoPull, 0, 100);
-    state.wear.turbo = clamp(state.wear.turbo + Math.max(.05, (result.maxTurboLoad - 82) * .012) + (C.getPart(state, 'spool').wearFactor || 0) * .35, 0, 100);
-    state.wear.transmission = clamp(state.wear.transmission + .03, 0, 100);
-    state.service.oilAgeKm += 120 + Math.max(0, result.maxOilTempC - 110) * 3;
-    state.service.oilRuns += 1;
-    if (result.failureRpm) {
-      state.damage.engine = clamp(state.damage.engine + 18 + (100 - result.reliabilityScore) * .25, 0, 100);
-      state.damage.turbo = clamp(state.damage.turbo + (String(result.failureReason).includes('Turbo') ? 28 : 4), 0, 100);
-    }
-    pushHistory({ type: 'dyno', label: result.failureRpm ? `Dyno afgebroken @ ${result.failureRpm} rpm` : 'Volledige dynopull', hp: result.peakHp, nm: result.peakTorqueNm });
+    state = C.commitDynoResult(state, result);
     saveState();
     dynoRunning = null;
     syncAchievements();
-    haptic(result.failureRpm ? [80, 50, 80] : [30, 30, 30]);
-    showToast(result.failureRpm ? 'Pull afgebroken: virtuele schade geregistreerd.' : 'Dynometing opgeslagen. De dragstrip is vrijgegeven.');
+    const completed = C.isCompletedDyno(result);
+    haptic(completed ? [30, 30, 30] : [80, 50, 80]);
+    showToast(completed ? 'Dynometing opgeslagen. De dragstrip is vrijgegeven.'
+      : result.status === C.DYNO_STATUS.FAILED_TO_START ? 'Pull niet gestart: herstel eerst de motor.'
+      : result.abortKind === 'operator' ? `Pull handmatig afgebroken @ ${result.abortRpm} rpm: partiële data en slijtage opgeslagen.`
+      : `Pull afgebroken @ ${result.abortRpm} rpm: virtuele schade geregistreerd.`);
     render();
   }
 
@@ -1854,7 +1934,7 @@
   }
 
   function renderDrag() {
-    const ready = currentDyno() && state.lastDyno && !state.lastDyno.failureRpm;
+    const ready = currentCompletedDyno();
     const v = state.vehicle;
     const fit = C.wheelFitment(v);
     const last = state.lastDrag;
@@ -1954,7 +2034,7 @@
 
     return `<section class="page drag-page v7-drag-page">
       <div class="page-title-row v7-drag-title"><div><span class="eyebrow">EA888 LAB DRAG MODE</span><h1>Van burnoutbox naar finish</h1><p>Een losse spelmodus met verschillende fullscreen scènes. De overzichtspagina blijft alleen voor setup, records en de laatste timeslip.</p></div></div>
-      ${ready ? `<div class="notice success"><strong>Auto vrijgegeven.</strong> ${Math.round(state.lastDyno.peakHp)} pk / ${Math.round(state.lastDyno.peakTorqueNm)} Nm is de actieve meetcurve.</div>` : `<div class="notice danger"><strong>Race geblokkeerd.</strong> ${state.lastDyno?.failureRpm ? 'Herstel de schade en voer een geldige dynopull uit.' : 'Meet de gewijzigde build eerst opnieuw op de dyno.'}</div>`}
+      ${ready ? `<div class="notice success"><strong>Auto vrijgegeven.</strong> ${Math.round(state.lastDyno.peakHp)} pk / ${Math.round(state.lastDyno.peakTorqueNm)} Nm is de actieve meetcurve.</div>` : `<div class="notice danger"><strong>Race geblokkeerd.</strong> ${!currentDyno() || !state.lastDyno ? 'Meet de gewijzigde build eerst opnieuw op de dyno.' : state.lastDyno.failureRpm ? `De laatste pull brak af @ ${state.lastDyno.failureRpm} rpm. Herstel de schade en voer een volledige dynopull uit.` : 'De laatste pull is niet voltooid. Voer een volledige dynopull uit.'}</div>`}
       <div class="segment-control race-segments v7-race-segments v12-race-segments"><button class="${racePanel==='tree'?'active':''}" data-race-panel="tree">Race</button><button class="${racePanel==='setup'?'active':''}" data-race-panel="setup">Setup</button><button class="${racePanel==='telemetry'?'active':''}" data-race-panel="telemetry">Telemetrie</button><button class="${racePanel==='history'?'active':''}" data-race-panel="history">Records</button></div>
       ${panel}
     </section>`;
@@ -2063,7 +2143,7 @@
 
   function startBurnout(pointerId = null) {
     if (activeTab !== 'drag' || racePanel !== 'tree') return;
-    if (!currentDyno() || state.lastDyno?.failureRpm) return showToast('Voer eerst een geldige dynopull uit.');
+    if (!currentCompletedDyno()) return showToast('Voer eerst een volledige, geldige dynopull uit.');
     if (racePhase === 'running') return;
     clearTreeTimers(); resetTreeBulbs();
     if (dragAnimation) { cancelAnimationFrame(dragAnimation); dragAnimation = null; }
@@ -2167,7 +2247,7 @@
   function bulbs(names, on = true) { names.forEach(n => $(`[data-bulb="${n}"]`)?.classList.toggle('on', on)); }
 
   function stageTree(auto = false) {
-    if (!currentDyno() || state.lastDyno?.failureRpm) return showToast('Voer eerst een geldige dynopull uit.');
+    if (!currentCompletedDyno()) return showToast('Voer eerst een volledige, geldige dynopull uit.');
     if (auto) idealBurnout();
     else stopBurnout({ silent: true });
     clearTreeTimers(); resetTreeBulbs(); haptic(18);
@@ -2176,7 +2256,7 @@
     const rig = $('#drag-car-rig');
     if (rig) { rig.classList.remove('burnout-active','running','wheelspin'); rig.classList.add('staged'); rig.style.transform = 'translate3d(3%,0,0)'; }
     const launchRpm = Number(state.tune.launchRpm || 4200);
-    const launchEngine = C.interpolateCurve(state.lastDyno.curve, launchRpm);
+    const launchEngine = C.interpolateCurve(state.lastDyno.samples, launchRpm);
     updateRaceHud({ rpm: launchRpm, speedKmh: 0, gear: 1, boostBar: Math.max(0, (launchEngine?.boostBar || 0) * state.tune.firstGearBoostPct / 100), accelerationG: 0, distanceM: 0 }, launchEngine);
     startEngineAudio('staged');
     updateEngineAudio(launchRpm, .72, 0);
@@ -2256,7 +2336,7 @@
 
     const applyPoint = point => {
       const frac = clamp(point.distanceM / 402.336, 0, 1);
-      const enginePoint = C.interpolateCurve(state.lastDyno.curve, point.rpm);
+      const enginePoint = C.interpolateCurve(state.lastDyno.samples, point.rpm);
       const boost = enginePoint?.boostBar || 0;
       const bob = Math.sin(point.distanceM * .22) * Math.min(1.1, point.speedKmh / 150) * .7;
       const pitch = clamp(-point.accelerationG * .75, -1.2, .7);
@@ -2338,7 +2418,7 @@
   }
 
   function v7GameHeader(label, step, hint = '') {
-    const dyno = currentDyno() && state.lastDyno ? state.lastDyno : null;
+    const dyno = currentCompletedDyno() ? state.lastDyno : null;
     const hp = dyno ? Math.round(dyno.peakHp) : '?';
     const nm = dyno ? Math.round(dyno.peakTorqueNm) : '?';
     return `<header class="v8-game-header">
@@ -2499,7 +2579,7 @@
   }
 
   function startDragGame(auto = false) {
-    if (!currentDyno() || !state.lastDyno || state.lastDyno.failureRpm) return showToast('Voer eerst een geldige dynopull uit.');
+    if (!currentCompletedDyno()) return showToast('Voer eerst een volledige, geldige dynopull uit.');
     closeDragGame({ silent:true, noRender:true });
     const profile = burnoutProfile();
     const startingTemp = clamp(profile.trackC + 2, profile.trackC, profile.targetC - 8);
@@ -2627,7 +2707,7 @@
     const score = $('#v7-burn-score');
     if (score) score.textContent = `${combined}% gripvenster`;
 
-    const enginePoint = state.lastDyno?.curve ? C.interpolateCurve(state.lastDyno.curve, b.rpm) : null;
+    const enginePoint = state.lastDyno?.samples ? C.interpolateCurve(state.lastDyno.samples, b.rpm) : null;
     const boost = b.rpm > 1800 ? Math.max(0, Number(enginePoint?.boostBar || 0) * .48) : 0;
     const boostNode = $('#v8-burn-boost');
     if (boostNode) boostNode.textContent = boost.toFixed(2);
@@ -2761,7 +2841,7 @@
     if (rpmNumber) rpmNumber.textContent = Math.round(s.rpm);
     const rpmFill = $('#v8-stage-rpm-fill');
     if (rpmFill) rpmFill.style.width = `${clamp(s.rpm / Math.max(1,target),0,1.22) * 82}%`;
-    const enginePoint = state.lastDyno?.curve ? C.interpolateCurve(state.lastDyno.curve, s.rpm) : null;
+    const enginePoint = state.lastDyno?.samples ? C.interpolateCurve(state.lastDyno.samples, s.rpm) : null;
     const boost = s.rpm > 1800 ? Math.max(0, Number(enginePoint?.boostBar || 0) * Number(state.tune.firstGearBoostPct || 100) / 100) : 0;
     const boostNode = $('#v8-stage-boost');
     if (boostNode) boostNode.textContent = boost.toFixed(2);
@@ -2839,7 +2919,7 @@
 
   function buildRealtimeShiftTargets(transInfo) {
     const targets = [];
-    const curve = state.lastDyno?.curve || [];
+    const curve = state.lastDyno?.samples || [];
     const revLimit = Number(state.tune.revLimitRpm || 8000);
     const launch = Number(state.tune.launchRpm || 4200);
     for (let gearIndex = 0; gearIndex < transInfo.gears.length - 1; gearIndex++) {
@@ -3018,7 +3098,7 @@
         else if (run.driverAssist && run.rpm >= targetShift) requestRealtimeShift('ai');
       }
 
-      const enginePoint = C.interpolateCurve(state.lastDyno.curve, run.rpm);
+      const enginePoint = C.interpolateCurve(state.lastDyno.samples, run.rpm);
       const head = C.getPart(state, 'head');
       const naBase = 174 * (run.geometry.displacementL / 2) * Number(head.headFlow || 1) * (1 + Math.min(8, Number(state.tune.intakeCamAdvanceDeg || 0)) * .004);
       const gearBoost = run.gearIndex === 0 ? Number(state.tune.firstGearBoostPct || 100) / 100 : run.gearIndex === 1 ? Number(state.tune.secondGearBoostPct || 100) / 100 : 1;
@@ -3152,7 +3232,7 @@
     const scaledDt = clamp(dt * run.timeScale, 0, .18);
     stepRealtimePhysics(run, scaledDt);
     updateV7RunDom(run.point);
-    const enginePoint = C.interpolateCurve(state.lastDyno.curve, run.rpm);
+    const enginePoint = C.interpolateCurve(state.lastDyno.samples, run.rpm);
     updateEngineAudio(run.rpm, Math.max(.22, Number(enginePoint?.turboLoadPct || 20) / 100), run.wheelspin);
     if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
   }
@@ -3618,7 +3698,7 @@
     const assembly = C.assemblyHealth(state);
     const bench = C.benchConfidence(state);
     const buildRows = C.CATEGORIES.map(cat => `<tr><td>${esc(cat.label)}</td><td>${esc(C.getPart(state, cat.id).name)}<small>${esc(C.getPart(state, cat.id).specs)}</small></td></tr>`).join('');
-    const history = (state.history || []).slice(0, 22).map(h => `<div class="log-row"><i></i><div><b>${esc(h.label || h.type)}</b><small>${new Date(h.at).toLocaleString('nl-NL')}${h.hp ? ` · ${Math.round(h.hp)} pk / ${Math.round(h.nm)} Nm` : ''}${h.et ? ` · ${h.et.toFixed(3)} s @ ${h.trap.toFixed(1)} km/u` : ''}</small></div></div>`).join('');
+    const history = (state.history || []).slice(0, 22).map(h => `<div class="log-row"><i></i><div><b>${esc(h.label || h.type)}</b><small>${new Date(h.at).toLocaleString('nl-NL')}${Number.isFinite(h.hp) ? ` · ${Math.round(h.hp)} pk / ${Math.round(h.nm)} Nm${h.partial ? ' (partieel)' : ''}` : ''}${h.et ? ` · ${h.et.toFixed(3)} s @ ${h.trap.toFixed(1)} km/u` : ''}</small></div></div>`).join('');
     return `<section class="page data-page">
       <div class="data-back"><button class="text-button" data-go="bank">${icon('back')} Terug naar garage</button></div>
       <div class="page-title-row"><div><span class="eyebrow">Build sheet & datalog</span><h1>Volledige technische status</h1><p>Hardware, montage, benchtests, metingen, service, records en overdraagbare buildcode bij elkaar.</p></div></div>
@@ -3630,13 +3710,13 @@
         <div><span>Motor</span><b>${num(geometry.displacementCc,0)} cc</b><small>${num(geometry.boreMm,2)} × ${num(geometry.strokeMm,1)} mm</small></div>
         <div><span>Montagescore</span><b>${Math.round(assembly.score*100)}%</b><small>rings, lagers, gap en procedure</small></div>
         <div><span>Bench confidence</span><b>${bench.score || 0}%</b><small>${bench.current}/${bench.total} actueel · ${bench.failed} fail</small></div>
-        <div><span>Laatste dyno</span><b>${r ? `${Math.round(r.peakHp)} pk` : '—'}</b><small>${r ? `${Math.round(r.peakTorqueNm)} Nm · ${r.reliabilityScore}/100` : 'niet gemeten'}</small></div>
+        <div><span>Laatste dyno</span><b>${r ? dynoMetricText(r, 'peakHp', ' pk') : '—'}</b><small>${!r ? 'niet gemeten' : C.isCompletedDyno(r) ? `${Math.round(r.peakTorqueNm)} Nm · ${r.reliabilityScore}/100` : esc(dynoScopeLabel(r))}</small></div>
         <div><span>FWD-record</span><b>${state.records?.FWD ? `${state.records.FWD.quarter.toFixed(3)} s` : '—'}</b><small>${state.records?.FWD ? `${state.records.FWD.trapKmh.toFixed(1)} km/u` : 'geen geldige pass'}</small></div>
         <div><span>AWD-record</span><b>${state.records?.AWD ? `${state.records.AWD.quarter.toFixed(3)} s` : '—'}</b><small>${state.records?.AWD ? `${state.records.AWD.trapKmh.toFixed(1)} km/u` : 'geen geldige pass'}</small></div>
       </div>
 
-      ${r ? `<div class="card"><div class="section-head small"><div><span class="eyebrow">Laatste dynolog</span><h2>${Math.round(r.peakHp)} pk / ${Math.round(r.peakTorqueNm)} Nm</h2></div><div class="score-badge ${r.reliabilityScore >= 82 ? 'good' : r.reliabilityScore >=65 ? 'warn':'danger'}"><b>${r.reliabilityScore}</b><span>/100</span></div></div>
-        <div class="technical-grid"><div><span>Status</span><b>${esc(r.status)}</b></div><div><span>Turbo</span><b>${esc(r.turboName)} · ${r.compressorMm} mm</b></div><div><span>Knock-index</span><b>${num(r.maxKnockRisk,2)}</b></div><div><span>Fuel duty</span><b>${num(r.maxFuelDuty,1)}%</b></div><div><span>Turbo-load / as</span><b>${num(r.maxTurboLoad,1)}% · ${Math.round(r.maxTurboShaftRpm/1000)}k rpm</b></div><div><span>Thermisch</span><b>${num(r.maxIatC,0)} / ${num(r.maxEgtC,0)} / ${num(r.maxOilTempC,0)} °C</b></div></div>
+      ${r ? `<div class="card"><div class="section-head small"><div><span class="eyebrow">Laatste dynolog</span><h2>${esc(dynoHeadline(r))}</h2></div>${scoreBadge(r)}</div>
+        <div class="technical-grid"><div><span>Status</span><b>${esc(r.rating || '')}${dynoIsPartial(r) ? ` · ${esc(dynoScopeLabel(r))}` : ''}</b></div><div><span>Turbo</span><b>${esc(r.turboName)} · ${r.compressorMm} mm</b></div><div><span>Knock-index</span><b>${num(r.maxKnockRisk,2)}</b></div><div><span>Fuel duty</span><b>${num(r.maxFuelDuty,1)}%</b></div><div><span>Turbo-load / as</span><b>${num(r.maxTurboLoad,1)}% · ${Math.round(r.maxTurboShaftRpm/1000)}k rpm</b></div><div><span>Thermisch</span><b>${num(r.maxIatC,0)} / ${num(r.maxEgtC,0)} / ${num(r.maxOilTempC,0)} °C</b></div></div>
       </div>` : ''}
 
       <div class="card assembly-data-card"><span class="eyebrow">Montageblad</span><h2>Actuele meetwaarden</h2><div class="technical-grid"><div><span>Top / tweede ring</span><b>${num(state.assembly.topRingGapMm,2)} / ${num(state.assembly.secondRingGapMm,2)} mm</b></div><div><span>Rod / main clearance</span><b>${num(state.assembly.rodClearanceMm,3)} / ${num(state.assembly.mainClearanceMm,3)} mm</b></div><div><span>Bougiegap</span><b>${num(state.assembly.sparkGapMm,2)} mm</b></div><div><span>Nokken-TDC</span><b>${num(state.tune.exhaustTdcLiftMm,2)} / ${num(state.tune.intakeTdcLiftMm,2)} mm</b></div><div><span>Balans / sealing</span><b>${state.assembly.balanceQualityPct}% / ${state.assembly.deckSealQualityPct}%</b></div><div><span>Geprimed</span><b>${state.assembly.oilPrimed ? 'ja' : 'nee'}</b></div></div></div>
@@ -4035,6 +4115,22 @@
 
   window.__EA888_DEBUG__ = {
     audio: () => audioDiagnostics(),
+    dyno: () => state.lastDyno ? {
+      status: state.lastDyno.status, abortRpm: state.lastDyno.abortRpm, abortReason: state.lastDyno.abortReason,
+      abortKind: state.lastDyno.abortKind, peakHp: state.lastDyno.peakHp, peakHpRpm: state.lastDyno.peakHpRpm,
+      reliabilityScore: state.lastDyno.reliabilityScore, sampleCount: state.lastDyno.samples.length,
+      maxSampleRpm: state.lastDyno.samples.reduce((m, p) => Math.max(m, p.rpm), 0), current: currentDyno(),
+      wear: cloneJson(state.wear), damage: cloneJson(state.damage)
+    } : null,
+    // Test-only: load a preset with tune/selection overrides. Invalidates the dyno like any real change.
+    configureBuildForTest: ({ preset = null, tune = {}, selections = {} } = {}) => {
+      if (dynoRunning) return false;
+      if (preset) state = C.applyPreset(state, preset);
+      state.tune = { ...state.tune, ...tune };
+      state.selections = { ...state.selections, ...selections };
+      saveState(); render();
+      return C.isDynoCurrent(state);
+    },
     race: () => raceGame?.run ? {
       phase: raceGame.phase,
       time: raceGame.run.t,

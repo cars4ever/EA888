@@ -284,7 +284,8 @@
     ])
       s[k] = { ...base[k], ...(input[k] || {}) };
     s.bench = { ...base.bench, ...(input.bench || {}), results: { ...(base.bench.results || {}), ...((input.bench || {}).results || {}) } };
-    s.dynoRuns = Array.isArray(input.dynoRuns) ? input.dynoRuns.slice(0, 20) : [];
+    s.dynoRuns = Array.isArray(input.dynoRuns) ? input.dynoRuns.slice(0, 20).map(sanitizeDynoResult).filter(Boolean) : [];
+    s.lastDyno = sanitizeDynoResult(input.lastDyno);
     s.dragRuns = Array.isArray(input.dragRuns) ? input.dragRuns.slice(0, 30) : [];
     s.history = Array.isArray(input.history) ? input.history.slice(0, 60) : [];
     s.version = 12;
@@ -596,6 +597,8 @@
     if (condition) list.push({ text, severity, system });
   }
 
+  // Returns the first critical failure event at this sample, or null.
+  // severity 0..1 expresses how far past the failure threshold the sample was.
   function criticalFailure(point, ctx) {
     const {
       tune,
@@ -603,7 +606,6 @@
       componentTorqueLimit,
       componentRpmLimit,
       sealing,
-      turbo,
       ignition,
       oiling,
       ecu,
@@ -612,26 +614,185 @@
       boostControl,
       sensors
     } = ctx;
-    if (point.hp > mechanicalHpLimit * 1.18) return 'Onderblok/krukas overschreed de mechanische vermogensmarge.';
-    if (point.torqueNm > componentTorqueLimit * 1.18) return 'Koppelpiek overschreed de grens van motor of transmissie.';
-    if (point.rpm > componentRpmLimit * 1.04) return 'Valve-float of mechanische over-rev.';
-    if (point.bmepBar > sealing.headClampBmep * 1.15) return 'Head-lift: cilinderdruk overschreed de sealingmarge.';
-    if (point.fuelDutyPct > 113 && !tune.railPressureCut) return 'Brandstofsysteem liep leeg: lean-out onder boost.';
-    if (point.turboLoadPct > 122 && !tune.overboostCut) return 'Turbo overspeed / compressor buiten kaart.';
-    if (point.knockRisk > 1.35 || (point.knockRisk > 1.05 && !tune.knockControl)) return 'Zware knock/detonatie.';
+    const over = (value, limit, span = 0.3) => clamp((value / Math.max(1e-9, limit) - 1) / span, 0, 1);
+    const fail = (code, system, reason, severity) => ({ code, system, reason, severity: clamp(severity, 0, 1) });
+    if (point.hp > mechanicalHpLimit * 1.18)
+      return fail('mechanical_power', 'engine', 'Onderblok/krukas overschreed de mechanische vermogensmarge.', over(point.hp, mechanicalHpLimit * 1.18));
+    if (point.torqueNm > componentTorqueLimit * 1.18)
+      return fail('torque', 'engine', 'Koppelpiek overschreed de grens van motor of transmissie.', over(point.torqueNm, componentTorqueLimit * 1.18));
+    if (point.rpm > componentRpmLimit * 1.04)
+      return fail('overrev', 'engine', 'Valve-float of mechanische over-rev.', over(point.rpm, componentRpmLimit * 1.04, 0.1));
+    if (point.bmepBar > sealing.headClampBmep * 1.15)
+      return fail('head_lift', 'engine', 'Head-lift: cilinderdruk overschreed de sealingmarge.', over(point.bmepBar, sealing.headClampBmep * 1.15));
+    if (point.fuelDutyPct > 113 && !tune.railPressureCut)
+      return fail('lean_out', 'engine', 'Brandstofsysteem liep leeg: lean-out onder boost.', over(point.fuelDutyPct, 113));
+    if (point.turboLoadPct > 122 && !tune.overboostCut)
+      return fail('turbo_overspeed', 'turbo', 'Turbo overspeed / compressor buiten kaart.', over(point.turboLoadPct, 122));
+    if (point.knockRisk > 1.35 || (point.knockRisk > 1.05 && !tune.knockControl))
+      return fail('knock', 'engine', 'Zware knock/detonatie.', over(point.knockRisk, tune.knockControl ? 1.35 : 1.05));
     if (point.boostBar > ignition.sparkBoostLimit * 1.22 && ignition.sparkQuality < 1.01)
-      return 'Ontstekingsuitval onder hoge cilinderdruk.';
-    if (point.oilPressureBar < 1.75 && point.rpm > 5000 && !tune.oilPressureProtection) return 'Lagerfalen door te lage oliedruk.';
-    if (point.oilFilmRisk > 1.75 || oilFilm < 0.48) return 'Oliefilm brak af onder lager- en zuigerbelasting.';
-    if (point.oilTempC > 164 && oiling.oilCooling < 0.6) return 'Olie oververhit; lager- en turboschade.';
+      return fail('misfire', 'engine', 'Ontstekingsuitval onder hoge cilinderdruk.', over(point.boostBar, ignition.sparkBoostLimit * 1.22));
+    if (point.oilPressureBar < 1.75 && point.rpm > 5000 && !tune.oilPressureProtection)
+      return fail('oil_pressure', 'engine', 'Lagerfalen door te lage oliedruk.', clamp((1.75 - point.oilPressureBar) / 0.8, 0, 1));
+    if (point.oilFilmRisk > 1.75 || oilFilm < 0.48)
+      return fail('oil_film', 'engine', 'Oliefilm brak af onder lager- en zuigerbelasting.', over(point.oilFilmRisk, 1.75));
+    if (point.oilTempC > 164 && oiling.oilCooling < 0.6)
+      return fail('oil_temp', 'engine', 'Olie oververhit; lager- en turboschade.', over(point.oilTempC, 164, 0.15));
     if (ecu.safetyQuality * sensors.sensorQuality < 0.42 && point.boostBar > 2.4 && point.rpm > 6500)
-      return 'ECU/sensorstrategie kon de extreme hardware niet beheersen.';
-    if (assembly.ringTightRisk > 1.05 && point.bmepBar > 32) return 'Zuigerring-einden liepen dicht onder temperatuur en cilinderdruk.';
+      return fail('ecu_control', 'engine', 'ECU/sensorstrategie kon de extreme hardware niet beheersen.', over(point.boostBar, 2.4));
+    if (assembly.ringTightRisk > 1.05 && point.bmepBar > 32)
+      return fail('ring_butt', 'engine', 'Zuigerring-einden liepen dicht onder temperatuur en cilinderdruk.', over(assembly.ringTightRisk, 1.05));
     if (assembly.bearingTightRisk > 1.05 && point.oilTempC > 135 && point.rpm > 7000)
-      return 'Lagerclearance werd te krap bij temperatuur en toerental.';
-    if (!assembly.oilPrimed && point.rpm > 3500) return 'Motor werd belast zonder geldige oliedruk-prime.';
-    if (point.boostBar > boostControl.boostHardwareMaxBar * 1.28 && !tune.overboostCut) return 'Wastegate/boostregeling verloor controle.';
-    return '';
+      return fail('bearing_clearance', 'engine', 'Lagerclearance werd te krap bij temperatuur en toerental.', over(assembly.bearingTightRisk, 1.05));
+    if (!assembly.oilPrimed && point.rpm > 3500)
+      return fail('no_oil_prime', 'engine', 'Motor werd belast zonder geldige oliedruk-prime.', 0.6);
+    if (point.boostBar > boostControl.boostHardwareMaxBar * 1.28 && !tune.overboostCut)
+      return fail('boost_control', 'turbo', 'Wastegate/boostregeling verloor controle.', over(point.boostBar, boostControl.boostHardwareMaxBar * 1.28));
+    return null;
+  }
+
+  // ---- Dyno result model ---------------------------------------------------
+  // A dyno result only contains samples the simulated pull actually reached.
+  // Every summary value (peaks, maxima, wear, damage) is derived from those
+  // samples, so an aborted pull can never report data above its abort rpm.
+  const DYNO_RESULT_VERSION = 2;
+  const DYNO_START_RPM = 1500;
+  const DYNO_STEP_RPM = 100;
+  // Below this many samples (400 rpm of data) a partial peak is not quoted.
+  const DYNO_MIN_PARTIAL_SAMPLES = 5;
+  const DYNO_STATUS = Object.freeze({ COMPLETED: 'completed', ABORTED: 'aborted', FAILED_TO_START: 'failed-to-start' });
+
+  function isCompletedDyno(result) {
+    return !!(result && result.status === DYNO_STATUS.COMPLETED && Array.isArray(result.samples) && result.samples.length > 0);
+  }
+
+  function summarizeDynoSamples(samples) {
+    const list = Array.isArray(samples) ? samples : [];
+    const out = {
+      sampleCount: list.length,
+      rpmStart: list.length ? list[0].rpm : null,
+      rpmReached: list.length ? list[list.length - 1].rpm : null,
+      peakHp: null,
+      peakHpRpm: null,
+      peakTorqueNm: null,
+      peakTorqueRpm: null,
+      maxBmepBar: null,
+      maxMeanPistonSpeed: null,
+      maxFuelDuty: null,
+      maxTurboLoad: null,
+      maxTurboShaftRpm: null,
+      maxEmpBar: null,
+      maxIatC: null,
+      maxEgtC: null,
+      maxOilTempC: null,
+      maxKnockRisk: null,
+      maxOilAerationPct: null,
+      minOilPressureBar: null
+    };
+    const maxOf = (key, value) => {
+      if (Number.isFinite(value) && (out[key] === null || value > out[key])) out[key] = value;
+    };
+    for (const p of list) {
+      if (out.peakHp === null || p.hp > out.peakHp) {
+        out.peakHp = p.hp;
+        out.peakHpRpm = p.rpm;
+      }
+      if (out.peakTorqueNm === null || p.torqueNm > out.peakTorqueNm) {
+        out.peakTorqueNm = p.torqueNm;
+        out.peakTorqueRpm = p.rpm;
+      }
+      maxOf('maxBmepBar', p.bmepBar);
+      maxOf('maxMeanPistonSpeed', p.meanPistonSpeed);
+      maxOf('maxFuelDuty', p.fuelDutyPct);
+      maxOf('maxTurboLoad', p.turboLoadPct);
+      maxOf('maxTurboShaftRpm', p.turboShaftRpm);
+      maxOf('maxEmpBar', p.empBar);
+      maxOf('maxIatC', p.iatC);
+      maxOf('maxEgtC', p.egtC);
+      maxOf('maxOilTempC', p.oilTempC);
+      maxOf('maxKnockRisk', p.knockRisk);
+      maxOf('maxOilAerationPct', p.oilAerationPct);
+      // Hot-oil pressure is only judged under load (>= 4000 rpm).
+      if (p.rpm >= 4000 && (out.minOilPressureBar === null || p.oilPressureBar < out.minOilPressureBar))
+        out.minOilPressureBar = p.oilPressureBar;
+    }
+    return out;
+  }
+
+  // Wear accrued by a dyno pull, integrated over the samples that were run.
+  // Each sample represents DYNO_STEP_RPM / ramp seconds of load.
+  function dynoWearFromSamples(samples, ctx) {
+    const list = Array.isArray(samples) ? samples : [];
+    const dt = DYNO_STEP_RPM / clamp(Number(ctx.rampRpmPerSec) || 550, 250, 1000);
+    const riskOver = (value, start, full) => clamp((value - start) / (full - start), 0, 1.35);
+    const condition = 1 + (1 - clamp(ctx.assemblyScore ?? 1, 0, 1)) * 2.5 + (ctx.spoolWearFactor || 0) * 1.5 + (ctx.engineWearPct || 0) / 200;
+    let engine = 0,
+      turbo = 0,
+      oilAgeKm = 0;
+    for (const p of list) {
+      const engineRate =
+        0.004 +
+        riskOver(p.hp / ctx.mechanicalHpLimit, 0.78, 1.18) * 0.05 +
+        riskOver(p.torqueNm / ctx.componentTorqueLimit, 0.78, 1.18) * 0.05 +
+        riskOver(p.bmepBar / ctx.headClampBmep, 0.75, 1.2) * 0.04 +
+        riskOver(p.meanPistonSpeed / 25, 0.82, 1.13) * 0.02 +
+        Math.max(0, p.knockRisk - 0.3) * 0.08 +
+        riskOver(p.oilTempC / ctx.oilTempTolerance, 0.82, 1.18) * 0.03 +
+        Math.max(0, p.oilFilmRisk - 0.9) * 0.05 +
+        riskOver(p.egtC / 980, 0.75, 1.12) * 0.02;
+      const turboRate =
+        0.003 +
+        riskOver(p.turboLoadPct / 100, 0.8, 1.2) * 0.06 +
+        riskOver(p.turboShaftRpm / Math.max(1, p.shaftLimitRpm), 0.82, 1.16) * 0.05 +
+        riskOver(p.egtC / 980, 0.8, 1.12) * 0.03;
+      engine += engineRate * condition * dt;
+      turbo += turboRate * (1 + (ctx.spoolWearFactor || 0) * 3) * dt;
+      oilAgeKm += (10 + Math.max(0, p.oilTempC - 110) * 0.25) * dt;
+    }
+    const durationS = list.length * dt;
+    return { engine: Math.min(12, engine), turbo: Math.min(12, turbo), transmission: 0.0025 * durationS, oilAgeKm, durationS };
+  }
+
+  function dynoFailureDamage(event) {
+    if (!event) return { engine: 0, turbo: 0 };
+    return { engine: 18 + clamp(event.severity || 0, 0, 1) * 20, turbo: event.system === 'turbo' ? 28 : 4 };
+  }
+
+  // Upgrades results stored by v1.2.0 and earlier. Those kept simulating to the
+  // rev limit after a failure, so every sample above the failure rpm and every
+  // summary derived from them is discarded here.
+  function sanitizeDynoResult(result) {
+    if (!result || typeof result !== 'object') return null;
+    if (result.dynoResultVersion === DYNO_RESULT_VERSION) return result;
+    const legacyCurve = Array.isArray(result.samples) ? result.samples : Array.isArray(result.curve) ? result.curve : [];
+    const failureRpm = Number(result.failureRpm) || 0;
+    const samples = failureRpm ? legacyCurve.filter(p => p.rpm <= failureRpm) : legacyCurve.slice();
+    const completed = !failureRpm && samples.length > 0;
+    const out = { ...result };
+    delete out.curve;
+    Object.assign(out, summarizeDynoSamples(samples));
+    out.samples = samples;
+    out.dynoResultVersion = DYNO_RESULT_VERSION;
+    out.legacyMigrated = true;
+    out.rating = completed ? result.status || result.rating || '' : 'AFGEBROKEN';
+    out.status = completed ? DYNO_STATUS.COMPLETED : samples.length ? DYNO_STATUS.ABORTED : DYNO_STATUS.FAILED_TO_START;
+    out.partial = !completed;
+    out.targetRpm = Number(result.targetRpm) || (legacyCurve.length ? legacyCurve[legacyCurve.length - 1].rpm : null);
+    if (!completed) {
+      out.abortRpm = failureRpm || null;
+      out.abortReason = result.failureReason || 'Onbekende oorzaak (oude meting)';
+      out.abortKind = 'engine-failure';
+      out.reliabilityScore = null;
+      // Legacy warnings/bottleneck were computed from the full sweep, including
+      // samples that were never reached, so they cannot be trusted.
+      out.warnings = [];
+      out.bottleneck = `Afgebroken @ ${failureRpm} rpm`;
+      out.estimatedAirflowLbMin = null;
+      if (samples.length < DYNO_MIN_PARTIAL_SAMPLES) {
+        out.peakHp = out.peakHpRpm = out.peakTorqueNm = out.peakTorqueRpm = null;
+      } else out.estimatedAirflowLbMin = out.peakHp / 9.55;
+    }
+    return out;
   }
 
   function simulateEngine(inputState, options = {}) {
@@ -681,24 +842,19 @@
       levelFilm = oilLevel < 4 ? clamp(0.45 + (oilLevel - 3.4) * 0.9, 0.35, 1) : oilLevel > 5.15 ? 0.93 : 1;
     const oilFilm = oil.film * health * levelFilm * (0.8 + oiling.oilControl * 0.2) * (0.86 + crankcase.crankcaseControl * 0.14),
       curve = [];
-    let peakHp = 0,
-      peakHpRpm = 0,
-      peakTorqueNm = 0,
-      peakTorqueRpm = 0,
-      maxBmepBar = 0,
-      maxMeanPistonSpeed = 0,
-      maxFuelDuty = 0,
-      maxTurboLoad = 0,
-      maxTurboShaftRpm = 0,
-      maxEmpBar = 0,
-      maxIatC = 0,
-      maxEgtC = 0,
-      maxOilTempC = 0,
-      maxKnockRisk = 0,
-      maxOilAerationPct = 0,
-      minOilPressureBar = 99,
-      failureRpm = 0,
-      failureReason = '';
+    // Pre-flight: an engine that is already destroyed does not start a pull.
+    let abort =
+      Number(state.damage.engine) >= 100
+        ? {
+            kind: 'failed-to-start',
+            code: 'engine_destroyed',
+            system: 'engine',
+            reason: 'Motorschade 100%: de motor start niet. Eerst reviseren.',
+            severity: 0,
+            rpm: null
+          }
+        : null;
+    const stopAtRpm = Number.isFinite(options.stopAtRpm) ? options.stopAtRpm : Infinity;
     const rand = mulberry32(fnv1a(engineSignature(state))),
       measurementNoise = options.noise === false ? 0 : sensors.measurementNoise,
       baseDynoFactor = options.noise === false ? 1 : 1 + (rand() - 0.5) * measurementNoise;
@@ -708,7 +864,7 @@
       ramp = clamp(Number(state.dynoConfig.rampRpmPerSec || 550), 250, 1000),
       fan = clamp(Number(state.dynoConfig.fanSpeedPct || 85) / 100, 0.25, 1),
       heatSoak = clamp(650 / ramp, 0.72, 1.35);
-    for (let rpm = 1500; rpm <= revLimit; rpm += 100) {
+    for (let rpm = DYNO_START_RPM; !abort && rpm <= revLimit; rpm += DYNO_STEP_RPM) {
       const desired = requestedBoostAt(tune, rpm, revLimit),
         effectiveSpool = Math.max(1300, turbo.turboSpoolRpm - spoolAssist.spoolShiftRpm),
         spoolWidth = Math.max(250, 360 + (turbo.turboSpoolRpm - 2000) * 0.092),
@@ -869,49 +1025,49 @@
         spoolPct: spool * 100,
         airflowLbMin: rawHp / 9.55
       };
+      point.tS = (rpm - DYNO_START_RPM) / ramp;
       curve.push(point);
-      if (rawHp > peakHp) {
-        peakHp = rawHp;
-        peakHpRpm = rpm;
-      }
-      if (torque > peakTorqueNm) {
-        peakTorqueNm = torque;
-        peakTorqueRpm = rpm;
-      }
-      maxBmepBar = Math.max(maxBmepBar, bmepBar);
-      maxMeanPistonSpeed = Math.max(maxMeanPistonSpeed, meanPistonSpeed);
-      maxFuelDuty = Math.max(maxFuelDuty, fuelDutyPct);
-      maxTurboLoad = Math.max(maxTurboLoad, turboLoadPct);
-      maxTurboShaftRpm = Math.max(maxTurboShaftRpm, turboShaftRpm);
-      maxEmpBar = Math.max(maxEmpBar, empBar);
-      maxIatC = Math.max(maxIatC, iatC);
-      maxEgtC = Math.max(maxEgtC, egtC);
-      maxOilTempC = Math.max(maxOilTempC, oilTempC);
-      maxKnockRisk = Math.max(maxKnockRisk, knockRisk);
-      maxOilAerationPct = Math.max(maxOilAerationPct, oilAerationPct);
-      if (rpm >= 4000) minOilPressureBar = Math.min(minOilPressureBar, oilPressureBar);
-      if (!failureRpm) {
-        const reason = criticalFailure(point, {
-          tune,
-          mechanicalHpLimit,
-          componentTorqueLimit,
-          componentRpmLimit,
-          sealing,
-          turbo,
-          ignition,
-          oiling,
-          ecu,
-          oilFilm,
-          assembly,
-          boostControl,
-          sensors
-        });
-        if (reason) {
-          failureRpm = rpm;
-          failureReason = reason;
-        }
-      }
+      const event = criticalFailure(point, {
+        tune,
+        mechanicalHpLimit,
+        componentTorqueLimit,
+        componentRpmLimit,
+        sealing,
+        ignition,
+        oiling,
+        ecu,
+        oilFilm,
+        assembly,
+        boostControl,
+        sensors
+      });
+      // The pull stops at the sample where a failure is detected: nothing above
+      // this rpm is ever simulated, measured or summarised.
+      if (event) abort = { kind: 'engine-failure', rpm, ...event };
+      else if (rpm >= stopAtRpm)
+        abort = { kind: 'operator', code: 'operator', system: 'operator', reason: 'Handmatig afgebroken door operator.', severity: 0, rpm };
     }
+    if (abort && abort.kind === 'engine-failure' && curve.length <= 1) abort.kind = 'failed-to-start';
+    const runStatus = !abort ? DYNO_STATUS.COMPLETED : abort.kind === 'failed-to-start' ? DYNO_STATUS.FAILED_TO_START : DYNO_STATUS.ABORTED;
+    const completed = runStatus === DYNO_STATUS.COMPLETED;
+    const summary = summarizeDynoSamples(curve);
+    const failureRpm = abort && abort.kind !== 'operator' && abort.rpm ? abort.rpm : 0,
+      failureReason = failureRpm ? abort.reason : '';
+    const val = v => (Number.isFinite(v) ? v : 0);
+    const peakHp = val(summary.peakHp),
+      peakTorqueNm = val(summary.peakTorqueNm),
+      maxBmepBar = val(summary.maxBmepBar),
+      maxMeanPistonSpeed = val(summary.maxMeanPistonSpeed),
+      maxFuelDuty = val(summary.maxFuelDuty),
+      maxTurboLoad = val(summary.maxTurboLoad),
+      maxTurboShaftRpm = val(summary.maxTurboShaftRpm),
+      maxEmpBar = val(summary.maxEmpBar),
+      maxIatC = val(summary.maxIatC),
+      maxEgtC = val(summary.maxEgtC),
+      maxOilTempC = val(summary.maxOilTempC),
+      maxKnockRisk = val(summary.maxKnockRisk),
+      maxOilAerationPct = val(summary.maxOilAerationPct),
+      minOilPressureBar = summary.minOilPressureBar;
     const hpRatio = peakHp / mechanicalHpLimit,
       tqRatio = peakTorqueNm / componentTorqueLimit,
       rpmRatio = revLimit / componentRpmLimit,
@@ -920,7 +1076,7 @@
       turboRatio = maxTurboLoad / 100,
       mpsRatio = maxMeanPistonSpeed / 25,
       oilTempRatio = maxOilTempC / oil.tempTolerance,
-      oilPressureRisk = clamp((2.8 - minOilPressureBar) / 1.8, 0, 1.5),
+      oilPressureRisk = minOilPressureBar === null ? 0 : clamp((2.8 - minOilPressureBar) / 1.8, 0, 1.5),
       oilFilmRatio = 1 / Math.max(0.35, oilFilm),
       shaftRatio = maxTurboShaftRpm / (curve[0]?.shaftLimitRpm || 150000),
       warnings = [];
@@ -985,8 +1141,8 @@
     );
     addWarning(
       warnings,
-      minOilPressureBar < 2.5,
-      `Minimale berekende oliedruk ${minOilPressureBar.toFixed(1)} bar: niveau, viscositeit en pickup controleren.`,
+      minOilPressureBar !== null && minOilPressureBar < 2.5,
+      `Minimale berekende oliedruk ${(minOilPressureBar ?? 0).toFixed(1)} bar: niveau, viscositeit en pickup controleren.`,
       'warn',
       'olie'
     );
@@ -1133,9 +1289,11 @@
     if (!tune.knockControl) risk += 8;
     if (!tune.lambdaProtection) risk += 5;
     if (!tune.overboostCut) risk += 4;
-    if (failureRpm) risk += 45;
-    const reliabilityScore = Math.round(clamp(100 - risk, 0, 100)),
-      status = failureRpm
+    if (abort && abort.kind !== 'operator') risk += 45;
+    // Reliability is a verdict on a whole pull. An aborted pull did not cover
+    // the rpm range, so it gets no score rather than a misleading one.
+    const reliabilityScore = completed ? Math.round(clamp(100 - risk, 0, 100)) : null,
+      rating = !completed
         ? 'AFGEBROKEN'
         : reliabilityScore >= 82
           ? 'VEILIG'
@@ -1156,43 +1314,71 @@
         ['Nokkenastiming', camTiming.applicable ? 1 + (1 - camTiming.score) * 0.72 : 0]
       ];
     ratios.sort((a, b) => b[1] - a[1]);
-    const bottleneck = `${ratios[0][0]}: ${ratios[0][1].toFixed(2)}× van de richtgrens`,
+    const bottleneck = completed
+        ? `${ratios[0][0]}: ${ratios[0][1].toFixed(2)}× van de richtgrens`
+        : abort.rpm
+          ? `Afgebroken @ ${abort.rpm} rpm: ${abort.reason}`
+          : abort.reason,
       safePowerLimitHp = Math.min(mechanicalHpLimit * 0.88, effectiveFuelCapacity * 0.88, turbo.turboMaxHp * 0.9),
-      wearPerDynoPull = clamp(
-        0.1 + Math.max(0, 78 - reliabilityScore) * 0.025 + spoolAssist.wearFactor * 0.8 + (failureRpm ? 7 : 0),
-        0.08,
-        12
-      ),
-      estimatedAirflowLbMin = peakHp / 9.55,
+      wear = dynoWearFromSamples(curve, {
+        rampRpmPerSec: ramp,
+        mechanicalHpLimit,
+        componentTorqueLimit,
+        headClampBmep: sealing.headClampBmep,
+        oilTempTolerance: oil.tempTolerance,
+        assemblyScore: assembly.score,
+        spoolWearFactor: spoolAssist.wearFactor,
+        engineWearPct: state.wear.engine
+      }),
+      damage = dynoFailureDamage(abort && abort.kind !== 'operator' && abort.code !== 'engine_destroyed' ? abort : null),
       airDensityKgM3 = 1.204 * airDensityFactor;
+    // A partial peak is only quoted when enough of the pull was observed.
+    const quotePeak = completed || summary.sampleCount >= DYNO_MIN_PARTIAL_SAMPLES;
+    const plannedSamples = Math.floor((revLimit - DYNO_START_RPM) / DYNO_STEP_RPM) + 1;
     return {
-      modelVersion: '4.0',
-      curve,
-      peakHp,
-      peakHpRpm,
-      peakTorqueNm,
-      peakTorqueRpm,
+      modelVersion: '4.1',
+      dynoResultVersion: DYNO_RESULT_VERSION,
+      status: runStatus,
+      partial: !completed,
+      abortRpm: abort ? abort.rpm : null,
+      abortReason: abort ? abort.reason : '',
+      abortKind: abort ? abort.kind : null,
+      abortCode: abort ? abort.code : null,
+      abortSystem: abort ? abort.system : null,
+      abortSeverity: abort ? abort.severity : 0,
+      startRpm: DYNO_START_RPM,
+      targetRpm: revLimit,
+      rpmReached: summary.rpmReached,
+      sampleCount: summary.sampleCount,
+      plannedSampleCount: plannedSamples,
+      samples: curve,
+      peakHp: quotePeak ? summary.peakHp : null,
+      peakHpRpm: quotePeak ? summary.peakHpRpm : null,
+      peakTorqueNm: quotePeak ? summary.peakTorqueNm : null,
+      peakTorqueRpm: quotePeak ? summary.peakTorqueRpm : null,
       reliabilityScore,
-      status,
+      rating,
       bottleneck,
       warnings,
       failureRpm,
       failureReason,
-      wearPerDynoPull,
+      wear,
+      damage,
+      wearPerDynoPull: wear.engine,
       safePowerLimitHp,
-      maxBmepBar,
-      maxMeanPistonSpeed,
-      maxFuelDuty,
-      maxTurboLoad,
-      maxTurboShaftRpm,
-      maxEmpBar,
-      maxIatC,
-      maxEgtC,
-      maxOilTempC,
-      minOilPressureBar,
-      maxKnockRisk,
-      maxOilAerationPct,
-      estimatedAirflowLbMin,
+      maxBmepBar: summary.maxBmepBar,
+      maxMeanPistonSpeed: summary.maxMeanPistonSpeed,
+      maxFuelDuty: summary.maxFuelDuty,
+      maxTurboLoad: summary.maxTurboLoad,
+      maxTurboShaftRpm: summary.maxTurboShaftRpm,
+      maxEmpBar: summary.maxEmpBar,
+      maxIatC: summary.maxIatC,
+      maxEgtC: summary.maxEgtC,
+      maxOilTempC: summary.maxOilTempC,
+      minOilPressureBar: summary.minOilPressureBar,
+      maxKnockRisk: summary.maxKnockRisk,
+      maxOilAerationPct: summary.maxOilAerationPct,
+      estimatedAirflowLbMin: quotePeak && summary.peakHp !== null ? summary.peakHp / 9.55 : null,
       oilHealth: health,
       oilFilm,
       turboName: turbo.name,
@@ -1208,6 +1394,49 @@
       dynoConfig: deepClone(state.dynoConfig),
       measuredAt: new Date().toISOString()
     };
+  }
+
+  // Applies a finished (completed or aborted) pull to the canonical state:
+  // it becomes the active measurement, and its sample-derived wear/damage is
+  // added. Returns a new normalized state.
+  function commitDynoResult(inputState, result, options = {}) {
+    const state = normalizeState(inputState);
+    if (!result || result.dynoResultVersion !== DYNO_RESULT_VERSION) throw new Error('Ongeldig dynoresultaat.');
+    const completed = isCompletedDyno(result);
+    const label =
+      options.label ||
+      (completed
+        ? `${state.buildName} dynopull`
+        : result.status === DYNO_STATUS.FAILED_TO_START
+          ? 'Start mislukt'
+          : `Afgebroken @ ${result.abortRpm} rpm`);
+    state.lastDyno = result;
+    state.lastDynoSignature = engineSignature(state);
+    state.dynoRuns = [{ ...result, label }, ...(state.dynoRuns || [])].slice(0, 20);
+    const w = result.wear || {},
+      d = result.damage || {};
+    state.wear.engine = clamp(state.wear.engine + (w.engine || 0), 0, 100);
+    state.wear.turbo = clamp(state.wear.turbo + (w.turbo || 0), 0, 100);
+    state.wear.transmission = clamp(state.wear.transmission + (w.transmission || 0), 0, 100);
+    state.damage.engine = clamp(state.damage.engine + (d.engine || 0), 0, 100);
+    state.damage.turbo = clamp(state.damage.turbo + (d.turbo || 0), 0, 100);
+    if (result.sampleCount > 0) {
+      state.service.oilAgeKm += w.oilAgeKm || 0;
+      state.service.oilRuns += 1;
+    }
+    state.history = [
+      {
+        type: 'dyno',
+        at: new Date().toISOString(),
+        label: completed ? 'Volledige dynopull' : result.status === DYNO_STATUS.FAILED_TO_START ? 'Dyno: start mislukt' : `Dyno afgebroken @ ${result.abortRpm} rpm`,
+        status: result.status,
+        partial: !completed,
+        hp: result.peakHp,
+        nm: result.peakTorqueNm
+      },
+      ...(state.history || [])
+    ].slice(0, 40);
+    return state;
   }
 
   function interpolateCurve(curve, rpm) {
@@ -1274,8 +1503,13 @@
   function simulateDrag(inputState, dynoResult, config = {}) {
     const state = normalizeState(inputState),
       dyno = dynoResult || state.lastDyno;
-    if (!dyno || !dyno.curve || !dyno.curve.length) throw new Error('Een geldige dynometing is vereist.');
-    if (dyno.failureRpm) throw new Error('De dynorun eindigde met motorschade; eerst herstellen en opnieuw meten.');
+    if (!dyno || !Array.isArray(dyno.samples) || !dyno.samples.length) throw new Error('Een geldige dynometing is vereist.');
+    if (!isCompletedDyno(dyno))
+      throw new Error(
+        dyno.failureRpm
+          ? 'De dynorun eindigde met motorschade; eerst herstellen en opnieuw meten.'
+          : 'De dynorun is niet voltooid; voer eerst een volledige pull uit.'
+      );
     const vehicle = state.vehicle,
       drive = DRIVETRAINS[vehicle.drivetrain],
       trans = getPart(state, 'transmission'),
@@ -1329,7 +1563,7 @@
         demandForce = 0;
       if (shiftRemaining > 0) shiftRemaining -= dt;
       else {
-        const point = interpolateCurve(dyno.curve, rpm),
+        const point = interpolateCurve(dyno.samples, rpm),
           naBase = clamp(178 - Math.max(0, rpm - 5000) * 0.006, 120, 180),
           boostScale = gearBoost(gear),
           torqueEngine = Math.max(0, (naBase + (point.torqueNm - naBase) * boostScale) * airPowerFactor);
@@ -1414,12 +1648,16 @@
     if (!result) return [];
     const out = [];
     const add = (system, severity, observation, action) => out.push({ system, severity, observation, action });
-    if (result.failureRpm)
+    if (result.status === DYNO_STATUS.FAILED_TO_START)
+      add('Run', 'danger', `Pull niet gestart: ${result.abortReason}`, 'Herstel de motor voordat opnieuw wordt gemeten.');
+    else if (result.status === DYNO_STATUS.ABORTED)
       add(
         'Run',
-        'danger',
-        `Pull afgebroken bij ${result.failureRpm} rpm: ${result.failureReason}`,
-        'Herstel de oorzaak en virtuele schade voordat opnieuw wordt gemeten.'
+        result.abortKind === 'operator' ? 'warn' : 'danger',
+        `Pull afgebroken bij ${result.abortRpm} rpm: ${result.abortReason} Alle waarden hieronder zijn partieel (tot ${result.abortRpm} rpm).`,
+        result.abortKind === 'operator'
+          ? 'Voer een volledige pull uit voor een geldige meting.'
+          : 'Herstel de oorzaak en virtuele schade voordat opnieuw wordt gemeten.'
       );
     if (result.maxFuelDuty > 88)
       add(
@@ -1449,11 +1687,12 @@
         `IAT bereikte ${Math.round(result.maxIatC)}°C.`,
         'Verbeter koeling, ventilator/ice-tank of verminder heat-soak en compressorbelasting.'
       );
-    if (result.minOilPressureBar < 2.8 || result.maxOilTempC > 135)
+    const minOil = result.minOilPressureBar;
+    if ((minOil !== null && minOil < 2.8) || result.maxOilTempC > 135)
       add(
         'Olie',
-        result.minOilPressureBar < 2.1 ? 'danger' : 'warn',
-        `Min ${result.minOilPressureBar.toFixed(1)} bar, max ${Math.round(result.maxOilTempC)}°C, aeratie ${Math.round(result.maxOilAerationPct)}%.`,
+        minOil !== null && minOil < 2.1 ? 'danger' : 'warn',
+        `Min ${minOil === null ? '—' : minOil.toFixed(1)} bar, max ${Math.round(result.maxOilTempC)}°C, aeratie ${Math.round(result.maxOilAerationPct)}%.`,
         'Controleer vulniveau, clearances, pickup/cartercontrole, viscositeit en koeling.'
       );
     if (result.camTiming?.applicable && result.camTiming.score < 0.88)
@@ -1513,17 +1752,18 @@
       r = s.lastDyno,
       d = s.lastDrag,
       b = benchConfidence(s),
-      turbo = getPart(s, 'turbo');
+      turbo = getPart(s, 'turbo'),
+      ok = isCompletedDyno(r);
     return {
-      first_pull: !!(r && !r.failureRpm),
-      safe500: !!(r && !r.failureRpm && r.peakHp >= 500 && r.reliabilityScore >= 80),
-      k04_hero: !!(r && !r.failureRpm && ['k04', 'k04_hybrid'].includes(turbo.id) && r.peakHp >= 500),
+      first_pull: ok,
+      safe500: !!(ok && r.peakHp >= 500 && r.reliabilityScore >= 80),
+      k04_hero: !!(ok && ['k04', 'k04_hybrid'].includes(turbo.id) && r.peakHp >= 500),
       bench_master: b.complete && b.failed === 0,
       fwd11: !!(d && d.valid && s.vehicle.drivetrain === 'FWD' && d.quarter < 12),
       fwd10: !!(d && d.valid && s.vehicle.drivetrain === 'FWD' && d.quarter < 11),
-      seven_hundred: !!(r && !r.failureRpm && r.peakHp >= 700 && r.reliabilityScore >= 68),
-      four_digits: !!(r && !r.failureRpm && r.peakHp >= 1000),
-      big_turbo_survivor: !!(r && !r.failureRpm && turbo.compressorMm >= 98 && r.reliabilityScore >= 55)
+      seven_hundred: !!(ok && r.peakHp >= 700 && r.reliabilityScore >= 68),
+      four_digits: !!(ok && r.peakHp >= 1000),
+      big_turbo_survivor: !!(ok && turbo.compressorMm >= 98 && r.reliabilityScore >= 55)
     };
   }
 
@@ -1544,8 +1784,8 @@
     const bigNo = simulateEngine(big, { noise: false });
     big.selections.spool = 'n2o_150';
     const bigYes = simulateEngine(big, { noise: false }),
-      pNo = bigNo.curve.find(p => p.rpm === 7000)?.boostBar || 0,
-      pYes = bigYes.curve.find(p => p.rpm === 7000)?.boostBar || 0;
+      pNo = bigNo.samples.find(p => p.rpm === 7000)?.boostBar || 0,
+      pYes = bigYes.samples.find(p => p.rpm === 7000)?.boostBar || 0;
     add('98-mm spool assistance werkt', pYes > pNo * 1.2, `${pNo.toFixed(2)}→${pYes.toFixed(2)} bar @7000`);
     const lowOil = blankState();
     lowOil.service.liters = 3.7;
@@ -1613,6 +1853,14 @@
     densityAltitude,
     oilHealth,
     simulateEngine,
+    commitDynoResult,
+    isCompletedDyno,
+    summarizeDynoSamples,
+    dynoWearFromSamples,
+    sanitizeDynoResult,
+    DYNO_STATUS,
+    DYNO_RESULT_VERSION,
+    DYNO_MIN_PARTIAL_SAMPLES,
     simulateDrag,
     interpolateCurve,
     diagnoseDyno,
