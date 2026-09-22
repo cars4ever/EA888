@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
+  <title id="title">Blauwe Scirocco raceauto van achteren</title>
+  <desc id="desc">Een lage brede blauwe hatchback met iriserende wielen, rode remklauwen, dubbele uitlaat en Nederlandse kentekenplaat.</desc>
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a49a7"/>
+      <stop offset="0.28" stop-color="#1176e6"/>
+      <stop offset="0.52" stop-color="#0752bd"/>
+      <stop offset="0.78" stop-color="#05327f"/>
+      <stop offset="1" stop-color="#031a48"/>
+    </linearGradient>
+    <linearGradient id="bodyHi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fd5ff" stop-opacity=".8"/>
+      <stop offset=".35" stop-color="#2d9cff" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#001234" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121d2f"/>
+      <stop offset=".55" stop-color="#05090f"/>
+      <stop offset="1" stop-color="#121922"/>
+    </linearGradient>
+    <linearGradient id="tail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff240f"/>
+      <stop offset=".45" stop-color="#ff563d"/>
+      <stop offset="1" stop-color="#8a0a06"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6c04d"/>
+      <stop offset=".22" stop-color="#9048cc"/>
+      <stop offset=".47" stop-color="#1ebad8"/>
+      <stop offset=".68" stop-color="#a2267d"/>
+      <stop offset="1" stop-color="#e7d06c"/>
+    </linearGradient>
+    <radialGradient id="tire" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#262b32"/>
+      <stop offset=".56" stop-color="#12151a"/>
+      <stop offset=".78" stop-color="#020305"/>
+      <stop offset="1" stop-color="#000"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-50%" width="160%" height="210%"><feGaussianBlur stdDeviation="22"/></filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+
+  <ellipse cx="500" cy="560" rx="425" ry="42" fill="#000" opacity=".58" filter="url(#shadow)"/>
+
+  <!-- tires -->
+  <g id="rear-wheels">
+    <ellipse cx="165" cy="477" rx="112" ry="122" fill="url(#tire)"/>
+    <ellipse cx="835" cy="477" rx="112" ry="122" fill="url(#tire)"/>
+    <ellipse cx="165" cy="478" rx="72" ry="79" fill="#d7dce2"/>
+    <ellipse cx="835" cy="478" rx="72" ry="79" fill="#d7dce2"/>
+    <ellipse cx="165" cy="478" rx="59" ry="65" fill="url(#rim)"/>
+    <ellipse cx="835" cy="478" rx="59" ry="65" fill="url(#rim)"/>
+    <g fill="#1b2028">
+      <path d="M165 419l18 35-18 24-18-24z"/><path d="M223 477l-35 18-23-17 23-18z"/><path d="M165 537l-18-36 18-23 18 23z"/><path d="M107 477l35-18 23 18-23 18z"/>
+      <path d="M835 419l18 35-18 24-18-24z"/><path d="M893 477l-35 18-23-17 23-18z"/><path d="M835 537l-18-36 18-23 18 23z"/><path d="M777 477l35-18 23 18-23 18z"/>
+    </g>
+    <ellipse cx="165" cy="478" rx="19" ry="21" fill="#0c1017" stroke="#dfe5ec" stroke-width="5"/>
+    <ellipse cx="835" cy="478" rx="19" ry="21" fill="#0c1017" stroke="#dfe5ec" stroke-width="5"/>
+    <path d="M207 437q22 39 0 80" fill="none" stroke="#ef2b26" stroke-width="14" stroke-linecap="round"/>
+    <path d="M793 437q-22 39 0 80" fill="none" stroke="#ef2b26" stroke-width="14" stroke-linecap="round"/>
+  </g>
+
+  <!-- body silhouette -->
+  <path d="M119 448c18-87 55-126 101-154l64-100c29-47 88-74 216-74s187 27 216 74l64 100c46 28 83 67 101 154l-20 76c-24 30-75 46-143 53H282c-68-7-119-23-143-53z" fill="url(#body)" stroke="#0c5fc7" stroke-width="8"/>
+  <path d="M225 291l82-119c30-35 81-53 193-53s163 18 193 53l82 119c-90-14-183-20-275-20s-185 6-275 20z" fill="url(#glass)" stroke="#0a2b56" stroke-width="8"/>
+  <path d="M318 165c40-25 93-35 182-35s142 10 182 35l25 39H293z" fill="#0b111c" opacity=".82"/>
+  <path d="M262 118h476l43 36-38 18H257l-38-18z" fill="#071225" stroke="#1475db" stroke-width="6"/>
+  <path d="M242 286c86-21 172-30 258-30s172 9 258 30" fill="none" stroke="#69bfff" stroke-width="9" opacity=".58"/>
+  <path d="M154 337c90-32 210-48 346-48s256 16 346 48l17 111c-93 25-215 37-363 37s-270-12-363-37z" fill="url(#bodyHi)" opacity=".92"/>
+
+  <!-- hatch and center details -->
+  <path d="M332 292h336l-24 147H356z" fill="#063f96" opacity=".54" stroke="#0e65c8" stroke-width="4"/>
+  <path d="M390 325h220" stroke="#9ee1ff" stroke-width="5" opacity=".28"/>
+  <circle cx="500" cy="340" r="25" fill="#dbe4ee" opacity=".8"/>
+  <circle cx="500" cy="340" r="17" fill="#122439"/>
+  <path d="M487 341h26M500 328v26" stroke="#83bfff" stroke-width="4" opacity=".55"/>
+  <text x="500" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#d9e5f3" opacity=".72">SCIROCCO</text>
+
+  <!-- tail lamps -->
+  <g filter="url(#glow)">
+    <path d="M151 346c55-27 115-40 184-42l-12 67c-61 3-112 13-159 32z" fill="url(#tail)" stroke="#ff8977" stroke-width="5"/>
+    <path d="M849 346c-55-27-115-40-184-42l12 67c61 3 112 13 159 32z" fill="url(#tail)" stroke="#ff8977" stroke-width="5"/>
+    <path d="M180 348c44-15 84-23 123-25" fill="none" stroke="#ffd2c8" stroke-width="8" stroke-linecap="round"/>
+    <path d="M820 348c-44-15-84-23-123-25" fill="none" stroke="#ffd2c8" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  <!-- bumper/diffuser -->
+  <path d="M132 439c99 29 221 43 368 43s269-14 368-43l-8 91c-80 41-200 58-360 58s-280-17-360-58z" fill="#082e75" stroke="#0a4ea7" stroke-width="6"/>
+  <path d="M212 508c78 25 174 36 288 36s210-11 288-36l-42 76H254z" fill="#080b10"/>
+  <path d="M293 548l28 45M707 548l-28 45M397 548l12 48M603 548l-12 48" stroke="#343b47" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- license plate -->
+  <rect x="411" y="429" width="178" height="64" rx="9" fill="#f5c400" stroke="#1c1c1c" stroke-width="6"/>
+  <rect x="411" y="429" width="27" height="64" rx="6" fill="#174fbd"/>
+  <text x="425" y="456" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#fff">NL</text>
+  <text x="515" y="472" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" font-weight="800" fill="#111">KK-895-H</text>
+
+  <!-- exhausts -->
+  <g>
+    <ellipse cx="262" cy="553" rx="48" ry="24" fill="#050608" stroke="#aeb6c0" stroke-width="8"/>
+    <ellipse cx="738" cy="553" rx="48" ry="24" fill="#050608" stroke="#aeb6c0" stroke-width="8"/>
+    <ellipse cx="262" cy="553" rx="27" ry="13" fill="#0a1018"/>
+    <ellipse cx="738" cy="553" rx="27" ry="13" fill="#0a1018"/>
+  </g>
+
+  <!-- highlights and reflections -->
+  <path d="M172 321c84-93 194-145 328-145s244 52 328 145" fill="none" stroke="#7ecaff" stroke-width="8" opacity=".28" filter="url(#soft)"/>
+  <path d="M173 448c93 22 202 33 327 33s234-11 327-33" fill="none" stroke="#83d4ff" stroke-width="5" opacity=".33"/>
+</svg>

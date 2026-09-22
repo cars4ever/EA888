@@ -1,0 +1,4087 @@
+(function () {
+  'use strict';
+
+  const C = window.EA888Core;
+  const STORAGE_KEY = 'ea888_lab_v120_state';
+  const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
+  const APP_VERSION = '1.2.0';
+
+  const NAV = [
+    ['bank', 'garage', 'Garage'],
+    ['build', 'engine', 'Motor'],
+    ['tune', 'tune', 'Tune'],
+    ['dyno', 'chart', 'Dyno'],
+    ['drag', 'race', 'Race'],
+    ['service', 'service', 'Service']
+  ];
+
+  const ICONS = {
+    garage: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-4v-6H7v6H3z"/><path d="M8 14h8v3H8z"/></svg>',
+    engine: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h10l2 3h3v7h-3l-2 3H7l-2-3H2v-6h3z"/><path d="M8 4h6v3H8zM9 10h5v5H9z"/></svg>',
+    tune: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M11 3v6M4 12h3M11 12h9M9 9v6M4 18h11M19 18h1M17 15v6"/></svg>',
+    chart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-7"/></svg>',
+    race: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M6 5h12l-2 4 2 4H6z"/><path d="M9 5v8M14 5v8M6 9h12"/></svg>',
+    service: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5a5 5 0 0 0-6 6L3 16l5 5 5-5a5 5 0 0 0 6-6l-3 3-3-3z"/></svg>',
+    data: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>',
+    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
+    info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>',
+    check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>',
+    bolt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-7 12h6l-1 8 7-12h-6z"/></svg>'
+  };
+
+  let state = loadState();
+  let activeTab = 'bank';
+  let activeCategory = 'turbo';
+  let motorPanel = 'hardware';
+  let engineView = 'realistic';
+  let tunePanel = 'boost';
+  let dynoChannel = 'power';
+  let racePanel = 'tree';
+  let partSearch = '';
+  let pendingOilId = state.service.oilId;
+  let pendingFilterId = state.service.filterId;
+  let dynoRunning = null;
+  let treeMode = 'sportsman';
+  let treeSession = null;
+  let dragAnimation = null;
+  let burnoutAnimation = null;
+  let burnoutRuntime = null;
+  let burnoutPointerId = null;
+  let racePhase = 'burnout';
+  let raceLivePoint = { rpm: 900, speedKmh: 0, gear: 1, boostBar: 0, accelerationG: 0, distanceM: 0 };
+  let toastTimer = null;
+  let engineVisualId = 0;
+  let engineAudio = null;
+  let importBuffer = '';
+  let selectedSlot = 0;
+  let raceGame = null;
+  let raceGameRaf = null;
+  let raceGameTimers = [];
+  let raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+  const raceGamePointerMap = new Map();
+  let raceGameLastFrame = 0;
+  let raceGameAuto = false;
+  const v10TrackVisual = { canvas:null, ctx:null, width:0, height:0, dpr:1, horizonImage:null, horizonReady:false, lastDistance:0 };
+  const RIVALS = Object.freeze({
+    club: { id:'club', name:'Clubman Mk5', tag:'CLUB', powerScale:.78, torqueScale:.82, massKg:1390, reactionMin:.18, reactionMax:.28, prep:false, tire:'uhp', reward:250, color:'#f4c66d', description:'Vergevingsgezinde instaprivaal met straatbanden en rustige launches.' },
+    street: { id:'street', name:'Night Shift R', tag:'STREET', powerScale:.95, torqueScale:.96, massKg:1340, reactionMin:.11, reactionMax:.19, prep:true, tire:'semislick', reward:500, color:'#ff7c55', description:'Sterke straat-Scirocco met semi-slicks en een nette reactie.' },
+    pro: { id:'pro', name:'Redline Works', tag:'PRO', powerScale:1.08, torqueScale:1.06, massKg:1290, reactionMin:.055, reactionMax:.115, prep:true, tire:'drag_radial', reward:900, color:'#ff4f69', description:'Snelle heads-up tegenstander met drag radial en harde 60-foot.' },
+    outlaw: { id:'outlaw', name:'Outlaw 2.0T', tag:'OUTLAW', powerScale:1.22, torqueScale:1.18, massKg:1240, reactionMin:.025, reactionMax:.075, prep:true, tire:'pro_radial', reward:1500, color:'#d15cff', description:'Maximale druk: licht, veel vermogen en bijna foutloze tree-reacties.' }
+  });
+  const TELEMETRY_COLORS = Object.freeze({ speed:'#ffad20', rpm:'#f4f6f8', boost:'#4cc9ff', wheelspin:'#ff526b', lane:'#bd77ff' });
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
+  const num = (value, decimals = 0) => Number(value || 0).toFixed(decimals);
+  const euro = value => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value || 0);
+  const clamp = C.clamp;
+
+  function icon(name) { return ICONS[name] || ''; }
+
+  function selectedRival() {
+    return RIVALS[state.vehicle?.rivalLevel] || RIVALS.street;
+  }
+
+  function raceIsHeadsUp() {
+    return (state.vehicle?.raceMode || 'heads_up') === 'heads_up';
+  }
+
+  function deterministicUnit(seedText) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < String(seedText).length; i++) {
+      h ^= String(seedText).charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    h += 0x6D2B79F5;
+    h = Math.imul(h ^ h >>> 15, h | 1);
+    h ^= h + Math.imul(h ^ h >>> 7, h | 61);
+    return ((h ^ h >>> 14) >>> 0) / 4294967296;
+  }
+
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function buildRivalSimulation() {
+    if (!raceIsHeadsUp() || !state.lastDyno) return null;
+    const profile = selectedRival();
+    const rivalState = C.normalizeState(cloneJson(state));
+    rivalState.vehicle = {
+      ...rivalState.vehicle,
+      raceMode:'solo',
+      massKg:profile.massKg,
+      tireCompound:profile.tire,
+      preparedTrack:profile.prep,
+      burnoutLevel:92,
+      pressureBar: profile.tire === 'pro_radial' ? 1.05 : profile.tire === 'drag_radial' ? 1.25 : profile.tire === 'semislick' ? 1.75 : 2.05,
+      shiftRpm:Math.min(Number(state.tune.revLimitRpm || 8000) - 100, Number(state.vehicle.shiftRpm || 7600) + (profile.id === 'outlaw' ? 180 : 0))
+    };
+    if (C.CATEGORY_MAP.transmission.items.some(item => item.id === 'dq250')) rivalState.selections.transmission = 'dq250';
+    const dyno = cloneJson(state.lastDyno);
+    dyno.failureRpm = null;
+    dyno.failureReason = '';
+    dyno.peakHp = Number(dyno.peakHp || 0) * profile.powerScale;
+    dyno.peakTorqueNm = Number(dyno.peakTorqueNm || 0) * profile.torqueScale;
+    dyno.curve = (dyno.curve || []).map(point => ({
+      ...point,
+      hp:Number(point.hp || 0) * profile.powerScale,
+      torqueNm:Number(point.torqueNm || 0) * profile.torqueScale,
+      boostBar:Number(point.boostBar || 0) * Math.min(1.18, .76 + profile.powerScale * .25)
+    }));
+    const runNumber = (state.dragRuns?.length || 0) + 1;
+    const u = deterministicUnit(`${profile.id}|${runNumber}|${Math.round(state.lastDyno.peakHp || 0)}|${state.vehicle.drivetrain}`);
+    const reactionTime = profile.reactionMin + (profile.reactionMax - profile.reactionMin) * u;
+    const result = C.simulateDrag(rivalState, dyno, { reactionTime });
+    return {
+      profile,
+      reactionTime,
+      result,
+      trace:result.trace || [],
+      current:{time:0,distanceM:0,speedKmh:0,rpm:900,gear:1},
+      finished:false
+    };
+  }
+
+  function tracePointAtTime(trace, time) {
+    if (!Array.isArray(trace) || !trace.length || time <= 0) return {time:0,distanceM:0,speedKmh:0,rpm:900,gear:1,accelerationG:0};
+    if (time >= trace[trace.length - 1].time) return {...trace[trace.length - 1]};
+    let lo = 0, hi = trace.length - 1;
+    while (lo + 1 < hi) {
+      const mid = (lo + hi) >> 1;
+      if (trace[mid].time <= time) lo = mid; else hi = mid;
+    }
+    const a = trace[lo], b = trace[hi];
+    const f = clamp((time - a.time) / Math.max(.0001, b.time - a.time), 0, 1);
+    return {
+      time,
+      distanceM:C.lerp(a.distanceM || 0,b.distanceM || 0,f),
+      speedKmh:C.lerp(a.speedKmh || 0,b.speedKmh || 0,f),
+      rpm:C.lerp(a.rpm || 900,b.rpm || 900,f),
+      gear:f < .5 ? (a.gear || 1) : (b.gear || 1),
+      accelerationG:C.lerp(a.accelerationG || 0,b.accelerationG || 0,f)
+    };
+  }
+
+
+  const PART_VISUALS = Object.freeze({
+    block: 'part-piston.webp', crank: 'part-piston.webp', oiling: 'part-piston.webp', crankcase: 'part-piston.webp', sealing: 'part-piston.webp',
+    head: 'part-head.webp', valvetrain: 'part-head.webp', manifold: 'part-head.webp', ignition: 'part-head.webp',
+    turbo: 'part-turbo.webp', boostControl: 'part-turbo.webp', spool: 'part-turbo.webp', exhaust: 'part-turbo.webp',
+    air: 'part-intercooler.webp', cooling: 'part-intercooler.webp',
+    fuelSystem: 'part-fuel.webp', fuel: 'part-fuel.webp', ecu: 'part-fuel.webp', sensors: 'part-fuel.webp',
+    transmission: 'part-transmission.webp', clutch: 'part-transmission.webp'
+  });
+
+  function partVisual(catId) { return PART_VISUALS[catId] || 'engine-realistic.webp'; }
+
+  function openCategoryTile(catId) {
+    activeCategory = C.CATEGORY_MAP[catId] ? catId : 'turbo';
+    motorPanel = 'hardware';
+    partSearch = '';
+    go('build');
+  }
+
+  function loadState() {
+    let parsed = null;
+    let sourceKey = STORAGE_KEY;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) parsed = JSON.parse(raw);
+      if (!parsed) {
+        for (const key of LEGACY_KEYS) {
+          const legacy = localStorage.getItem(key);
+          if (legacy) { parsed = JSON.parse(legacy); sourceKey = key; break; }
+        }
+      }
+    } catch (e) { parsed = null; }
+
+    if (!parsed) {
+      const fresh = C.createInitialState();
+      fresh.version = 12;
+      fresh.settings.sound = true;
+      fresh.buildSlots = [null, null, null];
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh)); } catch (e) { /* no-op */ }
+      return fresh;
+    }
+
+    const oldVersion = Number(parsed.version || 2);
+    let loaded = C.normalizeState(parsed);
+    loaded.version = 12;
+    loaded.buildSlots = Array.isArray(parsed.buildSlots) ? parsed.buildSlots.slice(0, 3) : [null, null, null];
+    while (loaded.buildSlots.length < 3) loaded.buildSlots.push(null);
+
+    if (oldVersion < 12) {
+      loaded.history = Array.isArray(loaded.history) ? loaded.history : [];
+      loaded.history.unshift({
+        at: new Date().toISOString(), type: 'update',
+        label: `v1.2 Race Weekend + Telemetry-migratie vanuit ${sourceKey === STORAGE_KEY ? `v${oldVersion}` : 'een eerdere installatie'}`
+      });
+      loaded.lastDynoSignature = '';
+      loaded.bench = { results: {} };
+      loaded.settings = { ...loaded.settings, sound: true };
+    }
+
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded)); } catch (e) { /* no-op */ }
+    return C.normalizeState(loaded);
+  }
+
+  function saveState() {
+    state = C.normalizeState(state);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage may be unavailable */ }
+  }
+
+  function pushHistory(entry) {
+    state.history = Array.isArray(state.history) ? state.history : [];
+    state.history.unshift({ at: new Date().toISOString(), ...entry });
+    state.history = state.history.slice(0, 40);
+  }
+
+  function haptic(pattern = 12) {
+    if (!state.settings?.haptics || !navigator.vibrate) return;
+    try { navigator.vibrate(pattern); } catch (e) { /* unsupported */ }
+  }
+
+  function syncAchievements() {
+    const earned = C.evaluateChallenges(state);
+    state.achievements = state.achievements || {};
+    let changed = false;
+    for (const challenge of C.CHALLENGES) {
+      if (earned[challenge.id] && !state.achievements[challenge.id]) {
+        state.achievements[challenge.id] = { unlockedAt: new Date().toISOString(), claimed: false };
+        pushHistory({ type: 'achievement', label: `Challenge ontgrendeld: ${challenge.title}` });
+        changed = true;
+      }
+    }
+    if (changed) saveState();
+    return earned;
+  }
+
+  function buildSnapshot() {
+    return {
+      version: 12, buildName: state.buildName, savedAt: new Date().toISOString(),
+      selections: JSON.parse(JSON.stringify(state.selections)),
+      tune: JSON.parse(JSON.stringify(state.tune)),
+      assembly: JSON.parse(JSON.stringify(state.assembly)),
+      service: JSON.parse(JSON.stringify(state.service)),
+      vehicle: JSON.parse(JSON.stringify(state.vehicle)),
+      dynoConfig: JSON.parse(JSON.stringify(state.dynoConfig))
+    };
+  }
+
+  function saveBuildSlot(index) {
+    state.buildSlots = Array.isArray(state.buildSlots) ? state.buildSlots.slice(0, 3) : [null, null, null];
+    while (state.buildSlots.length < 3) state.buildSlots.push(null);
+    state.buildSlots[index] = buildSnapshot();
+    pushHistory({ type: 'slot', label: `Build opgeslagen in slot ${index + 1}: ${state.buildName}` });
+    saveState(); haptic([12, 25, 12]); showToast(`Build opgeslagen in slot ${index + 1}.`); render();
+  }
+
+  function loadBuildSlot(index) {
+    const slot = state.buildSlots?.[index];
+    if (!slot) return showToast('Dit buildslot is nog leeg.');
+    for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) {
+      if (slot[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(slot[key])) };
+    }
+    state.buildName = slot.buildName || `Buildslot ${index + 1}`;
+    state.bench = { results: {} };
+    pushHistory({ type: 'slot', label: `Build geladen uit slot ${index + 1}` });
+    saveState(); haptic([12, 25, 12]); showToast('Build geladen. Dynodata is nu ongetest.'); render();
+  }
+
+  function encodeBuildCode() {
+    const payload = JSON.stringify({ app: 'EA888-LAB', version: 11, savedAt: new Date().toISOString(), state: buildSnapshot() });
+    const bytes = new TextEncoder().encode(payload);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    return btoa(binary);
+  }
+
+  function decodeBuildCode(code) {
+    const clean = String(code || '').trim().replace(/\s+/g, '');
+    const binary = atob(clean);
+    const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+    const payload = JSON.parse(new TextDecoder().decode(bytes));
+    if (payload.app !== 'EA888-LAB' || !payload.state) throw new Error('Geen geldige EA888 Lab-buildcode.');
+    return payload.state;
+  }
+
+  // -------------------------------------------------------------------
+  // V11 sampled EA888 audio engine
+  // -------------------------------------------------------------------
+  // The previous versions used a small oscillator stack. V11 loads an
+  // original PCM sound bank rendered at several real engine speeds and
+  // continuously crossfades/pitch-tracks those recordings. The context and
+  // looping sources survive every pass so race two, three and later runs keep
+  // their audio without a reload.
+  let engineAudioGeneration = 0;
+  let decodedAudioBankPromise = null;
+
+  function selectedTransmissionId() {
+    return String(state?.selections?.transmission || 'oem_6mt');
+  }
+
+  function selectedTransmission() {
+    return C.getPart(state, 'transmission');
+  }
+
+  function isDsgTransmission() {
+    return selectedTransmissionId() === 'dq250';
+  }
+
+  function base64AudioBuffer(base64) {
+    const raw = atob(base64);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  function decodeAudioDataCompat(ctx, arrayBuffer) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const ok = value => { if (!settled) { settled = true; resolve(value); } };
+      const bad = error => { if (!settled) { settled = true; reject(error); } };
+      try {
+        const maybe = ctx.decodeAudioData(arrayBuffer.slice(0), ok, bad);
+        if (maybe && typeof maybe.then === 'function') maybe.then(ok, bad);
+      } catch (error) { bad(error); }
+    });
+  }
+
+  function decodeSampleBank(ctx) {
+    if (decodedAudioBankPromise?.ctx === ctx) return decodedAudioBankPromise.promise;
+    const bank = window.EA888_AUDIO_BANK || {};
+    const promise = Promise.all(Object.entries(bank).map(async ([name, meta]) => {
+      const buffer = await decodeAudioDataCompat(ctx, base64AudioBuffer(meta.data));
+      return [name, { ...meta, buffer }];
+    })).then(entries => Object.fromEntries(entries));
+    decodedAudioBankPromise = { ctx, promise };
+    return promise;
+  }
+
+  function startLoopSource(ctx, buffer, output, initialRate = 1) {
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.playbackRate.value = initialRate;
+    source.connect(output);
+    source.start(0);
+    return source;
+  }
+
+  function playSampleOneShot(audio, name, gainValue = .5, rate = 1, delay = 0) {
+    if (!audio?.ready || !audio.buffers?.[name]?.buffer || audio.ctx?.state === 'closed') return null;
+    try {
+      const t = audio.ctx.currentTime + Math.max(0, delay);
+      const source = audio.ctx.createBufferSource();
+      const gain = audio.ctx.createGain();
+      source.buffer = audio.buffers[name].buffer;
+      source.playbackRate.value = clamp(rate, .55, 1.8);
+      gain.gain.setValueAtTime(.0001, t);
+      gain.gain.exponentialRampToValueAtTime(Math.max(.0002, gainValue), t + .006);
+      const duration = source.buffer.duration / source.playbackRate.value;
+      gain.gain.exponentialRampToValueAtTime(.0001, t + Math.max(.04, duration - .015));
+      source.connect(gain).connect(audio.transientBus);
+      audio.oneShots = audio.oneShots || new Set();
+      audio.oneShots.add(source);
+      source.onended = () => {
+        audio.oneShots?.delete(source);
+        try { source.disconnect(); gain.disconnect(); } catch (e) {}
+      };
+      source.start(t);
+      source.stop(t + duration + .04);
+      return source;
+    } catch (e) { return null; }
+  }
+
+  function applySampledAudio(audio, rpm, load, wheelSlip) {
+    if (!audio) return;
+    audio.lastRpm = clamp(Number(rpm || 900), 650, 10800);
+    audio.lastLoad = clamp(Number(load || 0), 0, 1.35);
+    audio.lastSlip = clamp(Number(wheelSlip || 0), 0, 1);
+    if (!audio.ready) return;
+
+    const t = audio.ctx.currentTime;
+    const boundedRpm = audio.lastRpm;
+    const boundedLoad = audio.lastLoad;
+    const slip = audio.lastSlip;
+    const anchors = audio.layers.map(layer => layer.rpm);
+    let lower = 0;
+    while (lower < anchors.length - 1 && anchors[lower + 1] <= boundedRpm) lower++;
+    const upper = Math.min(anchors.length - 1, lower + 1);
+    const a = anchors[lower];
+    const b = anchors[upper];
+    const mix = a === b ? 0 : clamp((boundedRpm - a) / (b - a), 0, 1);
+    const smooth = mix * mix * (3 - 2 * mix);
+    const activeGain = audio.active ? 1 : 0;
+    const loadGain = .18 + Math.pow(clamp(boundedLoad, 0, 1), .72) * .82;
+
+    audio.layers.forEach((layer, index) => {
+      let weight = 0;
+      if (index === lower) weight = 1 - smooth;
+      if (index === upper) weight = Math.max(weight, smooth);
+      if (lower === upper && index === lower) weight = 1;
+      const rate = clamp(boundedRpm / layer.rpm, .64, 1.52);
+      layer.source.playbackRate.setTargetAtTime(rate, t, .025);
+      layer.gain.gain.setTargetAtTime(activeGain * loadGain * weight * .72 + .0001, t, .032);
+    });
+
+    // Throttle/load changes the acoustic opening of the exhaust and intake.
+    audio.engineLowpass.frequency.setTargetAtTime(1100 + boundedRpm * .58 + boundedLoad * 2450, t, .045);
+    audio.engineLowpass.Q.setTargetAtTime(.55 + boundedLoad * .5, t, .05);
+    audio.bodyEq.frequency.setTargetAtTime(105 + boundedRpm * .008, t, .06);
+    audio.bodyEq.gain.setTargetAtTime(6.5 - boundedRpm / 2800 + boundedLoad * 2.2, t, .07);
+    audio.raspEq.frequency.setTargetAtTime(760 + boundedRpm * .12, t, .055);
+    audio.raspEq.gain.setTargetAtTime(-1 + boundedLoad * 4.4 + Math.max(0, boundedRpm - 4500) / 1700, t, .06);
+
+    if (audio.turboSource) {
+      const spool = Math.max(0, boundedLoad - .18) * clamp((boundedRpm - 1500) / 5200, 0, 1);
+      audio.turboSource.playbackRate.setTargetAtTime(.60 + boundedRpm / 7200 + boundedLoad * .24, t, .035);
+      audio.turboGain.gain.setTargetAtTime(activeGain * spool * .17 + .0001, t, .05);
+      audio.turboFilter.frequency.setTargetAtTime(1450 + boundedRpm * .48, t, .04);
+    }
+    if (audio.tyreSource) {
+      audio.tyreSource.playbackRate.setTargetAtTime(.72 + slip * .86 + boundedRpm / 26000, t, .025);
+      audio.tyreGain.gain.setTargetAtTime(activeGain * Math.pow(slip, .72) * (.12 + boundedLoad * .19) + .0001, t, .03);
+    }
+
+    const output = activeGain * (.36 + boundedLoad * .30 + slip * .035);
+    audio.master.gain.setTargetAtTime(output + .0001, t, .025);
+
+    // The limiter is now a real sampled cut/stutter instead of a text-only cue.
+    const limit = Number(state?.tune?.revLimitRpm || 8000);
+    const nowMs = performance.now();
+    if (boundedLoad > .58 && boundedRpm >= limit - 75 && nowMs - audio.lastLimiterMs > 470) {
+      playSampleOneShot(audio, 'limiter', .34 + boundedLoad * .12, .96 + Math.random() * .05);
+      audio.lastLimiterMs = nowMs;
+      audio.engineBusGain.gain.cancelScheduledValues(t);
+      audio.engineBusGain.gain.setValueAtTime(Math.max(.25, audio.engineBusGain.gain.value), t);
+      audio.engineBusGain.gain.setTargetAtTime(.25, t + .01, .015);
+      audio.engineBusGain.gain.setTargetAtTime(1, t + .11, .045);
+    }
+  }
+
+  function ensureEngineAudio(mode = 'engine') {
+    if (!state.settings?.sound) return null;
+    if (engineAudio?.ctx) {
+      engineAudio.mode = mode;
+      engineAudio.active = true;
+      try { if (engineAudio.ctx.state !== 'running') engineAudio.ctx.resume(); } catch (e) {}
+      return engineAudio;
+    }
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      const ctx = new AC({ latencyHint: 'interactive', sampleRate: 32000 });
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -16;
+      compressor.knee.value = 10;
+      compressor.ratio.value = 5.2;
+      compressor.attack.value = .002;
+      compressor.release.value = .11;
+      compressor.connect(ctx.destination);
+
+      const master = ctx.createGain();
+      master.gain.value = .0001;
+      master.connect(compressor);
+
+      const engineBusGain = ctx.createGain();
+      engineBusGain.gain.value = 1;
+      const engineLowpass = ctx.createBiquadFilter();
+      engineLowpass.type = 'lowpass'; engineLowpass.frequency.value = 3200; engineLowpass.Q.value = .75;
+      const bodyEq = ctx.createBiquadFilter();
+      bodyEq.type = 'peaking'; bodyEq.frequency.value = 118; bodyEq.Q.value = 1.05; bodyEq.gain.value = 7;
+      const raspEq = ctx.createBiquadFilter();
+      raspEq.type = 'peaking'; raspEq.frequency.value = 1250; raspEq.Q.value = .85; raspEq.gain.value = 2;
+      engineBusGain.connect(engineLowpass).connect(bodyEq).connect(raspEq).connect(master);
+
+      const turboFilter = ctx.createBiquadFilter();
+      turboFilter.type = 'bandpass'; turboFilter.frequency.value = 2500; turboFilter.Q.value = 2.7;
+      const turboGain = ctx.createGain(); turboGain.gain.value = .0001;
+      turboFilter.connect(turboGain).connect(master);
+
+      const tyreFilter = ctx.createBiquadFilter();
+      tyreFilter.type = 'bandpass'; tyreFilter.frequency.value = 1350; tyreFilter.Q.value = .9;
+      const tyreGain = ctx.createGain(); tyreGain.gain.value = .0001;
+      tyreFilter.connect(tyreGain).connect(master);
+
+      const transientBus = ctx.createGain();
+      transientBus.gain.value = .78;
+      transientBus.connect(master);
+
+      engineAudioGeneration += 1;
+      const audio = engineAudio = {
+        ctx, compressor, master, engineBusGain, engineLowpass, bodyEq, raspEq,
+        turboFilter, turboGain, tyreFilter, tyreGain, transientBus,
+        layers: [], turboSource: null, tyreSource: null, buffers: null, oneShots: new Set(),
+        mode, active: true, ready: false, loading: true,
+        generation: engineAudioGeneration, lastRpm: 900, lastLoad: .12, lastSlip: 0,
+        lastLimiterMs: 0, model: 'EA888 PCM multisample v11'
+      };
+
+      audio.readyPromise = decodeSampleBank(ctx).then(buffers => {
+        if (engineAudio !== audio || ctx.state === 'closed') return audio;
+        audio.buffers = buffers;
+        audio.layers = Object.entries(buffers)
+          .filter(([name, meta]) => name.startsWith('engine_') && Number(meta.rpm))
+          .sort((a, b) => Number(a[1].rpm) - Number(b[1].rpm))
+          .map(([name, meta]) => {
+            const gain = ctx.createGain(); gain.gain.value = .0001; gain.connect(engineBusGain);
+            const source = startLoopSource(ctx, meta.buffer, gain, 1);
+            return { name, rpm: Number(meta.rpm), gain, source };
+          });
+        if (buffers.turbo?.buffer) audio.turboSource = startLoopSource(ctx, buffers.turbo.buffer, turboFilter, .8);
+        if (buffers.tyre?.buffer) audio.tyreSource = startLoopSource(ctx, buffers.tyre.buffer, tyreFilter, 1);
+        audio.ready = true; audio.loading = false;
+        applySampledAudio(audio, audio.lastRpm, audio.lastLoad, audio.lastSlip);
+        return audio;
+      }).catch(error => {
+        audio.loading = false;
+        audio.error = String(error?.message || error || 'sample bank decode failed');
+        console.error('EA888 sampled audio:', audio.error);
+        return audio;
+      });
+      try { ctx.resume(); } catch (e) {}
+      return audio;
+    } catch (e) {
+      engineAudio = null;
+      return null;
+    }
+  }
+
+  function startEngineAudio(mode = 'engine') {
+    const audio = ensureEngineAudio(mode);
+    if (!audio) return;
+    audio.active = true;
+    audio.mode = mode;
+    try {
+      if (audio.ctx.state !== 'running') audio.ctx.resume();
+      const t = audio.ctx.currentTime;
+      audio.master.gain.cancelScheduledValues(t);
+      audio.engineBusGain.gain.cancelScheduledValues(t);
+      audio.engineBusGain.gain.setValueAtTime(1, t);
+    } catch (e) {}
+    applySampledAudio(audio, audio.lastRpm || 900, mode === 'race' ? .62 : .15, 0);
+  }
+
+  function updateEngineAudio(rpm, load = .5, wheelSlip = 0) {
+    if (!state.settings?.sound) return;
+    const audio = ensureEngineAudio(engineAudio?.mode || 'engine');
+    if (!audio) return;
+    applySampledAudio(audio, rpm, load, wheelSlip);
+  }
+
+  function engineShiftPop(intensity = .6, shiftType = 'auto') {
+    if (!state.settings?.sound) return;
+    const audio = ensureEngineAudio('race');
+    if (!audio) return;
+    const dsg = shiftType === 'dsg' || (shiftType === 'auto' && isDsgTransmission());
+    const t = audio.ctx.currentTime;
+    const fire = () => {
+      if (!audio.ready) return;
+      const name = dsg ? 'shift_dsg' : 'shift_manual';
+      playSampleOneShot(audio, name, (dsg ? .48 : .40) * clamp(intensity, .2, 1.3), dsg ? .98 : 1.02);
+      playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
+      audio.engineBusGain.gain.cancelScheduledValues(t);
+      audio.engineBusGain.gain.setValueAtTime(Math.max(.28, audio.engineBusGain.gain.value), t);
+      audio.engineBusGain.gain.setTargetAtTime(dsg ? .18 : .08, t + .006, .012);
+      audio.engineBusGain.gain.setTargetAtTime(1, t + (dsg ? .115 : .17), .042);
+    };
+    if (audio.ready) fire(); else audio.readyPromise?.then(fire);
+  }
+
+  function playLaunchCrackle(intensity = .7) {
+    if (!state.settings?.sound) return;
+    const audio = ensureEngineAudio('stage');
+    const fire = () => playSampleOneShot(audio, 'launch', .36 * clamp(intensity, .2, 1.2), .97 + intensity * .04);
+    if (audio?.ready) fire(); else audio?.readyPromise?.then(fire);
+  }
+
+  function silenceAudioGraph(audio, immediate = false) {
+    if (!audio?.ctx || audio.ctx.state === 'closed') return;
+    const t = audio.ctx.currentTime;
+    const mute = param => {
+      if (!param) return;
+      try {
+        param.cancelScheduledValues(t);
+        if (immediate) param.setValueAtTime(.0001, t);
+        else param.setTargetAtTime(.0001, t, .012);
+      } catch (e) {}
+    };
+    mute(audio.master?.gain);
+    mute(audio.engineBusGain?.gain);
+    mute(audio.turboGain?.gain);
+    mute(audio.tyreGain?.gain);
+    for (const layer of audio.layers || []) mute(layer.gain?.gain);
+  }
+
+  function stopTrackedOneShots(audio) {
+    if (!audio?.oneShots) return;
+    for (const source of Array.from(audio.oneShots)) {
+      try { source.onended = null; source.stop(); source.disconnect(); } catch (e) {}
+    }
+    audio.oneShots.clear();
+  }
+
+  function stopEngineAudio(options = {}) {
+    if (!engineAudio) return;
+    const audio = engineAudio;
+    audio.active = false;
+    audio.mode = 'idle';
+    audio.lastRpm = 900;
+    audio.lastLoad = 0;
+    audio.lastSlip = 0;
+    silenceAudioGraph(audio, !!options.hard);
+    stopTrackedOneShots(audio);
+    if (!options.hard) return;
+
+    // Detach the old context before stopping its sources. Generic taps after a
+    // finish can therefore never wake the last race sound back up.
+    if (engineAudio === audio) engineAudio = null;
+    if (decodedAudioBankPromise?.ctx === audio.ctx) decodedAudioBankPromise = null;
+    try {
+      for (const layer of audio.layers || []) { layer.source.onended = null; layer.source.stop(); layer.source.disconnect(); }
+      audio.turboSource?.stop(); audio.tyreSource?.stop();
+      audio.turboSource?.disconnect(); audio.tyreSource?.disconnect();
+    } catch (e) {}
+    try { audio.ctx.close(); } catch (e) {}
+  }
+
+  function currentAudioSceneMode() {
+    if (dynoRunning) return 'dyno';
+    if (burnoutRuntime?.active) return 'burnout';
+    if (dragAnimation) return 'race';
+    if (raceGame?.open) {
+      if (raceGame.phase === 'burnout') return 'burnout';
+      if (raceGame.phase === 'stage') return 'stage';
+      if (raceGame.phase === 'run') return 'race';
+    }
+    return '';
+  }
+
+  function resumeAudioContextOnly() {
+    if (!state.settings?.sound || !engineAudio?.ctx || engineAudio.ctx.state === 'closed') return;
+    try { if (engineAudio.ctx.state !== 'running') engineAudio.ctx.resume(); } catch (e) {}
+  }
+
+  function resumePersistentAudio() {
+    if (!state.settings?.sound || !engineAudio?.ctx) return;
+    resumeAudioContextOnly();
+    const mode = currentAudioSceneMode();
+    if (!mode) {
+      engineAudio.active = false;
+      silenceAudioGraph(engineAudio, true);
+      return;
+    }
+    try {
+      engineAudio.active = true;
+      engineAudio.mode = mode;
+      applySampledAudio(engineAudio, engineAudio.lastRpm || 900, engineAudio.lastLoad || .12, engineAudio.lastSlip || 0);
+    } catch (e) {}
+  }
+
+  function audioDiagnostics() {
+    return {
+      exists: !!engineAudio,
+      generation: engineAudio?.generation || 0,
+      contextState: engineAudio?.ctx?.state || 'none',
+      active: !!engineAudio?.active,
+      ready: !!engineAudio?.ready,
+      loading: !!engineAudio?.loading,
+      sampleLayers: engineAudio?.layers?.length || 0,
+      model: engineAudio?.model || 'none',
+      error: engineAudio?.error || '',
+      mode: engineAudio?.mode || 'none',
+      oneShots: engineAudio?.oneShots?.size || 0,
+      sceneMode: currentAudioSceneMode() || 'none',
+      lastRpm: Math.round(engineAudio?.lastRpm || 0)
+    };
+  }
+
+  function currentDyno() { return C.isDynoCurrent(state); }
+
+  function statusInfo() {
+    const r = state.lastDyno;
+    if (!r) return { label: 'ONGEMETEN', detail: 'Voer een dynopull uit', cls: 'stale' };
+    if (!currentDyno()) return { label: 'ONGETEST', detail: 'Hardware, tune of olie gewijzigd', cls: 'stale' };
+    if (r.failureRpm) return { label: 'SCHADE', detail: `Pull afgebroken @ ${r.failureRpm} rpm`, cls: 'danger' };
+    if (r.reliabilityScore >= 82) return { label: 'STERKE MARGE', detail: `${Math.round(r.peakHp)} pk · ${Math.round(r.peakTorqueNm)} Nm`, cls: 'good' };
+    if (r.reliabilityScore >= 65) return { label: 'BEWAAK MARGE', detail: `${Math.round(r.peakHp)} pk · score ${r.reliabilityScore}/100`, cls: 'warn' };
+    return { label: 'RISICOVOL', detail: `${Math.round(r.peakHp)} pk · score ${r.reliabilityScore}/100`, cls: 'danger' };
+  }
+
+  function showToast(message) {
+    const node = $('#toast');
+    if (!node) return;
+    node.textContent = message;
+    node.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => node.classList.remove('show'), 2800);
+  }
+
+  function go(tab) {
+    if (![...NAV.map(n => n[0]), 'data'].includes(tab)) return;
+    if (raceGame?.open && tab !== 'drag') closeDragGame({ silent: true, noRender: true });
+    if (dynoRunning && tab !== 'dyno') {
+      showToast('De dynopull loopt nog. Wacht tot de run klaar is.');
+      return;
+    }
+    if (activeTab === 'drag' && tab !== 'drag') {
+      stopBurnout({ silent: true });
+      clearTreeTimers(); treeSession = null;
+      if (dragAnimation) cancelAnimationFrame(dragAnimation);
+      dragAnimation = null; stopEngineAudio({ hard: true }); racePhase = 'burnout';
+    }
+    activeTab = tab;
+    render();
+    window.scrollTo({ top: 0, behavior: state.settings?.reducedMotion ? 'auto' : 'smooth' });
+  }
+
+  function renderHeader() {
+    const status = statusInfo();
+    const dataActive = activeTab === 'data';
+    $('#topbar').innerHTML = `
+      <div class="topbar-inner">
+        <div class="brand-block">
+          <div class="brand-line"><span class="brand-mark">EA888</span><span class="brand-lab">LAB</span><span class="version-tag">v${APP_VERSION}</span></div>
+          <div class="build-line">${esc(state.buildName)}</div>
+        </div>
+        <div class="topbar-actions">
+          <div class="status-pill ${status.cls}"><b>${esc(status.label)}</b><span>${esc(status.detail)}</span></div>
+          <button class="icon-button ${dataActive ? 'active' : ''}" data-go="data" aria-label="Open build sheet en data">${icon('data')}</button>
+        </div>
+      </div>`;
+  }
+
+  function renderNav() {
+    $('#bottom-nav').innerHTML = NAV.map(([id, ico, label]) => `
+      <button class="nav-btn ${activeTab === id ? 'active' : ''}" data-nav="${id}" aria-label="${label}">
+        <span class="nav-icon">${icon(ico)}</span><span>${label}</span>
+      </button>`).join('');
+  }
+
+  function render() {
+    renderHeader();
+    renderNav();
+    const pages = {
+      bank: renderBank, build: renderBuild, tune: renderTune, dyno: renderDyno,
+      drag: renderDrag, service: renderService, data: renderData
+    };
+    $('#content').innerHTML = pages[activeTab]();
+    requestAnimationFrame(afterRender);
+  }
+
+  function afterRender() {
+    if (activeTab === 'dyno') {
+      const canvas = $('#dyno-chart');
+      if (dynoRunning) drawDynoChart(canvas, dynoRunning.result, 0, false, dynoChannel, null);
+      else if (state.lastDyno) drawDynoChart(canvas, state.lastDyno, 1, !currentDyno(), dynoChannel, state.dynoRuns?.[1] || null);
+    }
+    if (activeTab === 'drag') {
+      updateWheelReadout();
+      setRacePhase(racePhase);
+      if (racePanel === 'tree') {
+        if (racePhase === 'burnout') updateBurnoutDom();
+        else updateRaceHud(raceLivePoint);
+      } else if (racePanel === 'telemetry' && state.lastDrag) {
+        drawDragTelemetry($('#v12-telemetry-canvas'), state.lastDrag);
+      }
+    }
+  }
+
+  function staleNotice() {
+    if (!state.lastDyno) return `<div class="notice stale"><strong>Nog geen meting.</strong> Monteer onderdelen, stel de tune in en voer een volledige dynopull uit.</div>`;
+    return `<div class="notice stale"><strong>Ongeteste wijzigingen.</strong> De oude curve blijft zichtbaar als referentie, maar nieuw vermogen en koppel worden pas na de dynopull onthuld.</div>`;
+  }
+
+  function workflow() {
+    const buildDone = true;
+    const dynoDone = currentDyno() && !state.lastDyno?.failureRpm;
+    const dragDone = !!state.lastDrag && dynoDone;
+    return `<div class="workflow" aria-label="Spelvoortgang">
+      <button data-go="build" class="workflow-step ${buildDone ? 'done' : ''}"><span>1</span><b>Bouw</b><small>Hardware</small></button>
+      <i></i>
+      <button data-go="dyno" class="workflow-step ${dynoDone ? 'done' : ''}"><span>2</span><b>Meet</b><small>Dyno</small></button>
+      <i></i>
+      <button data-go="drag" class="workflow-step ${dragDone ? 'done' : ''}"><span>3</span><b>Race</b><small>402 m</small></button>
+    </div>`;
+  }
+
+  function engineViewTabs() {
+    return `<div class="engine-view-tabs v5-engine-tabs" aria-label="Motorweergave">
+      <button class="${engineView === 'realistic' ? 'active' : ''}" data-engine-view="realistic"><span>3D</span> Garage render</button>
+      <button class="${engineView === 'intake' ? 'active' : ''}" data-engine-view="intake"><span>01</span> Inlaatzijde</button>
+      <button class="${engineView === 'turbo' ? 'active' : ''}" data-engine-view="turbo"><span>02</span> Turbozijde</button>
+      <button class="${engineView === 'cutaway' ? 'active' : ''}" data-engine-view="cutaway"><span>03</span> Intern</button>
+    </div>`;
+  }
+
+  function engineDefs(uid) {
+    return `<defs>
+      <linearGradient id="${uid}alu" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2e8ee"/><stop offset=".25" stop-color="#9ba7b4"/><stop offset=".65" stop-color="#586575"/><stop offset="1" stop-color="#202a36"/></linearGradient>
+      <linearGradient id="${uid}block" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#687482"/><stop offset=".45" stop-color="#343e4b"/><stop offset="1" stop-color="#171f29"/></linearGradient>
+      <linearGradient id="${uid}black" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#252d37"/><stop offset=".4" stop-color="#10151b"/><stop offset="1" stop-color="#05080c"/></linearGradient>
+      <linearGradient id="${uid}hot" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f09451"/><stop offset=".3" stop-color="#9a4527"/><stop offset=".72" stop-color="#522314"/><stop offset="1" stop-color="#21110d"/></linearGradient>
+      <linearGradient id="${uid}cold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d6dee7"/><stop offset=".42" stop-color="#8795a6"/><stop offset="1" stop-color="#3e4a58"/></linearGradient>
+      <linearGradient id="${uid}blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#42c5ff"/><stop offset=".5" stop-color="#0a78d0"/><stop offset="1" stop-color="#063763"/></linearGradient>
+      <linearGradient id="${uid}gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe16b"/><stop offset=".5" stop-color="#e49d18"/><stop offset="1" stop-color="#7a4707"/></linearGradient>
+      <filter id="${uid}shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="15" stdDeviation="13" flood-color="#000" flood-opacity=".72"/></filter>
+      <filter id="${uid}glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <pattern id="${uid}grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#56677b" stroke-opacity=".12" stroke-width="1"/></pattern>
+    </defs>`;
+  }
+
+  function benchStandSvg() {
+    return `<g class="v4-bench">
+      <path d="M90 492H810M145 492l-28 53M755 492l28 53M210 492v48M690 492v48"/>
+      <path d="M105 545h112M683 545h112"/>
+      <circle cx="145" cy="545" r="19"/><circle cx="755" cy="545" r="19"/>
+      <path class="bench-cross" d="M215 472H685M245 472l-34-46M655 472l34-46"/>
+    </g>`;
+  }
+
+  function engineIntakeSvg(uid, running) {
+    const turbo = C.getPart(state, 'turbo');
+    const geometry = C.engineGeometry(state);
+    const head = C.getPart(state, 'head');
+    const coils = [0,1,2,3].map(i => `<g class="v4-coil" transform="translate(${315 + i * 78} 88)"><rect x="0" y="0" width="44" height="72" rx="10"/><path d="M22 72v19"/><circle cx="22" cy="17" r="8"/></g>`).join('');
+    const runners = [0,1,2,3].map(i => `<path class="v4-intake-runner" d="M${314 + i*74} 292c-4 46-20 75-49 104"/>`).join('');
+    const railDrops = [0,1,2,3].map(i => `<path d="M${337 + i*78} 206v35"/>`).join('');
+    return `<svg viewBox="0 0 900 580" role="img" aria-label="EA888 Gen 1 CAWB vanaf de inlaatzijde op een motortestbank">
+      ${engineDefs(uid)}
+      <rect width="900" height="580" fill="url(#${uid}grid)"/>
+      <g class="v4-engine ${running ? 'is-running' : ''}" filter="url(#${uid}shadow)">
+        <path class="v4-sump" d="M264 405h376l-38 76H296z"/>
+        <path class="v4-block" fill="url(#${uid}block)" d="M246 248h404v176c0 24-18 42-42 42H287c-24 0-41-17-41-42z"/>
+        <g class="v4-block-ribs">${[0,1,2,3,4,5,6].map(i=>`<path d="M${286+i*48} 275v135"/>`).join('')}</g>
+        <path class="v4-head" fill="url(#${uid}alu)" d="M232 168h438c19 0 34 15 34 34v91H216v-91c0-19 8-34 16-34z"/>
+        <path class="v4-valve-cover" fill="url(#${uid}black)" d="M263 64h357c25 0 43 17 43 42v82H244v-82c0-24 12-42 19-42z"/>
+        <path class="v4-cover-ridge" d="M286 96h303M286 125h203M537 125h66M286 151h127"/>
+        <text x="288" y="180" class="v4-cover-text">2.0 TFSI · EA888 GEN 1</text>
+        <circle class="v4-oil-cap" cx="596" cy="98" r="22"/><path class="v4-oil-cap-mark" d="M585 100h22M589 92h14"/>
+        <g class="v4-coils">${coils}</g>
+
+        <g class="v4-hpfp">
+          <circle cx="235" cy="166" r="35" fill="url(#${uid}alu)"/><circle cx="235" cy="166" r="13"/>
+          <path d="M235 131v-27h24M210 166h-29M258 166h31M222 191l-12 24"/>
+        </g>
+        <g class="v4-fuel-rail"><rect x="276" y="198" width="330" height="18" rx="9" fill="url(#${uid}alu)"/>${railDrops}<circle cx="622" cy="207" r="16"/></g>
+
+        <g class="v4-intake">
+          <path class="v4-plenum" fill="url(#${uid}black)" d="M260 272h337c33 0 58 24 58 56v42H239v-42c0-32 9-56 21-56z"/>
+          ${runners}
+          <rect class="v4-throttle" x="651" y="291" width="78" height="69" rx="25" fill="url(#${uid}alu)"/>
+          <circle cx="690" cy="325" r="24"/>
+          <path class="v4-charge" d="M729 326c58 1 87-18 119-51" stroke="url(#${uid}blue)"/>
+          <path class="v4-charge-highlight" d="M729 318c55 0 83-18 113-48"/>
+        </g>
+
+        <g class="v4-timing-cover">
+          <path fill="url(#${uid}alu)" d="M170 174h92v268h-72c-29 0-45-26-39-53l31-175z"/>
+          <circle class="v4-pulley crank-pulley" cx="203" cy="407" r="50"/><circle cx="203" cy="407" r="16"/>
+          <circle class="v4-pulley cam-pulley" cx="217" cy="221" r="31"/>
+          <path class="v4-belt" d="M217 190c-46 62-47 162-14 167 47 7 68-82 14-136"/>
+        </g>
+        <g class="v4-alternator"><circle cx="178" cy="322" r="42"/><circle cx="178" cy="322" r="20"/><path d="M145 299l66 45M145 344l65-47"/></g>
+        <g class="v4-oil-module"><rect x="564" y="359" width="54" height="82" rx="20"/><path d="M572 373h38M572 387h38"/><path d="M618 377h33v22h-31"/></g>
+        <g class="v4-coolant"><path d="M657 215h94v42h58"/><circle cx="662" cy="215" r="13"/><circle cx="811" cy="258" r="11"/></g>
+        <g class="v4-wiring"><path d="M264 49c-57 7-79 32-86 76M663 83c72 2 102 30 109 77"/><circle cx="177" cy="130" r="8"/><circle cx="773" cy="164" r="8"/></g>
+      </g>
+      ${benchStandSvg()}
+      <g class="v4-view-caption"><text x="34" y="42">INLAATZIJDE / FRONT</text><text x="34" y="61">CAWB transverse layout · ${Math.round(geometry.displacementCc)} cc · ${esc(head.name)}</text></g>
+      <g class="v4-badge"><rect x="714" y="25" width="151" height="44" rx="13"/><text x="790" y="43">TURBO</text><text x="790" y="59">${esc(turbo.compressorMm || 'OEM')} MM</text></g>
+    </svg>`;
+  }
+
+  function engineTurboSvg(uid, running) {
+    const turbo = C.getPart(state, 'turbo');
+    const boost = C.getPart(state, 'boostControl');
+    const mm = Number(turbo.compressorMm || 45);
+    const big = mm >= 67;
+    const huge = mm >= 94;
+    const r = clamp(54 + (mm - 45) * .62, 53, 104);
+    const cx = huge ? 705 : big ? 682 : 650;
+    const cy = big ? 316 : 300;
+    const runners = big
+      ? [0,1,2,3].map(i => `<path d="M${302+i*85} 241c${i<2?10:-8} 72 ${i<2?55:35} 82 ${cx-90} ${cy-18+i*7}"/>`).join('')
+      : [0,1,2,3].map(i => `<path d="M${304+i*84} 242c6 42 28 58 ${cx-76} ${cy-20+i*5}"/>`).join('');
+    const wg = boost.id.includes('dual') || boost.id.includes('co2') || big;
+    return `<svg viewBox="0 0 900 580" role="img" aria-label="EA888 Gen 1 CAWB vanaf de turbozijde op een motortestbank">
+      ${engineDefs(uid)}<rect width="900" height="580" fill="url(#${uid}grid)"/>
+      <g class="v4-engine turbo-view ${running ? 'is-running' : ''}" filter="url(#${uid}shadow)">
+        <path class="v4-sump" d="M246 410h390l-36 70H282z"/>
+        <path class="v4-block" fill="url(#${uid}block)" d="M229 254h413v175c0 25-18 41-43 41H271c-24 0-42-17-42-41z"/>
+        <g class="v4-block-ribs">${[0,1,2,3,4,5,6].map(i=>`<path d="M${270+i*48} 280v132"/>`).join('')}</g>
+        <path class="v4-head" fill="url(#${uid}alu)" d="M217 165h442c22 0 38 16 38 37v69H205v-69c0-21 8-37 12-37z"/>
+        <path class="v4-valve-cover" fill="url(#${uid}black)" d="M258 66h354c28 0 46 18 46 45v75H239v-75c0-26 12-45 19-45z"/>
+        <path class="v4-cover-ridge" d="M283 99h302M283 129h179M512 129h78M283 155h131"/>
+        <text x="284" y="177" class="v4-cover-text">EA888 · CAWB · EXHAUST SIDE</text>
+        <circle class="v4-oil-cap" cx="588" cy="101" r="22"/><path class="v4-oil-cap-mark" d="M578 102h20M582 94h12"/>
+        <g class="v4-exhaust-runners ${big ? 'tubular' : 'cast'}" fill="none">${runners}</g>
+        <g class="v4-turbo-assembly ${huge ? 'huge' : big ? 'big' : 'compact'}">
+          <circle class="v4-turbine" fill="url(#${uid}hot)" cx="${cx-r*.28}" cy="${cy}" r="${r}"/>
+          <path class="v4-turbine-scroll" d="M${cx-r*.28} ${cy-r+14}c${r*.9} 2 ${r*1.08} ${r*.72} ${r*.66} ${r*1.17}-${r*.35} ${r*.38}-${r*.96} ${r*.18}-${r*.98}-${r*.36}"/>
+          <circle class="v4-compressor" fill="url(#${uid}cold)" cx="${cx+r*.44}" cy="${cy-2}" r="${r*.72}"/>
+          <circle class="v4-compressor-eye" cx="${cx+r*.44}" cy="${cy-2}" r="${r*.31}"/>
+          <g class="v4-compressor-wheel" transform="translate(${cx+r*.44} ${cy-2})">${[0,60,120,180,240,300].map(a=>`<path transform="rotate(${a})" d="M0 0c10-27 30-25 40-13-18 1-27 8-40 13z"/>`).join('')}</g>
+          <path class="v4-downpipe" d="M${cx-r*.9} ${cy+r*.38}c-48 42-43 91-16 130"/>
+          <path class="v4-compressor-out" d="M${cx+r*.5} ${cy-r*.72}c57-32 116-7 131 46v61" stroke="url(#${uid}blue)"/>
+          <path class="v4-charge-highlight" d="M${cx+r*.52} ${cy-r*.63}c51-26 103-4 116 43"/>
+        </g>
+        ${wg ? `<g class="v4-external-wg"><g transform="translate(${cx-r*.86} ${cy+100})"><circle r="23"/><path d="M0-23v-32M-13 19l-21 45"/></g><g transform="translate(${cx-r*.34} ${cy+119})"><circle r="23"/><path d="M0-23v-42M13 19l19 48"/></g></g>` : `<g class="v4-internal-wg"><rect x="${cx+15}" y="${cy+61}" width="86" height="25" rx="13"/><path d="M${cx+16} ${cy+73}l-48-23"/></g>`}
+        <g class="v4-timing-cover rear"><path fill="url(#${uid}alu)" d="M156 180h85v258h-66c-27 0-43-24-37-50l27-168z"/><circle class="v4-pulley crank-pulley" cx="188" cy="405" r="48"/><circle cx="188" cy="405" r="15"/></g>
+        <g class="v4-sensors"><circle cx="442" cy="271" r="10"/><path d="M442 261v-35M463 268h31"/><circle cx="504" cy="269" r="8"/></g>
+      </g>
+      ${benchStandSvg()}
+      <g class="v4-view-caption"><text x="34" y="42">TURBOZIJDE / REAR</text><text x="34" y="61">${esc(turbo.name)} · ${esc(boost.name)} · ${big ? 'tubular/twin-scroll layout' : 'compact K04-frame layout'}</text></g>
+      <g class="v4-badge"><rect x="714" y="25" width="151" height="44" rx="13"/><text x="790" y="43">COMPRESSOR</text><text x="790" y="59">${mm || 'OEM'} MM</text></g>
+    </svg>`;
+  }
+
+  function engineCutawaySvg(uid, running) {
+    const g = C.engineGeometry(state);
+    const block = C.getPart(state, 'block');
+    const crank = C.getPart(state, 'crank');
+    const valve = C.getPart(state, 'valvetrain');
+    const x = [285, 405, 525, 645];
+    const pistonY = [304, 352, 352, 304];
+    return `<svg viewBox="0 0 900 580" role="img" aria-label="Technische doorsnede van de EA888 Gen 1 met vier cilinders, zuigers en krukas">
+      ${engineDefs(uid)}<rect width="900" height="580" fill="url(#${uid}grid)"/>
+      <g class="v4-cutaway ${running ? 'is-running' : ''}" filter="url(#${uid}shadow)">
+        <path class="v4-cut-head" d="M218 99h500v151H218z"/>
+        <path class="v4-cut-block" d="M218 239h500v236H218z"/>
+        <path class="v4-cut-sump" d="M246 474h445l-37 70H280z"/>
+        <g class="v4-cams"><path d="M251 142h431"/><path d="M251 184h431"/>${x.map((cx,i)=>`<ellipse cx="${cx-18}" cy="142" rx="24" ry="13" transform="rotate(${i%2?28:-28} ${cx-18} 142)"/><ellipse cx="${cx+18}" cy="184" rx="24" ry="13" transform="rotate(${i%2?-28:28} ${cx+18} 184)"/>`).join('')}</g>
+        <g class="v4-valves">${x.map(cx=>`<path d="M${cx-24} 160l-10 87M${cx+24} 200l10 47"/><path class="valve-head" d="M${cx-45} 247h23M${cx+22} 247h23"/>`).join('')}</g>
+        <g class="v4-bores">${x.map(cx=>`<rect x="${cx-44}" y="247" width="88" height="177" rx="7"/><path d="M${cx-40} 261h80"/>`).join('')}</g>
+        <g class="v4-pistons">${x.map((cx,i)=>`<g class="piston piston-${i+1}" style="--base-y:${pistonY[i]}px" transform="translate(0 ${pistonY[i]-304})"><path class="piston-crown" d="M${cx-38} 304h76v50h-76z"/><path class="ring ring-1" d="M${cx-37} 314h74"/><path class="ring ring-2" d="M${cx-37} 324h74"/><circle cx="${cx}" cy="343" r="9"/><path class="rod" d="M${cx} 352l${i%2?24:-24} 104"/></g>`).join('')}</g>
+        <g class="v4-crank"><path class="crank-axis" d="M238 456h461"/>${x.map((cx,i)=>`<circle cx="${cx+(i%2?24:-24)}" cy="456" r="19"/><path d="M${cx+(i%2?24:-24)} 456h${i%2?-24:24}"/>`).join('')}<circle class="crank-end" cx="223" cy="456" r="38"/><circle class="crank-end" cx="716" cy="456" r="38"/></g>
+        <g class="v4-oil-galleries"><path d="M246 432h444M260 432v-126M675 432V306"/>${x.map(cx=>`<path d="M${cx} 432v24"/>`).join('')}</g>
+        <g class="v4-combustion">${x.map(cx=>`<path d="M${cx-43} 247l18-23h50l18 23"/>`).join('')}</g>
+        <g class="v4-spark">${x.map(cx=>`<path d="M${cx} 102v117"/><path class="spark-flash" d="M${cx} 220l-8 11 13 1-7 12"/>`).join('')}</g>
+      </g>
+      <g class="v4-view-caption"><text x="34" y="42">INTERN / CUTAWAY</text><text x="34" y="61">${esc(block.name)} · ${esc(crank.name)} · ${esc(valve.name)}</text></g>
+      <g class="v4-badge"><rect x="714" y="25" width="151" height="44" rx="13"/><text x="790" y="43">BORE × STROKE</text><text x="790" y="59">${g.boreMm.toFixed(2)} × ${g.strokeMm.toFixed(1)}</text></g>
+    </svg>`;
+  }
+
+  function engineRealisticMarkup(running) {
+    const geometry = C.engineGeometry(state);
+    const turbo = C.getPart(state, 'turbo');
+    const r = state.lastDyno;
+    const clean = currentDyno();
+    const hp = clean && r ? `${Math.round(r.peakHp)} pk` : '? pk';
+    const nm = clean && r ? `${Math.round(r.peakTorqueNm)} Nm` : '? Nm';
+    return `<div class="realistic-engine-scene ${running ? 'is-running' : ''}">
+      <img class="realistic-engine-image" src="images/engine-realistic.webp" alt="Realistische 3D-render van de opgebouwde EA888 Gen 1 op een motortestbank">
+      <div class="realistic-engine-vignette"></div>
+      <div class="realistic-engine-title">
+        <strong>EA888 GEN 1 · CAWB</strong>
+        <span>${Math.round(geometry.displacementCc)} cc · ${geometry.boreMm.toFixed(2)} × ${geometry.strokeMm.toFixed(1)} · ${geometry.compressionRatio.toFixed(1)}:1</span>
+      </div>
+      <div class="realistic-turbo-card">
+        <span class="mini-turbo-icon">◉</span>
+        <div><strong>${esc(turbo.name)}</strong><small>${turbo.compressorMm || 'OEM'} mm compressor · ${clean ? 'gemeten' : 'ongetest'}</small></div>
+      </div>
+      <div class="realistic-dyno-readout">
+        <span><i>PK</i><b>${hp}</b></span>
+        <span><i>NM</i><b>${nm}</b></span>
+      </div>
+      <div class="realistic-live-glow" aria-hidden="true"></div>
+    </div>`;
+  }
+
+  function engineVisual(options = {}) {
+    const uid = `eng${++engineVisualId}`;
+    const geometry = C.engineGeometry(state);
+    const turbo = C.getPart(state, 'turbo');
+    const head = C.getPart(state, 'head');
+    const view = options.view || engineView;
+    const running = !!options.running;
+    const compact = options.compact ? 'compact' : '';
+    const mode = options.mode || 'bench';
+    const visual = view === 'realistic' ? engineRealisticMarkup(running) : view === 'turbo' ? engineTurboSvg(uid, running) : view === 'cutaway' ? engineCutawaySvg(uid, running) : engineIntakeSvg(uid, running);
+    const viewLabel = view === 'realistic' ? '3D GARAGE RENDER' : view === 'intake' ? 'INLAATZIJDE' : view === 'turbo' ? 'TURBOZIJDE' : 'DOORSNEDE';
+    return `<div class="engine-visual v4-engine-visual v5-engine-visual ${running ? 'running' : ''} ${compact} mode-${mode} view-${view}" data-engine-visual data-view="${view}">
+      <div class="engine-canvas v4-engine-canvas">${visual}
+        <button class="engine-hotspot hotspot-head" data-engine-info="head" aria-label="Kop en nokken"><span>KOP / CAMS</span></button>
+        <button class="engine-hotspot hotspot-block" data-engine-info="block" aria-label="Onderblok en krukas"><span>JE83 / KRUKAS</span></button>
+        <button class="engine-hotspot hotspot-fuel" data-engine-info="fuel" aria-label="Brandstofsysteem"><span>DI / HPFP</span></button>
+        <button class="engine-hotspot hotspot-turbo" data-engine-info="turbo" aria-label="Turbo en luchtpad"><span>${esc(turbo.compressorMm || 'OEM')} MM TURBO</span></button>
+        <button class="engine-hotspot hotspot-ecu" data-engine-info="ecu" aria-label="ECU en beveiliging"><span>SYVECS / DATA</span></button>
+      </div>
+      <div class="engine-specbar">
+        <span><b>${num(geometry.displacementCc, 0)} cc</b>${num(geometry.boreMm, 2)} × ${num(geometry.strokeMm, 1)} mm</span>
+        <span><b>${num(geometry.compressionRatio, 1)}:1</b>compressie</span>
+        <span><b>${esc(viewLabel)}</b>${esc(head.name)}</span>
+      </div>
+    </div>`;
+  }
+
+  function componentTile(catId, title, subtitle) {
+    const part = C.getPart(state, catId);
+    return `<button class="v5-component-tile" data-open-category="${catId}" aria-label="Open ${esc(title)}">
+      <span class="v5-component-image"><img src="images/${partVisual(catId)}" alt=""></span>
+      <span class="v5-component-copy"><b>${esc(title)}</b><small>${esc(subtitle || part.name)}</small></span>
+      <span class="v5-component-arrow">›</span>
+    </button>`;
+  }
+
+  function renderBank() {
+    const earned = syncAchievements();
+    const r = state.lastDyno;
+    const clean = currentDyno();
+    const geometry = C.engineGeometry(state);
+    const turbo = C.getPart(state, 'turbo');
+    const trans = C.getPart(state, 'transmission');
+    const tire = C.TIRE_MAP[state.vehicle.tireCompound];
+    const status = statusInfo();
+    const bench = C.benchConfidence(state);
+    const best = state.records?.[state.vehicle.drivetrain] || null;
+    const unlocked = Object.values(state.achievements || {}).filter(Boolean).length;
+    const oil = C.OIL_MAP[state.service.oilId];
+    const oilPct = Math.round(C.oilHealth(state) * 100);
+    const score = clean && r ? r.reliabilityScore : null;
+    const lastPass = clean && state.lastDrag?.valid ? state.lastDrag : null;
+    const measuredHp = clean && r ? `${Math.round(r.peakHp)} pk` : '? pk';
+    const measuredNm = clean && r ? `${Math.round(r.peakTorqueNm)} Nm` : '? Nm';
+
+    return `<section class="page garage-page v5-garage-page">
+      <div class="v5-garage-heading">
+        <div><span class="eyebrow">BOUW · MEET · OVERLEEF · RACE</span><h1>EA888 Lab</h1><p>Een complete virtuele CAWB-workshop. Monteer onderdelen, controleer de motor, meet op de dyno en zet daarna pas een geldige quarter-mile neer.</p></div>
+        <div class="v5-wallet"><span>WORKSHOP</span><b>${euro(state.bank)}</b></div>
+      </div>
+
+      <div class="v5-engine-dashboard">
+        <div class="v5-engine-dashboard-head">
+          <div><span>EA888 GEN 1 · RANDY CAWB</span><b>${Math.round(geometry.displacementCc)} cc · ${geometry.boreMm.toFixed(2)} × ${geometry.strokeMm.toFixed(1)}</b></div>
+          <button class="v5-turbo-summary" data-open-category="turbo"><span>◉</span><div><b>${esc(turbo.name)}</b><small>${turbo.compressorMm || 'OEM'} mm · ${clean ? `${Math.round(r.peakHp)} pk gemeten` : 'resultaat verborgen'}</small></div>${icon('chevron')}</button>
+        </div>
+        ${engineVisual({ mode: 'garage', view: engineView })}
+      </div>
+
+      ${engineViewTabs()}
+
+      <div class="v5-component-dock" aria-label="Hoofdonderdelen">
+        ${componentTile('block', 'Zuigers & drijfstangen', C.getPart(state,'block').name)}
+        ${componentTile('head', 'Nokkenassen & kleppen', C.getPart(state,'head').name)}
+        ${componentTile('turbo', 'Turbo', C.getPart(state,'turbo').name)}
+        ${componentTile('air', 'Intercooler & inlaat', C.getPart(state,'air').name)}
+        ${componentTile('fuelSystem', 'Brandstof', C.getPart(state,'fuelSystem').name)}
+        ${componentTile('transmission', 'Transmissie & koppeling', C.getPart(state,'transmission').name)}
+      </div>
+
+      <div class="v5-status-grid">
+        <button class="v5-status-card ${clean ? 'good' : 'stale'}" data-go="dyno">
+          <span class="v5-status-icon">${icon('engine')}</span><div><small>BUILD STATUS</small><b>${clean ? 'GEMETEN BUILD' : 'ONGETESTE BUILD'}</b><p>${clean ? `${measuredHp} · ${measuredNm}` : 'Vermogen verborgen tot een nieuwe dynorun.'}</p></div>${icon('chevron')}
+        </button>
+        <button class="v5-status-card ${score == null ? 'stale' : score >= 80 ? 'good' : score >= 65 ? 'warn' : 'danger'}" data-go="dyno">
+          <span class="v5-status-icon">◇</span><div><small>BETROUWBAARHEID</small><b>${score == null ? '— / 100' : `${score} / 100`}</b><div class="v5-meter"><i style="--v:${score == null ? 0 : score}%"></i></div><p>${score == null ? 'Pas zichtbaar na de meting.' : r.weakestLink}</p></div>${icon('chevron')}
+        </button>
+        <button class="v5-status-card ${oilPct >= 80 ? 'good' : oilPct >= 65 ? 'warn' : 'danger'}" data-go="service">
+          <span class="v5-status-icon">${icon('service')}</span><div><small>OLIE & SERVICE</small><b>${oilPct >= 80 ? 'GOED' : oilPct >= 65 ? 'CONTROLEREN' : 'VERVANGEN'}</b><p>${esc(oil.name)} · ${state.service.liters.toFixed(1)} L · ${oilPct}% conditie</p></div>${icon('chevron')}
+        </button>
+        <button class="v5-status-card" data-go="drag">
+          <span class="v5-status-icon">◎</span><div><small>TRACTIE</small><b>${esc(state.vehicle.drivetrain)} · ${esc(tire.name)}</b><p>${lastPass ? `${Math.round(lastPass.wheelspinPct)}% wheelspin gemeten` : `${state.vehicle.tireWidthMm}/${state.vehicle.aspectRatio} R${state.vehicle.rimDiameterIn} · nog geen geldige pass`}</p></div>${icon('chevron')}
+        </button>
+      </div>
+
+      <div class="v5-car-card">
+        <div class="v5-car-card-bg"></div>
+        <div class="v5-car-copy">
+          <span>JOUW AUTO</span><h2>Randy's Scirocco CAWB</h2><b>${measuredHp} · ${measuredNm}</b><p>${esc(state.vehicle.drivetrain)} · ${trans.name} · ${tire.name}</p>
+          <button class="btn secondary" data-go="drag">Naar de dragstrip ${icon('chevron')}</button>
+        </div>
+        <img src="images/randy-scirocco-cutout.png" alt="Randy's blauwe Scirocco">
+        <div class="v5-tree-mini" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="green"></i><i class="green"></i></div>
+        <div class="v5-car-times"><span><small>0–100</small><b>${lastPass?.zeroTo100 ? `${lastPass.zeroTo100.toFixed(2)} s` : '—'}</b></span><span><small>1/4 MIJL</small><b>${lastPass ? `${lastPass.quarter.toFixed(3)} s` : best ? `${best.quarter.toFixed(3)} s` : '—'}</b></span></div>
+      </div>
+
+      ${workflow()}
+      ${clean ? '' : staleNotice()}
+
+      <div class="v5-main-actions">
+        <button data-go="build"><span>${icon('engine')}</span><b>Onderdelen</b><small>Monteer echte combinaties</small></button>
+        <button data-go="tune"><span>${icon('tune')}</span><b>Tune</b><small>Boost, brandstof en cams</small></button>
+        <button data-go="dyno"><span>${icon('chart')}</span><b>Dyno</b><small>Meet de volledige curve</small></button>
+        <button data-go="drag"><span>${icon('race')}</span><b>Race</b><small>Tree, setup en timeslip</small></button>
+      </div>
+
+      <div class="section-head"><div><span class="eyebrow">Build slots</span><h2>Drie projecten naast elkaar</h2></div></div>
+      <div class="build-slots">${[0,1,2].map(i => buildSlotCard(i, state.buildSlots?.[i])).join('')}</div>
+
+      <div class="section-head"><div><span class="eyebrow">Challenges</span><h2>${unlocked}/${C.CHALLENGES.length} ontgrendeld</h2></div></div>
+      <div class="challenge-grid">${C.CHALLENGES.slice(0, 6).map(ch => challengeCard(ch, earned[ch.id])).join('')}</div>
+
+      <div class="section-head presets-head"><div><span class="eyebrow">Referentiebuilds</span><h2>Van OEM tot Unlimited</h2></div></div>
+      <div class="preset-strip v4-preset-strip">
+        ${presetCard('stock', 'OEM CAWB', 'Straatbasis', 'K03 · OEM internals')}
+        ${presetCard('k04', 'K04 straat', 'Snelle respons', 'Rods · FMIC · 3-inch')}
+        ${presetCard('randy', 'Randy exact', 'Jouw motorbasis', 'JE83 · Cat Cams · Syvecs', true)}
+        ${presetCard('hx52', 'Randy HX52', '67-mm twin-scroll', '11 cm² · dual 44 mm WG')}
+        ${presetCard('pro98', '98-mm Pro Mod', 'Drag-engineered', 'Dry-sump · methanol · 1.5k+')}
+        ${presetCard('outlaw106', '106-mm Outlaw', 'Smalle high-rpm band', 'Promod support · staged spool')}
+        ${presetCard('unlimited127', '127-mm Unlimited', 'Extreme workbench', 'Full Promod support · 2k+')}
+      </div>
+
+      <div class="card build-summary-card">
+        <div class="section-head small"><div><span class="eyebrow">Huidige setup</span><h3>Build sheet in één oogopslag</h3></div><button class="icon-button small" data-go="data" aria-label="Open alle data">${icon('data')}</button></div>
+        <div class="summary-list">
+          <div><span>Turbo</span><b>${esc(turbo.name)}</b></div>
+          <div><span>Kop/nokken</span><b>${esc(C.getPart(state, 'head').name)}</b></div>
+          <div><span>Brandstof</span><b>${esc(C.getPart(state, 'fuelSystem').name)}</b></div>
+          <div><span>Olie</span><b>${esc(oil.name)} · ${num(state.service.liters,1)} L</b></div>
+          <div><span>Onderdelenwaarde</span><b>${euro(C.totalPartsPrice(state))}</b></div>
+          <div><span>Sensor confidence</span><b>${Math.round(C.getPart(state,'sensors').diagnosticConfidence*100)}%</b></div>
+        </div>
+      </div>
+    </section>`;
+  }
+
+  function buildSlotCard(index, slot) {
+    if (!slot) return `<article class="build-slot empty"><span>0${index + 1}</span><div><b>Leeg buildslot</b><small>Sla de huidige hardware, tune, montage en voertuigsetup op.</small></div><button class="btn small" data-save-slot="${index}">Opslaan</button></article>`;
+    const turboId = slot.selections?.turbo;
+    const turbo = C.CATEGORY_MAP.turbo.items.find(x => x.id === turboId);
+    return `<article class="build-slot"><span>0${index + 1}</span><div><b>${esc(slot.buildName || `Build ${index + 1}`)}</b><small>${esc(turbo?.name || turboId || 'Onbekende turbo')} · ${new Date(slot.savedAt).toLocaleDateString('nl-NL')}</small></div><div class="slot-actions"><button class="btn ghost small" data-load-slot="${index}">Laden</button><button class="text-button" data-save-slot="${index}">Overschrijf</button></div></article>`;
+  }
+
+  function challengeCard(challenge, earnedNow) {
+    const progress = state.achievements?.[challenge.id];
+    const unlocked = !!progress || !!earnedNow;
+    const claimed = !!progress?.claimed;
+    return `<article class="challenge-card ${unlocked ? 'unlocked' : ''} ${claimed ? 'claimed' : ''}">
+      <div class="challenge-icon">${unlocked ? icon('check') : '◈'}</div>
+      <div><b>${esc(challenge.title)}</b><p>${esc(challenge.detail)}</p><small>Beloning ${euro(challenge.reward)}</small></div>
+      ${unlocked && !claimed ? `<button class="btn small" data-claim-challenge="${challenge.id}">Claim</button>` : `<span class="challenge-state">${claimed ? 'GECLAIMD' : 'LOCKED'}</span>`}
+    </article>`;
+  }
+
+  function presetCard(id, title, subtitle, detail, highlighted = false) {
+    return `<article class="preset-card ${highlighted ? 'highlighted' : ''}">
+      ${highlighted ? '<span class="randy-badge">RANDY SPEC</span>' : ''}
+      <h3>${esc(title)}</h3><b>${esc(subtitle)}</b><p>${esc(detail)}</p>
+      <button class="btn small" data-preset="${id}">Build laden</button>
+    </article>`;
+  }
+
+  function isRandyPart(part) {
+    return /^randy_/.test(part.id) || ['k04_hybrid', 'hx52'].includes(part.id);
+  }
+
+  function renderBuild() {
+    const cat = C.CATEGORY_MAP[activeCategory] || C.CATEGORIES[0];
+    const geometry = C.engineGeometry(state);
+    const assembly = C.assemblyHealth(state);
+    const bench = C.benchConfidence(state);
+    let panel = '';
+    if (motorPanel === 'assembly') panel = renderAssemblyPanel(assembly);
+    else if (motorPanel === 'bench') panel = renderBenchPanel(bench);
+    else panel = renderHardwarePanel(cat);
+
+    return `<section class="page motor-page">
+      <div class="page-title-row"><div><span class="eyebrow">Motor workbench</span><h1>Bouw hem zoals een echte motor</h1><p>Hardware, montageclearances en controles zijn afzonderlijke stappen. Vermogen blijft verborgen totdat de combinatie een volledige dynopull heeft afgerond.</p></div></div>
+
+      ${engineViewTabs()}
+      ${engineVisual({ compact: true, mode: 'build', view: engineView })}
+
+      <div class="motor-status-strip">
+        <div><span>Configuratie</span><b>${geometry.boreMm.toFixed(2)} × ${geometry.strokeMm.toFixed(1)} mm</b></div>
+        <div><span>Montage</span><b class="${assembly.score >= .9 ? 'green' : assembly.score >= .72 ? 'accent' : 'red'}">${Math.round(assembly.score * 100)}%</b></div>
+        <div><span>Benchtests</span><b>${bench.current}/${bench.total}</b></div>
+        <div><span>Dynostatus</span><b>${currentDyno() ? 'Geldig' : 'Ongetest'}</b></div>
+      </div>
+
+      <div class="segment-control motor-segments">
+        <button class="${motorPanel === 'hardware' ? 'active' : ''}" data-motor-panel="hardware">Onderdelen</button>
+        <button class="${motorPanel === 'assembly' ? 'active' : ''}" data-motor-panel="assembly">Montage</button>
+        <button class="${motorPanel === 'bench' ? 'active' : ''}" data-motor-panel="bench">Benchtests</button>
+      </div>
+      ${panel}
+
+      <div class="sticky-action-card">
+        <div><span>Volgende stap</span><b>${bench.complete && bench.failed === 0 ? 'De montagechecks zijn actueel. Kalibreer of meet.' : 'Benchtests zijn niet compleet; je kunt wel meten, maar met minder zekerheid.'}</b></div>
+        <button class="btn secondary" data-go="tune">Tune</button>
+        <button class="btn" data-go="dyno">Dyno</button>
+      </div>
+    </section>`;
+  }
+
+  function renderHardwarePanel(cat) {
+    const selected = state.selections[cat.id];
+    const query = partSearch.trim().toLowerCase();
+    const items = cat.items.filter(p => !query || `${p.name} ${p.detail} ${p.specs}`.toLowerCase().includes(query));
+    return `<div class="motor-panel hardware-panel">
+      <div class="build-toolbar">
+        <label class="search-box"><span>⌕</span><input id="part-search" value="${esc(partSearch)}" placeholder="Zoek in ${esc(cat.label.toLowerCase())}" autocomplete="off"></label>
+        <div class="category-chips">
+          ${C.CATEGORIES.map(c => `<button class="category-chip ${c.id === cat.id ? 'active' : ''}" data-cat="${c.id}"><span>${esc(c.short)}</span>${state.selections[c.id] ? '<i></i>' : ''}</button>`).join('')}
+        </div>
+      </div>
+      <div class="category-heading">
+        <div><span class="eyebrow">${esc(cat.label)}</span><h2>${items.length} beschikbare opties</h2></div>
+        <div class="selection-chip">Gemonteerd: <b>${esc(C.getPart(state, cat.id).name)}</b></div>
+      </div>
+      <div class="notice"><strong>Geen vermogenspreview.</strong> Alleen fysieke specificaties zijn zichtbaar. De interactie tussen onderdelen wordt pas gemeten op de dyno.</div>
+      <div class="parts-grid">${items.length ? items.map(p => partCard(cat, p, selected === p.id)).join('') : '<div class="empty-card">Geen onderdelen gevonden. Wis de zoekopdracht.</div>'}</div>
+    </div>`;
+  }
+
+  function assemblySlider(name, label, min, max, step, value, unit, decimals, target, hint) {
+    const delta = Number(value) - Number(target);
+    const match = Math.abs(delta) <= step * 2;
+    return `<div class="control assembly-control ${match ? 'matched' : ''}">
+      <div class="control-head"><div><b>${esc(label)}</b><small>${esc(hint || '')}</small></div><output data-value-for="assembly.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
+      <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-assembly="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}">
+      <div class="target-marker"><span>Modeldoel ${Number(target).toFixed(decimals)}${esc(unit)}</span><i style="--target:${clamp((target-min)/(max-min)*100,0,100)}%"></i></div>
+    </div>`;
+  }
+
+  function renderAssemblyPanel(health) {
+    const a = state.assembly;
+    const t = health.targets;
+    const warnings = [];
+    if (health.ringTightRisk > .3) warnings.push('Topring-gap is krap voor de huidige boost- en temperatuurvraag.');
+    if (health.ringWideRisk > .35) warnings.push('Topring-gap is ruim; blow-by en afdichtingsverlies nemen toe.');
+    if (health.bearingTightRisk > .3) warnings.push('Drijfstanglagerclearance is krap voor het gekozen toerental.');
+    if (health.bearingLooseRisk > .3) warnings.push('Hoofdlagerclearance is ruim; warme oliedruk kan dalen.');
+    if (!a.oilPrimed) warnings.push('Oliesysteem staat niet als geprimed gemarkeerd.');
+    return `<div class="motor-panel assembly-panel">
+      <div class="assembly-hero card">
+        <div class="assembly-score" style="--score:${Math.round(health.score*100)}"><b>${Math.round(health.score*100)}</b><span>/100 montage</span></div>
+        <div><span class="eyebrow">Montageblad</span><h2>Clearances en procedure</h2><p>Het doel verschuift met boring, toerental en maximale gevraagde boost. Een score is geen werkplaatsmaat; hij maakt de consequenties in het spel zichtbaar.</p></div>
+      </div>
+      <div class="assembly-grid">
+        <div class="card">
+          <span class="eyebrow">Zuigers & lagers</span><h2>Meetwaarden</h2>
+          ${assemblySlider('topRingGapMm','Topring-gap',.28,.80,.01,a.topRingGapMm,' mm',2,t.topRingGapMm,'Warmte- en boostmarge')}
+          ${assemblySlider('secondRingGapMm','Tweede ring-gap',.32,.88,.01,a.secondRingGapMm,' mm',2,t.secondRingGapMm,'Ondersteunt drukontlasting')}
+          ${assemblySlider('rodClearanceMm','Drijfstanglagerclearance',.035,.080,.001,a.rodClearanceMm,' mm',3,t.rodClearanceMm,'Viscositeit, rpm en warme film')}
+          ${assemblySlider('mainClearanceMm','Hoofdlagerclearance',.038,.082,.001,a.mainClearanceMm,' mm',3,t.mainClearanceMm,'Warme oliedruk versus film')}
+          ${assemblySlider('sparkGapMm','Bougiegap',.38,.82,.01,a.sparkGapMm,' mm',2,t.sparkGapMm,'Vonkmarge onder cilinderdruk')}
+        </div>
+        <div class="card">
+          <span class="eyebrow">Werkplaatsprocedure</span><h2>Uitvoering</h2>
+          ${assemblySlider('balanceQualityPct','Balanskwaliteit',75,100,1,a.balanceQualityPct,'%',0,100,'Krukas, vliegwiel en bobweight')}
+          ${assemblySlider('deckSealQualityPct','Deck & sealing',75,100,1,a.deckSealQualityPct,'%',0,100,'Vlakheid, finish en pakkingscontrole')}
+          ${assemblySlider('fastenerProcedurePct','Fastener-procedure',75,100,1,a.fastenerProcedurePct,'%',0,100,'Schroefdraad, lube en torque sequence')}
+          <div class="switch-row"><div><b>Oliesysteem geprimed</b><small>Virtuele oliedruk opgebouwd vóór belasting.</small></div><button class="switch ${a.oilPrimed ? 'on' : ''}" data-assembly-switch="oilPrimed" aria-pressed="${a.oilPrimed}"><i></i></button></div>
+          <button class="btn secondary" data-action="apply-assembly-targets">Modeldoelen overnemen</button>
+        </div>
+      </div>
+      ${warnings.length ? `<div class="warning-list">${warnings.map(x => `<div class="warning-item"><span>!</span><p>${esc(x)}</p></div>`).join('')}</div>` : '<div class="notice success"><strong>Montagewaarden liggen rond de huidige modeldoelen.</strong></div>'}
+    </div>`;
+  }
+
+  function renderBenchPanel(confidence) {
+    const signature = C.benchSignature(state);
+    const tests = C.BENCH_TESTS.map(test => {
+      const result = state.bench?.results?.[test.id];
+      const current = result && result.signature === signature;
+      const status = current ? result.status : 'stale';
+      return `<article class="bench-test-card ${status}">
+        <div class="bench-test-head"><span class="test-status">${status === 'pass' ? icon('check') : status === 'warn' ? '!' : status === 'fail' ? '×' : '○'}</span><div><b>${esc(test.name)}</b><p>${esc(test.detail)}</p></div></div>
+        ${current ? `<div class="bench-result"><strong>${esc(result.summary)}</strong>${result.values.map(v => `<span><i>${esc(v[0])}</i><b>${esc(v[1])}</b></span>`).join('')}</div>` : '<div class="bench-stale">Niet uitgevoerd of niet meer actueel voor deze combinatie.</div>'}
+        <button class="btn ${current ? 'ghost' : 'small'}" data-run-bench="${test.id}">${current ? 'Opnieuw testen' : 'Test uitvoeren'}</button>
+      </article>`;
+    }).join('');
+    return `<div class="motor-panel bench-panel">
+      <div class="bench-overview card">
+        <div class="bench-confidence"><b>${confidence.score || 0}</b><span>confidence</span></div>
+        <div><span class="eyebrow">Pre-dyno checklist</span><h2>${confidence.current}/${confidence.total} actuele tests</h2><p>Een benchtest toont compressie, leak-down, oliedruk, brandstofflow, camtiming of ontstekingsmarge. Hij voorspelt geen pk.</p></div>
+        <button class="btn" data-action="run-all-bench">Alle tests draaien</button>
+      </div>
+      ${confidence.failed ? `<div class="notice danger"><strong>${confidence.failed} test(s) gefaald.</strong> Los de oorzaak op voordat je een zware pull doet.</div>` : ''}
+      <div class="bench-test-grid">${tests}</div>
+    </div>`;
+  }
+
+  function partCard(cat, part, selected) {
+    const randy = isRandyPart(part);
+    const turboMeta = cat.id === 'turbo' ? `<div class="part-meter"><span>Compressor</span><b>${part.compressorMm || 'OEM'} mm</b><i style="--fill:${clamp(((part.compressorMm || 45)-40)/80*100,8,100)}%"></i></div>` : '';
+    return `<article class="part-card v5-part-card ${selected ? 'selected' : ''}">
+      <div class="part-visual"><img src="images/${partVisual(cat.id)}" alt=""><span>${selected ? 'GEMONTEERD' : esc(cat.short)}</span></div>
+      <div class="part-card-top">
+        <div class="part-state">${selected ? icon('check') : ''}</div>
+        <div class="part-copy">
+          <div class="part-title-line"><h3>${esc(part.name)}</h3>${randy ? '<span class="randy-badge">RANDY SPEC</span>' : ''}</div>
+          <p>${esc(part.detail)}</p>
+        </div>
+      </div>
+      <div class="part-specs">${esc(part.specs)}</div>
+      ${turboMeta}
+      <div class="part-card-bottom">
+        <b>${part.price ? euro(part.price) : 'OEM / inbegrepen'}</b>
+        <button class="btn ${selected ? 'ghost' : 'small'}" data-part-cat="${cat.id}" data-part-id="${part.id}" ${selected ? 'disabled' : ''}>${selected ? 'Gemonteerd' : 'Monteren'}</button>
+      </div>
+    </article>`;
+  }
+
+  function slider(name, label, min, max, step, value, unit, decimals = 1, hint = '', group = 'tune') {
+    return `<div class="control">
+      <div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output data-value-for="${group}.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
+      <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-${group}="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}">
+      <div class="range-scale"><span>${min}</span><span>${max}${esc(unit)}</span></div>
+    </div>`;
+  }
+
+  function switchRow(name, label, detail, target = 'tune') {
+    const on = !!state[target][name];
+    const attr = target === 'vehicle' ? 'data-vehicle-switch' : target === 'settings' ? 'data-setting-switch' : 'data-switch';
+    return `<div class="switch-row"><div><b>${esc(label)}</b><small>${esc(detail)}</small></div><button class="switch ${on ? 'on' : ''}" ${attr}="${name}" aria-pressed="${on}"><i></i></button></div>`;
+  }
+
+  function tuneTabs() {
+    return `<div class="segment-control tune-segments four">
+      <button class="${tunePanel === 'boost' ? 'active' : ''}" data-tune-panel="boost">Boost</button>
+      <button class="${tunePanel === 'fuel' ? 'active' : ''}" data-tune-panel="fuel">Brandstof</button>
+      <button class="${tunePanel === 'cams' ? 'active' : ''}" data-tune-panel="cams">Nokken</button>
+      <button class="${tunePanel === 'safety' ? 'active' : ''}" data-tune-panel="safety">Failsafes</button>
+    </div>`;
+  }
+
+  function renderTune() {
+    const t = state.tune;
+    const turbo = C.getPart(state, 'turbo');
+    const boostHardware = C.getPart(state, 'boostControl');
+    const fuelSystem = C.getPart(state, 'fuelSystem');
+    const fuel = C.getPart(state, 'fuel');
+    const ecu = C.getPart(state, 'ecu');
+    const sensors = C.getPart(state, 'sensors');
+    const ignition = C.getPart(state, 'ignition');
+    const cam = C.camTimingHealth(state);
+    const camPct = Math.round(cam.score * 100);
+    const requestedPeak = Math.max(t.boostLowBar, t.boostMidBar, t.boostHighBar);
+    const boostHeadroom = boostHardware.boostHardwareMaxBar - requestedPeak;
+    const fuelCapacity = fuelSystem.fuelSystemHp * fuel.fuelFlowFactor;
+    let content = '';
+
+    if (tunePanel === 'boost') {
+      content = `<div class="tune-layout">
+        <div class="card tune-card">
+          <div class="card-title"><span>${icon('bolt')}</span><div><span class="eyebrow">Boostcurve</span><h2>${esc(turbo.name)}</h2></div></div>
+          <div class="hardware-readout"><span>Compressor <b>${turbo.compressorMm || 'OEM'} mm</b></span><span>Regeling <b>${esc(boostHardware.name)}</b></span><span>Hardwarelimiet <b>${num(boostHardware.boostHardwareMaxBar,2)} bar</b></span></div>
+          ${slider('boostLowBar', 'Laagtoerig target', 0, 4.2, .05, t.boostLowBar, ' bar', 2, 'Rond 2500–3200 rpm; de turbo moet dit eerst werkelijk kunnen leveren.')}
+          ${slider('boostMidBar', 'Middentoeren target', 0, 4.2, .05, t.boostMidBar, ' bar', 2, 'Rond 4500–5200 rpm; hier ontstaat meestal de hoogste cilinderdruk.')}
+          ${slider('boostHighBar', 'Hoogtoerig target', 0, 4.5, .05, t.boostHighBar, ' bar', 2, 'Richting de rev limiter; airflow, as-toerental en EMP bepalen wat overblijft.')}
+          <div class="margin-bar ${boostHeadroom < 0 ? 'danger' : boostHeadroom < .25 ? 'warn' : 'good'}"><span>Regelmarge</span><b>${boostHeadroom >= 0 ? '+' : ''}${num(boostHeadroom,2)} bar</b><i style="--margin:${clamp((boostHeadroom + .5) / 1.5 * 100, 0, 100)}%"></i></div>
+        </div>
+        <div class="card tune-card">
+          <div class="card-title"><span>${icon('race')}</span><div><span class="eyebrow">Launch & tractie</span><h2>Boost-by-gear</h2></div></div>
+          ${slider('launchRpm', 'Launch rpm', 2200, 8200, 100, t.launchRpm, ' rpm', 0, 'Moet passen bij turbo, koppelomvormer/koppeling, banden en aandrijving.')}
+          ${slider('firstGearBoostPct', 'Boost eerste versnelling', 20, 100, 1, t.firstGearBoostPct, '%', 0, 'Beperkt de eerste tractie- en aslastpiek.')}
+          ${slider('secondGearBoostPct', 'Boost tweede versnelling', 30, 100, 1, t.secondGearBoostPct, '%', 0, 'Bepaalt hoeveel van de gemeten curve in twee beschikbaar is.')}
+          <div class="tune-note"><b>Geen vermogensvoorspelling</b><p>Targets veranderen alleen de ongeteste configuratie. De werkelijke drukcurve, turbo-efficiëntie en het resultaat verschijnen pas tijdens de dynopull.</p></div>
+        </div>
+      </div>`;
+    } else if (tunePanel === 'fuel') {
+      content = `<div class="tune-layout">
+        <div class="card tune-card">
+          <div class="card-title"><span>${icon('engine')}</span><div><span class="eyebrow">Verbranding</span><h2>Lambda & ontsteking</h2></div></div>
+          ${slider('lambda', 'Lambda vollast', .66, .94, .01, t.lambda, ' λ', 2, 'Rijker is niet onbeperkt veiliger; te rijk kost verbrandingsefficiëntie en kan de olie verdunnen.')}
+          ${slider('ignitionTrimDeg', 'Ontstekingstrim', -8, 7, .25, t.ignitionTrimDeg, '°', 2, 'Positief vraagt meer octaan-, temperatuur- en knockmarge.')}
+          ${slider('revLimitRpm', 'Rev limiter', 5500, 10000, 100, t.revLimitRpm, ' rpm', 0, 'Met 92,8-mm slag loopt de gemiddelde zuigersnelheid snel op.')}
+          <div class="hardware-readout"><span>Brandstof <b>${esc(fuel.name)}</b></span><span>Ontsteking <b>${esc(ignition.name)}</b></span><span>ECU <b>${esc(ecu.name)}</b></span></div>
+        </div>
+        <div class="card tune-card">
+          <div class="card-title"><span>${icon('service')}</span><div><span class="eyebrow">Direct injection</span><h2>Raildruk & flow</h2></div></div>
+          ${slider('railTargetBar', 'Raildruktarget', 110, 230, 1, t.railTargetBar, ' bar', 0, 'De pomp- en injectorcapaciteit bepalen of dit target onder belasting gehaald wordt.')}
+          <div class="capacity-panel">
+            <div><span>Hardwarecapaciteit</span><b>${Math.round(fuelCapacity)} pk-equivalent</b></div>
+            <div><span>Max rail hardware</span><b>${Math.round(fuelSystem.maxRailBar)} bar</b></div>
+            <div><span>Brandstofkoeling</span><b>${Math.round(fuel.fuelCooling * 100)}%</b></div>
+            <div><span>Meetkwaliteit</span><b>${Math.round(sensors.diagnosticConfidence * 100)}%</b></div>
+          </div>
+          ${t.railTargetBar > fuelSystem.maxRailBar ? '<div class="notice danger"><strong>Target boven hardwarelimiet.</strong> De werkelijke raildruk zal wegzakken; de cut kan ingrijpen.</div>' : '<div class="notice"><strong>Flow wordt pas onder belasting beoordeeld.</strong> De flowtest en dynolog tonen duty en raildrukmarge zonder vooraf pk te onthullen.</div>'}
+        </div>
+      </div>`;
+    } else if (tunePanel === 'cams') {
+      content = `<div class="tune-layout">
+        <div class="card tune-card cam-card ${camPct < 85 ? 'warning' : 'matched'}">
+          <div class="cam-score"><div style="--score:${camPct}"><b>${camPct}%</b><span>timingmatch</span></div></div>
+          <div class="cam-copy"><span class="eyebrow">Custom Cat Cams</span><h2>Overlap-TDC afstelling</h2><p>Gemeten kleplift op cilinder 1 bij overlap-TDC. Jouw opgegeven doelen zijn uitlaat 0,85 mm en inlaat 0,25 mm.</p></div>
+          ${slider('exhaustTdcLiftMm', 'Uitlaatkleplift @ TDC', 0, 1.50, .01, t.exhaustTdcLiftMm, ' mm', 2, 'Mechanisch instellen aan het verstelbare uitlaattandwiel.')}
+          ${slider('intakeTdcLiftMm', 'Inlaatkleplift @ TDC', 0, 1.00, .01, t.intakeTdcLiftMm, ' mm', 2, 'Met de VVT-poelie in de gecontroleerde basispositie meten.')}
+          <div class="target-row"><span>Uitlaatfout <b>${num(cam.exhaustErrorMm,2)} mm</b></span><span>Inlaatfout <b>${num(cam.intakeErrorMm,2)} mm</b></span></div>
+        </div>
+        <div class="card tune-card">
+          <div class="card-title"><span>${icon('tune')}</span><div><span class="eyebrow">VVT-strategie</span><h2>Inlaatfasering</h2></div></div>
+          ${switchRow('vvtEnabled', 'Inlaat-VVT aangesloten', 'Uit schakelen fixeert de basispositie en verandert het bruikbare toerentalgebied.')}
+          ${slider('intakeCamAdvanceDeg', 'Gevraagde inlaat-advance', -5, 30, 1, t.intakeCamAdvanceDeg, '°', 0, 'Meer advance helpt vaak onderin maar kan overlap en top-end verslechteren.')}
+          <div class="notice ${camPct < 72 ? 'danger' : camPct < 88 ? 'stale' : 'success'}"><strong>${camPct >= 88 ? 'Mechanische basis ligt dicht bij de doeldata.' : 'Timing eerst mechanisch corrigeren.'}</strong> ECU-fasering kan een verkeerde mechanische basisstand niet netjes repareren.</div>
+        </div>
+      </div>`;
+    } else {
+      content = `<div class="tune-layout">
+        <div class="card tune-card">
+          <div class="card-title"><span>${icon('service')}</span><div><span class="eyebrow">Motorbeveiliging</span><h2>Failsafes</h2></div></div>
+          ${switchRow('knockControl', 'Knock control', 'Cilinderselectieve correctie waar ECU en sensoren dit ondersteunen.')}
+          ${switchRow('railPressureCut', 'Raildrukcut', 'Koppel en boost terugnemen wanneer druk of duty instort.')}
+          ${switchRow('lambdaProtection', 'Lambdabeveiliging', 'Ingrijpen wanneer de gemeten widebandwaarde van het target afwijkt.')}
+          ${switchRow('methFailsafe', 'WMI-failsafe', 'Alleen zinvol met echte flow- of druksensorbewaking.')}
+          ${switchRow('oilPressureProtection', 'Oliedrukbeveiliging', 'RPM-afhankelijke minimumdruk met koppelreductie of motorcut.')}
+          ${switchRow('overboostCut', 'Overboostcut', 'Beschermt turbo en motor wanneer wastegate of regeling de vraag niet beheerst.')}
+        </div>
+        <div class="card safety-readout">
+          <span class="eyebrow">Controleketen</span><h2>${esc(ecu.name)}</h2>
+          <div class="safety-score"><b>${Math.round(ecu.safetyQuality * sensors.sensorQuality * 100)}%</b><span>ECU × sensor authority</span></div>
+          <div class="safety-grid">
+            <div><span>Sensorpakket</span><b>${esc(sensors.name)}</b></div>
+            <div><span>Boostcontrol</span><b>${esc(boostHardware.name)}</b></div>
+            <div><span>Brandstof</span><b>${esc(fuelSystem.name)}</b></div>
+            <div><span>Ontsteking</span><b>${esc(ignition.name)}</b></div>
+          </div>
+          <div class="notice stale"><strong>Failsafes zijn een laatste vangnet.</strong> De dyno beoordeelt daarnaast raildruk, lambda, knock, EGT, oliedruk, turbospeed, EMP, BMEP, aeratie en kleppentrein.</div>
+        </div>
+      </div>`;
+    }
+
+    return `<section class="page tune-page">
+      <div class="page-title-row"><div><span class="eyebrow">Syvecs-calibratie</span><h1>Map de hardware</h1><p>Stel targets en beveiligingen in zonder vooraf te zien hoeveel vermogen ze opleveren. Alleen de instrumented dynopull onthult de nieuwe curve.</p></div></div>
+      ${turbo.compressorMm >= 94 ? `<div class="notice danger"><strong>${turbo.compressorMm}-mm turbo op circa 2,0 liter.</strong> Zonder passende kop, turbine, wastegates, toerental en spool assistance is de bruikbare vermogensband extreem laat en smal.</div>` : ''}
+      ${tuneTabs()}
+      ${content}
+      <div class="sticky-action-card"><div><span>Na elke wijziging</span><b>Benchcheck optioneel, dynometing verplicht.</b></div><button class="btn ghost" data-action="reset-tune">OEM-map</button><button class="btn" data-go="dyno">Naar dyno</button></div>
+    </section>`;
+  }
+
+  function dynoConfigRange(name, label, min, max, step, value, unit, decimals = 0, hint = '') {
+    return slider(name, label, min, max, step, value, unit, decimals, hint, 'dyno-config');
+  }
+
+  function dynoChannelTabs() {
+    const channels = [['power','PK / Nm'],['air','Lucht'],['fuel','Brandstof'],['thermal','Thermisch'],['risk','Risico']];
+    return `<div class="dyno-channel-tabs">${channels.map(([id,label]) => `<button class="${dynoChannel === id ? 'active' : ''}" data-dyno-channel="${id}">${label}</button>`).join('')}</div>`;
+  }
+
+  function renderDyno() {
+    const clean = currentDyno();
+    const r = state.lastDyno;
+    const active = !!dynoRunning;
+    const point = active ? dynoRunning.result.curve[0] : (r?.curve?.length ? C.interpolateCurve(r.curve, r.peakHpRpm) : null);
+    const bench = C.benchConfidence(state);
+    const previous = state.dynoRuns?.[1] || null;
+    const cfg = state.dynoConfig;
+
+    return `<section class="page dyno-page">
+      <div class="page-title-row"><div><span class="eyebrow">Instrumented engine dyno</span><h1>Meet, log en diagnoseer</h1><p>Ramp rate, luchtcondities en koeling beïnvloeden de meting. De nieuwe curve wordt pas zichtbaar wanneer de pull werkelijk loopt.</p></div></div>
+      ${clean ? '<div class="notice success"><strong>Curve is geldig.</strong> Hardware, montage, tune, olie en dynocondities komen overeen met deze meting.</div>' : staleNotice()}
+
+      <div class="dyno-preflight">
+        <div class="preflight-card ${bench.failed ? 'danger' : bench.complete ? 'good' : 'warn'}"><span>BENCH CONFIDENCE</span><b>${bench.score || 0}/100</b><small>${bench.current}/${bench.total} actueel · ${bench.failed} fail</small></div>
+        <div class="preflight-card"><span>RAMP RATE</span><b>${Math.round(cfg.rampRpmPerSec)} rpm/s</b><small>${cfg.rampRpmPerSec < 400 ? 'langzame heat-soak pull' : cfg.rampRpmPerSec > 800 ? 'snelle inertial pull' : 'gebalanceerde pull'}</small></div>
+        <div class="preflight-card"><span>CORRECTIECONDITIE</span><b>${num(cfg.ambientTempC,0)}°C · ${num(cfg.baroKpa,1)} kPa</b><small>fan ${Math.round(cfg.fanSpeedPct)}%</small></div>
+      </div>
+
+      <div class="card dyno-config-card">
+        <div class="section-head small"><div><span class="eyebrow">Testcelconfiguratie</span><h3>Condities vóór de pull</h3></div><button class="text-button" data-go="build">Benchtests ${icon('chevron')}</button></div>
+        <div class="dyno-config-grid">
+          ${dynoConfigRange('rampRpmPerSec','Ramp rate',250,1000,25,cfg.rampRpmPerSec,' rpm/s',0,'Langzamer geeft meer thermische belasting; sneller kan spool maskeren.')}
+          ${dynoConfigRange('fanSpeedPct','Testcelfan',25,100,1,cfg.fanSpeedPct,'%',0,'Beïnvloedt intercooler- en radiatorluchtstroom.')}
+          ${dynoConfigRange('ambientTempC','Omgevingstemperatuur',0,45,1,cfg.ambientTempC,'°C',0,'Werkelijke inlaatlucht start bij deze conditie.')}
+          ${dynoConfigRange('baroKpa','Barometrische druk',82,104,.1,cfg.baroKpa,' kPa',1,'Luchtdichtheid en compressorbelasting reageren op hoogte en weer.')}
+        </div>
+      </div>
+
+      <div class="dyno-console ${active ? 'running' : ''}">
+        <div class="dyno-engine-panel">
+          ${engineVisual({ compact: true, mode: 'dyno', labels: false, running: active, view: engineView })}
+          <div class="dyno-watermark">MOTORENTESTBANK · CAWB · ${esc(engineView.toUpperCase())}</div>
+        </div>
+        <div class="live-gauges v4-live-gauges">
+          <div><span>RPM</span><b id="live-rpm">${point ? Math.round(point.rpm) : 1500}</b></div>
+          <div><span>BOOST</span><b id="live-boost">${point ? num(point.boostBar,2) : '0.00'}<small> bar</small></b></div>
+          <div><span>VERMOGEN</span><b id="live-hp">${point ? Math.round(point.hp) : '—'}<small> pk</small></b></div>
+          <div><span>EGT</span><b id="live-egt">${point ? Math.round(point.egtC) : '—'}<small> °C</small></b></div>
+          <div><span>OLIEDRUK</span><b id="live-oil">${point ? num(point.oilPressureBar,1) : '—'}<small> bar</small></b></div>
+          <div><span>RAIL</span><b id="live-rail">${point ? Math.round(point.railBar) : '—'}<small> bar</small></b></div>
+        </div>
+        ${dynoChannelTabs()}
+        <div class="dyno-chart-wrap"><canvas id="dyno-chart" aria-label="Dynografiek voor geselecteerde datakanalen"></canvas></div>
+        <div class="dyno-progress"><i id="dyno-progress"></i><span id="dyno-live-status">${active ? 'PULL START' : clean ? 'LAATSTE VOLLEDIGE PULL' : 'WACHT OP NIEUWE PULL'}</span></div>
+      </div>
+
+      <div class="dyno-action-row">
+        <button class="btn dyno-start ${active ? 'running' : ''}" data-action="start-dyno" ${active ? 'disabled' : ''}><span>${icon('chart')}</span>${active ? 'DYNO LOOPT…' : 'START VOLLEDIGE DYNO PULL'}</button>
+        ${active ? '<button class="btn danger" data-action="abort-dyno">PULL AFBREKEN</button>' : previous ? `<button class="btn ghost" data-action="toggle-compare">Vergelijking: ${state.settings?.dynoCompare === false ? 'uit' : 'aan'}</button>` : ''}
+      </div>
+
+      ${r ? renderDynoResult(r, clean) : '<div class="card empty-card">Nog geen dynometing opgeslagen.</div>'}
+      ${renderDynoHistory()}
+    </section>`;
+  }
+
+  function renderDynoResult(r, clean) {
+    const warnings = (r.warnings || []).map(w => `<div class="warning-item ${w.severity === 'danger' ? 'danger' : ''}"><span>!</span><p>${esc(w.text || w)}</p></div>`).join('');
+    const cam = r.camTiming || C.camTimingHealth(state);
+    const diagnostics = C.diagnoseDyno(r);
+    const bench = r.benchConfidence || C.benchConfidence(state);
+    return `<div class="result-card v4-result-card ${r.failureRpm ? 'failed' : ''} ${!clean ? 'old' : ''}">
+      <div class="result-head"><div><span class="eyebrow">${clean ? 'Gemeten resultaat' : 'Historische configuratie'}</span><h2>${r.failureRpm ? 'Pull afgebroken' : `${Math.round(r.peakHp)} pk · ${Math.round(r.peakTorqueNm)} Nm`}</h2><p>${esc(r.status || '')}</p></div><div class="score-badge ${r.reliabilityScore >= 82 ? 'good' : r.reliabilityScore >= 65 ? 'warn' : 'danger'}"><b>${r.reliabilityScore}</b><span>/100</span></div></div>
+      ${r.failureRpm ? `<div class="notice danger"><strong>Afgebroken @ ${r.failureRpm} rpm.</strong> ${esc(r.failureReason)}</div>` : ''}
+      <div class="result-metrics v4-result-metrics">
+        <div><span>Piekvermogen</span><b>${Math.round(r.peakHp)} pk</b><small>@ ${r.peakHpRpm} rpm</small></div>
+        <div><span>Piekkoppel</span><b>${Math.round(r.peakTorqueNm)} Nm</b><small>@ ${r.peakTorqueRpm} rpm</small></div>
+        <div><span>Airflow</span><b>${num(r.estimatedAirflowLbMin,1)} lb/min</b><small>${num(r.airDensityKgM3,3)} kg/m³</small></div>
+        <div><span>Turbo-as</span><b>${Math.round(r.maxTurboShaftRpm/1000)}k rpm</b><small>${num(r.maxEmpBar,2)} bar max EMP</small></div>
+        <div><span>Fuel duty</span><b>${num(r.maxFuelDuty,0)}%</b><small>${num(r.maxIatC,0)}°C max IAT</small></div>
+        <div><span>Bench confidence</span><b>${bench.score || 0}/100</b><small>${bench.current}/${bench.total} test(s)</small></div>
+      </div>
+      <div class="technical-grid">
+        <div><span>Zwakste schakel</span><b>${esc(r.bottleneck)}</b></div>
+        <div><span>Motor</span><b>${num(r.displacementCc,0)} cc · ${num(r.boreMm,2)} × ${num(r.strokeMm,1)} · ${num(r.compressionRatio,1)}:1</b></div>
+        <div><span>Nokkenmatch</span><b>${Math.round((cam.score || 1)*100)}% · fout ${num(cam.exhaustErrorMm,2)} / ${num(cam.intakeErrorMm,2)} mm</b></div>
+        <div><span>Mechanisch</span><b>${num(r.maxBmepBar,1)} bar BMEP · ${num(r.maxMeanPistonSpeed,1)} m/s zuigersnelheid</b></div>
+        <div><span>Thermisch</span><b>EGT ${num(r.maxEgtC,0)}°C · olie ${num(r.maxOilTempC,0)}°C</b></div>
+        <div><span>Oliesysteem</span><b>min ${num(r.minOilPressureBar,1)} bar · aeratie ${num(r.maxOilAerationPct,0)}%</b></div>
+      </div>
+      <div class="section-head small diagnostic-title"><div><span class="eyebrow">Automatische diagnose</span><h3>Wat begrenst deze combinatie?</h3></div></div>
+      <div class="diagnostic-grid">${diagnostics.map(d => `<article class="diagnostic-card ${d.severity}"><span>${esc(d.system)}</span><b>${esc(d.observation)}</b><p>${esc(d.action)}</p></article>`).join('')}</div>
+      ${warnings ? `<div class="warning-list">${warnings}</div>` : '<div class="notice success"><strong>Geen extra hoofdwaarschuwingen.</strong> De run bleef binnen de gemodelleerde systeemgrenzen.</div>'}
+    </div>`;
+  }
+
+  function renderDynoHistory() {
+    const runs = Array.isArray(state.dynoRuns) ? state.dynoRuns.slice(0, 8) : [];
+    if (!runs.length) return '';
+    return `<div class="card history-card"><div class="section-head small"><div><span class="eyebrow">Dynohistorie</span><h3>Laatste runs</h3></div><span class="history-hint">run 1 is de actieve referentie</span></div>
+      <div class="run-table">${runs.map((r, i) => `<div class="run-row ${i === 0 ? 'current' : ''}"><span>${String(i + 1).padStart(2,'0')}</span><div><b>${esc(r.label || 'Dynopull')}</b><small>${new Date(r.measuredAt || Date.now()).toLocaleString('nl-NL')} · ${r.dynoConfig ? `${Math.round(r.dynoConfig.rampRpmPerSec)} rpm/s · ${Math.round(r.dynoConfig.ambientTempC)}°C` : 'oude meting'}</small></div><strong>${Math.round(r.peakHp)} pk<br><small>${Math.round(r.peakTorqueNm)} Nm · ${r.reliabilityScore}/100</small></strong></div>`).join('')}</div>
+    </div>`;
+  }
+
+  function chartSeries(channel) {
+    const defs = {
+      power: [
+        { key:'hp', label:'PK', color:'#ffad17', unit:'pk' },
+        { key:'torqueNm', label:'NM', color:'#36b8ff', unit:'Nm' }
+      ],
+      air: [
+        { key:'boostBar', label:'BOOST', color:'#36b8ff', unit:'bar' },
+        { key:'empBar', label:'EMP', color:'#ff775a', unit:'bar' },
+        { key:'spoolPct', label:'SPOOL', color:'#b98cff', unit:'%' }
+      ],
+      fuel: [
+        { key:'fuelDutyPct', label:'DUTY', color:'#ffad17', unit:'%' },
+        { key:'railBar', label:'RAIL', color:'#36b8ff', unit:'bar' },
+        { key:'lambda', label:'LAMBDA', color:'#48db9c', unit:'λ' }
+      ],
+      thermal: [
+        { key:'egtC', label:'EGT', color:'#ff654d', unit:'°C' },
+        { key:'iatC', label:'IAT', color:'#36b8ff', unit:'°C' },
+        { key:'oilTempC', label:'OLIE', color:'#ffad17', unit:'°C' }
+      ],
+      risk: [
+        { key:'turboLoadPct', label:'TURBO', color:'#b98cff', unit:'%' },
+        { key:'knockRisk', label:'KNOCK', color:'#ff5365', unit:'idx' },
+        { key:'oilFilmRisk', label:'OLIEFILM', color:'#ffad17', unit:'idx' },
+        { key:'oilAerationPct', label:'AERATIE', color:'#36b8ff', unit:'%' }
+      ]
+    };
+    return defs[channel] || defs.power;
+  }
+
+  function drawDynoChart(canvas, result, progress = 1, faded = false, channel = dynoChannel, comparison = null) {
+    if (!canvas || !result?.curve?.length) return;
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(280, rect.width || 360);
+    const height = width < 450 ? 270 : 320;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.height = `${height}px`;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const pad = { l: 45, r: 15, t: 46, b: 31 };
+    const plotW = width - pad.l - pad.r;
+    const plotH = height - pad.t - pad.b;
+    const curve = result.curve;
+    const limit = Math.max(2, Math.floor(curve.length * clamp(progress, 0, 1)));
+    const visible = curve.slice(0, limit);
+    const rpmMin = curve[0].rpm;
+    const rpmMax = curve[curve.length - 1].rpm;
+    const x = rpm => pad.l + (rpm - rpmMin) / Math.max(1, rpmMax - rpmMin) * plotW;
+    const defs = chartSeries(channel);
+
+    const bg = ctx.createLinearGradient(0, 0, 0, height);
+    bg.addColorStop(0, '#101722'); bg.addColorStop(1, '#06090e');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, width, height);
+    const vignette = ctx.createRadialGradient(width*.55,height*.35,10,width*.55,height*.35,width*.7);
+    vignette.addColorStop(0,'rgba(50,113,171,.08)'); vignette.addColorStop(1,'rgba(0,0,0,.35)'); ctx.fillStyle=vignette;ctx.fillRect(0,0,width,height);
+
+    ctx.strokeStyle = '#24303d'; ctx.lineWidth = 1; ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = '#728094';
+    for (let i=0;i<=4;i++) { const yy = pad.t + plotH - i/4*plotH; ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(width-pad.r,yy);ctx.stroke();ctx.fillText(`${i*25}%`,4,yy+3); }
+    for (let rpm = Math.ceil(rpmMin / 1000) * 1000; rpm <= rpmMax; rpm += 1000) { const xx=x(rpm);ctx.beginPath();ctx.moveTo(xx,pad.t);ctx.lineTo(xx,pad.t+plotH);ctx.stroke();ctx.fillText(`${rpm/1000}k`,xx-8,height-9); }
+
+    const extents = {};
+    defs.forEach(def => {
+      const vals = curve.map(p => Number(p[def.key])).filter(Number.isFinite);
+      let min = Math.min(...vals), max = Math.max(...vals);
+      if (def.key === 'hp' || def.key === 'torqueNm') { min = 0; max = Math.ceil(Math.max(result.peakHp,result.peakTorqueNm)/100)*100; }
+      else if (def.key === 'boostBar' || def.key === 'empBar') { min=0; max=Math.max(1,Math.ceil(Math.max(...curve.map(p=>Math.max(p.boostBar||0,p.empBar||0)))*2)/2); }
+      else if (def.key === 'railBar') { min=0; max=Math.max(200,Math.ceil(max/25)*25); }
+      else if (def.key === 'fuelDutyPct' || def.key === 'turboLoadPct' || def.key === 'spoolPct' || def.key === 'oilAerationPct') { min=0; max=Math.max(100,Math.ceil(max/25)*25); }
+      else if (def.key === 'lambda') { min=.65; max=1.0; }
+      else if (def.key === 'egtC') { min=500; max=Math.max(1000,Math.ceil(max/100)*100); }
+      else if (def.key === 'iatC') { min=0; max=Math.max(80,Math.ceil(max/20)*20); }
+      else if (def.key === 'oilTempC') { min=60; max=Math.max(160,Math.ceil(max/20)*20); }
+      else if (def.key === 'knockRisk' || def.key === 'oilFilmRisk') { min=0; max=Math.max(1.5,Math.ceil(max*4)/4); }
+      if (!(max>min)) max=min+1;
+      extents[def.key]={min,max};
+    });
+    const yFor=(def,v)=>{const ex=extents[def.key];return pad.t+plotH-clamp((Number(v)-ex.min)/(ex.max-ex.min),0,1)*plotH;};
+
+    const drawRun=(run,alpha=.25,dashed=true)=>{
+      if(!run?.curve?.length)return;
+      ctx.save();ctx.globalAlpha=alpha;if(dashed)ctx.setLineDash([6,6]);
+      defs.forEach(def=>{ctx.beginPath();run.curve.forEach((p,i)=>{const xx=x(p.rpm),yy=yFor(def,p[def.key]);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});ctx.strokeStyle=def.color;ctx.lineWidth=1.6;ctx.stroke();});ctx.restore();
+    };
+    if (comparison && state.settings?.dynoCompare !== false && progress >= 1) drawRun(comparison,.22,true);
+
+    defs.forEach(def => {
+      ctx.beginPath(); visible.forEach((p,i)=>{const xx=x(p.rpm),yy=yFor(def,p[def.key]);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});
+      ctx.globalAlpha=faded?.30:.16;ctx.strokeStyle=def.color;ctx.lineWidth=9;ctx.stroke();
+      ctx.globalAlpha=faded?.38:1;ctx.strokeStyle=def.color;ctx.lineWidth=2.7;ctx.stroke();ctx.globalAlpha=1;
+    });
+
+    let lx=pad.l; ctx.font='800 10px system-ui,sans-serif';
+    defs.forEach(def=>{const vals=visible.map(p=>Number(p[def.key])).filter(Number.isFinite);const last=vals[vals.length-1]||0;ctx.fillStyle=def.color;const precision=Math.abs(last)<10?2:0;const text=`${def.label} ${last.toFixed(precision)} ${def.unit}`;ctx.fillText(text,lx,22);lx+=ctx.measureText(text).width+14;});
+    ctx.fillStyle='#8290a4';ctx.font='700 9px system-ui,sans-serif';ctx.fillText(channel.toUpperCase(),pad.l,37);
+    if (faded) { ctx.fillStyle='#aab4c2';ctx.font='800 11px system-ui,sans-serif';ctx.fillText('OUDE CONFIGURATIE',width-142,37); }
+  }
+
+  function startDyno() {
+    if (dynoRunning) return;
+    activeTab = 'dyno';
+    haptic([18, 40, 18]);
+    const result = C.simulateEngine(state);
+    dynoRunning = { result, start: performance.now(), duration: state.settings?.reducedMotion ? 1450 : 5600 };
+    startEngineAudio();
+    render();
+    requestAnimationFrame(() => {
+      const tick = now => {
+        if (!dynoRunning || activeTab !== 'dyno') return;
+        const p = clamp((now - dynoRunning.start) / dynoRunning.duration, 0, 1);
+        const curve = dynoRunning.result.curve;
+        const idx = Math.min(curve.length - 1, Math.floor(p * (curve.length - 1)));
+        const point = curve[idx];
+        drawDynoChart($('#dyno-chart'), dynoRunning.result, p, false, dynoChannel, null);
+        updateEngineAudio(point.rpm, point.turboLoadPct / 100);
+        const set = (id, value) => { const n = $(id); if (n) n.innerHTML = value; };
+        set('#live-rpm', Math.round(point.rpm));
+        set('#live-boost', `${num(point.boostBar,2)}<small> bar</small>`);
+        set('#live-hp', `${Math.round(point.hp)}<small> pk</small>`);
+        set('#live-egt', `${Math.round(point.egtC)}<small> °C</small>`);
+        set('#live-oil', `${num(point.oilPressureBar,1)}<small> bar</small>`);
+        set('#live-rail', `${Math.round(point.railBar)}<small> bar</small>`);
+        const bar = $('#dyno-progress'); if (bar) bar.style.width = `${p * 100}%`;
+        const status = $('#dyno-live-status');
+        if (status) status.textContent = `${Math.round(point.torqueNm)} Nm · λ ${num(point.lambda,2)} · duty ${Math.round(point.fuelDutyPct)}% · as ${Math.round(point.turboShaftRpm/1000)}k`;
+        if (p < 1) dynoRunning.raf = requestAnimationFrame(tick); else finishDyno(dynoRunning.result);
+      };
+      dynoRunning.raf = requestAnimationFrame(tick);
+    });
+  }
+
+  function abortDyno() {
+    if (!dynoRunning) return;
+    if (dynoRunning.raf) cancelAnimationFrame(dynoRunning.raf);
+    dynoRunning = null; stopEngineAudio({ hard: true }); haptic([40,30,40]); showToast('Dynopull handmatig afgebroken; geen resultaat opgeslagen.'); render();
+  }
+
+  function finishDyno(result) {
+    stopEngineAudio({ hard: true });
+    state.lastDyno = result;
+    state.lastDynoSignature = C.engineSignature(state);
+    state.dynoRuns = Array.isArray(state.dynoRuns) ? state.dynoRuns : [];
+    state.dynoRuns.unshift({ ...result, label: result.failureRpm ? `Afgebroken @ ${result.failureRpm} rpm` : `${state.buildName} dynopull` });
+    state.dynoRuns = state.dynoRuns.slice(0, 20);
+    state.wear.engine = clamp(state.wear.engine + result.wearPerDynoPull, 0, 100);
+    state.wear.turbo = clamp(state.wear.turbo + Math.max(.05, (result.maxTurboLoad - 82) * .012) + (C.getPart(state, 'spool').wearFactor || 0) * .35, 0, 100);
+    state.wear.transmission = clamp(state.wear.transmission + .03, 0, 100);
+    state.service.oilAgeKm += 120 + Math.max(0, result.maxOilTempC - 110) * 3;
+    state.service.oilRuns += 1;
+    if (result.failureRpm) {
+      state.damage.engine = clamp(state.damage.engine + 18 + (100 - result.reliabilityScore) * .25, 0, 100);
+      state.damage.turbo = clamp(state.damage.turbo + (String(result.failureReason).includes('Turbo') ? 28 : 4), 0, 100);
+    }
+    pushHistory({ type: 'dyno', label: result.failureRpm ? `Dyno afgebroken @ ${result.failureRpm} rpm` : 'Volledige dynopull', hp: result.peakHp, nm: result.peakTorqueNm });
+    saveState();
+    dynoRunning = null;
+    syncAchievements();
+    haptic(result.failureRpm ? [80, 50, 80] : [30, 30, 30]);
+    showToast(result.failureRpm ? 'Pull afgebroken: virtuele schade geregistreerd.' : 'Dynometing opgeslagen. De dragstrip is vrijgegeven.');
+    render();
+  }
+
+  function vehicleRange(name, label, min, max, step, value, unit, decimals = 0, hint = '') {
+    return `<div class="control compact-control"><div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output data-value-for="vehicle.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-vehicle="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}"></div>`;
+  }
+
+  function burnoutProfile() {
+    const id = state.vehicle.tireCompound;
+    const profiles = {
+      street: { targetC: 38, cautionC: 52, heatPerLevel: .28, heatRate: 9.5, minStageC: 30 },
+      uhp: { targetC: 52, cautionC: 70, heatPerLevel: .42, heatRate: 11.5, minStageC: 38 },
+      semislick: { targetC: 68, cautionC: 88, heatPerLevel: .55, heatRate: 13.5, minStageC: 48 },
+      drag_radial: { targetC: 82, cautionC: 102, heatPerLevel: .72, heatRate: 16.5, minStageC: 58 },
+      slick: { targetC: 82, cautionC: 106, heatPerLevel: .72, heatRate: 17.5, minStageC: 58 },
+      pro_radial: { targetC: 82, cautionC: 108, heatPerLevel: .72, heatRate: 18.5, minStageC: 60 }
+    };
+    return { id, ...(profiles[id] || profiles.street), trackC: Number(state.vehicle.trackTempC || 25) };
+  }
+
+  function ensureBurnoutRuntime(forceReset = false) {
+    const profile = burnoutProfile();
+    const key = `${profile.id}:${profile.trackC}:${state.vehicle.drivetrain}`;
+    if (forceReset || !burnoutRuntime || burnoutRuntime.key !== key) {
+      const measured = C.gripFactor(state.vehicle).tireTempC;
+      burnoutRuntime = {
+        key, tempC: clamp(measured, profile.trackC, profile.cautionC + 12), rpm: 900,
+        active: false, smoke: 0, wheelSlip: 0, startedAt: 0, lastAt: 0, elapsed: 0
+      };
+    }
+    return burnoutRuntime;
+  }
+
+  function burnoutAssessment(tempC = ensureBurnoutRuntime().tempC) {
+    const profile = burnoutProfile();
+    const difference = tempC - profile.targetC;
+    const score = Math.round(clamp(100 - Math.abs(difference) * (difference > 0 ? 4.6 : 3.4), 0, 100));
+    let label = 'KOUD', cls = 'cold';
+    if (tempC > profile.cautionC) { label = 'TE HEET'; cls = 'hot'; }
+    else if (score >= 84) { label = 'OPTIMAAL'; cls = 'good'; }
+    else if (difference < 0) { label = score >= 58 ? 'BIJNA OP TEMP' : 'KOUD'; cls = score >= 58 ? 'warn' : 'cold'; }
+    else { label = score >= 58 ? 'WARM' : 'TE WARM'; cls = score >= 58 ? 'warn' : 'hot'; }
+    return { ...profile, score, label, cls, difference };
+  }
+
+  function syncBurnoutLevel(tempC) {
+    const profile = burnoutProfile();
+    state.vehicle.burnoutLevel = clamp((Number(tempC) - profile.trackC) / profile.heatPerLevel, 0, 100);
+  }
+
+  function dragTreeMarkup() {
+    return `<div class="tree v6-tree" id="tree" aria-label="Drag race startboom">
+      <i class="bulb pre" data-bulb="preL"></i><i class="bulb pre" data-bulb="preR"></i>
+      <i class="bulb stage" data-bulb="stageL"></i><i class="bulb stage" data-bulb="stageR"></i>
+      <i class="bulb amber" data-bulb="a1L"></i><i class="bulb amber" data-bulb="a1R"></i>
+      <i class="bulb amber" data-bulb="a2L"></i><i class="bulb amber" data-bulb="a2R"></i>
+      <i class="bulb amber" data-bulb="a3L"></i><i class="bulb amber" data-bulb="a3R"></i>
+      <i class="bulb green" data-bulb="gL"></i><i class="bulb green" data-bulb="gR"></i>
+      <i class="bulb red" data-bulb="rL"></i><i class="bulb red" data-bulb="rR"></i>
+    </div>`;
+  }
+
+  function tachometerMarkup(point) {
+    const maxRpm = Math.max(7000, Number(state.tune.revLimitRpm || 8000));
+    const rpm = clamp(Number(point.rpm || 0), 0, maxRpm);
+    const frac = clamp(rpm / maxRpm, 0, 1);
+    const needle = -126 + frac * 252;
+    const tachDeg = frac * 252;
+    return `<div class="v6-tach" id="race-tach" style="--needle-angle:${needle}deg;--tach-deg:${tachDeg}deg">
+      <div class="v6-tach-scale"><i></i></div>
+      <span class="v6-tach-needle"></span>
+      <div class="v6-tach-center"><b id="race-rpm">${Math.round(rpm)}</b><small>RPM</small><strong id="race-gear">${point.gear || 1}</strong></div>
+      <div class="v6-shift-lights" id="shift-lights">${Array.from({ length: 10 }, (_, i) => `<i class="${frac > (i + 1) / 11 ? 'on' : ''}"></i>`).join('')}</div>
+    </div>`;
+  }
+
+  function telemetryValue(trace, key, fallback = 0) {
+    if (!Array.isArray(trace) || !trace.length) return fallback;
+    return trace.reduce((m,p) => Math.max(m, Number(p[key] || 0)), fallback);
+  }
+
+  function renderDragTelemetryPanel() {
+    const run = state.lastDrag;
+    if (!run?.trace?.length) {
+      return `<div class="v12-telemetry-empty"><span class="eyebrow">Runanalyse</span><h2>Nog geen telemetrie</h2><p>Voltooi een realtime kwartmijl. Daarna zie je snelheid, toerental, boost, wheelspin, rijlijn en aandrijflijntemperaturen over de volledige 402 meter.</p><button class="btn" data-race-panel="tree">NAAR DRAG EXPERIENCE</button></div>`;
+    }
+    const maxSpeed = telemetryValue(run.trace,'speedKmh');
+    const maxRpm = telemetryValue(run.trace,'rpm');
+    const maxBoost = telemetryValue(run.trace,'boostBar');
+    const maxSpin = telemetryValue(run.trace,'wheelspinPct');
+    const maxLane = run.maxLaneOffsetM || telemetryValue(run.trace,'lateralM');
+    const outcome = run.raceMode === 'heads_up'
+      ? `<div class="v12-analysis-card ${run.won ? 'win' : 'loss'}"><span>HEADS-UP</span><b>${run.won ? 'GEWONNEN' : 'VERLOREN'}</b><small>${esc(run.opponentName || 'Rivaal')} · ${Number(Math.abs(run.raceDeltaS || 0)).toFixed(3)} s ${run.won ? 'voorsprong' : 'achterstand'}</small></div>`
+      : `<div class="v12-analysis-card"><span>RUNMODUS</span><b>SOLO TEST</b><small>Geen rivaal gekoppeld aan deze timeslip.</small></div>`;
+    return `<div class="v12-telemetry-panel">
+      <div class="section-head"><div><span class="eyebrow">Post-run data</span><h2>402 meter telemetrie</h2><p>De lijnen volgen de werkelijk gesimuleerde run, inclusief schakelmomenten, boostopbouw en stuurcorrecties.</p></div><div class="setup-badge"><span>LAATSTE PASS</span><b>${run.quarter.toFixed(3)} s</b></div></div>
+      <div class="v12-telemetry-chart-card">
+        <canvas id="v12-telemetry-canvas" aria-label="Grafiek van dragtelemetrie"></canvas>
+        <div class="v12-chart-legend">
+          <span style="--legend:${TELEMETRY_COLORS.speed}">Snelheid</span><span style="--legend:${TELEMETRY_COLORS.rpm}">RPM</span><span style="--legend:${TELEMETRY_COLORS.boost}">Boost</span><span style="--legend:${TELEMETRY_COLORS.wheelspin}">Wheelspin</span><span style="--legend:${TELEMETRY_COLORS.lane}">Rijlijn</span>
+        </div>
+      </div>
+      <div class="v12-analysis-grid">
+        ${outcome}
+        <div class="v12-analysis-card"><span>PIEKWAARDEN</span><b>${Math.round(maxSpeed)} km/u</b><small>${Math.round(maxRpm)} rpm · ${maxBoost.toFixed(2)} bar</small></div>
+        <div class="v12-analysis-card"><span>TRACTIE</span><b>${maxSpin.toFixed(0)}% spin</b><small>${Number(run.burnoutTempC || 0).toFixed(0)}°C band · ${Number(run.sixtyFt || 0).toFixed(3)} s 60 ft</small></div>
+        <div class="v12-analysis-card"><span>RIJLIJN</span><b>${Number(maxLane || 0).toFixed(2)} m</b><small>${run.lineTouches || 0} correcties · ${run.laneDnf ? 'run ongeldig' : 'binnen de strip'}</small></div>
+        <div class="v12-analysis-card"><span>AANDRIJFLIJN</span><b>${Number(run.maxClutchTempC || 0).toFixed(0)}°C koppeling</b><small>${Number(run.maxGearboxTempC || 0).toFixed(0)}°C bak · stress ${Number(run.drivelineStress || 0).toFixed(0)}%</small></div>
+        <div class="v12-analysis-card"><span>BEGRENZER</span><b>${Number(run.limiterTimeS || 0).toFixed(2)} s</b><small>Schakelscore ${run.shiftScore || 0}/100 · ${run.transmissionMode || '—'}</small></div>
+      </div>
+      <div class="v12-telemetry-note">Telemetrie is een fysisch gamemodel, geen vervanging voor echte ECU-, CAN- of dynologs.</div>
+    </div>`;
+  }
+
+  function drawDragTelemetry(canvas, run) {
+    if (!canvas || !run?.trace?.length) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    const width = Math.max(320, Math.round(rect.width || 720));
+    const height = Math.max(230, Math.round(rect.height || 320));
+    canvas.width = width * dpr; canvas.height = height * dpr;
+    const ctx = canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    const pad = {l:38,r:16,t:20,b:32};
+    const cw = width-pad.l-pad.r, ch = height-pad.t-pad.b;
+    const bg = ctx.createLinearGradient(0,0,0,height); bg.addColorStop(0,'#101823'); bg.addColorStop(1,'#05080d'); ctx.fillStyle=bg;ctx.fillRect(0,0,width,height);
+    ctx.strokeStyle='rgba(157,177,201,.16)';ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){const y=pad.t+ch*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(width-pad.r,y);ctx.stroke();}
+    for(let i=0;i<=4;i++){const x=pad.l+cw*i/4;ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,height-pad.b);ctx.stroke();ctx.fillStyle='#748297';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText(`${Math.round(402.336*i/4)} m`,x,height-11);}
+    const trace=run.trace;
+    const maxSpeed=Math.max(180,telemetryValue(trace,'speedKmh')*1.08);
+    const maxRpm=Math.max(6500,Number(state.tune.revLimitRpm||8000));
+    const maxBoost=Math.max(1,telemetryValue(trace,'boostBar')*1.15);
+    const lines=[
+      {key:'speedKmh',color:TELEMETRY_COLORS.speed,norm:v=>clamp(v/maxSpeed,0,1)},
+      {key:'rpm',color:TELEMETRY_COLORS.rpm,norm:v=>clamp(v/maxRpm,0,1)},
+      {key:'boostBar',color:TELEMETRY_COLORS.boost,norm:v=>clamp(v/maxBoost,0,1)},
+      {key:'wheelspinPct',color:TELEMETRY_COLORS.wheelspin,norm:v=>clamp(v/100,0,1)},
+      {key:'lateralM',color:TELEMETRY_COLORS.lane,norm:v=>clamp(.5+v/2.1,0,1)}
+    ];
+    for(const line of lines){ctx.beginPath();let started=false;for(const p of trace){const x=pad.l+clamp(Number(p.distanceM||0)/402.336,0,1)*cw;const y=pad.t+(1-line.norm(Number(p[line.key]||0)))*ch;if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);}ctx.strokeStyle=line.color;ctx.lineWidth=line.key==='lateralM'?2.2:2.5;ctx.shadowColor=line.color;ctx.shadowBlur=4;ctx.stroke();ctx.shadowBlur=0;}
+    ctx.fillStyle='#9aa8ba';ctx.font='10px system-ui';ctx.textAlign='left';ctx.fillText(`${Math.round(maxSpeed)} km/u`,5,pad.t+5);ctx.fillText('0',18,height-pad.b+3);
+  }
+
+  function renderDrag() {
+    const ready = currentDyno() && state.lastDyno && !state.lastDyno.failureRpm;
+    const v = state.vehicle;
+    const fit = C.wheelFitment(v);
+    const last = state.lastDrag;
+    const da = C.densityAltitude(v);
+    const tire = C.TIRE_MAP[v.tireCompound];
+    const rival = selectedRival();
+    const headsUp = raceIsHeadsUp();
+    const record = state.records?.[v.drivetrain];
+    const runs = Array.isArray(state.dragRuns) ? state.dragRuns.slice(0, 10) : [];
+    let panel = '';
+
+    if (racePanel === 'setup') {
+      panel = `<div class="race-setup-panel v7-setup-panel">
+        <div class="section-head"><div><span class="eyebrow">Chassis & banden</span><h2>Dragsetup</h2><p>Wielmaat, druk, massa, temperatuur en aandrijving worden rechtstreeks in de kwartmijlsimulatie gebruikt.</p></div><div class="setup-badge"><span>DENSITY ALTITUDE</span><b>${Math.round(da)} m</b></div></div>
+        <div class="v12-race-weekend-card">
+          <div><span class="eyebrow">Raceweekend</span><h3>${headsUp ? 'Heads-up duel' : 'Solo testpass'}</h3><p>${headsUp ? `Tegen ${esc(rival.name)} · ${esc(rival.description)}` : 'Rijd zonder tegenstander en focus volledig op setup, schakelen en rijlijn.'}</p></div>
+          <div class="v12-mode-toggle"><button class="${!headsUp?'active':''}" data-race-mode="solo">SOLO</button><button class="${headsUp?'active':''}" data-race-mode="heads_up">HEADS-UP</button></div>
+        </div>
+        <div class="v12-rival-picker ${headsUp?'':'disabled'}">
+          ${Object.values(RIVALS).map(r=>`<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${Math.round(r.powerScale*100)}% power · RT ${r.reactionMin.toFixed(3)}–${r.reactionMax.toFixed(3)} · winst ${euro(r.reward)}</small></button>`).join('')}
+        </div>
+        <div class="vehicle-grid v4-vehicle-grid">
+          <div class="card">
+            <span class="eyebrow">Aandrijflijn</span><h3>Platform & massa</h3>
+            <label class="field-label">Aandrijving<select data-vehicle-select="drivetrain">${Object.keys(C.DRIVETRAINS).map(k => `<option value="${k}" ${v.drivetrain === k ? 'selected' : ''}>${esc(C.DRIVETRAINS[k].name)}</option>`).join('')}</select></label>
+            <label class="field-label">Bandcompound<select data-vehicle-select="tireCompound">${C.TIRE_COMPOUNDS.map(t => `<option value="${t.id}" ${v.tireCompound === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
+            ${vehicleRange('massKg', 'Rijklaar gewicht', 900, 1900, 10, v.massKg, ' kg', 0, 'Inclusief bestuurder, vloeistoffen en gekozen aandrijflijn.')}
+            ${vehicleRange('pressureBar', 'Bandenspanning', .65, 3.2, .05, v.pressureBar, ' bar', 2, `Compoundoptimum rond ${num(tire.optimumBar,2)} bar.`)}
+            ${switchRow('preparedTrack', 'Geprepareerde baan', 'Meer bruikbare grip, vooral met drag radial, slick of pro radial.', 'vehicle')}
+          </div>
+          <div class="card">
+            <span class="eyebrow">Wielen</span><h3>Maat & roterende massa</h3>
+            ${vehicleRange('rimDiameterIn', 'Velgdiameter', 15, 22, 1, v.rimDiameterIn, '″', 0)}
+            ${vehicleRange('rimWidthIn', 'Velgbreedte', 6.5, 13, .5, v.rimWidthIn, '″', 1)}
+            ${vehicleRange('tireWidthMm', 'Bandbreedte', 185, 355, 5, v.tireWidthMm, ' mm', 0)}
+            ${vehicleRange('aspectRatio', 'Hoogteverhouding', 20, 65, 5, v.aspectRatio, '%', 0)}
+            ${vehicleRange('wheelMassKg', 'Massa per wiel', 6, 22, .2, v.wheelMassKg, ' kg', 1)}
+          </div>
+          <div class="card">
+            <span class="eyebrow">Start & chassis</span><h3>Launchgedrag</h3>
+            ${vehicleRange('burnoutLevel', 'Opgeslagen bandwarmte', 0, 100, 1, v.burnoutLevel, '%', 0, 'De interactieve burnout overschrijft dit met de werkelijk behaalde temperatuur.')}
+            ${vehicleRange('suspensionTransferPct', 'Gewichtsoverdracht', 25, 100, 1, v.suspensionTransferPct, '%', 0, 'FWD wil minder achterwaartse transfer; RWD profiteert van gecontroleerde squat.')}
+            ${vehicleRange('shiftRpm', 'Schakeltoerental', 4500, 10000, 100, v.shiftRpm, ' rpm', 0, 'De game geeft een shiftcue rond dit toerental.')}
+            ${vehicleRange('steeringSensitivityPct', 'Stuurgevoeligheid', 60, 150, 1, v.steeringSensitivityPct, '%', 0, 'Hoger reageert sneller, maar maakt de auto nerveuzer op hoge snelheid.')}
+            ${vehicleRange('steeringAssistPct', 'Middenassistent', 0, 60, 1, v.steeringAssistPct, '%', 0, 'Lichte zelfcentrering; 0% is volledig handmatig.')}
+            <div class="setup-summary"><span>Launch map</span><b>${state.tune.launchRpm} rpm · G1 ${state.tune.firstGearBoostPct}% · G2 ${state.tune.secondGearBoostPct}%</b></div>
+          </div>
+          <div class="card">
+            <span class="eyebrow">Baan & weer</span><h3>Omstandigheden</h3>
+            ${vehicleRange('ambientTempC', 'Luchttemperatuur', -5, 45, 1, v.ambientTempC, '°C', 0)}
+            ${vehicleRange('trackTempC', 'Baantemperatuur', 0, 65, 1, v.trackTempC, '°C', 0)}
+            ${vehicleRange('altitudeM', 'Hoogte', -50, 1800, 10, v.altitudeM, ' m', 0)}
+            ${vehicleRange('humidityPct', 'Luchtvochtigheid', 0, 100, 1, v.humidityPct, '%', 0)}
+            ${vehicleRange('headwindKmh', 'Tegenwind', -20, 35, 1, v.headwindKmh, ' km/u', 0, 'Negatief betekent rugwind.')}
+          </div>
+        </div>
+        <div id="wheel-readout" class="wheel-readout"></div>
+        ${fit.warnings.length ? `<div class="warning-list">${fit.warnings.map(x => `<div class="warning-item"><span>!</span><p>${esc(x)}</p></div>`).join('')}</div>` : '<div class="notice success"><strong>Wiel-/bandcombinatie valt binnen de gemodelleerde fitmentmarge.</strong></div>'}
+      </div>`;
+    } else if (racePanel === 'telemetry') {
+      panel = renderDragTelemetryPanel();
+    } else if (racePanel === 'history') {
+      panel = `<div class="race-history-panel v7-history-panel">
+        <div class="record-grid">${['FWD','RWD','AWD'].map(key => { const rec=state.records?.[key]; return `<article class="record-card ${key===v.drivetrain?'active':''}"><span>${key} RECORD</span><b>${rec ? `${rec.quarter.toFixed(3)} s` : '—'}</b><small>${rec ? `${rec.trapKmh.toFixed(1)} km/u · ${new Date(rec.at || Date.now()).toLocaleDateString('nl-NL')}` : 'nog geen geldige pass'}</small></article>`; }).join('')}</div>
+        <div class="card history-card"><div class="section-head small"><div><span class="eyebrow">Runhistorie</span><h3>Laatste timeslips</h3></div></div>
+          ${runs.length ? `<div class="run-table">${runs.map((r,i)=>`<div class="run-row ${r.redLight?'invalid':''}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${r.redLight?'Rood licht':r.raceMode==='heads_up'?`${r.won?'WIN':'LOSS'} · ${r.opponentName}`:`${r.drivetrain} · ${r.tireName}`}</b><small>${new Date(r.measuredAt || r.at || Date.now()).toLocaleString('nl-NL')} · RT ${r.reactionTime>=0?'+':''}${r.reactionTime.toFixed(3)}${r.shiftPenalty ? ` · shift +${r.shiftPenalty.toFixed(3)}` : ''}</small></div><strong>${r.quarter.toFixed(3)} s<br><small>${r.trapKmh.toFixed(1)} km/u</small></strong></div>`).join('')}</div>` : '<p class="muted">Nog geen opgeslagen passes.</p>'}
+        </div>
+      </div>`;
+    } else {
+      const lastSummary = last ? `${last.quarter.toFixed(3)} s @ ${last.trapKmh.toFixed(1)} km/u` : 'Nog geen geldige pass';
+      panel = `<div class="v7-race-overview">
+        <div class="v7-overview-scene">
+          <div class="v7-overview-track"></div>
+          <div class="v7-overview-light light-a"></div><div class="v7-overview-light light-b"></div>
+          <img class="v7-overview-car" src="images/randy-scirocco-rear.svg" alt="Randy's blauwe Scirocco van achteren op de dragstrip">
+          <div class="v7-overview-tree">${v7TreeMarkup('preview')}</div>
+          <div class="v7-overview-copy"><span>${headsUp?'HEADS-UP RACEWEEKEND':'SOLO TESTPASS'}</span><h2>Burnout → staging → tree → run</h2><p>${headsUp?`Je rijdt naast ${esc(rival.name)}. Beide auto’s krijgen een eigen reactie, acceleratiecurve en finishmoment.`:'Focus op de perfecte pass zonder rivaal; alle physics en telemetrie blijven actief.'}</p></div>
+          ${headsUp?`<div class="v12-overview-rival"><img src="images/rival-scirocco.svg" alt="Graphite Scirocco-rivaal"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>${Math.round(rival.powerScale*100)}% van jouw actuele curve · ${euro(rival.reward)} winstpremie</small></div>`:''}
+          <div class="v7-overview-best"><span>${record ? `${v.drivetrain} RECORD` : 'LAATSTE RUN'}</span><b>${record ? `${record.quarter.toFixed(3)} s` : lastSummary}</b><small>${record ? `${record.trapKmh.toFixed(1)} km/u` : `${v.drivetrain} · ${esc(tire.name)}`}</small></div>
+        </div>
+        <div class="v7-overview-actions">
+          <button class="btn v7-start-button" data-action="open-drag-game" ${ready ? '' : 'disabled'}><span class="v7-flag">🏁</span><b>START DRAG EXPERIENCE</b><small>Volledig scherm · echte rivaal, sturen, launch, shifts en telemetrie</small></button>
+          <button class="btn ghost" data-action="auto-drag-game" ${ready ? '' : 'disabled'}>SNELTEST / AUTO PASS</button>
+        </div>
+        <div class="v7-flow-cards">
+          <article><span>01</span><b>Burnout</b><small>Houd gas in de groene rpm-zone en bouw de juiste bandentemperatuur op.</small></article>
+          <article><span>02</span><b>Stage</b><small>Kruip door pre-stage naar de stagebeam zonder te diep te gaan.</small></article>
+          <article><span>03</span><b>Launch</b><small>Houd launch-rpm vast en reageer op de Sportsman- of Pro-tree.</small></article>
+          <article><span>04</span><b>${headsUp?'Heads-up':'Shift'}</b><small>${headsUp?'Versla de rivaal op totale tijd: reactie plus ET.':'Schakel op de cue. Vroeg, laat en begrenzer beïnvloeden de acceleratie.'}</small></article>
+        </div>
+        <div class="v7-timeslip-overview">
+          <div><span class="eyebrow">Laatste timeslip</span><pre>${last ? esc(timeslipText(last)) : 'NOG GEEN RUN\nStart de drag experience om een volledige timeslip te zetten.'}</pre></div>
+          <div class="v7-race-specs"><span><b>${v.drivetrain}</b>${Math.round(v.massKg)} kg</span><span><b>${v.tireWidthMm}/${v.aspectRatio} R${v.rimDiameterIn}</b>${esc(tire.name)}</span><span><b>${state.tune.launchRpm} rpm</b>launch target</span><span><b>${Math.round(v.trackTempC)}°C</b>baantemperatuur</span></div>
+        </div>
+      </div>`;
+    }
+
+    return `<section class="page drag-page v7-drag-page">
+      <div class="page-title-row v7-drag-title"><div><span class="eyebrow">EA888 LAB DRAG MODE</span><h1>Van burnoutbox naar finish</h1><p>Een losse spelmodus met verschillende fullscreen scènes. De overzichtspagina blijft alleen voor setup, records en de laatste timeslip.</p></div></div>
+      ${ready ? `<div class="notice success"><strong>Auto vrijgegeven.</strong> ${Math.round(state.lastDyno.peakHp)} pk / ${Math.round(state.lastDyno.peakTorqueNm)} Nm is de actieve meetcurve.</div>` : `<div class="notice danger"><strong>Race geblokkeerd.</strong> ${state.lastDyno?.failureRpm ? 'Herstel de schade en voer een geldige dynopull uit.' : 'Meet de gewijzigde build eerst opnieuw op de dyno.'}</div>`}
+      <div class="segment-control race-segments v7-race-segments v12-race-segments"><button class="${racePanel==='tree'?'active':''}" data-race-panel="tree">Race</button><button class="${racePanel==='setup'?'active':''}" data-race-panel="setup">Setup</button><button class="${racePanel==='telemetry'?'active':''}" data-race-panel="telemetry">Telemetrie</button><button class="${racePanel==='history'?'active':''}" data-race-panel="history">Records</button></div>
+      ${panel}
+    </section>`;
+  }
+
+  function timeslipText(r) {
+    const f = (v, d = 3) => Number.isFinite(Number(v)) ? Number(v).toFixed(d) : '—';
+    const status = r.redLight ? 'ROOD LICHT' : r.laneDnf ? 'BUITEN DE BAAN' : r.valid === false ? 'RUN ONGELDIG' : r.raceMode === 'heads_up' ? (r.won ? 'HEADS-UP WIN' : 'HEADS-UP LOSS') : 'GELDIGE RUN';
+    const shiftLine = r.transmissionMode === 'DSG AUTO'
+      ? `${r.shifts || 0} DSG shifts · automatisch`
+      : `${r.shifts || 0} shifts · ${r.perfectShifts || 0} perfect · ${r.earlyShifts || 0} vroeg · ${r.lateShifts || 0} laat`;
+    const duel = r.raceMode === 'heads_up' && r.opponentName
+      ? `\nRivaal   ${r.opponentName}\nHun tijd ${f(r.opponentFinishTotalTime)} s totaal · ET ${f(r.opponentQuarter)}\nDelta    ${r.won?'+':'-'}${f(Math.abs(r.raceDeltaS))} s ${r.won?'voorsprong':'achterstand'}${r.reward?` · +${euro(r.reward)}`:''}`
+      : '';
+    return `${status}\n` +
+      `RT       ${r.reactionTime >= 0 ? '+' : ''}${f(r.reactionTime)} s\n` +
+      `60 ft    ${f(r.sixtyFt)} s\n` +
+      `330 ft   ${f(r.threeThirty)} s\n` +
+      `1/8      ${f(r.eighth)} s  @ ${f(r.eighthKmh,1)} km/u\n` +
+      `1000 ft  ${f(r.thousandFt)} s\n` +
+      `1/4      ${f(r.quarter)} s  @ ${f(r.trapKmh,1)} km/u\n` +
+      `Totaal   ${f(r.finishTotalTime)} s incl. reactie\n` +
+      `0–100    ${f(r.zeroTo100)} s${duel}\n` +
+      `Wheelspin ${f(r.wheelspinPct,0)}% · ${shiftLine}\n` +
+      `Rijlijn  ${f(r.maxLaneOffsetM,2)} m max · ${r.lineTouches || 0} correcties\n` +
+      `Driveline ${f(r.maxClutchTempC,0)}°C clutch · ${f(r.maxGearboxTempC,0)}°C bak · ${f(r.drivelineStress,0)}% stress\n` +
+      `Limiter  ${f(r.limiterTimeS,2)} s\n` +
+      `${r.drivetrain || state.vehicle.drivetrain} · ${r.tireName || C.TIRE_MAP[state.vehicle.tireCompound]?.name}\n${r.tireSize || ''} op ${r.wheelSpec || ''} · Ø ${f(r.tireDiameterMm,0)} mm`;
+  }
+
+  function setRacePhase(phase) {
+    racePhase = phase;
+    const stage = $('#race-stage');
+    if (stage) {
+      stage.classList.remove('phase-burnout','phase-staged','phase-running','phase-finished');
+      stage.classList.add(`phase-${phase}`);
+    }
+    const steps = $$('#race-stepper > div');
+    const index = phase === 'burnout' ? 0 : phase === 'staged' ? 1 : phase === 'running' ? 2 : 3;
+    steps.forEach((node, i) => {
+      node.classList.toggle('active', index < 3 && i === index);
+      node.classList.toggle('done', index >= 3 || i < index);
+    });
+    const split = $('#live-split');
+    if (split) {
+      const label = phase === 'burnout' ? 'BURNOUT BOX' : phase === 'staged' ? 'STAGED' : phase === 'running' ? 'RUNNING' : 'FINISH';
+      const span = $('span', split); if (span) span.textContent = label;
+    }
+  }
+
+  function updateRaceHud(point = raceLivePoint, enginePoint = null) {
+    const rpm = clamp(Number(point.rpm || 0), 0, Math.max(7000, Number(state.tune.revLimitRpm || 8000)));
+    const maxRpm = Math.max(7000, Number(state.tune.revLimitRpm || 8000));
+    const frac = clamp(rpm / maxRpm, 0, 1);
+    const boost = Number(point.boostBar ?? enginePoint?.boostBar ?? 0);
+    raceLivePoint = {
+      rpm, speedKmh: Number(point.speedKmh || 0), gear: Number(point.gear || 1), boostBar: boost,
+      accelerationG: Number(point.accelerationG || 0), distanceM: Number(point.distanceM || 0)
+    };
+    const tach = $('#race-tach');
+    if (tach) {
+      tach.style.setProperty('--needle-angle', `${-126 + frac * 252}deg`);
+      tach.style.setProperty('--tach-deg', `${frac * 252}deg`);
+      tach.classList.toggle('shift-now', frac > .925);
+    }
+    const rpmNode = $('#race-rpm'); if (rpmNode) rpmNode.textContent = Math.round(rpm);
+    const gearNode = $('#race-gear'); if (gearNode) gearNode.textContent = point.gear || 1;
+    const speedNode = $('#race-speed'); if (speedNode) speedNode.textContent = Math.round(point.speedKmh || 0);
+    const distNode = $('#race-distance'); if (distNode) distNode.textContent = `${Math.round(point.distanceM || 0)} m`;
+    const boostNode = $('#race-boost'); if (boostNode) boostNode.textContent = num(boost,2);
+    const boostBar = $('.v6-boost-gauge i');
+    if (boostBar) boostBar.style.setProperty('--boost', `${clamp(boost/Math.max(1, state.tune.peakBoostBar || 2.5),0,1)*100}%`);
+    const lights = $$('#shift-lights i');
+    lights.forEach((light, i) => light.classList.toggle('on', frac > (i + 1) / 11));
+    const board = $('#speed-board');
+    if (board) board.innerHTML = `<span>${Math.round(point.speedKmh || 0)} km/u</span><b>G${point.gear || 1} · ${Math.round(rpm)} rpm</b><small>${num(boost,2)} bar · ${num(point.accelerationG || 0,2)} g</small>`;
+  }
+
+  function updateBurnoutDom() {
+    const runtime = ensureBurnoutRuntime();
+    const assessment = burnoutAssessment(runtime.tempC);
+    const tempPct = clamp(runtime.tempC / Math.max(1, assessment.cautionC + 18), 0, 1) * 100;
+    const tempNode = $('#tire-temp-value'); if (tempNode) tempNode.textContent = `${Math.round(runtime.tempC)}°C`;
+    const bar = $('#tire-temp-bar'); if (bar) bar.style.width = `${tempPct}%`;
+    const quality = $('#burnout-quality');
+    if (quality) { quality.textContent = assessment.label; quality.className = assessment.cls; }
+    const score = $('#burnout-score'); if (score) score.textContent = `${assessment.score}% gripvenster`;
+    const card = $('#burnout-card');
+    if (card) { card.classList.remove('cold','warn','good','hot'); card.classList.add(assessment.cls); }
+    const rig = $('#drag-car-rig'); if (rig) rig.classList.toggle('burnout-active', !!runtime.active);
+    const strip = $('#drag-strip');
+    if (strip) {
+      strip.style.setProperty('--smoke', runtime.active ? clamp(runtime.smoke,0,1) : clamp(runtime.smoke*.3,0,.35));
+      strip.style.setProperty('--motion', runtime.active ? .16 : 0);
+    }
+    const rpm = runtime.active ? runtime.rpm : Math.max(900, runtime.rpm * .78);
+    const boost = clamp((rpm - 2300) / 2400, 0, state.tune.peakBoostBar || 2.5) * .45;
+    updateRaceHud({ rpm, speedKmh: 0, gear: 1, boostBar: boost, accelerationG: 0, distanceM: 0 });
+    const split = $('#live-split');
+    if (split) {
+      const span = $('span', split); const b = $('b', split);
+      if (span) span.textContent = runtime.active ? 'BURNOUT ACTIEF' : 'BURNOUT BOX';
+      if (b) b.textContent = `${assessment.label} · ${Math.round(runtime.tempC)}°C / ${assessment.targetC}°C`;
+    }
+  }
+
+  function startBurnout(pointerId = null) {
+    if (activeTab !== 'drag' || racePanel !== 'tree') return;
+    if (!currentDyno() || state.lastDyno?.failureRpm) return showToast('Voer eerst een geldige dynopull uit.');
+    if (racePhase === 'running') return;
+    clearTreeTimers(); resetTreeBulbs();
+    if (dragAnimation) { cancelAnimationFrame(dragAnimation); dragAnimation = null; }
+    setRacePhase('burnout');
+    const runtime = ensureBurnoutRuntime();
+    if (runtime.active) return;
+    runtime.active = true;
+    runtime.startedAt = performance.now(); runtime.lastAt = runtime.startedAt;
+    runtime.elapsed = 0; runtime.smoke = Math.max(.12, runtime.smoke || 0);
+    burnoutPointerId = pointerId;
+    startEngineAudio('burnout');
+    haptic(16);
+    const tick = now => {
+      if (!runtime.active) return;
+      const dt = clamp((now - runtime.lastAt) / 1000, 0, .055);
+      runtime.lastAt = now; runtime.elapsed += dt;
+      const profile = burnoutProfile();
+      const targetRpm = clamp(Math.max(4300, Number(state.tune.launchRpm || 4200) + 1050), 4200, Number(state.tune.revLimitRpm || 8000) - 320);
+      const pulse = Math.sin(runtime.elapsed * 9.3) * 85 + Math.sin(runtime.elapsed * 17.2) * 34;
+      runtime.rpm += (targetRpm + pulse - runtime.rpm) * clamp(dt * 5.8, 0, 1);
+      const rpmFactor = clamp((runtime.rpm - 2800) / 2800, .25, 1.2);
+      const pressureFactor = clamp(1.25 - Math.abs(state.vehicle.pressureBar - (C.TIRE_MAP[state.vehicle.tireCompound]?.optimumBar || 2.2)) * .12, .78, 1.15);
+      runtime.tempC = clamp(runtime.tempC + profile.heatRate * rpmFactor * pressureFactor * dt, profile.trackC, profile.cautionC + 26);
+      runtime.smoke = clamp((runtime.rpm - 3000) / 2800 * (.58 + runtime.elapsed * .13), .08, 1);
+      runtime.wheelSlip = clamp(.72 + runtime.smoke * .25, 0, 1);
+      syncBurnoutLevel(runtime.tempC);
+      updateEngineAudio(runtime.rpm, .92, runtime.wheelSlip);
+      updateBurnoutDom();
+      burnoutAnimation = requestAnimationFrame(tick);
+    };
+    burnoutAnimation = requestAnimationFrame(tick);
+  }
+
+  function stopBurnout({ silent = false } = {}) {
+    const runtime = burnoutRuntime;
+    if (!runtime?.active) return;
+    runtime.active = false;
+    if (burnoutAnimation) cancelAnimationFrame(burnoutAnimation);
+    burnoutAnimation = null; burnoutPointerId = null;
+    runtime.rpm = Math.max(1000, runtime.rpm * .72);
+    runtime.smoke = Math.min(runtime.smoke, .35);
+    syncBurnoutLevel(runtime.tempC);
+    saveState();
+    updateEngineAudio(1050, .12, 0);
+    setTimeout(() => { if (!burnoutRuntime?.active && (!raceGame?.open || raceGame.phase === 'burnout') && racePhase === 'burnout') stopEngineAudio(); }, 420);
+    updateBurnoutDom();
+    if (!silent) {
+      const assessment = burnoutAssessment(runtime.tempC);
+      haptic(assessment.score >= 84 ? [18,28,18] : 9);
+      showToast(`${assessment.label}: ${Math.round(runtime.tempC)}°C · gripvenster ${assessment.score}%.`);
+    }
+  }
+
+  function idealBurnout() {
+    const runtime = ensureBurnoutRuntime();
+    const profile = burnoutProfile();
+    runtime.active = false; runtime.tempC = profile.targetC; runtime.rpm = 1200; runtime.smoke = .18;
+    syncBurnoutLevel(runtime.tempC); saveState(); updateBurnoutDom();
+  }
+
+  function resetRaceSession() {
+    clearTreeTimers(); resetTreeBulbs();
+    if (dragAnimation) cancelAnimationFrame(dragAnimation);
+    if (burnoutAnimation) cancelAnimationFrame(burnoutAnimation);
+    dragAnimation = null; burnoutAnimation = null; treeSession = null;
+    stopEngineAudio({ hard: true });
+    racePhase = 'burnout';
+    raceLivePoint = { rpm: 900, speedKmh: 0, gear: 1, boostBar: 0, accelerationG: 0, distanceM: 0 };
+    burnoutRuntime = null;
+    render();
+    showToast('Nieuwe run klaar. Begin met de burnout.');
+  }
+
+  function updateLiveSplit(point, result) {
+    const node = $('#live-split'); if (!node) return;
+    const span = $('span', node); const b = $('b', node);
+    if (!span || !b) return;
+    const d = Number(point.distanceM || 0);
+    if (d < 18.288) { span.textContent = 'LAUNCH'; b.textContent = `${num(point.accelerationG,2)} g · ${Math.round(point.speedKmh)} km/u`; }
+    else if (d < 100.584) { span.textContent = '60 FT'; b.textContent = `${result.sixtyFt.toFixed(3)} s`; }
+    else if (d < 201.168) { span.textContent = '330 FT'; b.textContent = `${result.threeThirty.toFixed(3)} s`; }
+    else if (d < 304.8) { span.textContent = '1/8 MIJL'; b.textContent = `${result.eighth.toFixed(3)} s · ${result.eighthKmh.toFixed(1)} km/u`; }
+    else if (d < 402.336) { span.textContent = '1000 FT'; b.textContent = `${result.thousandFt.toFixed(3)} s`; }
+    else { span.textContent = result.redLight ? 'ROOD LICHT' : 'FINISH'; b.textContent = `${result.quarter.toFixed(3)} s · ${result.trapKmh.toFixed(1)} km/u`; }
+  }
+
+  function finishRaceAnimation(result, point) {
+    setRacePhase('finished');
+    stopEngineAudio({ hard: true });
+    const rig = $('#drag-car-rig'); if (rig) rig.classList.remove('running','launching');
+    const strip = $('#drag-strip'); if (strip) { strip.style.setProperty('--motion', '0'); strip.style.setProperty('--smoke', '0'); }
+    updateLiveSplit({ ...point, distanceM: 402.336 }, result);
+    haptic(result.redLight ? [60,50,60] : [20,20,45]);
+    showToast(result.redLight ? 'Rood licht — ET is wel gemeten.' : `${result.quarter.toFixed(3)} s @ ${result.trapKmh.toFixed(1)} km/u`);
+  }
+
+  function clearTreeTimers() {
+    if (treeSession?.timers) treeSession.timers.forEach(clearTimeout);
+  }
+  function resetTreeBulbs() { $$('.bulb').forEach(b => b.classList.remove('on')); }
+  function bulbs(names, on = true) { names.forEach(n => $(`[data-bulb="${n}"]`)?.classList.toggle('on', on)); }
+
+  function stageTree(auto = false) {
+    if (!currentDyno() || state.lastDyno?.failureRpm) return showToast('Voer eerst een geldige dynopull uit.');
+    if (auto) idealBurnout();
+    else stopBurnout({ silent: true });
+    clearTreeTimers(); resetTreeBulbs(); haptic(18);
+    setRacePhase('staged');
+    bulbs(['preL','preR','stageL','stageR']);
+    const rig = $('#drag-car-rig');
+    if (rig) { rig.classList.remove('burnout-active','running','wheelspin'); rig.classList.add('staged'); rig.style.transform = 'translate3d(3%,0,0)'; }
+    const launchRpm = Number(state.tune.launchRpm || 4200);
+    const launchEngine = C.interpolateCurve(state.lastDyno.curve, launchRpm);
+    updateRaceHud({ rpm: launchRpm, speedKmh: 0, gear: 1, boostBar: Math.max(0, (launchEngine?.boostBar || 0) * state.tune.firstGearBoostPct / 100), accelerationG: 0, distanceM: 0 }, launchEngine);
+    startEngineAudio('staged');
+    updateEngineAudio(launchRpm, .72, 0);
+    const baseDelay = 750 + Math.random() * 650;
+    const now = performance.now();
+    const plannedGreen = now + baseDelay + (treeMode === 'pro' ? 400 : 1500);
+    treeSession = { plannedGreen, launched: false, timers: [] };
+    const set = (delay, fn) => treeSession.timers.push(setTimeout(fn, delay));
+    if (treeMode === 'pro') {
+      set(baseDelay, () => { bulbs(['a1L','a1R','a2L','a2R','a3L','a3R']); updateEngineAudio(launchRpm, .90, 0); haptic(10); });
+      set(baseDelay + 400, () => { bulbs(['a1L','a1R','a2L','a2R','a3L','a3R'], false); bulbs(['gL','gR']); haptic(24); });
+    } else {
+      set(baseDelay, () => { bulbs(['a1L','a1R']); haptic(8); });
+      set(baseDelay + 500, () => { bulbs(['a1L','a1R'], false); bulbs(['a2L','a2R']); haptic(8); });
+      set(baseDelay + 1000, () => { bulbs(['a2L','a2R'], false); bulbs(['a3L','a3R']); updateEngineAudio(launchRpm, .92, 0); haptic(8); });
+      set(baseDelay + 1500, () => { bulbs(['a3L','a3R'], false); bulbs(['gL','gR']); haptic(24); });
+    }
+    showToast(auto ? 'Auto pass: banden op temperatuur en auto staged.' : 'Staged — druk LAUNCH op groen.');
+    if (auto) set(plannedGreen - now + 55 + Math.random() * 75, () => launchTree(true));
+  }
+
+  function launchTree(auto = false) {
+    if (!treeSession || treeSession.launched) return showToast('Druk eerst op STAGE / START TREE.');
+    treeSession.launched = true;
+    const rt = (performance.now() - treeSession.plannedGreen) / 1000;
+    if (rt < 0) {
+      clearTreeTimers();
+      bulbs(['a1L','a1R','a2L','a2R','a3L','a3R','gL','gR'], false);
+      bulbs(['rL','rR']); haptic([70,40,70]);
+    } else haptic(30);
+    runDrag(rt);
+  }
+
+  function runDrag(reactionTime) {
+    try {
+      stopBurnout({ silent: true });
+      const result = C.simulateDrag(state, state.lastDyno, { reactionTime });
+      const burn = burnoutAssessment(ensureBurnoutRuntime().tempC);
+      result.burnoutTempC = ensureBurnoutRuntime().tempC;
+      result.burnoutScore = burn.score;
+      result.measuredAt = new Date().toISOString();
+      state.lastDrag = result;
+      state.dragRuns = Array.isArray(state.dragRuns) ? state.dragRuns : [];
+      state.dragRuns.unshift({ ...result });
+      state.dragRuns = state.dragRuns.slice(0, 30);
+      const key = state.vehicle.drivetrain;
+      if (result.valid && (!state.records?.[key] || result.quarter < state.records[key].quarter)) {
+        state.records = state.records || { FWD:null, RWD:null, AWD:null };
+        state.records[key] = { ...result, at: result.measuredAt };
+        pushHistory({ type:'record', label:`Nieuw ${key}-record: ${result.quarter.toFixed(3)} s`, et:result.quarter, trap:result.trapKmh });
+      }
+      state.wear.engine = clamp(state.wear.engine + .05 + Math.max(0, result.quarter < 10 ? .08 : 0), 0, 100);
+      state.wear.transmission = clamp(state.wear.transmission + .10 + result.wheelspinPct * .002, 0, 100);
+      state.service.oilAgeKm += 35;
+      pushHistory({ type: 'drag', label: result.redLight ? 'Rood licht' : 'Quarter-mile pass', et: result.quarter, trap: result.trapKmh });
+      saveState(); syncAchievements();
+      const box = $('#timeslip-box'); if (box) box.textContent = timeslipText(result);
+      startEngineAudio('race');
+      animateDrag(result);
+    } catch (e) { stopEngineAudio(); showToast(e.message); }
+  }
+
+  function animateDrag(result) {
+    if (dragAnimation) cancelAnimationFrame(dragAnimation);
+    const strip = $('#drag-strip'), rig = $('#drag-car-rig');
+    const rearWheel = $('#wheel-rear'), frontWheel = $('#wheel-front');
+    if (!rig || !strip) { dragAnimation = null; return; }
+    setRacePhase('running');
+    rig.classList.remove('staged','burnout-active');
+    rig.classList.add('running','launching');
+    rig.style.transform = 'translate3d(3%,0,0)';
+    strip.style.setProperty('--track-x', '0px');
+    strip.style.setProperty('--motion', '.1');
+    const start = performance.now();
+    const reactionDelay = Math.max(0, result.reactionTime) * 1000;
+    const finalPoint = result.trace[result.trace.length - 1];
+
+    const applyPoint = point => {
+      const frac = clamp(point.distanceM / 402.336, 0, 1);
+      const enginePoint = C.interpolateCurve(state.lastDyno.curve, point.rpm);
+      const boost = enginePoint?.boostBar || 0;
+      const bob = Math.sin(point.distanceM * .22) * Math.min(1.1, point.speedKmh / 150) * .7;
+      const pitch = clamp(-point.accelerationG * .75, -1.2, .7);
+      rig.style.transform = `translate3d(${3 + frac * 10}%,${bob}px,0) rotate(${pitch}deg) scale(${1 + clamp(point.accelerationG,0,1.5)*.012})`;
+      strip.style.setProperty('--track-x', `${-point.distanceM * 7.4}px`);
+      strip.style.setProperty('--motion', `${clamp(point.speedKmh / 285, 0, 1)}`);
+      const launchSmoke = point.distanceM < 52 ? clamp(result.wheelspinPct / 42 * (1 - point.distanceM/52),0,.8) : 0;
+      strip.style.setProperty('--smoke', `${launchSmoke}`);
+      rig.classList.toggle('wheelspin', launchSmoke > .18);
+      const circumference = Math.max(.4, C.wheelFitment(state.vehicle).circumferenceM);
+      const rotation = (point.distanceM / circumference * 360) % 360;
+      if (rearWheel) rearWheel.style.transform = `rotate(${rotation}deg)`;
+      if (frontWheel) frontWheel.style.transform = `rotate(${rotation}deg)`;
+      updateRaceHud({ ...point, boostBar: boost }, enginePoint);
+      updateLiveSplit(point, result);
+      updateEngineAudio(point.rpm, Math.max(.18, (enginePoint?.turboLoadPct || 20) / 100), launchSmoke);
+    };
+
+    if (state.settings?.reducedMotion) {
+      applyPoint(finalPoint);
+      strip.style.setProperty('--track-x', `${-402.336 * 7.4}px`);
+      dragAnimation = null;
+      finishRaceAnimation(result, finalPoint);
+      return;
+    }
+
+    const scale = .48;
+    let lastGear = 1;
+    const frame = now => {
+      const elapsed = now - start;
+      if (elapsed < reactionDelay) {
+        const launchRpm = Number(state.tune.launchRpm || 4200);
+        const shake = Math.sin(elapsed * .045) * .65;
+        rig.style.transform = `translate3d(3%,${shake}px,0)`;
+        updateEngineAudio(launchRpm, .88, 0);
+        dragAnimation = requestAnimationFrame(frame);
+        return;
+      }
+      const raceT = (elapsed - reactionDelay) / 1000 / scale;
+      let point = finalPoint;
+      for (let i = 0; i < result.trace.length; i++) { if (result.trace[i].time >= raceT) { point = result.trace[i]; break; } }
+      applyPoint(point);
+      if (point.gear !== lastGear) {
+        haptic(12); engineShiftPop(clamp(.45 + point.gear * .08, .45, 1)); lastGear = point.gear;
+        rig.classList.remove('launching');
+      }
+      if (raceT < result.quarter) dragAnimation = requestAnimationFrame(frame);
+      else {
+        dragAnimation = null;
+        applyPoint(finalPoint);
+        finishRaceAnimation(result, finalPoint);
+      }
+    };
+    dragAnimation = requestAnimationFrame(frame);
+  }
+
+  /* ------------------------------------------------------------------
+     V7 FULLSCREEN DRAG GAME
+     Separate scenes: side-view burnout, rear-view staging/tree, rear chase run.
+     ------------------------------------------------------------------ */
+  function v7TreeMarkup(preview = false) {
+    const names = ['preL','preR','stageL','stageR','a1L','a1R','a2L','a2R','a3L','a3R','gL','gR','rL','rR'];
+    return `<div class="v7-tree ${preview ? 'preview' : ''}" aria-label="Drag race startboom">${names.map((name,index) => {
+      const type = index < 2 ? 'pre' : index < 4 ? 'stage' : index < 10 ? 'amber' : index < 12 ? 'green' : 'red';
+      const previewOn = preview && (index < 4 || index === 10 || index === 11);
+      return `<i class="v7-bulb ${type} ${previewOn ? 'on' : ''}" ${preview ? '' : `data-v7-bulb="${name}"`}></i>`;
+    }).join('')}</div>`;
+  }
+
+  function v7TachMarkup(prefix, rpm = 900, gear = 1, maxRpm = null) {
+    const limit = Math.max(6500, Number(maxRpm || state.tune.revLimitRpm || 8000));
+    const fraction = clamp(Number(rpm || 0) / limit, 0, 1);
+    return `<div class="v7-tach" id="${prefix}-tach" style="--rpm-frac:${fraction};--tach-angle:${fraction * 252}deg;--limit:${limit}">
+      <div class="v7-tach-ring"></div>
+      <div class="v7-tach-numbers"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span></div>
+      <div class="v7-tach-readout"><b id="${prefix}-rpm">${Math.round(rpm)}</b><small>RPM</small><strong id="${prefix}-gear">${gear}</strong></div>
+      <div class="v7-shift-strip" id="${prefix}-shift-strip">${Array.from({length:12},(_,i)=>`<i data-shift-light="${i}"></i>`).join('')}</div>
+    </div>`;
+  }
+
+  function v7GameHeader(label, step, hint = '') {
+    const dyno = currentDyno() && state.lastDyno ? state.lastDyno : null;
+    const hp = dyno ? Math.round(dyno.peakHp) : '?';
+    const nm = dyno ? Math.round(dyno.peakTorqueNm) : '?';
+    return `<header class="v8-game-header">
+      <div class="v8-game-brand"><strong>EA888 <em>LAB</em></strong><small>BOUW · MEET · OVERLEEF · RACE</small></div>
+      <div class="v8-game-output"><span>${hp} pk</span><span>${nm} Nm</span></div>
+      <div class="v8-game-actions"><button data-action="toggle-v7-audio" aria-label="Geluid aan of uit">${state.settings?.sound ? '🔊' : '🔇'}</button><button data-action="close-drag-game" aria-label="Sluit drag mode">${icon('back')}</button></div>
+      <div class="v8-phase-title"><span>${step}/3</span><b>${esc(label)}</b><small>${esc(hint)}</small></div>
+    </header>`;
+  }
+
+  function v7GameProgress(active) {
+    const labels = ['BURNOUT','STAGE','RACE'];
+    return `<div class="v8-game-progress">${labels.map((label,i)=>`<span class="${i < active ? 'done' : i === active ? 'active' : ''}"><i>${i+1}</i><b>${label}</b></span>`).join('<em>›</em>')}</div>`;
+  }
+
+  function renderV7BurnoutScene() {
+    const p = burnoutProfile();
+    const rival = raceGame?.rivalProfile;
+    const b = raceGame.burn;
+    const targetLeft = clamp((p.targetC - 8) / (p.cautionC + 18) * 100, 0, 100);
+    const targetWidth = clamp(18 / (p.cautionC + 18) * 100, 8, 24);
+    return `<div class="v8-game v8-burnout-game drive-${String(state.vehicle.drivetrain).toLowerCase()}">
+      <div class="v8-scene-plate v8-burnout-plate"></div><div class="v8-cinematic-shade"></div>
+      ${v7GameHeader('BURNOUT', 1, 'Warm de aangedreven banden op zonder ze te oververhitten')}
+      <main class="v8-burnout-scene">
+        <section class="v8-burnout-hud">
+          ${v7TachMarkup('v7-burn', b.rpm, 1)}
+          <div class="v8-round-gauge"><span>BOOST</span><b id="v8-burn-boost">0.00</b><small>bar</small><i></i></div>
+          <div class="v8-temp-card"><span>BANDENTEMP</span><b id="v7-burn-temp">${Math.round(b.tempC)}°C</b><small>doel ${p.targetC}°C</small><div><i id="v7-temp-fill"></i><em id="v7-temp-marker"></em><strong style="left:${targetLeft}%;width:${targetWidth}%"></strong></div></div>
+          <div class="v8-wheelspin-card"><span>WHEELSPIN</span><b id="v8-burn-wheelspin">0%</b><small id="v7-burn-time">${b.timeLeft.toFixed(1)} s over</small></div>
+        </section>
+        <div class="v8-burn-smoke" id="v8-burn-smoke">${Array.from({length:14},(_,i)=>`<i style="--i:${i}"></i>`).join('')}</div>
+        ${rival ? `<div class="v12-event-opponent"><img src="images/rival-scirocco.svg" alt="Rivaal"><span>VOLGENDE: ${rival.tag}</span><b>${esc(rival.name)}</b></div>` : ''}
+        <div class="v8-burnout-status" id="v7-burn-instruction"><b>HOUD VAST VOOR BURNOUT</b><span>Laat los om te stoppen. Houd rpm in de oranje zone en mik op de groene temperatuurband.</span></div>
+        <div class="v8-burn-score"><b id="v7-burn-label">KOUD</b><span id="v7-burn-score">0% gripvenster</span></div>
+        <button class="v8-burnout-button" id="v7-burn-throttle" data-v7-control="burnout"><span>HOUD VAST VOOR BURNOUT</span><small>LAAT LOS OM TE STOPPEN</small></button>
+      </main>
+      ${v7GameProgress(0)}
+    </div>`;
+  }
+
+  function renderV7StageScene() {
+    const s = raceGame.stage;
+    const rival = raceGame?.rivalProfile;
+    const ready = s.staged && !s.deep;
+    const launchLabel = s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : ready ? 'HOUD VOOR LAUNCH' : 'LAUNCH VERGRENDELD';
+    return `<div class="v8-game v8-stage-game ${ready ? 'is-staged' : ''} ${rival?'has-rival':''}">
+      <div class="v8-scene-plate v8-stage-plate"></div><div class="v8-cinematic-shade"></div>
+      ${v7GameHeader('STAGE & TREE', 2, treeMode === 'pro' ? 'Pro tree · release op groen' : 'Sportsman tree · release op groen')}
+      <main class="v8-stage-scene">
+        <section class="v8-stage-hud">
+          ${v7TachMarkup('v7-stage', s.rpm, 1)}
+          <div class="v8-round-gauge"><span>BOOST</span><b id="v8-stage-boost">0.00</b><small>bar</small><i></i></div>
+        </section>
+        <div class="v8-tree-wrap"><div class="v8-tree-copy"><span>PRE-STAGE</span><span>STAGE</span></div>${v7TreeMarkup(false)}</div>
+        ${rival ? `<div class="v12-stage-rival"><img src="images/rival-scirocco.svg" alt="${esc(rival.name)}"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>RT-venster ${rival.reactionMin.toFixed(3)}–${rival.reactionMax.toFixed(3)} s</small></div>` : ''}
+        <div class="v8-stage-message"><span id="v7-stage-status">KRUIP NAAR PRE-STAGE</span><b id="v7-stage-depth">${Math.round(s.progress)}%</b></div>
+        <div class="v8-rpm-hold"><span>HOUD TOERENTAL VAST</span><div><i id="v8-stage-rpm-fill"></i><em></em></div><b><strong id="v8-stage-rpm-number">${Math.round(s.rpm)}</strong> RPM</b></div>
+        <div class="v8-stage-beam"><i class="pre-zone"></i><i class="stage-zone"></i><em id="v7-stage-marker" style="left:${s.progress}%"></em></div>
+        <div class="v8-stage-actions">
+          <button class="v8-stage-button creep" data-v7-control="creep"><span>↕</span><b>CREEP / STAGE</b><small>HOUD KORT VAST</small></button>
+          <button class="v8-stage-button launch ${ready ? 'ready' : ''} ${s.treeStarted ? 'armed' : ''} ${s.green ? 'go' : ''}" id="v7-launch-button" data-v7-control="throttle" ${ready && !s.launched ? '' : 'disabled'}><span>»</span><b>${launchLabel}</b><small>${ready ? 'vasthouden voor rpm · loslaten om te gaan' : 'rij eerst volledig in stage'}</small></button>
+        </div>
+        ${s.deep ? '<button class="v8-reset-stage" data-action="v7-reset-stage">TE DIEP GESTAGED · OPNIEUW</button>' : ''}
+      </main>
+      ${v7GameProgress(1)}
+    </div>`;
+  }
+
+  function renderV7RunScene() {
+    const r = raceGame.run;
+    const point = r?.point || {rpm:state.tune.launchRpm,gear:1,speedKmh:0,distanceM:0,boostBar:0,lateralM:0};
+    const dsg = !!r?.autoShift;
+    const shiftControl = dsg
+      ? `<div class="v9-dsg-control v10-dsg-control" id="v7-dsg-status"><small>TRANSMISSIE</small><span>DSG AUTO</span><b id="v7-shift-cue">VOL AUTOMATISCH</b></div>`
+      : `<button class="v8-shift-button v9-shift-button v10-shift-button" id="v7-shift-button" data-action="v7-shift"><small>TIK OM TE SCHAKELEN</small><span>SHIFT</span><b id="v7-shift-cue">WACHT</b></button>`;
+    const opponent = r?.opponent;
+    const raceSubtitle = opponent ? `Heads-up tegen ${opponent.profile.name} · stuur en schakel onder druk` : (dsg ? 'DSG schakelt zelf · stuur tussen de lijnen' : 'Schakel zelf · stuur tussen de lijnen');
+    return `<div class="v8-game v8-run-game v9-realtime-race v10-realtime-race v12-heads-up-race ${opponent?'has-rival':'solo-run'}" data-transmission-mode="${dsg ? 'dsg-auto' : 'manual'}">
+      <div class="v10-track-stage" id="v10-track-stage" aria-label="Realtime dragstrip">
+        <div class="v10-track-horizon"></div>
+        <canvas id="v10-track-canvas" class="v10-track-canvas"></canvas>
+        <div class="v10-track-vignette"></div>
+      </div>
+      ${v7GameHeader(opponent ? 'HEADS-UP QUARTER MILE' : 'REAL-TIME QUARTER MILE', 3, raceSubtitle)}
+      <main class="v8-run-scene v9-run-scene v10-run-scene" id="v7-run-scene">
+        <section class="v8-run-hud v9-run-hud v10-run-hud">
+          ${v7TachMarkup('v7-run', point.rpm, point.gear)}
+          <div class="v8-round-gauge v10-boost"><span>BOOST</span><b id="v7-run-boost">0.00</b><small>bar</small><i id="v7-run-boost-bar"></i></div>
+          <div class="v8-speed-card v10-speed"><span>SNELHEID</span><b id="v7-run-speed">0</b><small>km/u</small></div>
+          <div class="v8-timer-card v10-timer"><span>TIJD</span><b id="v7-run-et">0.000</b><small>s</small></div>
+        </section>
+        <div class="v8-split-board v9-split-board v10-split-board"><span><i id="v8-split-60"></i>60 FT <b id="v8-time-60">—</b></span><span><i id="v8-split-330"></i>330 FT <b id="v8-time-330">—</b></span><span><i id="v8-split-8"></i>1/8 MIJL <b id="v8-time-8">—</b></span><span><i id="v8-split-4"></i>1/4 MIJL <b id="v8-time-4">—</b></span></div>
+        ${opponent ? `<div class="v12-rival-hud" id="v12-rival-hud"><span>${opponent.profile.tag} RIVAAL</span><b>${esc(opponent.profile.name)}</b><small id="v12-rival-gap">TREE: ${opponent.reactionTime.toFixed(3)} s</small></div><div class="v12-rival-car" id="v12-rival-car"><img src="images/rival-scirocco.svg" alt="Graphite Scirocco-rivaal"><i></i></div>` : ''}
+        <div class="v9-live-car v10-live-car" id="v7-run-car"><img src="images/randy-scirocco-race-v10.png" alt="Randy's blauwe Scirocco van achteren"><span class="v7-flame left"></span><span class="v7-flame right"></span><b class="v9-car-smoke"></b></div>
+        <div class="v7-speed-lines v10-speed-lines" id="v7-speed-lines"></div>
+        <div class="v8-run-progress v9-run-progress v10-run-progress"><i id="v7-run-progress"></i><span id="v7-run-distance">0 m</span><b id="v7-run-split">LAUNCH</b><em>402 m</em></div>
+        <div class="v9-lane-status v10-lane-status" id="v9-lane-status"><span>LIJNPOSITIE</span><b>IN LIJN</b><div><i id="v9-lane-marker"></i></div></div>
+        <div class="v7-shift-feedback v9-shift-feedback v10-shift-feedback" id="v7-shift-feedback">HOUD HEM TUSSEN DE LIJNEN</div>
+        <div class="v9-drive-controls v10-drive-controls">
+          <button class="v9-steer-button v10-steer-button left" data-v7-control="steerLeft"><span>◀</span><b>LINKS</b></button>
+          ${shiftControl}
+          <button class="v9-steer-button v10-steer-button right" data-v7-control="steerRight"><b>RECHTS</b><span>▶</span></button>
+        </div>
+        <div class="v8-run-telemetry v9-run-telemetry v10-run-telemetry"><span><b id="v7-run-g">0.00 g</b>acceleratie</span><span><b id="v7-run-wheelspin">0%</b>wheelspin</span><span><b id="v8-run-distance-copy">0 / 402 m</b>afstand</span></div>
+        <div class="v12-driveline-hud"><span><b id="v12-clutch-temp">58°C</b>koppeling</span><span><b id="v12-gearbox-temp">66°C</b>bak</span><span><b id="v12-stress">0%</b>stress</span></div>
+      </main>
+    </div>`;
+  }
+
+  function renderV7FinishScene() {
+    const r = raceGame.finishResult || raceGame.run?.finalResult || state.lastDrag;
+    const invalid = !!(r?.redLight || r?.laneDnf || r?.valid === false);
+    const headsUp = r?.raceMode === 'heads_up' && r?.opponentName;
+    const shiftText = r?.transmissionMode === 'DSG AUTO'
+      ? 'DQ250 automatisch'
+      : `${r?.perfectShifts || 0} perfect · ${r?.earlyShifts || 0} vroeg · ${r?.lateShifts || 0} laat`;
+    const status = r?.redLight ? 'ROOD LICHT' : r?.laneDnf ? 'BUITEN DE BAAN' : r?.valid === false ? 'RUN ONGELDIG' : headsUp ? (r.won ? 'HEADS-UP GEWONNEN' : 'HEADS-UP VERLOREN') : 'GELDIGE RUN';
+    const outcomeClass = invalid ? 'invalid' : headsUp ? (r.won ? 'win' : 'loss') : 'valid';
+    const delta = headsUp ? `${Math.abs(Number(r.raceDeltaS || 0)).toFixed(3)} s ${r.won ? 'voorsprong' : 'achterstand'}` : '';
+    return `<div class="v8-game v8-finish-game v12-finish-game ${invalid ? 'redlight' : ''} ${outcomeClass}">
+      <div class="v8-scene-plate v8-race-plate finish"></div><div class="v8-cinematic-shade finish"></div>
+      ${v7GameHeader(status, 3, headsUp ? `${r.opponentName} · ${delta}` : 'De echte timeslip en rijlijn worden opgeslagen')}
+      <main class="v8-finish-scene">
+        <div class="v8-finish-card v12-finish-card">
+          <span>${esc(status)}</span>
+          <h1>${r ? r.quarter.toFixed(3) : '—'} <small>s</small></h1>
+          <h2>${r ? r.trapKmh.toFixed(1) : '—'} km/u</h2>
+          ${headsUp ? `<div class="v12-duel-result"><section><small>JIJ</small><b>${r.finishTotalTime.toFixed(3)} s</b><span>RT ${r.reactionTime.toFixed(3)} · ET ${r.quarter.toFixed(3)}</span></section><em>VS</em><section><small>${esc(r.opponentName)}</small><b>${r.opponentFinishTotalTime.toFixed(3)} s</b><span>RT ${r.opponentReactionTime.toFixed(3)} · ET ${r.opponentQuarter.toFixed(3)}</span></section></div>` : ''}
+          <div class="v12-finish-data"><b>Reactietijd</b><span>${r ? `${r.reactionTime >= 0 ? '+' : ''}${r.reactionTime.toFixed(3)} s` : '—'}</span><b>60 ft</b><span>${r ? `${r.sixtyFt.toFixed(3)} s` : '—'}</span><b>1/8 mijl</b><span>${r ? `${r.eighth.toFixed(3)} s` : '—'}</span><b>Schakelen</b><span>${esc(shiftText)}</span><b>Rijlijn</b><span>${r ? `${Number(r.maxLaneOffsetM || 0).toFixed(2)} m max · ${r.lineTouches || 0} correcties` : '—'}</span><b>Aandrijflijn</b><span>${r ? `${Number(r.maxClutchTempC||0).toFixed(0)}°C koppeling · ${Number(r.maxGearboxTempC||0).toFixed(0)}°C bak` : '—'}</span>${r?.reward ? `<b>Winstpremie</b><span class="reward">+${euro(r.reward)}</span>` : ''}</div>
+          <button class="v8-finish-button" data-action="finish-to-overview">NAAR RACEOVERZICHT</button>
+        </div>
+      </main>
+      ${v7GameProgress(3)}
+    </div>`;
+  }
+
+  function renderRaceGame() {
+    const root = $('#race-game-root');
+    if (!root) return;
+    if (!raceGame?.open) { root.innerHTML = ''; document.body.classList.remove('race-game-open'); return; }
+    document.body.classList.add('race-game-open');
+    if (raceGame.phase === 'burnout' || raceGame.phase === 'burnout-result') root.innerHTML = renderV7BurnoutScene();
+    else if (raceGame.phase === 'stage') root.innerHTML = renderV7StageScene();
+    else if (raceGame.phase === 'run') root.innerHTML = renderV7RunScene();
+    else if (raceGame.phase === 'finish') root.innerHTML = renderV7FinishScene();
+    requestAnimationFrame(() => {
+      if (!raceGame?.open) return;
+      if (raceGame.phase.startsWith('burnout')) updateV7BurnoutDom();
+      else if (raceGame.phase === 'stage') updateV7StageDom();
+      else if (raceGame.phase === 'run') updateV7RunDom(raceGame.run?.point || null);
+    });
+  }
+
+  function clearRaceGameTimers() {
+    raceGameTimers.forEach(id => clearTimeout(id));
+    raceGameTimers = [];
+  }
+
+  function startDragGame(auto = false) {
+    if (!currentDyno() || !state.lastDyno || state.lastDyno.failureRpm) return showToast('Voer eerst een geldige dynopull uit.');
+    closeDragGame({ silent:true, noRender:true });
+    const profile = burnoutProfile();
+    const startingTemp = clamp(profile.trackC + 2, profile.trackC, profile.targetC - 8);
+    burnoutRuntime = { key:`${profile.id}:${profile.trackC}:${state.vehicle.drivetrain}`, tempC:startingTemp, rpm:900, active:false, smoke:0, wheelSlip:0, startedAt:0, lastAt:0, elapsed:0 };
+    raceGameAuto = !!auto;
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+    raceGame = {
+      open:true,
+      phase:'burnout',
+      startedAt:performance.now(),
+      burn:{
+        rpm:900, tempC:startingTemp, timeLeft:state.settings?.reducedMotion ? (auto ? .9 : 3.5) : 8.0,
+        duration:state.settings?.reducedMotion ? (auto ? .9 : 3.5) : 8.0, started:false, done:false,
+        smoke:0, elapsed:0, qualityIntegral:0, qualityTime:0, score:0, label:'KOUD'
+      },
+      stage:{ progress:0, rpm:900, staged:false, deep:false, treeStarted:false, plannedGreen:0, green:false, launched:false, readySince:0 },
+      run:null,
+      finishResult:null,
+      rivalProfile:raceIsHeadsUp() ? selectedRival() : null
+    };
+    raceGameLastFrame = performance.now();
+    renderRaceGame();
+    startEngineAudio('burnout');
+    updateEngineAudio(900,.12,0);
+    haptic([16,25,16]);
+    startRaceGameLoop();
+  }
+
+  function closeDragGame(options = {}) {
+    if (raceGameRaf) cancelAnimationFrame(raceGameRaf);
+    raceGameRaf = null;
+    clearRaceGameTimers();
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+    raceGamePointerMap.clear();
+    stopEngineAudio({ hard: true });
+    raceGame = null;
+    raceGameAuto = false;
+    document.body.classList.remove('race-game-open');
+    const root = $('#race-game-root'); if (root) root.innerHTML = '';
+    if (!options.silent) showToast('Drag mode gesloten.');
+    if (!options.noRender && activeTab === 'drag') render();
+  }
+
+  function startRaceGameLoop() {
+    if (raceGameRaf) cancelAnimationFrame(raceGameRaf);
+    raceGameLastFrame = performance.now();
+    const frame = now => {
+      if (!raceGame?.open) { raceGameRaf = null; return; }
+      const dt = clamp((now - raceGameLastFrame) / 1000, 0, .05);
+      raceGameLastFrame = now;
+      if (raceGame.phase === 'burnout') updateV7BurnoutGame(dt, now);
+      else if (raceGame.phase === 'stage') updateV7StageGame(dt, now);
+      else if (raceGame.phase === 'run') updateV7RunGame(dt, now);
+      raceGameRaf = requestAnimationFrame(frame);
+    };
+    raceGameRaf = requestAnimationFrame(frame);
+  }
+
+  function updateV7Tach(prefix, rpm, gear = 1) {
+    const limit = Math.max(6500, Number(state.tune.revLimitRpm || 8000));
+    const fraction = clamp(Number(rpm || 0) / limit, 0, 1);
+    const tach = $(`#${prefix}-tach`); if (tach) { tach.style.setProperty('--rpm-frac', fraction); tach.style.setProperty('--tach-angle', `${fraction * 252}deg`); }
+    const rpmNode = $(`#${prefix}-rpm`); if (rpmNode) rpmNode.textContent = Math.round(rpm);
+    const gearNode = $(`#${prefix}-gear`); if (gearNode) gearNode.textContent = gear;
+    $$(`#${prefix}-shift-strip i`).forEach((node,i) => {
+      node.classList.toggle('on', fraction > .54 + i * .035);
+      node.classList.toggle('red', fraction > .91 && i > 8);
+    });
+  }
+
+  function updateV7BurnoutGame(dt, now) {
+    const b = raceGame.burn;
+    const profile = burnoutProfile();
+    const manualThrottle = !!raceGamePointer.burnout;
+    let throttle = manualThrottle;
+    if (raceGameAuto) throttle = b.rpm < 5250 || (b.rpm < 5850 && b.tempC < profile.targetC - 1);
+    if (throttle && !b.started) { b.started = true; b.startAt = now; raceGameTone(520,.06,.025); }
+    const targetRpm = throttle ? 6400 : 900;
+    const response = throttle ? 3.5 : 4.4;
+    b.rpm += (targetRpm - b.rpm) * Math.min(1, dt * response);
+    if (throttle) b.rpm += Math.sin(now * .018) * 65;
+    b.rpm = clamp(b.rpm, 850, Math.min(Number(state.tune.revLimitRpm || 8000), 7600));
+    const rpmQuality = clamp(1 - Math.abs(b.rpm - 5000) / 1900, 0, 1);
+    if (throttle && b.rpm > 2400) {
+      const driveFactor = state.vehicle.drivetrain === 'AWD' ? .72 : 1;
+      const heat = profile.heatRate * driveFactor * (.36 + rpmQuality * .88) * dt;
+      b.tempC = clamp(b.tempC + heat, profile.trackC, profile.cautionC + 25);
+      b.smoke += (1 - b.smoke) * Math.min(1,dt*4.2);
+      b.qualityIntegral += rpmQuality * dt;
+      b.qualityTime += dt;
+    } else {
+      b.tempC = Math.max(profile.trackC, b.tempC - dt * .55);
+      b.smoke += (0 - b.smoke) * Math.min(1,dt*3.2);
+    }
+    if (b.started) b.timeLeft = Math.max(0, b.timeLeft - dt);
+    b.elapsed += dt;
+    burnoutRuntime.rpm = b.rpm; burnoutRuntime.tempC = b.tempC; burnoutRuntime.smoke = b.smoke; burnoutRuntime.active = throttle; burnoutRuntime.wheelSlip = throttle ? clamp((b.rpm-2200)/5000,0,1) : 0;
+    updateEngineAudio(b.rpm, throttle ? .88 : .12, throttle ? .86 : 0);
+    updateV7BurnoutDom();
+    if (b.started && b.timeLeft <= 0 && !b.done) finishV7Burnout();
+  }
+
+  function updateV7BurnoutDom() {
+    if (!raceGame?.burn) return;
+    const b = raceGame.burn;
+    const assessment = burnoutAssessment(b.tempC);
+    const profile = burnoutProfile();
+    const tempPct = clamp((b.tempC - Math.min(0,profile.trackC)) / Math.max(1,profile.cautionC+18) * 100,0,100);
+    const rpmControl = b.qualityTime ? b.qualityIntegral / b.qualityTime : 0;
+    const combined = Math.round(assessment.score * .76 + rpmControl * 100 * .24);
+    b.score = combined;
+    b.label = assessment.label;
+
+    updateV7Tach('v7-burn', b.rpm, 1);
+    const time = $('#v7-burn-time');
+    if (time) time.textContent = `${b.timeLeft.toFixed(1)} s over`;
+    const temp = $('#v7-burn-temp');
+    if (temp) temp.textContent = `${Math.round(b.tempC)}°C`;
+    const fill = $('#v7-temp-fill');
+    if (fill) fill.style.width = `${tempPct}%`;
+    const marker = $('#v7-temp-marker');
+    if (marker) marker.style.left = `${tempPct}%`;
+    const label = $('#v7-burn-label');
+    if (label) { label.textContent = assessment.label; label.className = assessment.cls; }
+    const score = $('#v7-burn-score');
+    if (score) score.textContent = `${combined}% gripvenster`;
+
+    const enginePoint = state.lastDyno?.curve ? C.interpolateCurve(state.lastDyno.curve, b.rpm) : null;
+    const boost = b.rpm > 1800 ? Math.max(0, Number(enginePoint?.boostBar || 0) * .48) : 0;
+    const boostNode = $('#v8-burn-boost');
+    if (boostNode) boostNode.textContent = boost.toFixed(2);
+    const slip = Math.round(clamp((b.rpm - 1800) / 5200,0,1) * (raceGamePointer.burnout || raceGameAuto ? 100 : 0));
+    const slipNode = $('#v8-burn-wheelspin');
+    if (slipNode) slipNode.textContent = `${slip}%`;
+
+    const smoke = $('#v8-burn-smoke');
+    if (smoke) {
+      smoke.style.setProperty('--smoke', b.smoke);
+      smoke.classList.toggle('active', b.smoke > .08);
+    }
+    const screen = $('.v8-burnout-game');
+    if (screen) {
+      screen.style.setProperty('--burn-shake', `${Math.sin(performance.now()*.027) * b.smoke * 1.1}px`);
+      screen.classList.toggle('burning', b.smoke > .08);
+      screen.classList.toggle('perfect-temp', assessment.score > 82);
+    }
+    const button = $('#v7-burn-throttle');
+    if (button) button.classList.toggle('active', !!raceGamePointer.burnout || (raceGameAuto && !b.done));
+    const instruction = $('#v7-burn-instruction');
+    if (instruction && b.started) {
+      const title = assessment.score > 82 ? 'PERFECTE TEMPERATUUR' : b.tempC > profile.cautionC ? 'TE HEET · LAAT LOS' : 'HOUD RPM IN HET GROEN';
+      const line = assessment.score > 82 ? 'Laat nu los om door te gaan naar de startlijn.' : 'Bouw temperatuur op zonder de band te oververhitten.';
+      instruction.innerHTML = `<b>${title}</b><span>${line}</span>`;
+      instruction.classList.toggle('good', assessment.score > 82);
+      instruction.classList.toggle('warn', b.tempC > profile.cautionC);
+    }
+  }
+
+  function finishV7Burnout() {
+    const b = raceGame.burn;
+    b.done = true; raceGame.phase = 'burnout-result';
+    raceGamePointer.burnout = false;
+    syncBurnoutLevel(b.tempC);
+    const assessment = burnoutAssessment(b.tempC);
+    const instruction=$('#v7-burn-instruction');
+    if(instruction){instruction.classList.add(assessment.score>=78?'good':'warn');instruction.innerHTML=`<b>${assessment.score>=84?'PERFECT GRIP':assessment.score>=60?'BRUIKBARE GRIP':'SLECHTE BURNOUT'}</b><span>${Math.round(b.tempC)}°C · score ${b.score}/100 · door naar staging</span>`;}
+    const pedal=$('#v7-burn-throttle'); if(pedal){pedal.disabled=true;pedal.innerHTML='<span>NAAR STAGE</span><small>camera wisselt naar achteraanzicht</small>'; pedal.classList.add('complete');}
+    haptic(assessment.score>=80?[18,18,35]:[45,25,20]);
+    engineShiftPop(.65);
+    const delay = state.settings?.reducedMotion ? 80 : 1050;
+    raceGameTimers.push(setTimeout(enterV7Stage, delay));
+  }
+
+  function enterV7Stage() {
+    if (!raceGame?.open) return;
+    clearRaceGameTimers();
+    raceGame.phase='stage';
+    raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,readySince:0};
+    raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false};
+    renderRaceGame();
+    updateEngineAudio(900,.12,0);
+    haptic(18);
+  }
+
+  function updateV7StageGame(dt, now) {
+    const s = raceGame.stage;
+    let creep = !!raceGamePointer.creep;
+    let throttle = !!raceGamePointer.throttle;
+    if (raceGameAuto) {
+      creep = !s.treeStarted && s.progress < 67;
+      throttle = s.progress > 52 && !s.launched;
+    }
+    if (creep && !s.treeStarted && !s.deep) {
+      s.progress += dt * (state.settings?.reducedMotion ? 125 : 34);
+      if (s.progress > 92) {
+        s.progress = 94;
+        s.deep = true;
+        s.staged = false;
+        raceGamePointer.creep = false;
+        haptic([45,25,45]);
+      }
+    }
+    s.staged = s.progress >= 56 && s.progress <= 82 && !s.deep;
+    const target = Number(state.tune.launchRpm || 4200);
+    const targetRpm = throttle && s.staged ? target : 900;
+    s.rpm += (targetRpm - s.rpm) * Math.min(1, dt * (throttle ? 4.25 : 5.2));
+    s.rpm += throttle && s.staged ? Math.sin(now * .017) * 42 : 0;
+    s.rpm = clamp(s.rpm, 850, Number(state.tune.revLimitRpm || 8000));
+
+    const rpmReady = s.staged && throttle && Math.abs(s.rpm - target) < 360;
+    if (!s.treeStarted && rpmReady) {
+      if (!s.readySince) s.readySince = now;
+      const holdMs = state.settings?.reducedMotion ? 70 : 420;
+      if (now - s.readySince >= holdMs) startV7Tree();
+    } else if (!s.treeStarted) {
+      s.readySince = 0;
+    }
+
+    updateEngineAudio(s.rpm, throttle && s.staged ? .82 : .12, 0);
+    updateV7StageDom();
+  }
+
+  function updateV7StageDom() {
+    if (!raceGame?.stage) return;
+    const s = raceGame.stage;
+    const target = Number(state.tune.launchRpm || 4200);
+    updateV7Tach('v7-stage', s.rpm, 1);
+
+    const marker = $('#v7-stage-marker');
+    if (marker) marker.style.left = `${clamp(s.progress,0,100)}%`;
+    const depth = $('#v7-stage-depth');
+    if (depth) depth.textContent = `${Math.round(s.progress)}%`;
+
+    let status = 'KRUIP NAAR PRE-STAGE';
+    if (s.progress >= 25) status = 'PRE-STAGE · NOG IETS VOORUIT';
+    if (s.staged && !s.treeStarted) status = 'VOLLEDIG GESTAGED · HOUD LAUNCH IN';
+    if (s.deep) status = 'TE DIEP · BEAM GEMIST';
+    if (s.treeStarted) status = s.green ? 'GROEN · LAAT LOS!' : 'TREE LOOPT · HOUD TOERENTAL';
+    const st = $('#v7-stage-status');
+    if (st) { st.textContent = status; st.className = s.deep ? 'bad' : s.green ? 'go' : s.staged ? 'good' : ''; }
+
+    v7SetBulbs(['preL','preR'], s.progress >= 25);
+    v7SetBulbs(['stageL','stageR'], s.staged || s.treeStarted);
+
+    const launch = $('#v7-launch-button');
+    if (launch) {
+      const ready = s.staged && !s.deep && !s.launched;
+      launch.disabled = !ready;
+      launch.classList.toggle('ready', ready && !s.treeStarted);
+      launch.classList.toggle('armed', ready && s.treeStarted && !s.green);
+      launch.classList.toggle('go', ready && s.green);
+      const label = $('b', launch);
+      const hint = $('small', launch);
+      if (label) label.textContent = !ready ? 'LAUNCH VERGRENDELD' : s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : 'HOUD VOOR LAUNCH';
+      if (hint) hint.textContent = !ready ? 'rij eerst volledig in stage' : s.treeStarted ? 'release bepaalt je reactietijd' : 'bouw rpm op; de tree start automatisch';
+    }
+
+    const rpmNumber = $('#v8-stage-rpm-number');
+    if (rpmNumber) rpmNumber.textContent = Math.round(s.rpm);
+    const rpmFill = $('#v8-stage-rpm-fill');
+    if (rpmFill) rpmFill.style.width = `${clamp(s.rpm / Math.max(1,target),0,1.22) * 82}%`;
+    const enginePoint = state.lastDyno?.curve ? C.interpolateCurve(state.lastDyno.curve, s.rpm) : null;
+    const boost = s.rpm > 1800 ? Math.max(0, Number(enginePoint?.boostBar || 0) * Number(state.tune.firstGearBoostPct || 100) / 100) : 0;
+    const boostNode = $('#v8-stage-boost');
+    if (boostNode) boostNode.textContent = boost.toFixed(2);
+
+    const screen = $('.v8-stage-game');
+    if (screen) {
+      screen.classList.toggle('is-staged', s.staged && !s.deep);
+      screen.classList.toggle('tree-running', s.treeStarted && !s.green);
+      screen.classList.toggle('green', !!s.green);
+    }
+    const plate = $('.v8-stage-plate');
+    if (plate) {
+      const scale = 1.015 + clamp(s.progress/100,0,1) * .025;
+      plate.style.transform = `scale(${scale}) translateY(${clamp(s.progress/100,0,1) * -5}px)`;
+    }
+  }
+
+  function v7SetBulbs(names,on=true){names.forEach(n=>{const el=$(`[data-v7-bulb="${n}"]`,$('#race-game-root'));if(el)el.classList.toggle('on',!!on);});}
+  function v7ResetBulbs(){$$('[data-v7-bulb]',$('#race-game-root')).forEach(el=>el.classList.remove('on'));}
+
+  function resetV7Stage() {
+    if(!raceGame?.open)return;
+    clearRaceGameTimers();
+    raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,readySince:0};
+    raceGamePointer.creep=false;raceGamePointer.throttle=false;
+    renderRaceGame();
+    showToast('Staging opnieuw begonnen.');
+  }
+
+  function startV7Tree() {
+    if(!raceGame?.stage||raceGame.stage.treeStarted)return;
+    const s=raceGame.stage;
+    if(!s.staged||s.deep)return showToast('Zet de auto eerst correct in stage.');
+    s.treeStarted=true;s.green=false;s.launched=false;
+    playLaunchCrackle(.48);
+    clearRaceGameTimers();v7ResetBulbs();v7SetBulbs(['preL','preR','stageL','stageR'],true);
+    const base=state.settings?.reducedMotion?90:650+Math.random()*620;
+    const now=performance.now();
+    const greenDelay=treeMode==='pro'?base+400:base+1500;
+    s.plannedGreen=now+greenDelay;
+    const later=(ms,fn)=>raceGameTimers.push(setTimeout(()=>{if(raceGame?.phase==='stage')fn();},ms));
+    if(treeMode==='pro'){
+      later(base,()=>{v7SetBulbs(['a1L','a1R','a2L','a2R','a3L','a3R'],true);raceGameTone(620,.08,.035);haptic(9);});
+      later(base+400,()=>{v7SetBulbs(['a1L','a1R','a2L','a2R','a3L','a3R'],false);v7SetBulbs(['gL','gR'],true);s.green=true;raceGameTone(980,.12,.05);haptic(26);});
+    }else{
+      later(base,()=>{v7SetBulbs(['a1L','a1R'],true);raceGameTone(520,.06,.025);haptic(8);});
+      later(base+500,()=>{v7SetBulbs(['a1L','a1R'],false);v7SetBulbs(['a2L','a2R'],true);raceGameTone(620,.06,.025);haptic(8);});
+      later(base+1000,()=>{v7SetBulbs(['a2L','a2R'],false);v7SetBulbs(['a3L','a3R'],true);raceGameTone(720,.06,.03);haptic(8);});
+      later(base+1500,()=>{v7SetBulbs(['a3L','a3R'],false);v7SetBulbs(['gL','gR'],true);s.green=true;raceGameTone(1020,.12,.05);haptic(28);});
+    }
+    if(raceGameAuto)later(greenDelay+72,()=>launchV7Race(true));
+    updateV7StageDom();
+  }
+
+  function launchV7Race(auto=false) {
+    if(!raceGame?.stage||!raceGame.stage.treeStarted||raceGame.stage.launched)return showToast('Start eerst de tree.');
+    const s=raceGame.stage;s.launched=true;
+    const reactionTime=(performance.now()-s.plannedGreen)/1000;
+    if(reactionTime<0){clearRaceGameTimers();v7SetBulbs(['a1L','a1R','a2L','a2R','a3L','a3R','gL','gR'],false);v7SetBulbs(['rL','rR'],true);haptic([70,40,70]);raceGameTone(180,.22,.06);}else haptic(30);
+    startV7Run(reactionTime,auto);
+  }
+
+  function raceTransmissionInfo() {
+    const part = selectedTransmission();
+    return {
+      id: selectedTransmissionId(),
+      part,
+      isDsg: selectedTransmissionId() === 'dq250',
+      gears: Array.isArray(part.gearRatios) ? part.gearRatios.slice() : [3.36,2.09,1.47,1.10,.86,.72],
+      finalDrive: Number(part.finalDrive || 3.94),
+      shiftSeconds: Math.max(.035, Number(part.shiftSeconds || .25)),
+      efficiency: clamp(Number(part.transEfficiency || .9), .75, .98)
+    };
+  }
+
+  function buildRealtimeShiftTargets(transInfo) {
+    const targets = [];
+    const curve = state.lastDyno?.curve || [];
+    const revLimit = Number(state.tune.revLimitRpm || 8000);
+    const launch = Number(state.tune.launchRpm || 4200);
+    for (let gearIndex = 0; gearIndex < transInfo.gears.length - 1; gearIndex++) {
+      const currentRatio = transInfo.gears[gearIndex];
+      const nextRatio = transInfo.gears[gearIndex + 1];
+      let target = revLimit - 130;
+      for (let rpm = Math.max(4300, launch + 350); rpm <= revLimit - 100; rpm += 50) {
+        const nextRpm = rpm * nextRatio / currentRatio;
+        const currentPoint = C.interpolateCurve(curve, rpm);
+        const nextPoint = C.interpolateCurve(curve, nextRpm);
+        const currentWheelTorque = Number(currentPoint?.torqueNm || 0) * currentRatio;
+        const nextWheelTorque = Number(nextPoint?.torqueNm || 0) * nextRatio;
+        if (nextRpm > 1700 && nextWheelTorque >= currentWheelTorque * .992) {
+          target = rpm;
+          break;
+        }
+      }
+      targets.push(clamp(target, Math.max(4800, launch + 450), revLimit - 80));
+    }
+    return targets;
+  }
+
+  function createRealtimeRun(reactionTime, auto = false) {
+    const transInfo = raceTransmissionInfo();
+    const drive = C.DRIVETRAINS[state.vehicle.drivetrain];
+    const grip = C.gripFactor(state.vehicle);
+    const geometry = C.engineGeometry(state);
+    const wheelMassPenalty = Math.max(0, Number(state.vehicle.wheelMassKg || 0) - 7.5) * 4 * 1.35;
+    const mass = Math.max(750, Number(state.vehicle.massKg || 1350) + Number(drive.mass || 0) + Number(transInfo.part.massDeltaKg || 0) + wheelMassPenalty);
+    const rho = C.airDensity(state.vehicle);
+    const dynoRho = Number(state.lastDyno?.airDensityKgM3 || 1.204);
+    const burnout = burnoutAssessment(raceGame.burn.tempC);
+    const actualTempFactor = clamp(.80 + (raceGame.burn.score || burnout.score) / 100 * .24, .76, 1.04);
+    const opponent = buildRivalSimulation();
+    const run = {
+      reactionTime: Number(reactionTime || 0), redLight: Number(reactionTime || 0) < 0,
+      valid: Number(reactionTime || 0) >= 0, auto: !!auto,
+      transInfo, autoShift: transInfo.isDsg, driverAssist: !!auto,
+      shiftTargets: buildRealtimeShiftTargets(transInfo),
+      shiftHistory: [], perfect: 0, good: 0, early: 0, late: 0, missed: 0,
+      limiterFlags: new Set(), shifting: null,
+      t: 0, x: 0, v: 0, a: 0, rpm: Number(state.tune.launchRpm || 4200), gearIndex: 0,
+      boostFactor: .80, wheelspin: 0, peakWheelspin: 0, zeroTo100: null,
+      clutchTempC:58, gearboxTempC:66, maxClutchTempC:58, maxGearboxTempC:66, limiterTime:0, drivelineStress:0,
+      lateralM: 0, lateralVelocity: 0, laneWarning: false, laneDnf: false, offTrackTime: 0, lineTouches: 0,
+      mass, rho, dynoRho, airPowerFactor: clamp(Math.pow(rho / dynoRho, .35), .86, 1.05),
+      drive, grip, actualTempFactor, geometry,
+      radius: Math.max(.18, Number(grip.geometry.radiusM || .327)),
+      cdA: Number(state.vehicle.cdA || .68),
+      wheelbase: Number(state.vehicle.wheelbaseM || 2.58),
+      cgHeight: Number(state.vehicle.cgHeightM || .51),
+      transEff: transInfo.efficiency * (1 - Number(drive.loss || .1) * .34),
+      headwind: Math.max(-20, Number(state.vehicle.headwindKmh || 0)) / 3.6,
+      transferScale: clamp(.55 + Number(state.vehicle.suspensionTransferPct || 60) / 100 * .85, .55, 1.40),
+      milestones: {}, trace: [], lastTraceT: -.1,
+      feedback: 'LAUNCH', feedbackUntil: 0, point: null,
+      finished: false, finishReason: '', startMs: performance.now(),
+      timeScale: auto ? (state.settings?.reducedMotion ? 6.0 : 2.15) : 1,
+      burnoutTempC: raceGame.burn.tempC, burnoutScore: raceGame.burn.score || burnout.score,
+      raceMode:opponent ? 'heads_up' : 'solo', opponent, opponentGapM:0, opponentFinishShown:false
+    };
+    run.point = realtimePoint(run, 0, 0);
+    return run;
+  }
+
+  function realtimePoint(run, boostBar = 0, turboLoad = 0) {
+    return {
+      time: run.t,
+      distanceM: run.x,
+      speedKmh: run.v * 3.6,
+      rpm: run.rpm,
+      gear: run.gearIndex + 1,
+      accelerationG: run.a / 9.80665,
+      wheelspinPct: run.wheelspin * 100,
+      boostBar,
+      turboLoadPct: turboLoad,
+      lateralM: run.lateralM,
+      laneWarning: run.laneWarning,
+      laneDnf: run.laneDnf,
+      clutchTempC:run.clutchTempC,
+      gearboxTempC:run.gearboxTempC,
+      limiterTimeS:run.limiterTime,
+      drivelineStress:run.drivelineStress,
+      opponentDistanceM:Number(run.opponent?.current?.distanceM || 0),
+      opponentSpeedKmh:Number(run.opponent?.current?.speedKmh || 0),
+      opponentGapM:Number(run.opponentGapM || 0)
+    };
+  }
+
+  function completeRealtimeShift(run) {
+    if (!run.shifting) return;
+    const shift = run.shifting;
+    run.gearIndex = Math.min(shift.to, run.transInfo.gears.length - 1);
+    const ratio = run.transInfo.gears[run.gearIndex] * run.transInfo.finalDrive;
+    const coupledRpm = run.v / (2 * Math.PI * run.radius) * 60 * ratio;
+    run.rpm = clamp(Math.max(900, coupledRpm), 850, Number(state.tune.revLimitRpm || 8000));
+    run.boostFactor *= run.autoShift ? .94 : .76;
+    run.clutchTempC += run.autoShift ? 2.4 : shift.grade === 'perfect' ? 4.5 : shift.grade === 'late' ? 8.5 : 6.5;
+    run.gearboxTempC += run.autoShift ? 1.4 : 2.2;
+    run.drivelineStress += shift.grade === 'perfect' ? .8 : shift.grade === 'good' ? 1.3 : 2.4;
+    run.shifting = null;
+    const type = run.autoShift ? 'dsg' : 'manual';
+    engineShiftPop(shift.grade === 'perfect' ? 1 : shift.grade === 'late' ? .82 : .68, type);
+    const car = $('#v7-run-car');
+    if (car) { car.classList.remove('shift-pop'); void car.offsetWidth; car.classList.add('shift-pop'); setTimeout(() => car.classList.remove('shift-pop'), 150); }
+  }
+
+  function requestRealtimeShift(source = 'manual') {
+    const run = raceGame?.run;
+    if (!run || raceGame.phase !== 'run' || run.finished || run.shifting) return false;
+    if (run.gearIndex >= run.transInfo.gears.length - 1) {
+      showV7ShiftFeedback('HOOGSTE VERSNELLING', 'warn');
+      return false;
+    }
+    if (source === 'manual' && run.autoShift) return false;
+    const target = Number(run.shiftTargets[run.gearIndex] || (state.tune.revLimitRpm - 150));
+    const delta = run.rpm - target;
+    let label = 'GOEDE SHIFT', grade = 'good';
+    if (Math.abs(delta) <= 145) { label = 'PERFECT SHIFT'; grade = 'perfect'; run.perfect++; }
+    else if (delta < -650) { label = 'TE VROEG · RPM VALT'; grade = 'early'; run.early++; }
+    else if (delta < -145) { label = 'VROEGE SHIFT'; grade = 'good'; run.good++; }
+    else if (delta > 420) { label = 'TE LAAT · BEGRENZER'; grade = 'late'; run.late++; }
+    else { label = 'GOEDE SHIFT'; grade = 'good'; run.good++; }
+    if (source === 'dsg') { label = 'DSG SHIFT'; grade = 'perfect'; run.perfect++; }
+    if (source === 'ai' && grade !== 'perfect') { label = 'AI SHIFT'; grade = 'good'; run.good++; }
+    const duration = run.transInfo.shiftSeconds * (grade === 'late' ? 1.05 : grade === 'early' ? 1.08 : 1);
+    run.gearboxTempC += grade === 'late' ? 2.2 : grade === 'early' ? 1.6 : .8;
+    run.drivelineStress += grade === 'late' ? 1.8 : grade === 'early' ? 1.2 : .4;
+    run.shifting = { from: run.gearIndex, to: run.gearIndex + 1, remaining: duration, duration, grade, source, rpm: run.rpm, target };
+    run.shiftHistory.push({ at: run.t, from: run.gearIndex + 1, to: run.gearIndex + 2, rpm: run.rpm, targetRpm: target, grade, source });
+    showV7ShiftFeedback(label, grade === 'perfect' ? 'perfect' : grade === 'late' || grade === 'early' ? 'warn' : 'good');
+    haptic(grade === 'perfect' ? [9,10,18] : 13);
+    return true;
+  }
+
+  function recordRealtimeMilestones(run) {
+    const defs = [
+      ['sixtyFt', 18.288], ['threeThirty', 100.584], ['eighth', 201.168], ['thousandFt', 304.8], ['quarter', 402.336]
+    ];
+    for (const [key, meters] of defs) {
+      if (run.milestones[key] == null && run.x >= meters) {
+        run.milestones[key] = run.t;
+        if (key === 'eighth') run.milestones.eighthKmh = run.v * 3.6;
+        if (key === 'quarter') run.milestones.trapKmh = run.v * 3.6;
+      }
+    }
+    if (run.zeroTo100 == null && run.v >= 27.7778) run.zeroTo100 = run.t;
+  }
+
+  function stepRealtimePhysics(run, dt) {
+    const g = 9.80665;
+    const revLimit = Number(state.tune.revLimitRpm || 8000);
+    const launchRpm = clamp(Number(state.tune.launchRpm || 4200), 2200, revLimit - 400);
+    const maxStep = .006;
+    let remaining = dt;
+    while (remaining > 1e-7 && !run.finished) {
+      const h = Math.min(maxStep, remaining);
+      remaining -= h;
+      run.t += h;
+
+      if (run.shifting) {
+        run.shifting.remaining -= h;
+        if (run.shifting.remaining <= 0) completeRealtimeShift(run);
+      }
+
+      const gearRatio = run.transInfo.gears[run.gearIndex] * run.transInfo.finalDrive;
+      const wheelCoupledRpm = run.v / (2 * Math.PI * run.radius) * 60 * gearRatio;
+      const launchSlip = run.gearIndex === 0 ? clamp(1 - wheelCoupledRpm / Math.max(1, launchRpm), 0, 1) : 0;
+      const desiredRpm = launchSlip > .01 ? Math.max(wheelCoupledRpm, launchRpm + launchSlip * 210) : Math.max(900, wheelCoupledRpm);
+      run.rpm += (desiredRpm - run.rpm) * clamp(h * (run.shifting ? 24 : 17), 0, 1);
+      run.rpm = clamp(run.rpm, 850, revLimit + 180);
+
+      const targetShift = Number(run.shiftTargets[run.gearIndex] || revLimit - 90);
+      if (!run.shifting && run.gearIndex < run.transInfo.gears.length - 1) {
+        if (run.autoShift && run.rpm >= targetShift) requestRealtimeShift('dsg');
+        else if (run.driverAssist && run.rpm >= targetShift) requestRealtimeShift('ai');
+      }
+
+      const enginePoint = C.interpolateCurve(state.lastDyno.curve, run.rpm);
+      const head = C.getPart(state, 'head');
+      const naBase = 174 * (run.geometry.displacementL / 2) * Number(head.headFlow || 1) * (1 + Math.min(8, Number(state.tune.intakeCamAdvanceDeg || 0)) * .004);
+      const gearBoost = run.gearIndex === 0 ? Number(state.tune.firstGearBoostPct || 100) / 100 : run.gearIndex === 1 ? Number(state.tune.secondGearBoostPct || 100) / 100 : 1;
+      const spoolRate = clamp(2.0 + run.rpm / 3000, 2.2, 6.2);
+      run.boostFactor += (1 - run.boostFactor) * clamp(h * spoolRate, 0, 1);
+      const steadyTorque = Number(enginePoint?.torqueNm || 0);
+      let torqueEngine = (naBase + (steadyTorque - naBase) * gearBoost * run.boostFactor) * run.airPowerFactor;
+      const boostBar = Math.max(0, Number(enginePoint?.boostBar || 0) * gearBoost * run.boostFactor);
+      const turboLoad = Number(enginePoint?.turboLoadPct || 0);
+
+      let limiterCut = 1;
+      if (run.rpm >= revLimit - 20) {
+        limiterCut = Math.sin(run.t * 78) > -.05 ? .16 : .46;
+        run.limiterTime += h;
+        run.gearboxTempC += h * .9;
+        run.drivelineStress += h * 1.9;
+        if (!run.autoShift && !run.limiterFlags.has(run.gearIndex)) {
+          run.limiterFlags.add(run.gearIndex); run.missed++;
+          showV7ShiftFeedback('BEGRENZER · SCHAKEL!', 'bad');
+          haptic([10,8,10]);
+        }
+      }
+      let shiftTorqueFactor = 1;
+      if (run.shifting) shiftTorqueFactor = run.autoShift ? .42 : .035;
+      torqueEngine *= limiterCut * shiftTorqueFactor;
+
+      let clutchTransfer = .58 + (1 - launchSlip) * .42;
+      const clutchHeatRate = launchSlip * Math.abs(torqueEngine) * (.012 + run.wheelspin * .006);
+      run.clutchTempC += clutchHeatRate * h;
+      run.clutchTempC += (58 - run.clutchTempC) * h * .018;
+      run.gearboxTempC += Math.abs(torqueEngine) / 900 * h * (run.shifting ? 1.6 : .34);
+      run.gearboxTempC += (66 - run.gearboxTempC) * h * .010;
+      const clutchFade = clamp(1 - Math.max(0, run.clutchTempC - 205) / 260, .54, 1);
+      clutchTransfer *= clutchFade;
+      const demandForce = Math.max(0, torqueEngine * gearRatio * run.transEff / run.radius * clutchTransfer);
+      const previousA = run.a;
+      const transfer = run.mass * Math.max(-.4 * g, previousA) * run.cgHeight / run.wheelbase * run.transferScale;
+      const frontNormal = clamp(run.mass * g * Number(run.drive.frontStatic || .6) - transfer, run.mass * g * .15, run.mass * g * .86);
+      const rearNormal = run.mass * g - frontNormal;
+      let drivenNormal = state.vehicle.drivetrain === 'FWD' ? frontNormal : state.vehicle.drivetrain === 'RWD' ? rearNormal : (frontNormal + rearNormal) * Number(run.drive.tractionUse || .92);
+      const speedGrip = clamp(1.035 - run.v * .00135, .78, 1.04);
+      const tireForce = Math.max(0, run.grip.mu * run.actualTempFactor * drivenNormal * speedGrip);
+      const driveForce = Math.min(demandForce, tireForce);
+      run.wheelspin = demandForce > 1 ? clamp((demandForce - tireForce) / demandForce, 0, .95) : 0;
+      run.peakWheelspin = Math.max(run.peakWheelspin, run.wheelspin);
+
+      const relativeAir = Math.max(0, run.v + run.headwind);
+      const aero = .5 * run.rho * run.cdA * relativeAir * relativeAir;
+      const rolling = Number(run.grip.tire.rolling || .013) * run.mass * g * (1 + run.v * .006);
+      run.a = clamp((driveForce - aero - rolling) / run.mass, -.8 * g, 1.55 * g);
+      run.v = Math.max(0, run.v + run.a * h);
+      run.x += run.v * h;
+      run.maxClutchTempC = Math.max(run.maxClutchTempC, run.clutchTempC);
+      run.maxGearboxTempC = Math.max(run.maxGearboxTempC, run.gearboxTempC);
+      run.drivelineStress += (Math.max(0, demandForce - tireForce) / Math.max(1, tireForce) * 1.7 + Math.max(0, run.a / g - .75) * .22) * h;
+
+      if (run.opponent) {
+        const greenElapsed = run.t + run.reactionTime;
+        const opponentDriveTime = greenElapsed - run.opponent.reactionTime;
+        run.opponent.current = tracePointAtTime(run.opponent.trace, opponentDriveTime);
+        run.opponentGapM = Number(run.opponent.current.distanceM || 0) - run.x;
+        run.opponent.finished = greenElapsed >= run.opponent.result.finishTotalTime;
+      }
+
+      const manualSteer = (raceGamePointer.steerRight ? 1 : 0) - (raceGamePointer.steerLeft ? 1 : 0);
+      const sensitivity = clamp(Number(state.vehicle.steeringSensitivityPct || 100) / 100, .60, 1.50);
+      const assist = clamp(Number(state.vehicle.steeringAssistPct || 0) / 100, 0, .60);
+      const centerAssist = -run.lateralM * 1.55 * assist - run.lateralVelocity * .72 * assist;
+      const steer = run.driverAssist ? clamp(-run.lateralM * 1.9 - run.lateralVelocity * .95, -1, 1) : clamp(manualSteer * sensitivity + centerAssist, -1.35, 1.35);
+      const driveBias = state.vehicle.drivetrain === 'FWD' ? .22 : state.vehicle.drivetrain === 'RWD' ? -.07 : .045;
+      const torqueSteer = driveBias * clamp(run.a / g, 0, 1.25) + (state.vehicle.drivetrain === 'FWD' ? run.wheelspin * .24 : run.wheelspin * Math.sin(run.t * 5.2) * .16);
+      const roadCrown = .050 + Math.sin(run.t * .73 + run.x * .018) * .038;
+      const targetLatVelocity = steer * (.42 + run.v * .0075);
+      const lateralAccel = (targetLatVelocity - run.lateralVelocity) * 3.4 + torqueSteer + roadCrown;
+      run.lateralVelocity += lateralAccel * h;
+      run.lateralM += run.lateralVelocity * h;
+      run.laneWarning = Math.abs(run.lateralM) > .54;
+      if (run.laneWarning && !run._lineWasWarning) run.lineTouches++;
+      run._lineWasWarning = run.laneWarning;
+      if (Math.abs(run.lateralM) > .93) run.offTrackTime += h; else run.offTrackTime = Math.max(0, run.offTrackTime - h * 1.8);
+      if (run.offTrackTime > .48 && !run.laneDnf) {
+        run.laneDnf = true; run.valid = false; run.finishReason = 'BUITEN DE BAAN';
+        showV7ShiftFeedback('BUITEN DE LIJN · RUN ONGELDIG', 'bad'); haptic([55,30,55]);
+      }
+      if (Math.abs(run.lateralM) > 1.22) {
+        run.lateralM = Math.sign(run.lateralM) * 1.22;
+        run.lateralVelocity *= -.18;
+        run.v *= .982;
+      }
+
+      recordRealtimeMilestones(run);
+      const point = realtimePoint(run, boostBar, turboLoad);
+      run.point = point;
+      if (run.t - run.lastTraceT >= .035) { run.trace.push(point); run.lastTraceT = run.t; }
+      if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) break;
+    }
+  }
+
+  function startV7Run(reactionTime, auto = false) {
+    clearRaceGameTimers();
+    try {
+      stopBurnout({silent:true});
+      raceGame.phase = 'run';
+      raceGame.run = createRealtimeRun(reactionTime, auto);
+      renderRaceGame();
+      startEngineAudio('race');
+      updateEngineAudio(raceGame.run.rpm, .92, .25);
+      playLaunchCrackle(.95);
+    } catch (e) {
+      showToast(e.message); closeDragGame({silent:true}); render();
+    }
+  }
+
+  function handleV7Shift() {
+    const run = raceGame?.run;
+    if (!run || raceGame.phase !== 'run' || run.finished) return;
+    if (run.autoShift) { showV7ShiftFeedback('DSG SCHAKELT AUTOMATISCH', 'good'); return; }
+    requestRealtimeShift('manual');
+  }
+
+  function showV7ShiftFeedback(text, cls = '') {
+    const run = raceGame?.run;
+    if (run) { run.feedback = text; run.feedbackUntil = performance.now() + 820; }
+    const node = $('#v7-shift-feedback');
+    if (node) { node.textContent = text; node.className = `v7-shift-feedback v9-shift-feedback ${cls}`; }
+  }
+
+  function updateV7RunGame(dt, now) {
+    const run = raceGame?.run;
+    if (!run || run.finished) return;
+    const scaledDt = clamp(dt * run.timeScale, 0, .18);
+    stepRealtimePhysics(run, scaledDt);
+    updateV7RunDom(run.point);
+    const enginePoint = C.interpolateCurve(state.lastDyno.curve, run.rpm);
+    updateEngineAudio(run.rpm, Math.max(.22, Number(enginePoint?.turboLoadPct || 20) / 100), run.wheelspin);
+    if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
+  }
+
+  function v10EnsureTrackSurface() {
+    const canvas = $('#v10-track-canvas');
+    if (!canvas) return null;
+    const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(320, Math.round(rect.width || window.innerWidth || 360));
+    const height = Math.max(520, Math.round(rect.height || window.innerHeight || 720));
+    if (canvas !== v10TrackVisual.canvas || width !== v10TrackVisual.width || height !== v10TrackVisual.height || dpr !== v10TrackVisual.dpr) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      v10TrackVisual.canvas = canvas;
+      v10TrackVisual.ctx = canvas.getContext('2d', { alpha:true, desynchronized:true });
+      v10TrackVisual.width = width; v10TrackVisual.height = height; v10TrackVisual.dpr = dpr;
+      v10TrackVisual.ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    return v10TrackVisual.ctx;
+  }
+
+  function v10Projection(distanceAhead, width, height) {
+    const horizonY = height * .355;
+    const roadBottomY = height * .925;
+    const viewDistance = 205;
+    const normalized = clamp(distanceAhead / viewDistance, 0, 1);
+    const near = Math.pow(1 - normalized, 1.72);
+    const y = horizonY + (roadBottomY - horizonY) * near;
+    const roadHalf = width * (.052 + .56 * Math.pow(near, 1.18));
+    return { y, roadHalf, near, horizonY, roadBottomY };
+  }
+
+  function v10DrawOpponent(ctx, x, y, scale, glow = 1) {
+    const w = 54 * scale, h = 29 * scale;
+    ctx.save(); ctx.translate(x,y);
+    ctx.shadowColor = `rgba(255,45,35,${.55*glow})`; ctx.shadowBlur = 12*scale;
+    ctx.fillStyle = '#080b10';
+    ctx.beginPath(); ctx.roundRect(-w*.5,-h*.72,w,h*.72,5*scale); ctx.fill();
+    ctx.fillStyle = '#121820';
+    ctx.beginPath(); ctx.moveTo(-w*.32,-h*.72); ctx.lineTo(-w*.18,-h); ctx.lineTo(w*.18,-h); ctx.lineTo(w*.33,-h*.72); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ff2f2f'; ctx.fillRect(-w*.36,-h*.55,w*.22,3*scale); ctx.fillRect(w*.14,-h*.55,w*.22,3*scale);
+    ctx.fillStyle='rgba(255,50,35,.22)'; ctx.fillRect(-w*.38,-h*.18,w*.76,2*scale);
+    ctx.restore();
+  }
+
+  function drawV10Track(point) {
+    const ctx = v10EnsureTrackSurface();
+    if (!ctx || !raceGame?.run) return;
+    const run = raceGame.run;
+    const w = v10TrackVisual.width, h = v10TrackVisual.height;
+    const speed = clamp(Number(point.speedKmh || 0) / 310, 0, 1);
+    const distance = Number(point.distanceM || 0);
+    const laneCamera = clamp(Number(point.lateralM || 0) / 1.22, -1, 1) * w * .028;
+    ctx.clearRect(0,0,w,h);
+
+    // Night sky and distant flood-light haze.
+    const sky = ctx.createLinearGradient(0,0,0,h*.52);
+    sky.addColorStop(0,'rgba(1,5,12,.40)'); sky.addColorStop(.58,'rgba(3,10,20,.20)'); sky.addColorStop(1,'rgba(8,14,23,.04)');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h*.52);
+    const horizonY=h*.355, bottomY=h*.925;
+    for (let side of [-1,1]) {
+      for (let i=0;i<9;i++) {
+        const x=w*.5+side*(w*.12+i*w*.055);
+        const glow=ctx.createRadialGradient(x,horizonY+3,0,x,horizonY+3,28+i*1.6);
+        glow.addColorStop(0,'rgba(255,239,188,.72)'); glow.addColorStop(.12,'rgba(255,211,105,.34)'); glow.addColorStop(1,'rgba(255,180,50,0)');
+        ctx.fillStyle=glow; ctx.fillRect(x-34,horizonY-31,68,68);
+      }
+    }
+
+    // Perspective asphalt.
+    const asphalt=ctx.createLinearGradient(0,horizonY,0,bottomY);
+    asphalt.addColorStop(0,'rgba(27,33,43,.88)'); asphalt.addColorStop(.38,'rgba(18,23,31,.96)'); asphalt.addColorStop(1,'rgba(5,8,12,1)');
+    ctx.fillStyle=asphalt; ctx.beginPath(); ctx.moveTo(w*.448+laneCamera,horizonY); ctx.lineTo(w*.552+laneCamera,horizonY); ctx.lineTo(w*1.10+laneCamera,bottomY); ctx.lineTo(-w*.10+laneCamera,bottomY); ctx.closePath(); ctx.fill();
+
+    // Wet reflective centre and rubbered-in grooves.
+    const wet=ctx.createLinearGradient(0,horizonY,0,bottomY);
+    wet.addColorStop(0,'rgba(102,137,171,.05)'); wet.addColorStop(.62,'rgba(74,104,133,.13)'); wet.addColorStop(1,'rgba(15,33,50,.27)');
+    ctx.fillStyle=wet; ctx.beginPath(); ctx.moveTo(w*.47+laneCamera,horizonY);ctx.lineTo(w*.53+laneCamera,horizonY);ctx.lineTo(w*.77+laneCamera,bottomY);ctx.lineTo(w*.23+laneCamera,bottomY);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=Math.max(2,w*.012);
+    ctx.beginPath();ctx.moveTo(w*.485+laneCamera,horizonY);ctx.lineTo(w*.38+laneCamera,bottomY);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(w*.515+laneCamera,horizonY);ctx.lineTo(w*.62+laneCamera,bottomY);ctx.stroke();
+
+    const section=18;
+    const phase=((distance%section)+section)%section;
+    for(let i=0;i<15;i++){
+      const ahead=i*section-phase+4;
+      if(ahead<1||ahead>205)continue;
+      const p=v10Projection(ahead,w,h), p2=v10Projection(Math.min(205,ahead+5.4),w,h);
+      const center=w*.5+laneCamera;
+      const lineW=Math.max(1.2,p.near*9);
+      // Central divider and lane edge strips visibly rush underneath the car.
+      ctx.fillStyle=`rgba(241,246,251,${.23+p.near*.54})`;
+      for(const ratio of [-.48,0,.48]){
+        const x1=center+p.roadHalf*ratio, x2=center+p2.roadHalf*ratio;
+        ctx.beginPath();ctx.moveTo(x1-lineW*.5,p.y);ctx.lineTo(x1+lineW*.5,p.y);ctx.lineTo(x2+lineW*.26,p2.y);ctx.lineTo(x2-lineW*.26,p2.y);ctx.closePath();ctx.fill();
+      }
+      // Lane light reflections.
+      for(const side of [-1,1]){
+        const bx=center+side*p.roadHalf*1.02;
+        const alpha=.18+p.near*.75;
+        ctx.fillStyle=`rgba(255,184,65,${alpha})`;ctx.beginPath();ctx.arc(bx,p.y,Math.max(1.2,p.near*4.5),0,Math.PI*2);ctx.fill();
+        const rg=ctx.createLinearGradient(bx,p.y,bx,p.y+55*p.near);
+        rg.addColorStop(0,`rgba(255,148,34,${alpha*.36})`);rg.addColorStop(1,'rgba(255,80,20,0)');ctx.fillStyle=rg;ctx.fillRect(bx-Math.max(1,p.near*2),p.y,Math.max(2,p.near*4),55*p.near);
+      }
+    }
+
+    // Solid barriers and repeating posts.
+    for(const side of [-1,1]){
+      ctx.strokeStyle='rgba(205,216,227,.64)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(w*.5+laneCamera+side*w*.06,horizonY);ctx.lineTo(w*.5+laneCamera+side*w*.66,bottomY);ctx.stroke();
+      for(let i=0;i<18;i++){
+        const ahead=i*14-((distance*1.02)%14)+2;if(ahead<1||ahead>205)continue;
+        const p=v10Projection(ahead,w,h);const x=w*.5+laneCamera+side*p.roadHalf*1.055;
+        const postH=5+p.near*40;
+        ctx.fillStyle=`rgba(191,202,214,${.22+p.near*.62})`;ctx.fillRect(x-side*Math.max(1,p.near*2),p.y-postH,Math.max(1.3,p.near*3),postH);
+        if(i%3===0){
+          const lampY=p.y-postH;
+          const glow=ctx.createRadialGradient(x,lampY,0,x,lampY,5+p.near*21);
+          glow.addColorStop(0,'rgba(255,244,205,.92)');glow.addColorStop(.16,'rgba(255,199,92,.52)');glow.addColorStop(1,'rgba(255,164,52,0)');ctx.fillStyle=glow;ctx.fillRect(x-26*p.near,lampY-26*p.near,52*p.near,52*p.near);
+        }
+      }
+    }
+
+    // Distance boards and finish gantry are tied to real metres remaining.
+    const markers=[[18.288,'60 FT'],[100.584,'330 FT'],[201.168,'1/8'],[304.8,'1000 FT'],[402.336,'FINISH']];
+    for(const [at,label] of markers){
+      const ahead=at-distance;if(ahead<2||ahead>205)continue;
+      const p=v10Projection(ahead,w,h);const center=w*.5+laneCamera;
+      const bw=34+p.near*62,bh=12+p.near*20;
+      ctx.fillStyle=label==='FINISH'?'rgba(238,132,15,.92)':'rgba(7,12,18,.9)';ctx.strokeStyle='rgba(255,188,62,.8)';ctx.lineWidth=Math.max(1,p.near*2);
+      ctx.fillRect(center+p.roadHalf*1.08-bw*.5,p.y-bh,bw,bh);ctx.strokeRect(center+p.roadHalf*1.08-bw*.5,p.y-bh,bw,bh);
+      ctx.fillStyle='#f8fbff';ctx.font=`900 ${Math.max(6,7+p.near*10)}px system-ui`;ctx.textAlign='center';ctx.fillText(label,center+p.roadHalf*1.08,p.y-bh*.31);
+      if(label==='FINISH'){
+        const gy=p.y-bh-8*p.near;ctx.strokeStyle='rgba(235,241,247,.9)';ctx.lineWidth=Math.max(1.2,p.near*4);ctx.beginPath();ctx.moveTo(center-p.roadHalf,gy);ctx.lineTo(center+p.roadHalf,gy);ctx.stroke();
+      }
+    }
+
+    // Speed-linked streaks and track texture.
+    if(speed>.16){
+      ctx.save();ctx.globalCompositeOperation='screen';
+      for(let i=0;i<18;i++){
+        const seed=(i*71.33+distance*8.2)%997;const x=(seed%1000)/1000*w;const y=h*(.52+((seed*1.7)%430)/1000);const len=(10+speed*68)*(0.3+((i*37)%100)/100);
+        ctx.strokeStyle=`rgba(${i%3===0?'255,151,36':'191,220,255'},${.025+speed*.11})`;ctx.lineWidth=.6+speed*1.4;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(x-w*.5)*.018*len,y+len);ctx.stroke();
+      }
+      ctx.restore();
+    }
+    v10TrackVisual.lastDistance=distance;
+  }
+
+  function updateV7RunDom(point) {
+    if (!point || !raceGame?.run) return;
+    const run = raceGame.run;
+    const frac = clamp(point.distanceM / 402.336, 0, 1);
+    drawV10Track(point);
+    updateV7Tach('v7-run', point.rpm, point.gear);
+
+    const speed = $('#v7-run-speed'); if (speed) speed.textContent = Math.round(point.speedKmh);
+    const dist = $('#v7-run-distance'); if (dist) dist.textContent = `${Math.round(point.distanceM)} m`;
+    const distCopy = $('#v8-run-distance-copy'); if (distCopy) distCopy.textContent = `${Math.round(point.distanceM)} / 402 m`;
+    const boostNode = $('#v7-run-boost'); if (boostNode) boostNode.textContent = Number(point.boostBar || 0).toFixed(2);
+    const boostBar = $('#v7-run-boost-bar'); if (boostBar) boostBar.style.width = `${clamp(Number(point.boostBar || 0) / Math.max(1, state.tune.peakBoostBar || 2.5), 0, 1) * 100}%`;
+    const progress = $('#v7-run-progress'); if (progress) progress.style.width = `${frac * 100}%`;
+    const g = $('#v7-run-g'); if (g) g.textContent = `${Number(point.accelerationG || 0).toFixed(2)} g`;
+    const ws = $('#v7-run-wheelspin'); if (ws) ws.textContent = `${Math.round(point.wheelspinPct || 0)}%`;
+    const et = $('#v7-run-et'); if (et) et.textContent = run.t.toFixed(3);
+    const clutchTemp = $('#v12-clutch-temp'); if (clutchTemp) clutchTemp.textContent = `${Math.round(run.clutchTempC)}°C`;
+    const gearboxTemp = $('#v12-gearbox-temp'); if (gearboxTemp) gearboxTemp.textContent = `${Math.round(run.gearboxTempC)}°C`;
+    const stress = $('#v12-stress'); if (stress) stress.textContent = `${Math.round(clamp(run.drivelineStress,0,100))}%`;
+    const rivalCar = $('#v12-rival-car');
+    const rivalGap = $('#v12-rival-gap');
+    const rivalHud = $('#v12-rival-hud');
+    if (run.opponent && rivalCar) {
+      const gapM = Number(run.opponentGapM || 0);
+      const visualGap = clamp(gapM, -24, 125);
+      const rise = clamp(180 + visualGap * 5.2, 60, 430);
+      const scale = clamp(.60 - Math.max(0, visualGap) * .0045 + Math.max(0,-visualGap) * .006, .18, .80);
+      const laneCameraPx = clamp(point.lateralM / 1.22,-1,1) * Math.min(window.innerWidth*.04,20);
+      const x = Math.min(window.innerWidth * .82, window.innerWidth - 46) - laneCameraPx;
+      rivalCar.style.transform = `translate3d(calc(-50% + ${x - window.innerWidth*.5}px),${-rise}px,0) scale(${scale})`;
+      rivalCar.style.opacity = gapM > 165 ? '.28' : '1';
+      rivalCar.classList.toggle('ahead',gapM>.8);
+      rivalCar.classList.toggle('behind',gapM<-.8);
+      rivalCar.classList.toggle('finished',!!run.opponent.finished);
+      if (rivalGap) rivalGap.textContent = run.opponent.finished && point.distanceM < 402.336 ? 'RIVAAL GEFINISHT' : Math.abs(gapM)<.7 ? 'DEUR AAN DEUR' : gapM>0 ? `RIVAAL +${gapM.toFixed(1)} m` : `JIJ +${Math.abs(gapM).toFixed(1)} m`;
+      if (rivalHud) { rivalHud.classList.toggle('ahead',gapM>.7); rivalHud.classList.toggle('player-ahead',gapM<-.7); }
+    }
+    const split = $('#v7-run-split');
+    if (split) { const d = point.distanceM; split.textContent = d < 18.288 ? 'LAUNCH' : d < 100.584 ? '60 FT' : d < 201.168 ? '330 FT' : d < 304.8 ? '1/8 MIJL' : d < 402.336 ? '1000 FT' : 'FINISH'; }
+
+    const splitDefs = [
+      ['60','sixtyFt'], ['330','threeThirty'], ['8','eighth'], ['4','quarter']
+    ];
+    for (const [id,key] of splitDefs) {
+      const value = run.milestones[key];
+      const dot = $(`#v8-split-${id}`); const time = $(`#v8-time-${id}`);
+      if (dot) dot.classList.toggle('on', value != null);
+      if (time) time.textContent = value != null ? `${Number(value).toFixed(3)} s` : '—';
+    }
+
+    const scene = $('#v7-run-scene');
+    if (scene) {
+      scene.style.setProperty('--speed', clamp(point.speedKmh / 310, 0, 1));
+      scene.style.setProperty('--distance', point.distanceM);
+      scene.style.setProperty('--road-shift', `${(point.distanceM * 10) % 900}px`);
+      scene.style.setProperty('--car-x', `${clamp(point.lateralM / 1.22, -1, 1) * 31}vw`);
+    }
+    const road = $('#v9-road-flow');
+    if (road) {
+      const shift = (point.distanceM * 12) % 720;
+      road.style.backgroundPosition = `center ${shift}px`;
+      road.style.opacity = `${.18 + clamp(point.speedKmh / 260, 0, 1) * .62}`;
+    }
+    const lines = $('#v7-speed-lines'); if (lines) lines.style.opacity = clamp((point.speedKmh - 45) / 190, 0, .72);
+    const car = $('#v7-run-car');
+    if (car) {
+      const shake = Math.sin(performance.now() * .047) * clamp(point.speedKmh / 190, 0, 1) * 1.6;
+      const squat = clamp(point.accelerationG, 0, 1.4) * 3.5;
+      const lateralPx = clamp(point.lateralM / 1.22, -1, 1) * Math.min(window.innerWidth * .29, 150);
+      car.style.transform = `translate3d(calc(-50% + ${lateralPx + shake}px),${squat}px,0) rotate(${clamp(-run.lateralVelocity * 2.2,-3.5,3.5)}deg) scale(${1 + clamp(point.speedKmh / 330,0,1)*.035})`;
+      car.classList.toggle('wheelspin', point.wheelspinPct > 8 && point.distanceM < 80);
+      car.classList.toggle('lane-warning', run.laneWarning);
+      car.classList.toggle('lane-dnf', run.laneDnf);
+    }
+
+    const lane = $('#v9-lane-status');
+    const laneMarker = $('#v9-lane-marker');
+    if (laneMarker) laneMarker.style.left = `${50 + clamp(point.lateralM / .93, -1, 1) * 46}%`;
+    if (lane) {
+      const direction = point.lateralM > .15 ? 'STUUR LINKS' : point.lateralM < -.15 ? 'STUUR RECHTS' : 'IN LIJN';
+      const label = $('b', lane);
+      if (label) label.textContent = run.laneDnf ? 'RUN ONGELDIG' : run.laneWarning ? direction : 'IN LIJN';
+      lane.classList.toggle('warn', run.laneWarning && !run.laneDnf);
+      lane.classList.toggle('bad', run.laneDnf);
+    }
+    const left = $('[data-v7-control="steerLeft"]'); const right = $('[data-v7-control="steerRight"]');
+    if (left) left.classList.toggle('active', !!raceGamePointer.steerLeft);
+    if (right) right.classList.toggle('active', !!raceGamePointer.steerRight);
+
+    const cue = $('#v7-shift-cue'); const button = $('#v7-shift-button');
+    if (run.autoShift) {
+      if (cue) cue.textContent = run.shifting ? `NAAR ${run.gearIndex + 2}` : `DSG · G${run.gearIndex + 1}`;
+      const dsg = $('#v7-dsg-status'); if (dsg) dsg.classList.toggle('shifting', !!run.shifting);
+    } else if (run.gearIndex >= run.transInfo.gears.length - 1) {
+      if (cue) cue.textContent = 'HOOGSTE VERSNELLING';
+      if (button) button.className = 'v8-shift-button v9-shift-button done';
+    } else {
+      const target = Number(run.shiftTargets[run.gearIndex] || state.tune.revLimitRpm - 100);
+      const delta = target - run.rpm;
+      let text = 'WACHT', cls = '';
+      if (run.shifting) { text = `NAAR G${run.gearIndex + 2}`; cls = 'armed'; }
+      else if (delta <= 170 && delta >= -260) { text = 'SHIFT!'; cls = 'ready'; }
+      else if (delta < -260) { text = 'TE LAAT'; cls = 'late'; }
+      else if (delta < 620) { text = 'KLAAR'; cls = 'armed'; }
+      if (cue) cue.textContent = text;
+      if (button) button.className = `v8-shift-button v9-shift-button ${cls}`;
+    }
+    if (run.feedbackUntil && performance.now() > run.feedbackUntil) {
+      const fb = $('#v7-shift-feedback');
+      if (fb) { fb.textContent = run.laneWarning ? (run.lateralM > 0 ? 'STUUR LINKS' : 'STUUR RECHTS') : run.autoShift ? 'DSG AUTO · BLIJF IN DE LIJN' : 'SCHAKEL OP DE GROENE CUE'; fb.className = 'v7-shift-feedback v9-shift-feedback'; }
+      run.feedbackUntil = 0;
+    }
+  }
+
+  function buildRealtimeResult(run) {
+    const fallback = run.t;
+    const quarter = Number(run.milestones.quarter ?? fallback);
+    const playerFinishTotal = quarter + Math.max(0, Number(run.reactionTime || 0));
+    const opponentFinishTotal = run.opponent ? Number(run.opponent.result.finishTotalTime || 99) : null;
+    const playerValid = !!run.valid && !run.redLight && !run.laneDnf && run.x >= 402.336;
+    const won = run.opponent ? playerValid && playerFinishTotal < opponentFinishTotal : null;
+    if (!run.trace.length || Number(run.trace[run.trace.length-1].distanceM || 0) < run.x) run.trace.push(realtimePoint(run,run.point?.boostBar || 0,run.point?.turboLoadPct || 0));
+    const result = {
+      valid: playerValid,
+      redLight: !!run.redLight,
+      laneDnf: !!run.laneDnf,
+      failureReason: run.redLight ? 'ROOD LICHT' : run.laneDnf ? 'BUITEN DE BAAN' : run.x < 402.336 ? 'RUN AFGEBROKEN' : '',
+      reactionTime: Number(run.reactionTime || 0),
+      sixtyFt: Number(run.milestones.sixtyFt ?? fallback),
+      threeThirty: Number(run.milestones.threeThirty ?? fallback),
+      eighth: Number(run.milestones.eighth ?? fallback),
+      eighthKmh: Number(run.milestones.eighthKmh || run.v * 3.6),
+      thousandFt: Number(run.milestones.thousandFt ?? fallback),
+      quarter,
+      trapKmh: Number(run.milestones.trapKmh || run.v * 3.6),
+      zeroTo100: Number(run.zeroTo100 ?? fallback),
+      wheelspinPct: Math.round(run.peakWheelspin * 1000) / 10,
+      finishTotalTime: playerFinishTotal,
+      trace: run.trace.slice(),
+      burnoutTempC: run.burnoutTempC,
+      burnoutScore: run.burnoutScore,
+      shiftPenalty: 0,
+      perfectShifts: run.perfect,
+      goodShifts: run.good,
+      missedShifts: run.missed,
+      earlyShifts: run.early,
+      lateShifts: run.late,
+      shiftScore: run.autoShift ? 100 : Math.round(clamp(100 + run.perfect * 3 - run.early * 12 - run.late * 14 - run.missed * 18, 0, 100)),
+      shiftHistory: run.shiftHistory.slice(),
+      shifts: run.shiftHistory.length,
+      drivetrain: state.vehicle.drivetrain,
+      tireName: C.TIRE_MAP[state.vehicle.tireCompound]?.name || state.vehicle.tireCompound,
+      tireSize: `${state.vehicle.tireWidthMm}/${state.vehicle.aspectRatio} R${state.vehicle.rimDiameterIn}`,
+      wheelSpec: `${Number(state.vehicle.rimWidthIn || 0).toFixed(1)}Jx${state.vehicle.rimDiameterIn}`,
+      tireDiameterMm: C.wheelFitment(state.vehicle).diameterMm,
+      transmissionId: run.transInfo.id,
+      transmissionMode: run.autoShift ? 'DSG AUTO' : 'HANDMATIG',
+      lineTouches: run.lineTouches,
+      maxLaneOffsetM: Math.max(...run.trace.map(p => Math.abs(Number(p.lateralM || 0))), Math.abs(run.lateralM)),
+      maxClutchTempC:Number(run.maxClutchTempC || run.clutchTempC || 0),
+      maxGearboxTempC:Number(run.maxGearboxTempC || run.gearboxTempC || 0),
+      limiterTimeS:Number(run.limiterTime || 0),
+      drivelineStress:Math.round(clamp(Number(run.drivelineStress || 0),0,1000)*10)/10,
+      raceMode:run.opponent ? 'heads_up' : 'solo',
+      opponentId:run.opponent?.profile?.id || null,
+      opponentName:run.opponent?.profile?.name || null,
+      opponentQuarter:run.opponent ? Number(run.opponent.result.quarter || 0) : null,
+      opponentTrapKmh:run.opponent ? Number(run.opponent.result.trapKmh || 0) : null,
+      opponentReactionTime:run.opponent ? Number(run.opponent.reactionTime || 0) : null,
+      opponentFinishTotalTime:opponentFinishTotal,
+      raceDeltaS:run.opponent ? opponentFinishTotal - playerFinishTotal : null,
+      won,
+      reward:run.opponent && won && !run.auto ? Number(run.opponent.profile.reward || 0) : 0,
+      autoPass:!!run.auto,
+      measuredAt: new Date().toISOString()
+    };
+    return result;
+  }
+
+  function commitV7DragResult(result){
+    state.lastDrag=result;
+    state.dragRuns=Array.isArray(state.dragRuns)?state.dragRuns:[];state.dragRuns.unshift({...result});state.dragRuns=state.dragRuns.slice(0,30);
+    const key=state.vehicle.drivetrain;
+    if(result.valid&&(!state.records?.[key]||result.quarter<state.records[key].quarter)){
+      state.records=state.records||{FWD:null,RWD:null,AWD:null};state.records[key]={...result,at:result.measuredAt};
+      pushHistory({type:'record',label:`Nieuw ${key}-record: ${result.quarter.toFixed(3)} s`,et:result.quarter,trap:result.trapKmh});
+    }
+    state.wear.engine=clamp(state.wear.engine+.05+Math.max(0,result.quarter < 10 ? .08 : 0)+Number(result.limiterTimeS||0)*.025,0,100);
+    state.wear.transmission=clamp(state.wear.transmission+.10+result.wheelspinPct*.002+result.missedShifts*.025+Number(result.drivelineStress||0)*.003+Math.max(0,Number(result.maxGearboxTempC||0)-115)*.001,0,100);
+    state.service.oilAgeKm+=35;
+    if (result.reward > 0) {
+      state.bank += result.reward;
+      pushHistory({type:'reward',label:`Heads-up winst tegen ${result.opponentName}: +${euro(result.reward)}`});
+    }
+    const raceLabel = result.redLight ? 'Rood licht' : result.laneDnf ? 'Run ongeldig: buiten de baan' : result.raceMode === 'heads_up' ? `${result.won?'Heads-up winst':'Heads-up verlies'} tegen ${result.opponentName}` : 'Solo quarter-mile pass';
+    pushHistory({type:'drag',label:raceLabel,et:result.quarter,trap:result.trapKmh});
+    saveState();syncAchievements();
+  }
+
+  function finishV7Run(){
+    const run = raceGame?.run;
+    if (!run || run.finished) return;
+    run.finished = true;
+    const result = buildRealtimeResult(run);
+    run.finalResult = result;
+    raceGame.finishResult = result;
+    commitV7DragResult(result);
+    raceGame.phase = 'finish';
+    stopEngineAudio({ hard: true });
+    haptic(result.redLight || result.laneDnf ? [70,40,70] : [18,18,45]);
+    renderRaceGame();
+    const delay = state.settings?.reducedMotion ? 220 : 3000;
+    raceGameTimers.push(setTimeout(() => finishV7ToOverview(true), delay));
+  }
+
+  function finishV7ToOverview(auto=false){
+    if(!raceGame?.open)return;
+    const result=raceGame.finishResult;
+    closeDragGame({silent:true,noRender:true});
+    render();window.scrollTo({top:0,behavior:'auto'});
+    if(result){
+      const message = result.redLight ? `Rood licht · ${result.quarter.toFixed(3)} s gemeten`
+        : result.laneDnf ? 'Run ongeldig · buiten de baan'
+        : result.raceMode === 'heads_up' ? `${result.won?'GEWONNEN':'VERLOREN'} van ${result.opponentName} · ${Math.abs(result.raceDeltaS).toFixed(3)} s`
+        : `${result.quarter.toFixed(3)} s @ ${result.trapKmh.toFixed(1)} km/u`;
+      showToast(message);
+    }
+  }
+
+  function raceGameTone(frequency=700,duration=.08,gainValue=.035){
+    if(!state.settings?.sound)return;
+    startEngineAudio('race');
+    if(!engineAudio)return;
+    try{
+      const {ctx,master}=engineAudio;const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='square';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(gainValue,ctx.currentTime+.008);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);osc.connect(gain).connect(master);engineAudio.oneShots=engineAudio.oneShots||new Set();engineAudio.oneShots.add(osc);osc.onended=()=>{engineAudio?.oneShots?.delete(osc);try{osc.disconnect();gain.disconnect();}catch(e){}};osc.start();osc.stop(ctx.currentTime+duration+.02);
+    }catch(e){}
+  }
+
+  function toggleV7Audio(){
+    state.settings.sound=!state.settings.sound;
+    if(state.settings.sound){startEngineAudio('race');const rpm=raceGame?.phase==='burnout'?raceGame.burn.rpm:raceGame?.phase==='stage'?raceGame.stage.rpm:raceGame?.run?.point?.rpm||900;updateEngineAudio(rpm,.35,0);}else stopEngineAudio({ hard: true });
+    saveState();
+    $$('[data-action="toggle-v7-audio"]', $('#race-game-root')).forEach(button => { button.textContent = state.settings.sound ? '🔊' : '🔇'; });
+  }
+
+  function updateWheelReadout() {
+    const node = $('#wheel-readout');
+    if (!node) return;
+    const g = C.wheelFitment(state.vehicle);
+    node.innerHTML = `<div><span class="eyebrow">Berekende maat</span><b>${state.vehicle.tireWidthMm}/${state.vehicle.aspectRatio} R${state.vehicle.rimDiameterIn} op ${num(state.vehicle.rimWidthIn,1)}J</b></div>
+      <div><span>Diameter</span><b>${num(g.diameterMm,1)} mm</b></div><div><span>Omtrek</span><b>${num(g.circumferenceM,3)} m</b></div><div><span>Afwijking</span><b>${g.diameterDeltaPct >= 0 ? '+' : ''}${num(g.diameterDeltaPct,1)}%</b></div><div><span>Fitment</span><b>${Math.round(g.score*100)}%</b></div>`;
+  }
+
+  function serviceRange(name, label, min, max, step, value, unit, decimals) {
+    return slider(name, label, min, max, step, value, unit, decimals, '', 'service');
+  }
+
+  function renderService() {
+    const oil = C.OIL_MAP[state.service.oilId];
+    const pendingOil = C.OIL_MAP[pendingOilId] || oil;
+    const filter = C.FILTER_MAP[state.service.filterId];
+    const health = C.oilHealth(state);
+    const healthPct = Math.round(health * 100);
+    const changeCost = pendingOil.price + C.FILTER_MAP[pendingFilterId].price;
+    return `<section class="page service-page">
+      <div class="page-title-row"><div><span class="eyebrow">Werkplaats</span><h1>Olie, slijtage & herstel</h1><p>Vulniveau, warme viscositeit, clearances, temperatuur, aeratie en ouderdom beïnvloeden oliedruk en filmsterkte.</p></div></div>
+
+      <div class="service-overview v4-service-overview">
+        <div class="oil-dial" style="--health:${healthPct}"><div><b>${healthPct}%</b><span>olieconditie</span></div></div>
+        <div class="oil-copy"><span class="eyebrow">Huidige vulling</span><h2>${esc(oil.name)}</h2><p>${num(state.service.liters,1)} liter · ${esc(filter.name)} · ${Math.round(state.service.oilAgeKm)} km-equivalent · ${state.service.oilRuns} zware runs</p><div class="oil-tags"><span>Film ${num(oil.film*100,0)}%</span><span>Koudflow ${num(oil.coldFlow*100,0)}%</span><span>Warm-visc ${num(oil.hotViscosity*100,0)}%</span><span>Temp ${oil.tempTolerance}°C</span></div></div>
+        <div class="service-budget"><span>WERKPLAATSBUDGET</span><b>${euro(state.bank)}</b></div>
+      </div>
+
+      <div class="section-head"><div><span class="eyebrow">Olie kiezen</span><h2>${C.OILS.length} verschillende profielen</h2></div><div class="selection-chip">Voorbereid: <b>${esc(pendingOil.name)}</b></div></div>
+      <div class="oil-grid v4-oil-grid">
+        ${C.OILS.map(o => `<button class="oil-card ${pendingOilId === o.id ? 'selected' : ''}" data-oil-id="${o.id}"><span>${pendingOilId === o.id ? icon('check') : ''}</span><div><b>${esc(o.name)}</b><small>${esc(o.detail)}</small><div class="oil-mini-bars"><i style="--v:${o.film*80}%">film</i><i style="--v:${o.coldFlow*80}%">koud</i><i style="--v:${Math.min(1.2,o.hotViscosity)/1.2*80}%">warm</i></div><em>${euro(o.price)}</em></div></button>`).join('')}
+      </div>
+
+      <div class="service-grid">
+        <div class="card">
+          <span class="eyebrow">Vulling & filter</span><h2>Oliebeurt voorbereiden</h2>
+          ${serviceRange('liters', 'Vulvolume', 3.5, 5.4, .1, state.service.liters, ' L', 1)}
+          <label class="field-label">Oliefilter<select data-service-select="filter">${C.FILTERS.map(f => `<option value="${f.id}" ${pendingFilterId === f.id ? 'selected' : ''}>${esc(f.name)} · ${euro(f.price)}</option>`).join('')}</select></label>
+          <div class="service-order"><span>Nieuwe vulling</span><b>${esc(pendingOil.name)} + ${esc(C.FILTER_MAP[pendingFilterId].name)}</b><strong>${euro(changeCost)}</strong></div>
+          <button class="btn" data-action="oil-change">OLIE + FILTER VERVANGEN</button>
+        </div>
+
+        <div class="card">
+          <span class="eyebrow">Conditie</span><h2>Slijtage en schade</h2>
+          <div class="wear-row"><span>Motorwear</span><b>${num(state.wear.engine,1)}%</b><i style="--wear:${state.wear.engine}%"></i></div>
+          <div class="wear-row"><span>Turbowear</span><b>${num(state.wear.turbo,1)}%</b><i style="--wear:${state.wear.turbo}%"></i></div>
+          <div class="wear-row"><span>Bakwear</span><b>${num(state.wear.transmission,1)}%</b><i style="--wear:${state.wear.transmission}%"></i></div>
+          <div class="wear-row danger"><span>Motorschade</span><b>${num(state.damage.engine,1)}%</b><i style="--wear:${state.damage.engine}%"></i></div>
+          <div class="wear-row danger"><span>Turboschade</span><b>${num(state.damage.turbo,1)}%</b><i style="--wear:${state.damage.turbo}%"></i></div>
+          <button class="btn secondary" data-action="open-rebuild">Inspecteren / reviseren</button>
+        </div>
+      </div>
+
+      <div class="card settings-card">
+        <span class="eyebrow">Spelervaring</span><h2>Interface & feedback</h2>
+        ${switchRow('sound', 'Motorgeluid', 'Synthesiseert toerental- en loadfeedback tijdens dyno en drag.', 'settings')}
+        ${switchRow('haptics', 'Trillingsfeedback', 'Trilling bij schakelen, tree-lampen, fouten en dynostart.', 'settings')}
+        ${switchRow('reducedMotion', 'Minder animatie', 'Versnelt dyno- en raceanimaties en beperkt beweging.', 'settings')}
+      </div>
+    </section>`;
+  }
+
+  function renderData() {
+    const r = state.lastDyno;
+    const clean = currentDyno();
+    const geometry = C.engineGeometry(state);
+    const cam = C.camTimingHealth(state);
+    const assembly = C.assemblyHealth(state);
+    const bench = C.benchConfidence(state);
+    const buildRows = C.CATEGORIES.map(cat => `<tr><td>${esc(cat.label)}</td><td>${esc(C.getPart(state, cat.id).name)}<small>${esc(C.getPart(state, cat.id).specs)}</small></td></tr>`).join('');
+    const history = (state.history || []).slice(0, 22).map(h => `<div class="log-row"><i></i><div><b>${esc(h.label || h.type)}</b><small>${new Date(h.at).toLocaleString('nl-NL')}${h.hp ? ` · ${Math.round(h.hp)} pk / ${Math.round(h.nm)} Nm` : ''}${h.et ? ` · ${h.et.toFixed(3)} s @ ${h.trap.toFixed(1)} km/u` : ''}</small></div></div>`).join('');
+    return `<section class="page data-page">
+      <div class="data-back"><button class="text-button" data-go="bank">${icon('back')} Terug naar garage</button></div>
+      <div class="page-title-row"><div><span class="eyebrow">Build sheet & datalog</span><h1>Volledige technische status</h1><p>Hardware, montage, benchtests, metingen, service, records en overdraagbare buildcode bij elkaar.</p></div></div>
+      ${clean ? '<div class="notice success"><strong>Configuratie en dynodata komen overeen.</strong></div>' : staleNotice()}
+
+      <div class="build-name-card card"><label><span class="eyebrow">Projectnaam</span><input id="build-name-input" value="${esc(state.buildName)}" maxlength="52" aria-label="Buildnaam"></label><div><button class="btn secondary small" data-action="export-build">Build exporteren</button><button class="btn ghost small" data-action="open-import">Build importeren</button></div></div>
+
+      <div class="data-kpis v4-data-kpis">
+        <div><span>Motor</span><b>${num(geometry.displacementCc,0)} cc</b><small>${num(geometry.boreMm,2)} × ${num(geometry.strokeMm,1)} mm</small></div>
+        <div><span>Montagescore</span><b>${Math.round(assembly.score*100)}%</b><small>rings, lagers, gap en procedure</small></div>
+        <div><span>Bench confidence</span><b>${bench.score || 0}%</b><small>${bench.current}/${bench.total} actueel · ${bench.failed} fail</small></div>
+        <div><span>Laatste dyno</span><b>${r ? `${Math.round(r.peakHp)} pk` : '—'}</b><small>${r ? `${Math.round(r.peakTorqueNm)} Nm · ${r.reliabilityScore}/100` : 'niet gemeten'}</small></div>
+        <div><span>FWD-record</span><b>${state.records?.FWD ? `${state.records.FWD.quarter.toFixed(3)} s` : '—'}</b><small>${state.records?.FWD ? `${state.records.FWD.trapKmh.toFixed(1)} km/u` : 'geen geldige pass'}</small></div>
+        <div><span>AWD-record</span><b>${state.records?.AWD ? `${state.records.AWD.quarter.toFixed(3)} s` : '—'}</b><small>${state.records?.AWD ? `${state.records.AWD.trapKmh.toFixed(1)} km/u` : 'geen geldige pass'}</small></div>
+      </div>
+
+      ${r ? `<div class="card"><div class="section-head small"><div><span class="eyebrow">Laatste dynolog</span><h2>${Math.round(r.peakHp)} pk / ${Math.round(r.peakTorqueNm)} Nm</h2></div><div class="score-badge ${r.reliabilityScore >= 82 ? 'good' : r.reliabilityScore >=65 ? 'warn':'danger'}"><b>${r.reliabilityScore}</b><span>/100</span></div></div>
+        <div class="technical-grid"><div><span>Status</span><b>${esc(r.status)}</b></div><div><span>Turbo</span><b>${esc(r.turboName)} · ${r.compressorMm} mm</b></div><div><span>Knock-index</span><b>${num(r.maxKnockRisk,2)}</b></div><div><span>Fuel duty</span><b>${num(r.maxFuelDuty,1)}%</b></div><div><span>Turbo-load / as</span><b>${num(r.maxTurboLoad,1)}% · ${Math.round(r.maxTurboShaftRpm/1000)}k rpm</b></div><div><span>Thermisch</span><b>${num(r.maxIatC,0)} / ${num(r.maxEgtC,0)} / ${num(r.maxOilTempC,0)} °C</b></div></div>
+      </div>` : ''}
+
+      <div class="card assembly-data-card"><span class="eyebrow">Montageblad</span><h2>Actuele meetwaarden</h2><div class="technical-grid"><div><span>Top / tweede ring</span><b>${num(state.assembly.topRingGapMm,2)} / ${num(state.assembly.secondRingGapMm,2)} mm</b></div><div><span>Rod / main clearance</span><b>${num(state.assembly.rodClearanceMm,3)} / ${num(state.assembly.mainClearanceMm,3)} mm</b></div><div><span>Bougiegap</span><b>${num(state.assembly.sparkGapMm,2)} mm</b></div><div><span>Nokken-TDC</span><b>${num(state.tune.exhaustTdcLiftMm,2)} / ${num(state.tune.intakeTdcLiftMm,2)} mm</b></div><div><span>Balans / sealing</span><b>${state.assembly.balanceQualityPct}% / ${state.assembly.deckSealQualityPct}%</b></div><div><span>Geprimed</span><b>${state.assembly.oilPrimed ? 'ja' : 'nee'}</b></div></div></div>
+
+      <div class="card build-table-card"><span class="eyebrow">Gemonteerde hardware</span><h2>${esc(state.buildName)}</h2><table class="build-table">${buildRows}<tr class="total"><td>Totaal onderdelen</td><td>${euro(C.totalPartsPrice(state))}</td></tr></table></div>
+      <div class="card"><span class="eyebrow">Logboek</span><h2>Laatste gebeurtenissen</h2><div class="log-list">${history || '<p class="muted">Nog geen logboekitems.</p>'}</div></div>
+      <div class="card model-card"><span class="eyebrow">Modelgrenzen</span><h2>Engineering-game, geen ECU-map</h2><p>Het model combineert airflow, spool, wastegatecontrole, EMP, brandstofcapaciteit, BMEP, knock, EGT, turbospeed, zuigersnelheid, oliedruk, aeratie, oliefilm, clearances en componentgrenzen. De dragintegratie gebruikt vervolgens de gemeten curve, gearing, wielradius, roterende massa, tractie, luchtweerstand en gewichtsverplaatsing.</p><p>Een veilige score in het spel is nooit een bouwgarantie. Een echte motor moet worden gevalideerd met raildruk, lambda, knock, EGT, turbospeed, cilinderdruk, carterdruk en oliedruk.</p></div>
+      <div class="button-row"><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Alles resetten</button></div>
+    </section>`;
+  }
+
+  function showExportModal() {
+    const code = encodeBuildCode();
+    importBuffer = code;
+    showModal('Buildcode exporteren', `<p class="modal-copy">Deze offline code bevat hardware, tune, montage, olie, voertuigsetup en dynocondities. Dyno- en raceuitslagen worden niet meegestuurd.</p><textarea id="build-code-output" class="build-code-area" readonly>${esc(code)}</textarea><small class="code-meta">${code.length.toLocaleString('nl-NL')} tekens · EA888 Lab v6</small>`, '<button class="btn ghost" data-action="close-modal">Sluiten</button><button class="btn" data-action="copy-build-code">Code kopiëren</button>');
+  }
+
+  function showImportModal() {
+    importBuffer = '';
+    showModal('Buildcode importeren', '<p class="modal-copy">Plak een EA888 Lab-buildcode. De huidige hardware, tune, montage, servicekeuze, voertuigsetup en dynocondities worden vervangen. Historie, budget en records blijven behouden.</p><textarea id="build-code-input" class="build-code-area" placeholder="Plak hier de buildcode…"></textarea><div id="import-feedback" class="import-feedback"></div>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-action="confirm-import">Importeren</button>');
+  }
+
+  async function copyBuildCode() {
+    const code = ($('#build-code-output')?.value || importBuffer || encodeBuildCode()).trim();
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(code);
+      else { const area=$('#build-code-output'); area?.focus(); area?.select(); document.execCommand('copy'); }
+      haptic(12); showToast('Buildcode gekopieerd.');
+    } catch (e) {
+      const area=$('#build-code-output'); if(area){area.focus();area.select();}
+      showToast('Selecteer de code en kopieer hem handmatig.');
+    }
+  }
+
+  function confirmImport() {
+    try {
+      const snap = decodeBuildCode(importBuffer || $('#build-code-input')?.value || '');
+      for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) {
+        if (snap[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(snap[key])) };
+      }
+      state.buildName = String(snap.buildName || 'Geïmporteerde EA888-build').slice(0,52);
+      state.bench = { results:{} };
+      state.lastDynoSignature = '';
+      pendingOilId = state.service.oilId;
+      pendingFilterId = state.service.filterId;
+      pushHistory({ type:'import', label:`Build geïmporteerd: ${state.buildName}` });
+      saveState(); closeModal(); haptic([12,25,12]); showToast('Build geïmporteerd. Voer benchtests en een nieuwe dynopull uit.'); render();
+    } catch (e) {
+      const feedback=$('#import-feedback'); if(feedback) feedback.innerHTML=`<div class="notice danger"><strong>Import mislukt.</strong> ${esc(e.message)}</div>`;
+      else showToast(`Import mislukt: ${e.message}`);
+    }
+  }
+
+  function runBench(id) {
+    try {
+      const result = C.runBenchTest(state, id);
+      state.bench = state.bench || { results:{} };
+      state.bench.results = state.bench.results || {};
+      state.bench.results[id] = result;
+      pushHistory({ type:'bench', label:`${C.BENCH_TESTS.find(x=>x.id===id)?.name || id}: ${result.status.toUpperCase()}` });
+      saveState(); haptic(result.status==='fail'?[45,25,45]:[10,20,10]); showToast(`${result.summary} · ${result.score}/100`); render();
+    } catch (e) { showToast(e.message); }
+  }
+
+  function runAllBench() {
+    for (const test of C.BENCH_TESTS) {
+      const result = C.runBenchTest(state, test.id);
+      state.bench.results[test.id] = result;
+    }
+    pushHistory({ type:'bench', label:'Volledige benchtestreeks uitgevoerd' });
+    saveState(); syncAchievements(); haptic([12,20,12]); showToast('Alle zes benchtests zijn uitgevoerd.'); render();
+  }
+
+  function claimChallenge(id) {
+    const earned = C.evaluateChallenges(state);
+    const challenge = C.CHALLENGES.find(ch=>ch.id===id);
+    if (!challenge || !earned[id]) return showToast('Deze challenge is nog niet behaald.');
+    state.achievements = state.achievements || {};
+    const progress = state.achievements[id] || { unlockedAt:new Date().toISOString(), claimed:false };
+    if (progress.claimed) return showToast('Beloning is al geclaimd.');
+    progress.claimed = true; state.achievements[id] = progress; state.bank += challenge.reward;
+    pushHistory({ type:'reward', label:`Challenge geclaimd: ${challenge.title} (+${euro(challenge.reward)})` });
+    saveState(); haptic([20,25,20,25,30]); showToast(`${challenge.title}: ${euro(challenge.reward)} toegevoegd.`); render();
+  }
+
+  function showEngineInfo(key) {
+    const map = {
+      head: ['Kop, nokken & kleppentrein', [C.getPart(state,'head'), C.getPart(state,'valvetrain'), C.getPart(state,'manifold')]],
+      block: ['Onderblok, krukas & olie', [C.getPart(state,'block'), C.getPart(state,'crank'), C.getPart(state,'oiling'), C.getPart(state,'crankcase'), C.getPart(state,'sealing')]],
+      fuel: ['Brandstofsysteem', [C.getPart(state,'fuelSystem'), C.getPart(state,'fuel'), C.getPart(state,'ignition')]],
+      turbo: ['Turbo, wastegates & luchtpad', [C.getPart(state,'turbo'), C.getPart(state,'boostControl'), C.getPart(state,'air'), C.getPart(state,'exhaust'), C.getPart(state,'spool')]],
+      ecu: ['ECU, sensoren & beveiliging', [C.getPart(state,'ecu'), C.getPart(state,'sensors'), C.getPart(state,'ignition')]]
+    };
+    const entry = map[key]; if (!entry) return;
+    showModal(entry[0], `<div class="modal-part-list">${entry[1].map(p => `<article><b>${esc(p.name)}</b><p>${esc(p.detail)}</p><small>${esc(p.specs)}</small></article>`).join('')}</div>`);
+  }
+
+  function showModal(title, body, actions = '') {
+    $('#modal-root').innerHTML = `<div class="modal-backdrop" data-modal-backdrop><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-handle"></div><span class="eyebrow">EA888 Lab v${APP_VERSION}</span><h2 id="modal-title">${esc(title)}</h2>${body}<div class="modal-actions">${actions || '<button class="btn" data-action="close-modal">Sluiten</button>'}</div></div></div>`;
+  }
+  function closeModal() { $('#modal-root').innerHTML = ''; }
+
+  function doOilChange() {
+    state.service.oilId = pendingOilId;
+    state.service.filterId = pendingFilterId;
+    state.service.oilAgeKm = 0;
+    state.service.oilRuns = 0;
+    state.service.lastChangeLabel = new Date().toLocaleDateString('nl-NL');
+    state.bank -= (C.OIL_MAP[pendingOilId].price + C.FILTER_MAP[pendingFilterId].price);
+    pushHistory({ type: 'service', label: `Olie gewisseld: ${C.OIL_MAP[pendingOilId].name}` });
+    saveState(); haptic([18,30,18]);
+    showToast('Olie en filter vervangen. Een nieuwe dynometing is vereist.');
+    render();
+  }
+
+  function doRebuild() {
+    state.wear = { engine: 0, turbo: Math.max(0, state.wear.turbo - 10), transmission: Math.max(0, state.wear.transmission - 5) };
+    state.damage = { engine: 0, turbo: 0, transmission: 0 };
+    state.bank -= 6500;
+    state.lastDynoSignature = '';
+    pushHistory({ type: 'service', label: 'Motor geïnspecteerd en gereviseerd' });
+    saveState(); closeModal(); haptic([30,30,30]);
+    showToast('Revisie voltooid; voer een nieuwe dynopull uit.'); render();
+  }
+
+  function doReset() {
+    state = C.createInitialState();
+    state.version = 12;
+    pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
+    saveState(); closeModal(); haptic(35);
+    showToast('EA888 Lab teruggezet naar de Randy JE83 K04-referentie.'); render();
+  }
+
+  document.addEventListener('pointerdown', event => {
+    resumeAudioContextOnly();
+    const gameControl = event.target.closest?.('[data-v7-control]');
+    if (gameControl && raceGame?.open && !gameControl.disabled) {
+      event.preventDefault();
+      const name = gameControl.dataset.v7Control;
+      raceGamePointerMap.set(event.pointerId, name);
+      if (name in raceGamePointer) raceGamePointer[name] = true;
+      try { gameControl.setPointerCapture(event.pointerId); } catch (e) {}
+      if (name === 'burnout') { startEngineAudio('burnout'); haptic(7); }
+      else if (name === 'creep') haptic(5);
+      else if (name === 'throttle') { startEngineAudio('staged'); haptic(6); }
+      return;
+    }
+    const btn = event.target.closest?.('[data-action="burnout-hold"]');
+    if (!btn || btn.disabled) return;
+    event.preventDefault();
+    try { btn.setPointerCapture(event.pointerId); } catch (e) {}
+    startBurnout(event.pointerId);
+  }, { passive: false });
+
+  function releaseRaceGamePointer(event) {
+    const name = raceGamePointerMap.get(event.pointerId);
+    if (!name) return '';
+    raceGamePointerMap.delete(event.pointerId);
+    if (name in raceGamePointer) raceGamePointer[name] = false;
+    return name;
+  }
+
+  document.addEventListener('pointerup', event => {
+    const released = releaseRaceGamePointer(event);
+    if (released) {
+      if (released === 'throttle' && raceGame?.phase === 'stage' && raceGame.stage?.treeStarted && !raceGame.stage.launched) {
+        launchV7Race(false);
+      } else if (released === 'burnout' && raceGame?.phase === 'burnout' && raceGame.burn?.started && !raceGame.burn.done) {
+        const profile = burnoutProfile();
+        const enoughHeat = raceGame.burn.tempC >= profile.targetC - 10;
+        const enoughTime = raceGame.burn.elapsed >= 1.6;
+        if (enoughHeat && enoughTime) finishV7Burnout();
+      }
+      return;
+    }
+    if (!burnoutRuntime?.active) return;
+    if (burnoutPointerId != null && event.pointerId !== burnoutPointerId) return;
+    stopBurnout();
+  });
+
+  document.addEventListener('pointercancel', event => {
+    if (releaseRaceGamePointer(event)) return;
+    if (!burnoutRuntime?.active) return;
+    if (burnoutPointerId != null && event.pointerId !== burnoutPointerId) return;
+    stopBurnout({ silent: true });
+  });
+
+  window.addEventListener('blur', () => {
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+    raceGamePointerMap.clear();
+    if (burnoutRuntime?.active) stopBurnout({ silent: true });
+  });
+
+  document.addEventListener('click', event => {
+    if (event.target.matches('[data-modal-backdrop]')) { closeModal(); return; }
+    const btn = event.target.closest('button,[data-action]');
+    if (!btn) return;
+    if (btn.dataset.nav) { haptic(8); return go(btn.dataset.nav); }
+    if (btn.dataset.go) { haptic(8); return go(btn.dataset.go); }
+    if (btn.dataset.openCategory) { haptic(10); return openCategoryTile(btn.dataset.openCategory); }
+    if (btn.dataset.cat) { activeCategory = btn.dataset.cat; partSearch = ''; haptic(6); return render(); }
+    if (btn.dataset.motorPanel) { motorPanel = btn.dataset.motorPanel; haptic(6); return render(); }
+    if (btn.dataset.engineView) { engineView = btn.dataset.engineView; haptic(6); return render(); }
+    if (btn.dataset.tunePanel) { tunePanel = btn.dataset.tunePanel; haptic(6); return render(); }
+    if (btn.dataset.dynoChannel) { dynoChannel = btn.dataset.dynoChannel; haptic(5); return render(); }
+    if (btn.dataset.racePanel) { stopBurnout({ silent: true }); clearTreeTimers(); treeSession = null; racePanel = btn.dataset.racePanel; haptic(6); return render(); }
+    if (btn.dataset.raceMode) {
+      state.vehicle.raceMode = btn.dataset.raceMode === 'solo' ? 'solo' : 'heads_up';
+      saveState(); haptic(10); return render();
+    }
+    if (btn.dataset.rivalLevel && RIVALS[btn.dataset.rivalLevel]) {
+      state.vehicle.rivalLevel = btn.dataset.rivalLevel;
+      saveState(); haptic([8,12,8]); return render();
+    }
+    if (btn.dataset.treeMode) { clearTreeTimers(); treeSession = null; racePhase = 'burnout'; treeMode = btn.dataset.treeMode; haptic(6); return render(); }
+    if (btn.dataset.engineInfo) { haptic(8); return showEngineInfo(btn.dataset.engineInfo); }
+    if (btn.dataset.saveSlot != null) return saveBuildSlot(Number(btn.dataset.saveSlot));
+    if (btn.dataset.loadSlot != null) return loadBuildSlot(Number(btn.dataset.loadSlot));
+    if (btn.dataset.claimChallenge) return claimChallenge(btn.dataset.claimChallenge);
+    if (btn.dataset.runBench) return runBench(btn.dataset.runBench);
+    if (btn.dataset.assemblySwitch) {
+      state.assembly[btn.dataset.assemblySwitch] = !state.assembly[btn.dataset.assemblySwitch];
+      saveState(); haptic(10); return render();
+    }
+    if (btn.dataset.preset) {
+      state = C.applyPreset(state, btn.dataset.preset);
+      pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
+      saveState(); haptic([12,25,12]);
+      showToast('Build geladen. Het resultaat blijft verborgen tot de dyno.');
+      return render();
+    }
+    if (btn.dataset.partCat && btn.dataset.partId) {
+      if (btn.disabled) return;
+      state.selections[btn.dataset.partCat] = btn.dataset.partId;
+      saveState(); haptic(16);
+      showToast('Onderdeel gemonteerd — pas de dyno onthult het verschil.');
+      return render();
+    }
+    if (btn.dataset.switch) {
+      state.tune[btn.dataset.switch] = !state.tune[btn.dataset.switch];
+      saveState(); haptic(10); return render();
+    }
+    if (btn.dataset.vehicleSwitch) {
+      state.vehicle[btn.dataset.vehicleSwitch] = !state.vehicle[btn.dataset.vehicleSwitch];
+      saveState(); haptic(10); return render();
+    }
+    if (btn.dataset.settingSwitch) {
+      state.settings[btn.dataset.settingSwitch] = !state.settings[btn.dataset.settingSwitch];
+      if (btn.dataset.settingSwitch === 'sound' && !state.settings.sound) stopEngineAudio({ hard: true });
+      saveState(); haptic(10); return render();
+    }
+    if (btn.dataset.oilId) { pendingOilId = btn.dataset.oilId; haptic(8); return render(); }
+
+    switch (btn.dataset.action) {
+      case 'open-drag-game': startDragGame(false); break;
+      case 'auto-drag-game': startDragGame(true); break;
+      case 'close-drag-game': closeDragGame(); break;
+      case 'v7-reset-stage': resetV7Stage(); break;
+      case 'v7-start-tree': startV7Tree(); break;
+      case 'v7-launch': launchV7Race(false); break;
+      case 'v7-shift': handleV7Shift(false); break;
+      case 'toggle-v7-audio': toggleV7Audio(); break;
+      case 'finish-to-overview': finishV7ToOverview(false); break;
+      case 'start-dyno': startDyno(); break;
+      case 'abort-dyno': abortDyno(); break;
+      case 'toggle-compare': state.settings.dynoCompare = state.settings.dynoCompare === false; saveState(); render(); break;
+      case 'reset-tune': {
+        const stock = C.applyPreset(C.blankState(), 'stock');
+        state.tune = { ...state.tune, ...stock.tune, exhaustTdcLiftMm: state.tune.exhaustTdcLiftMm, intakeTdcLiftMm: state.tune.intakeTdcLiftMm, vvtEnabled: state.tune.vvtEnabled };
+        saveState(); haptic(12); showToast('OEM-achtige map geladen; mechanische nokmetingen behouden.'); render(); break;
+      }
+      case 'run-all-bench': runAllBench(); break;
+      case 'apply-assembly-targets': {
+        const targets = C.assemblyTargets(state);
+        for (const key of ['topRingGapMm','secondRingGapMm','rodClearanceMm','mainClearanceMm','sparkGapMm']) state.assembly[key] = targets[key];
+        saveState(); haptic([10,18,10]); showToast('Huidige modeldoelen ingevuld; controleer ze vóór gebruik.'); render(); break;
+      }
+      case 'burnout-hold': break;
+      case 'stage-tree': racePanel = 'tree'; stageTree(false); break;
+      case 'launch': launchTree(false); break;
+      case 'auto-pass': racePanel = 'tree'; stageTree(true); break;
+      case 'reset-race': resetRaceSession(); break;
+      case 'toggle-race-audio': {
+        state.settings.sound = !state.settings.sound;
+        if (state.settings.sound) { startEngineAudio('preview'); updateEngineAudio(raceLivePoint.rpm || 900, .15, 0); }
+        else stopEngineAudio({ hard: true });
+        saveState(); haptic(8);
+        const chip = $('#race-audio-chip');
+        if (chip) {
+          chip.classList.toggle('on', state.settings.sound); chip.classList.toggle('off', !state.settings.sound);
+          const b = $('button', chip); const t = $('span', chip);
+          if (b) b.textContent = state.settings.sound ? '🔊' : '🔇';
+          if (t) t.textContent = state.settings.sound ? 'EA888 AUDIO' : 'AUDIO UIT';
+        }
+        showToast(state.settings.sound ? 'Motorgeluid ingeschakeld.' : 'Motorgeluid uitgeschakeld.');
+        break;
+      }
+      case 'oil-change': doOilChange(); break;
+      case 'open-rebuild': showModal('Motor inspecteren / reviseren', '<p class="modal-copy">Een volledige revisie wist virtuele motorschade en motorwear, verlaagt slijtage van turbo en bak en kost € 6.500 uit het spelbudget. Daarna zijn benchtests en een nieuwe dynometing verstandig.</p>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-rebuild">Reviseren</button>'); break;
+      case 'confirm-rebuild': doRebuild(); break;
+      case 'export-build': showExportModal(); break;
+      case 'open-import': showImportModal(); break;
+      case 'copy-build-code': copyBuildCode(); break;
+      case 'confirm-import': confirmImport(); break;
+      case 'self-test': {
+        const test = C.selfTest();
+        showModal(test.ok ? 'Zelftest geslaagd' : 'Zelftest heeft een fout', `<div class="test-list">${test.checks.map(x => `<div class="test-row ${x.ok ? 'pass' : 'fail'}"><span>${x.ok ? icon('check') : '!'}</span><div><b>${esc(x.name)}</b><small>${esc(x.value)}</small></div></div>`).join('')}</div>`);
+        break;
+      }
+      case 'open-reset': showModal('Alle speldata resetten?', '<p class="modal-copy">Dit verwijdert je build, tune, montage, onderhoud, dynohistorie, dragruns, buildslots en challenges uit deze installatie.</p>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-reset">Alles resetten</button>'); break;
+      case 'confirm-reset': doReset(); break;
+      case 'close-modal': closeModal(); break;
+    }
+  });
+
+  document.addEventListener('input', event => {
+    const el = event.target;
+    if (el.id === 'part-search') {
+      partSearch = el.value;
+      const cards = $$('.part-card');
+      const q = partSearch.trim().toLowerCase();
+      cards.forEach(card => { card.hidden = !!(q && !card.textContent.toLowerCase().includes(q)); });
+      return;
+    }
+    if (el.id === 'build-name-input') {
+      state.buildName = String(el.value || 'Onbenoemde EA888-build').slice(0,52);
+      saveState(); renderHeader(); return;
+    }
+    if (el.id === 'build-code-input') { importBuffer = el.value; return; }
+    if (el.dataset.tune) {
+      state.tune[el.dataset.tune] = Number(el.value);
+      const out = $(`[data-value-for="tune.${el.dataset.tune}"]`);
+      if (out) out.textContent = `${Number(el.value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`;
+      saveState(); renderHeader();
+      if (['exhaustTdcLiftMm','intakeTdcLiftMm','revLimitRpm'].includes(el.dataset.tune)) { clearTimeout(el._rerenderTimer); el._rerenderTimer = setTimeout(render, 190); }
+      return;
+    }
+    if (el.dataset.assembly) {
+      state.assembly[el.dataset.assembly] = Number(el.value);
+      const out = $(`[data-value-for="assembly.${el.dataset.assembly}"]`);
+      if (out) out.textContent = `${Number(el.value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`;
+      saveState(); renderHeader(); clearTimeout(el._rerenderTimer); el._rerenderTimer = setTimeout(render, 190); return;
+    }
+    if (el.dataset.dynoConfig) {
+      state.dynoConfig[el.dataset.dynoConfig] = Number(el.value);
+      const out = $(`[data-value-for="dyno-config.${el.dataset.dynoConfig}"]`);
+      if (out) out.textContent = `${Number(el.value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`;
+      saveState(); renderHeader(); clearTimeout(el._rerenderTimer); el._rerenderTimer = setTimeout(render, 220); return;
+    }
+    if (el.dataset.vehicle) {
+      state.vehicle[el.dataset.vehicle] = Number(el.value);
+      const out = $(`[data-value-for="vehicle.${el.dataset.vehicle}"]`);
+      if (out) out.textContent = `${Number(el.value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`;
+      if (el.dataset.vehicle === 'burnoutLevel') burnoutRuntime = null;
+      saveState(); updateWheelReadout(); return;
+    }
+    if (el.dataset.service) {
+      state.service[el.dataset.service] = Number(el.value);
+      const out = $(`[data-value-for="service.${el.dataset.service}"]`);
+      if (out) out.textContent = `${Number(el.value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`;
+      saveState(); renderHeader(); return;
+    }
+  });
+
+  document.addEventListener('change', event => {
+    const el = event.target;
+    if (el.dataset.vehicleSelect) {
+      state.vehicle[el.dataset.vehicleSelect] = el.value;
+      burnoutRuntime = null; racePhase = 'burnout';
+      saveState(); haptic(8); render();
+    }
+    if (el.dataset.serviceSelect === 'filter') {
+      pendingFilterId = el.value; haptic(8); render();
+    }
+  });
+
+
+  document.addEventListener('keydown', event => {
+    if (!raceGame?.open || raceGame.phase !== 'run') return;
+    if (event.code === 'ArrowLeft' || event.code === 'KeyA') { raceGamePointer.steerLeft = true; event.preventDefault(); }
+    if (event.code === 'ArrowRight' || event.code === 'KeyD') { raceGamePointer.steerRight = true; event.preventDefault(); }
+    if ((event.code === 'Space' || event.code === 'ArrowUp') && !event.repeat) { handleV7Shift(); event.preventDefault(); }
+    resumePersistentAudio();
+  });
+
+  document.addEventListener('keyup', event => {
+    if (event.code === 'ArrowLeft' || event.code === 'KeyA') raceGamePointer.steerLeft = false;
+    if (event.code === 'ArrowRight' || event.code === 'KeyD') raceGamePointer.steerRight = false;
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resumePersistentAudio();
+    else if (engineAudio) stopEngineAudio();
+  });
+  window.addEventListener('pageshow', resumePersistentAudio);
+
+  window.__EA888_DEBUG__ = {
+    audio: () => audioDiagnostics(),
+    race: () => raceGame?.run ? {
+      phase: raceGame.phase,
+      time: raceGame.run.t,
+      distanceM: raceGame.run.x,
+      speedKmh: raceGame.run.v * 3.6,
+      rpm: raceGame.run.rpm,
+      gear: raceGame.run.gearIndex + 1,
+      lateralM: raceGame.run.lateralM,
+      autoShift: raceGame.run.autoShift,
+      transmissionId: raceGame.run.transInfo.id,
+      clutchTempC:raceGame.run.clutchTempC,
+      gearboxTempC:raceGame.run.gearboxTempC,
+      limiterTimeS:raceGame.run.limiterTime,
+      drivelineStress:raceGame.run.drivelineStress,
+      opponentDistanceM:Number(raceGame.run.opponent?.current?.distanceM || 0),
+      opponentGapM:Number(raceGame.run.opponentGapM || 0),
+      opponentName:raceGame.run.opponent?.profile?.name || null,
+      raceMode:raceGame.run.raceMode,
+      finished: raceGame.run.finished
+    } : { phase: raceGame?.phase || 'closed' },
+    controls: raceGamePointer,
+    setTransmissionForTest: id => {
+      if (!C.CATEGORY_MAP.transmission.items.some(item => item.id === id)) return false;
+      state.selections.transmission = id;
+      if (state.lastDyno) state.lastDynoSignature = C.engineSignature(state);
+      saveState();
+      return true;
+    },
+    setDriverAssistForTest: value => {
+      if (!raceGame?.run) return false;
+      raceGame.run.driverAssist = !!value;
+      return true;
+    },
+    setRaceProfileForTest: (mode, rival='street') => {
+      state.vehicle.raceMode = mode === 'solo' ? 'solo' : 'heads_up';
+      if (RIVALS[rival]) state.vehicle.rivalLevel = rival;
+      saveState();
+      return {mode:state.vehicle.raceMode,rival:state.vehicle.rivalLevel};
+    },
+    lastDrag: () => cloneJson(state.lastDrag || null)
+  };
+
+  window.addEventListener('resize', () => {
+    if (activeTab === 'dyno' && !dynoRunning && state.lastDyno) drawDynoChart($('#dyno-chart'), state.lastDyno, 1, !currentDyno(), dynoChannel, state.dynoRuns?.[1] || null);
+    if (activeTab === 'drag' && racePanel === 'telemetry' && state.lastDrag) drawDragTelemetry($('#v12-telemetry-canvas'), state.lastDrag);
+  });
+
+
+  render();
+})();
