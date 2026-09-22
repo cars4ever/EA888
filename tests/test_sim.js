@@ -155,6 +155,8 @@ assert.strictEqual(migrated.vehicle.steeringSensitivityPct, 100, 'steering sensi
 const dynoResultSuite = require('./test_dyno_result.js');
 // Compressor-map turbo model: provenance, map fidelity, physical invariants.
 const turboSuite = require('./test_turbo_map.js');
+// Anti-lag, realtime turbo runtime and exhaust flames.
+const antiLagSuite = require('./test_antilag.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -171,7 +173,8 @@ const report = {
   benchConfidence: confidence,
   selfTestChecks: self.checks.length,
   dynoAbortSweepCases: dynoResultSuite.abortedSweepCount,
-  turboMaps: turboSuite
+  turboMaps: turboSuite,
+  antiLag: antiLagSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

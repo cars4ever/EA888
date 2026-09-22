@@ -14,6 +14,10 @@
   const CP_AIR = 1005;
   const CP_EXH = 1150;
   const MECH_EFF = 0.95;
+  // Effective inertia multiplier for spool transients: the rotor alone would spool
+  // unrealistically fast because exhaust-manifold filling and thermal lag are not
+  // modeled explicitly (approximation, tuned to ~0.3-0.8 s turbo lag).
+  const TRANSIENT_INERTIA_FACTOR = 2.5;
   const LBMIN_PER_KGS = 132.277;
   const COMP_REF = { tK: 302.6, pBar: 0.9618 }; // Garrett compressor reference, 545 R / 13.95 psia
   const TURB_REF = { tK: 288.3, pBar: 1.01325 }; // turbine flow correction, 519 R / 14.696 psia
@@ -272,7 +276,7 @@
     let shaftRpm = steady.shaftRpm, transient = false;
     // 6. rotor inertia: energy balance from the previous shaft speed
     if (Number.isFinite(target.prevShaftRpm) && target.dtS > 0 && target.prevShaftRpm < steady.shaftRpm - 1) {
-      const I = map.inertia, steps = 4, dt = target.dtS / steps;
+      const I = map.inertia * TRANSIENT_INERTIA_FACTOR, steps = 4, dt = target.dtS / steps;
       let n = target.prevShaftRpm;
       const boostAtShaft = rpm => bisectMax(0, B, b => ev.compressor(b).shaftRpm <= rpm, 18);
       for (let s = 0; s < steps && n < steady.shaftRpm; s++) {

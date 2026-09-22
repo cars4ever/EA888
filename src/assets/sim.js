@@ -184,7 +184,8 @@
       lambdaProtection: true,
       methFailsafe: true,
       oilPressureProtection: true,
-      overboostCut: true
+      overboostCut: true,
+      als: defaultAntiLag()
     };
   }
   function defaultAssembly() {
@@ -245,7 +246,7 @@
         steeringAssistPct: 22,
         steeringSensitivityPct: 100
       },
-      wear: { engine: 5, turbo: 3, transmission: 4 },
+      wear: { engine: 5, turbo: 3, transmission: 4, manifold: 0, valves: 0 },
       damage: { engine: 0, turbo: 0, transmission: 0 },
       bank: 50000,
       lastDyno: null,
@@ -284,6 +285,7 @@
       'achievements'
     ])
       s[k] = { ...base[k], ...(input[k] || {}) };
+    s.tune.als = { ...defaultAntiLag(), ...((input.tune && input.tune.als) || {}) };
     s.bench = { ...base.bench, ...(input.bench || {}), results: { ...(base.bench.results || {}), ...((input.bench || {}).results || {}) } };
     s.dynoRuns = Array.isArray(input.dynoRuns) ? input.dynoRuns.slice(0, 20).map(sanitizeDynoResult).filter(Boolean) : [];
     s.lastDyno = sanitizeDynoResult(input.lastDyno);
@@ -311,7 +313,8 @@
     return JSON.stringify({
       model: ENGINE_MODEL_VERSION,
       selections: s.selections,
-      tune: { ...compactObject(t, 3), revLimitRpm: Math.round(t.revLimitRpm) },
+      // Anti-lag only acts off-throttle / on the two-step, never in a WOT dyno pull.
+      tune: { ...compactObject({ ...t, als: undefined }, 3), revLimitRpm: Math.round(t.revLimitRpm) },
       assembly: compactObject(s.assembly, 3),
       oil: { id: s.service.oilId, liters: round(s.service.liters, 2), filter: s.service.filterId },
       dyno: compactObject(s.dynoConfig, 2)
@@ -1709,6 +1712,293 @@
     };
   }
 
+  // ---- Anti-lag (ALS) -------------------------------------------------------
+  // ALS retards ignition, enriches and opens a throttle bypass while the driver is
+  // off the throttle (or on the two-step) so combustion continues in the exhaust
+  // manifold. That energy spins the turbine: boost is kept, at the price of EGT,
+  // manifold pressure, fuel and turbo/manifold/valve life.
+  const ANTI_LAG_PRESETS = Object.freeze({
+    mild: { targetRpm: 3800, targetBoostBar: 0.5, retardDeg: 12, extraFuelPct: 6, bypassPct: 6, aggressiveness: 25, maxEgtC: 950, maxShaftPct: 88, timeoutS: 2.5, cooldownS: 6 },
+    street: { targetRpm: 4000, targetBoostBar: 0.9, retardDeg: 18, extraFuelPct: 10, bypassPct: 10, aggressiveness: 40, maxEgtC: 980, maxShaftPct: 90, timeoutS: 3, cooldownS: 6 },
+    rally: { targetRpm: 4300, targetBoostBar: 1.3, retardDeg: 28, extraFuelPct: 18, bypassPct: 18, aggressiveness: 70, maxEgtC: 1050, maxShaftPct: 94, timeoutS: 5, cooldownS: 5 },
+    drag: { targetRpm: 4600, targetBoostBar: 1.8, retardDeg: 34, extraFuelPct: 24, bypassPct: 24, aggressiveness: 90, maxEgtC: 1100, maxShaftPct: 97, timeoutS: 3.5, cooldownS: 8 }
+  });
+  const ANTI_LAG_MODES = ['off', 'mild', 'street', 'rally', 'drag', 'custom'];
+  const ANTI_LAG_LIMITS = Object.freeze({
+    targetRpm: [2500, 7000],
+    targetBoostBar: [0, 3.5],
+    retardDeg: [0, 45],
+    extraFuelPct: [0, 40],
+    bypassPct: [0, 40],
+    aggressiveness: [0, 100],
+    maxEgtC: [850, 1250],
+    maxShaftPct: [70, 110],
+    timeoutS: [0.5, 15],
+    cooldownS: [0, 30]
+  });
+  function defaultAntiLag() {
+    return { mode: 'off', ...ANTI_LAG_PRESETS.street };
+  }
+  // What the installed ECU and bypass hardware allow.
+  function antiLagCapability(inputState) {
+    const s = normalizeState(inputState),
+      ecu = getPart(s, 'ecu'),
+      spool = getPart(s, 'spool');
+    const ecuLevel = ecu.id === 'med17' ? 'none' : ecu.id === 'custom_med17' ? 'limited' : 'full';
+    const bypassMaxPct = spool.id === 'hard_als' ? 32 : spool.id === 'mild_als' ? 20 : 10;
+    return { ecuLevel, ecuName: ecu.name, bypassMaxPct, maxAggressiveness: ecuLevel === 'limited' ? 45 : ecuLevel === 'none' ? 0 : 100, flatShift: ecuLevel !== 'none' };
+  }
+  function resolveAntiLag(inputState) {
+    const s = normalizeState(inputState),
+      cfg = { ...defaultAntiLag(), ...(s.tune.als || {}) },
+      mode = ANTI_LAG_MODES.includes(cfg.mode) ? cfg.mode : 'off',
+      cap = antiLagCapability(s),
+      notes = [];
+    const raw = mode === 'custom' ? cfg : mode === 'off' ? cfg : ANTI_LAG_PRESETS[mode];
+    const params = {};
+    for (const [k, [lo, hi]] of Object.entries(ANTI_LAG_LIMITS)) params[k] = clamp(Number(raw[k] ?? defaultAntiLag()[k]), lo, hi);
+    if (params.bypassPct > cap.bypassMaxPct) {
+      params.bypassPct = cap.bypassMaxPct;
+      notes.push(`Bypass begrensd tot ${cap.bypassMaxPct}% door de luchtbypass-hardware.`);
+    }
+    if (params.aggressiveness > cap.maxAggressiveness) {
+      params.aggressiveness = cap.maxAggressiveness;
+      notes.push(cap.ecuLevel === 'none' ? `${cap.ecuName} ondersteunt geen anti-lag.` : `${cap.ecuName} staat slechts beperkte anti-lag toe.`);
+    }
+    const enabled = mode !== 'off' && cap.ecuLevel !== 'none' && params.aggressiveness > 0;
+    return { enabled, mode, params, capability: cap, notes };
+  }
+
+  // Visible exhaust flame for a combustion event, from the unburnt fuel that
+  // reaches the tailpipe and the gas temperature there. Returns intensity 0..1;
+  // nothing is visible when the conditions do not support ignition.
+  function exhaustFlameEvent(ev) {
+    const egtC = Number(ev.egtC) || 0,
+      tailC = egtC - 230,
+      fuelGps = Math.max(0, Number(ev.fuelGps) || 0),
+      unburntG = fuelGps * Math.max(0, Number(ev.cutS) || 0) * clamp(Number(ev.unburntFraction ?? 0.6), 0, 1) + Math.max(0, Number(ev.unburntG) || 0),
+      heat = clamp((tailC - 520) / 330, 0, 1),
+      fuelTerm = clamp(unburntG / 1.6, 0, 1),
+      severity = clamp(Number(ev.severity) || 0, 0, 1),
+      intensity = clamp(heat * fuelTerm * (0.55 + 0.45 * severity), 0, 1);
+    return {
+      kind: ev.kind || 'event',
+      visible: intensity > 0.04,
+      intensity,
+      unburntG,
+      tailpipeC: tailC,
+      durationMs: Math.round(60 + intensity * 380),
+      sizeScale: 0.35 + intensity * 1.25,
+      color: tailC > 860 ? 'blue-white' : tailC > 720 ? 'orange' : 'red'
+    };
+  }
+
+  // Realtime turbo state for staging and the drag run. It keeps shaft speed,
+  // boost, EGT and ALS state between frames and uses the same compressor/turbine
+  // maps as the dyno; engine airflow comes from the completed dyno samples.
+  function createTurboRuntime(inputState, options = {}) {
+    const state = normalizeState(inputState),
+      dyno = options.dyno || state.lastDyno;
+    if (!isCompletedDyno(dyno)) throw new Error('Een volledige dynometing is vereist.');
+    const turbo = getPart(state, 'turbo'),
+      air = getPart(state, 'air'),
+      exhaust = getPart(state, 'exhaust'),
+      boostControl = getPart(state, 'boostControl'),
+      fuel = getPart(state, 'fuel'),
+      map = Turbo.getMap(turbo.id),
+      chargeAir = Turbo.DATA.chargeAir[air.id] || Turbo.DATA.chargeAir.oem_air,
+      exhaustSystem = Turbo.DATA.exhaust[exhaust.id] || Turbo.DATA.exhaust.oem_exhaust,
+      wastegate = Turbo.DATA.wastegate[boostControl.id] || Turbo.DATA.wastegate.oem_internal,
+      stoichAfr = Turbo.DATA.fuelStoichAfr[fuel.id] || 14.7,
+      vehicle = state.vehicle,
+      baroBar = 1.01325 * Math.exp(-Math.max(-200, Number(vehicle.altitudeM || 0)) / 8434.5),
+      ambientK = Number(vehicle.ambientTempC ?? 20) + 273.15,
+      als = resolveAntiLag(state),
+      p = als.params,
+      samples = dyno.samples,
+      lambdaBase = Number(state.tune.lambda) || 0.8;
+    const rt = {
+      t: 0,
+      shaftRpm: 0.12 * map.maxShaftRpm,
+      boostBar: 0,
+      egtC: 560,
+      empBar: 0,
+      alsActive: false,
+      alsIntensity: 0,
+      alsHeldS: 0,
+      alsLockoutS: 0,
+      alsLimitedBy: '',
+      alsSeconds: 0,
+      wear: { turbo: 0, manifold: 0, valves: 0, engine: 0 },
+      damage: { turbo: 0, engine: 0 },
+      fuelUsedG: 0,
+      maxEgtC: 0,
+      maxShaftPct: 0,
+      maxEmpBar: 0,
+      last: null
+    };
+    function step(dt, input = {}) {
+      dt = clamp(Number(dt) || 0, 0, 0.1);
+      rt.t += dt;
+      const rpm = clamp(Number(input.rpm) || 900, 700, samples[samples.length - 1].rpm + 400),
+        throttle = clamp(Number(input.throttle ?? 1), 0, 1),
+        twoStep = !!input.twoStep,
+        s = interpolateCurve(samples, clamp(rpm, samples[0].rpm, samples[samples.length - 1].rpm)),
+        idleScale = rpm < samples[0].rpm ? rpm / samples[0].rpm : 1,
+        bSteady = Number(s.boostBar) || 0,
+        manSteadyK = (Number(s.iatC) || 30) + 273.15;
+      // ALS gate: requested, enabled, above its minimum rpm and not timed out.
+      if (rt.alsLockoutS > 0) rt.alsLockoutS = Math.max(0, rt.alsLockoutS - dt);
+      const wantAls = als.enabled && !!input.alsRequest && rt.alsLockoutS <= 0 && rpm >= p.targetRpm * 0.6;
+      let k = wantAls ? p.aggressiveness / 100 : 0,
+        limitedBy = '';
+      if (wantAls) {
+        if (rt.egtC > p.maxEgtC - 40) { k *= clamp((p.maxEgtC - rt.egtC) / 40, 0, 1); limitedBy = 'EGT-limiet'; }
+        const shaftPct = (rt.shaftRpm / map.maxShaftRpm) * 100;
+        if (shaftPct > p.maxShaftPct - 3) { k *= clamp((p.maxShaftPct - shaftPct) / 3, 0, 1); limitedBy = 'as-limiet'; }
+        if (rt.boostBar > p.targetBoostBar - 0.1) { k *= clamp((p.targetBoostBar + 0.1 - rt.boostBar) / 0.2, 0, 1); limitedBy = limitedBy || 'boost-target'; }
+        rt.alsHeldS += dt;
+        if (rt.alsHeldS > p.timeoutS) { rt.alsLockoutS = p.cooldownS; rt.alsHeldS = 0; k = 0; limitedBy = 'timeout'; }
+      } else rt.alsHeldS = Math.max(0, rt.alsHeldS - dt * 2);
+      rt.alsActive = wantAls && rt.alsLockoutS <= 0;
+      rt.alsIntensity = rt.alsActive ? k : 0;
+
+      if (rt.alsActive) rt.alsSeconds += dt;
+      // Engine airflow relative to the WOT dyno sample at this rpm.
+      let airFactor = (0.06 + 0.94 * throttle) * idleScale;
+      if (twoStep) airFactor = Math.max(airFactor, 0.7 * idleScale);
+      if (rt.alsActive) airFactor = Math.max(airFactor, (0.3 + (p.bypassPct / 100) * 1.6 * k) * idleScale);
+      const lambdaAls = lambdaBase * (1 - (p.extraFuelPct / 100) * k),
+        lambda = rt.alsActive ? lambdaAls : lambdaBase;
+      const airflowAt = (B, tK) =>
+        ((Number(s.airflowLbMin) || 1) / Turbo.LBMIN_PER_KGS) * airFactor * ((baroBar + B) / (baroBar + bSteady)) * (manSteadyK / tK);
+      const load = Math.max(throttle, twoStep ? 0.7 : 0);
+      const exhaustTempK = B => 273.15 + 600 + ((Number(s.egtC) || 850) - 600) * (0.3 + 0.7 * load) + (B - bSteady) * 40 * load;
+      const chargeCooling = (t2K, flowLb) => {
+        const eps = (0.55 + 0.45 * air.cooling) * clamp(1 - 0.35 * Math.max(0, flowLb / chargeAir.refFlowLbMin - 1), 0.4, 1);
+        return ambientK + 2 + (t2K - ambientK) * (1 - eps) * (1 - fuel.fuelCooling);
+      };
+      // Exhaust energy: ALS burns a retarded/rich charge in the manifold; the two-step
+      // alone releases a smaller amount through its ignition cut.
+      const airKgS = airflowAt(rt.boostBar, manSteadyK),
+        fuelKgS = airKgS / (stoichAfr * lambda),
+        burnable = Math.min(1, lambda),
+        alsFraction = rt.alsActive ? clamp(0.1 + p.retardDeg / 55 + 0.2 * k, 0, 0.8) * k : 0,
+        twoStepFraction = twoStep && !rt.alsActive ? 0.05 : 0,
+        exhaustKgS = airKgS + fuelKgS,
+        // The ALS controller caps its energy so turbine-inlet temperature stays at maxEgtC.
+        alsKwCap = rt.alsActive ? Math.max(0, ((p.maxEgtC + 273.15 - exhaustTempK(rt.boostBar)) * exhaustKgS * 1150) / 1000) : Infinity,
+        extraExhaustKw = Math.min(fuelKgS * 43000 * burnable * alsFraction, alsKwCap) + fuelKgS * 43000 * burnable * twoStepFraction;
+      if (rt.alsActive && fuelKgS * 43000 * burnable * alsFraction > alsKwCap + 1e-9) limitedBy = 'EGT-limiet';
+      const target = rt.alsActive ? p.targetBoostBar : Number.isFinite(input.targetBoostBar) ? input.targetBoostBar : bSteady * (twoStep ? 0.8 : 1) * throttle;
+      const tp = Turbo.matchEngine(
+        {
+          map,
+          baroBar,
+          ambientK,
+          airflowAt,
+          exhaustTempK,
+          chargeCooling,
+          stoichAfr,
+          lambda,
+          chargeAir,
+          exhaust: exhaustSystem,
+          wastegate,
+          protectShaftSpeed: !!(state.tune.overboostCut || wastegate.shaftSpeedSensor),
+          extraExhaustKw
+        },
+        { targetBoostBar: Math.max(0, target), prevShaftRpm: rt.shaftRpm, dtS: dt }
+      );
+      rt.alsLimitedBy = rt.alsLockoutS > 0 ? 'cooldown' : limitedBy;
+      // Spool-up is inertia-limited inside matchEngine; spool-down is limited by the
+      // rotor inertia against the compressor load, while boost bleeds off quickly.
+      const inertiaScale = Math.pow(map.inertia / 6e-5, 0.3);
+      if (tp.shaftRpm < rt.shaftRpm) rt.shaftRpm += (tp.shaftRpm - rt.shaftRpm) * (1 - Math.exp(-dt / (0.9 * inertiaScale)));
+      else rt.shaftRpm = tp.shaftRpm;
+      rt.boostBar += (tp.boostBar - rt.boostBar) * (tp.boostBar < rt.boostBar ? 1 - Math.exp(-dt / 0.12) : 1);
+      rt.egtC += (tp.t3C - rt.egtC) * (1 - Math.exp(-dt / 0.35));
+      rt.empBar = tp.empBarAbs - baroBar;
+      const shaftPct = (rt.shaftRpm / map.maxShaftRpm) * 100;
+      // Wear (percent of component life) and damage from what this step actually did.
+      const hot = Math.max(0, (rt.egtC - 950) / 100),
+        vHot = Math.max(0, (rt.egtC - 980) / 100);
+      rt.wear.turbo += (0.02 * hot * hot + 0.05 * Math.max(0, shaftPct - 95) / 5 + (tp.surge ? 0.02 : 0)) * dt;
+      rt.wear.manifold += 0.03 * vHot * vHot * dt;
+      rt.wear.valves += 0.02 * hot * Math.max(1, rt.empBar / 2) * dt;
+      rt.wear.engine += (rt.alsActive ? 0.004 * k : 0) * dt;
+      if (rt.egtC > 1150) rt.damage.turbo += 0.6 * ((rt.egtC - 1150) / 50) * dt;
+      if (shaftPct > 112) rt.damage.turbo += 2.5 * dt;
+      rt.fuelUsedG += fuelKgS * 1000 * dt;
+      rt.maxEgtC = Math.max(rt.maxEgtC, rt.egtC);
+      rt.maxShaftPct = Math.max(rt.maxShaftPct, shaftPct);
+      rt.maxEmpBar = Math.max(rt.maxEmpBar, rt.empBar);
+      // Continuous ALS pops: rich burn that is still going when it reaches the tailpipe.
+      // Pop size follows the ALS strategy (retard + enrichment) and how hard it is firing now.
+      const aggr = p.aggressiveness / 100;
+      const flame = rt.alsActive
+        ? exhaustFlameEvent({
+            kind: 'als',
+            egtC: rt.egtC,
+            fuelGps: fuelKgS * 1000,
+            cutS: 0.14,
+            unburntFraction: clamp(1 - lambda + 0.3 * aggr + p.retardDeg / 150, 0, 0.9),
+            severity: 0.5 * aggr + 0.5 * k
+          })
+        : { visible: false, intensity: 0 };
+      rt.last = {
+        rpm,
+        boostBar: rt.boostBar,
+        targetBoostBar: target,
+        shaftRpm: rt.shaftRpm,
+        shaftPct,
+        egtC: rt.egtC,
+        empBar: rt.empBar,
+        limitedBy: tp.limitedBy,
+        surge: tp.surge,
+        alsActive: rt.alsActive,
+        alsIntensity: rt.alsIntensity,
+        alsLimitedBy: rt.alsLimitedBy,
+        alsLockoutS: rt.alsLockoutS,
+        fuelGps: fuelKgS * 1000,
+        lambda,
+        flame,
+        popRateHz: rt.alsActive ? 4 + 18 * k : 0,
+        steadyBoostBar: bSteady
+      };
+      return rt.last;
+    }
+    return { state: rt, als, map, step };
+  }
+
+  // Stationary ALS hold at the ALS target rpm (tune-page test), sampled every 0.1 s.
+  function simulateAntiLagHold(inputState, options = {}) {
+    const state = normalizeState(inputState),
+      rt = createTurboRuntime(state, options),
+      seconds = clamp(Number(options.seconds) || 4, 0.5, 20),
+      rpm = Number(options.rpm) || rt.als.params.targetRpm,
+      trace = [];
+    for (let t = 0; t < seconds - 1e-9; t += 0.05) {
+      const snap = rt.step(0.05, { rpm, throttle: 0, twoStep: true, alsRequest: options.als !== false });
+      if (Math.round(t * 20) % 2 === 0) trace.push({ t: round(t + 0.05, 2), ...snap, flame: undefined, flameIntensity: snap.flame.intensity });
+    }
+    const s = rt.state;
+    return { als: rt.als, rpm, seconds, trace, wear: { ...s.wear }, damage: { ...s.damage }, fuelUsedG: s.fuelUsedG, maxEgtC: s.maxEgtC, maxShaftPct: s.maxShaftPct, maxEmpBar: s.maxEmpBar, finalBoostBar: s.boostBar, alsSeconds: s.alsSeconds };
+  }
+
+  // Applies wear/damage accumulated by a realtime turbo runtime to the canonical state.
+  function applyRuntimeWear(inputState, runtimeState) {
+    const state = normalizeState(inputState),
+      w = runtimeState.wear || {},
+      d = runtimeState.damage || {};
+    state.wear.turbo = clamp(state.wear.turbo + (w.turbo || 0), 0, 100);
+    state.wear.manifold = clamp(state.wear.manifold + (w.manifold || 0), 0, 100);
+    state.wear.valves = clamp(state.wear.valves + (w.valves || 0), 0, 100);
+    state.wear.engine = clamp(state.wear.engine + (w.engine || 0), 0, 100);
+    state.damage.turbo = clamp(state.damage.turbo + (d.turbo || 0), 0, 100);
+    state.damage.engine = clamp(state.damage.engine + (d.engine || 0), 0, 100);
+    return state;
+  }
+
   function diagnoseDyno(result) {
     if (!result) return [];
     const out = [];
@@ -1929,6 +2219,16 @@
     DYNO_RESULT_VERSION,
     DYNO_MIN_PARTIAL_SAMPLES,
     simulateDrag,
+    ANTI_LAG_PRESETS,
+    ANTI_LAG_MODES,
+    ANTI_LAG_LIMITS,
+    defaultAntiLag,
+    antiLagCapability,
+    resolveAntiLag,
+    exhaustFlameEvent,
+    createTurboRuntime,
+    simulateAntiLagHold,
+    applyRuntimeWear,
     interpolateCurve,
     diagnoseDyno,
     applyPreset,
