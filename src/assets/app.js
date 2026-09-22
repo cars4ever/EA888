@@ -58,7 +58,7 @@
   let raceGame = null;
   let raceGameRaf = null;
   let raceGameTimers = [];
-  let raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+  let raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
   const raceGamePointerMap = new Map();
   let raceGameLastFrame = 0;
   let raceGameAuto = false;
@@ -395,8 +395,9 @@
     } catch (e) { return null; }
   }
 
-  function applySampledAudio(audio, rpm, load, wheelSlip) {
+  function applySampledAudio(audio, rpm, load, wheelSlip, extras = null) {
     if (!audio) return;
+    audio.lastExtras = extras;
     audio.lastRpm = clamp(Number(rpm || 900), 650, 10800);
     audio.lastLoad = clamp(Number(load || 0), 0, 1.35);
     audio.lastSlip = clamp(Number(wheelSlip || 0), 0, 1);
@@ -433,13 +434,28 @@
     audio.bodyEq.frequency.setTargetAtTime(105 + boundedRpm * .008, t, .06);
     audio.bodyEq.gain.setTargetAtTime(6.5 - boundedRpm / 2800 + boundedLoad * 2.2, t, .07);
     audio.raspEq.frequency.setTargetAtTime(760 + boundedRpm * .12, t, .055);
-    audio.raspEq.gain.setTargetAtTime(-1 + boundedLoad * 4.4 + Math.max(0, boundedRpm - 4500) / 1700, t, .06);
+    // ALS makes the note harsher: more rasp and a more open exhaust while it fires.
+    const alsHarsh = extras?.alsActive ? clamp(.35 + Number(extras.alsIntensity || 0) * .65, 0, 1) : 0;
+    audio.raspEq.gain.setTargetAtTime(-1 + boundedLoad * 4.4 + Math.max(0, boundedRpm - 4500) / 1700 + alsHarsh * 6.5, t, .06);
 
     if (audio.turboSource) {
-      const spool = Math.max(0, boundedLoad - .18) * clamp((boundedRpm - 1500) / 5200, 0, 1);
-      audio.turboSource.playbackRate.setTargetAtTime(.60 + boundedRpm / 7200 + boundedLoad * .24, t, .035);
+      // With a turbo runtime the whine follows the simulated shaft speed; otherwise rpm/load.
+      const hasShaft = Number.isFinite(extras?.shaftPct);
+      const spool = hasShaft ? clamp((extras.shaftPct - 25) / 70, 0, 1.1) : Math.max(0, boundedLoad - .18) * clamp((boundedRpm - 1500) / 5200, 0, 1);
+      const rate = hasShaft ? .55 + clamp(extras.shaftPct, 0, 115) / 100 * 1.05 : .60 + boundedRpm / 7200 + boundedLoad * .24;
+      audio.turboSource.playbackRate.setTargetAtTime(rate, t, .035);
       audio.turboGain.gain.setTargetAtTime(activeGain * spool * .17 + .0001, t, .05);
-      audio.turboFilter.frequency.setTargetAtTime(1450 + boundedRpm * .48, t, .04);
+      audio.turboFilter.frequency.setTargetAtTime(hasShaft ? 1200 + extras.shaftPct * 42 : 1450 + boundedRpm * .48, t, .04);
+    }
+    // ALS pops/bangs: separate one-shot layer at the simulated pop rate.
+    if (extras?.alsActive && Number(extras.popRateHz) > 0) {
+      const nowPop = performance.now();
+      if (nowPop - (audio.lastAlsPopMs || 0) > 1000 / extras.popRateHz) {
+        audio.lastAlsPopMs = nowPop;
+        const fi = clamp(Number(extras.flameIntensity || 0), 0, 1);
+        playSampleOneShot(audio, 'launch', .12 + fi * .30 + alsHarsh * .08, .88 + Math.random() * .22);
+        if (fi > .45 && Math.random() < .35) playSampleOneShot(audio, 'limiter', .14 + fi * .16, 1.1 + Math.random() * .2);
+      }
     }
     if (audio.tyreSource) {
       audio.tyreSource.playbackRate.setTargetAtTime(.72 + slip * .86 + boundedRpm / 26000, t, .025);
@@ -565,11 +581,12 @@
     applySampledAudio(audio, audio.lastRpm || 900, mode === 'race' ? .62 : .15, 0);
   }
 
-  function updateEngineAudio(rpm, load = .5, wheelSlip = 0) {
+  // extras (optional, from the turbo runtime): shaftPct, boostBar, alsActive, alsIntensity, flameIntensity, popRateHz
+  function updateEngineAudio(rpm, load = .5, wheelSlip = 0, extras = null) {
     if (!state.settings?.sound) return;
     const audio = ensureEngineAudio(engineAudio?.mode || 'engine');
     if (!audio) return;
-    applySampledAudio(audio, rpm, load, wheelSlip);
+    applySampledAudio(audio, rpm, load, wheelSlip, extras);
   }
 
   function engineShiftPop(intensity = .6, shiftType = 'auto') {
@@ -797,6 +814,7 @@
   }
 
   function afterRender() {
+    if (activeTab === 'tune' && tunePanel === 'als') drawAlsTestChart();
     if (activeTab === 'dyno') {
       const canvas = $('#dyno-chart');
       if (dynoRunning) drawDynoChart(canvas, dynoRunning.result, 0, false, dynoChannel, null);
@@ -1357,12 +1375,99 @@
   }
 
   function tuneTabs() {
-    return `<div class="segment-control tune-segments four">
+    return `<div class="segment-control tune-segments five">
       <button class="${tunePanel === 'boost' ? 'active' : ''}" data-tune-panel="boost">Boost</button>
+      <button class="${tunePanel === 'als' ? 'active' : ''}" data-tune-panel="als">Anti-lag</button>
       <button class="${tunePanel === 'fuel' ? 'active' : ''}" data-tune-panel="fuel">Brandstof</button>
       <button class="${tunePanel === 'cams' ? 'active' : ''}" data-tune-panel="cams">Nokken</button>
       <button class="${tunePanel === 'safety' ? 'active' : ''}" data-tune-panel="safety">Failsafes</button>
     </div>`;
+  }
+
+  const ALS_MODE_LABELS = { off: ['Uit', 'geen anti-lag'], mild: ['Mild', 'kort, koel'], street: ['Street', 'launch-hulp'], rally: ['Rally', 'boost vasthouden'], drag: ['Drag', 'agressief'], custom: ['Custom', 'eigen waarden'] };
+  let alsTestResult = null;
+  function alsSlider(key, label, min, max, step, value, unit, decimals, hint) {
+    return `<div class="control">
+      <div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output data-value-for="als.${key}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
+      <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-als="${key}" data-unit="${esc(unit)}" data-decimals="${decimals}">
+      <div class="range-scale"><span>${min}</span><span>${max}${esc(unit)}</span></div>
+    </div>`;
+  }
+  function renderAntiLagPanel() {
+    const resolved = C.resolveAntiLag(state);
+    const cap = resolved.capability;
+    const p = resolved.params;
+    const mode = resolved.mode;
+    const canTest = currentCompletedDyno() && resolved.enabled;
+    const testWhy = !resolved.enabled ? (cap.ecuLevel === 'none' ? `${cap.ecuName} ondersteunt geen anti-lag.` : 'Kies eerst een ALS-modus.') : !currentCompletedDyno() ? 'Standtest vraagt een volledige, actuele dynopull (luchtstroom en EGT komen uit die meting).' : '';
+    const r = alsTestResult && alsTestResult.key === JSON.stringify(resolved.params) + mode ? alsTestResult : null;
+    return `<div class="tune-layout als-layout">
+      <div class="card tune-card als-card">
+        <div class="card-title"><span>${icon('bolt')}</span><div><span class="eyebrow">Anti-lag systeem</span><h2>Boost vasthouden zonder gas</h2></div></div>
+        <p class="als-intro">ALS vertraagt de ontsteking, verrijkt en opent een luchtbypass zodat er in het spruitstuk wordt verbrand. De turbo blijft draaien, maar EGT, uitlaatdruk, brandstofverbruik en slijtage van turbo, spruitstuk en kleppen stijgen sterk.</p>
+        <div class="als-mode-grid">${C.ANTI_LAG_MODES.map(m => `<button class="als-mode ${mode === m ? 'active' : ''} ${m === 'drag' ? 'danger' : ''}" data-als-mode="${m}"><b>${ALS_MODE_LABELS[m][0]}</b><small>${ALS_MODE_LABELS[m][1]}</small></button>`).join('')}</div>
+        <div class="als-cap ${cap.ecuLevel}"><span>ECU <b>${esc(cap.ecuName)}</b> · ${cap.ecuLevel === 'full' ? 'volledige ALS' : cap.ecuLevel === 'limited' ? 'beperkte ALS' : 'geen ALS'}</span><span>Luchtbypass max <b>${cap.bypassMaxPct}%</b> (${esc(C.getPart(state, 'spool').name)})</span>${resolved.notes.map(n => `<span class="note">${esc(n)}</span>`).join('')}</div>
+        ${mode !== 'custom' && mode !== 'off' ? '<div class="tune-note"><b>Preset actief</b><p>Een schuif verplaatsen maakt er een Custom-instelling van met deze waarden als start.</p></div>' : ''}
+        ${alsSlider('targetRpm', 'ALS target rpm', 2500, 7000, 100, p.targetRpm, ' rpm', 0, 'Tweestaps-/ALS-toerental; onder 60% hiervan schakelt ALS niet in.')}
+        ${alsSlider('targetBoostBar', 'ALS target boost', 0, 3.5, 0.05, p.targetBoostBar, ' bar', 2, 'De regelaar neemt terug zodra deze druk staat.')}
+        ${alsSlider('retardDeg', 'Ontstekingsvertraging', 0, 45, 1, p.retardDeg, '°', 0, 'Meer vertraging = meer verbranding in het spruitstuk.')}
+        ${alsSlider('extraFuelPct', 'Extra brandstof', 0, 40, 1, p.extraFuelPct, '%', 0, 'Verrijking tijdens ALS (lambda omlaag).')}
+        ${alsSlider('bypassPct', 'Gasklep/bypass', 0, 40, 1, p.bypassPct, '%', 0, 'Beperkt door de luchtbypass-hardware.')}
+        ${alsSlider('aggressiveness', 'Agressiviteit', 0, 100, 1, p.aggressiveness, '', 0, 'Schaal van de ALS-ingreep; hoger is harder en duurder.')}
+      </div>
+      <div class="card tune-card">
+        <div class="card-title"><span>${icon('service')}</span><div><span class="eyebrow">ALS-bescherming</span><h2>Grenzen & timeout</h2></div></div>
+        ${alsSlider('maxEgtC', 'Maximale EGT', 850, 1250, 10, p.maxEgtC, ' °C', 0, 'Regelaar beperkt de ALS-energie op deze turbine-inlaattemperatuur.')}
+        ${alsSlider('maxShaftPct', 'Maximale turbo-as', 70, 110, 1, p.maxShaftPct, '%', 0, 'Percentage van het maximale asoptoerental van de kaart.')}
+        ${alsSlider('timeoutS', 'Timeout', 0.5, 15, 0.5, p.timeoutS, ' s', 1, 'Na deze tijd ononderbroken ALS schakelt het systeem uit.')}
+        ${alsSlider('cooldownS', 'Cooldown', 0, 30, 1, p.cooldownS, ' s', 0, 'Wachttijd voordat ALS weer mag na een timeout.')}
+        <div class="als-test">
+          <button class="btn secondary als-test-button" data-action="als-test" ${canTest ? '' : 'disabled'}>${icon('bolt')} ALS-standtest (4 s op ${Math.round(p.targetRpm)} rpm)</button>
+          ${canTest ? '<small>De test belast de motor echt: slijtage wordt opgeslagen.</small>' : `<small class="why">${esc(testWhy)}</small>`}
+        </div>
+        ${r ? `<div class="als-result">
+          <canvas id="als-test-chart" aria-label="ALS-standtest: boost, turbo-as en EGT"></canvas>
+          <div class="technical-grid">
+            <div><span>Boost na 1 s / eind</span><b>${num(r.boostAt1,2)} / ${num(r.finalBoostBar,2)} bar</b></div>
+            <div><span>Max turbo-as</span><b>${num(r.maxShaftPct,0)}%</b></div>
+            <div><span>Max EGT · EMP</span><b>${num(r.maxEgtC,0)} °C · ${num(r.maxEmpBar,2)} bar</b></div>
+            <div><span>Brandstof</span><b>${num(r.fuelUsedG,0)} g in ${num(r.seconds,1)} s</b></div>
+            <div><span>Slijtage turbo / spruitstuk / kleppen</span><b>+${num(r.wear.turbo,3)} / +${num(r.wear.manifold,3)} / +${num(r.wear.valves,3)}%</b></div>
+            <div><span>Schade turbo</span><b class="${r.damage.turbo > 0 ? 'bad' : ''}">${r.damage.turbo > 0 ? `+${num(r.damage.turbo,2)}%` : 'geen'}</b></div>
+          </div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+  function runAlsTest() {
+    if (!currentCompletedDyno()) return showToast('Voer eerst een volledige dynopull uit.');
+    const resolved = C.resolveAntiLag(state);
+    if (!resolved.enabled) return showToast('Anti-lag staat uit of wordt niet ondersteund.');
+    const h = C.simulateAntiLagHold(state, { seconds: 4 });
+    state = C.applyRuntimeWear(state, { wear: h.wear, damage: h.damage });
+    pushHistory({ type: 'als', label: `ALS-standtest ${ALS_MODE_LABELS[resolved.mode][0]}: ${h.finalBoostBar.toFixed(2)} bar, EGT ${Math.round(h.maxEgtC)} °C` });
+    saveState();
+    alsTestResult = { key: JSON.stringify(resolved.params) + resolved.mode, ...h, boostAt1: (h.trace.find(p => Math.abs(p.t - 1) < 0.051) || h.trace[0]).boostBar };
+    haptic([20, 20, 40]);
+    render();
+  }
+  function drawAlsTestChart() {
+    const canvas = $('#als-test-chart');
+    if (!canvas || !alsTestResult) return;
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const w = Math.max(260, canvas.getBoundingClientRect().width || 320), h = 160;
+    canvas.width = w * dpr; canvas.height = h * dpr; canvas.style.height = `${h}px`;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    ctx.fillStyle = '#0b1119'; ctx.fillRect(0, 0, w, h);
+    const tr = alsTestResult.trace, T = alsTestResult.seconds, pad = { l: 8, r: 8, t: 22, b: 16 };
+    const X = t => pad.l + (t / T) * (w - pad.l - pad.r), Y = f => pad.t + (1 - clamp(f, 0, 1.05)) * (h - pad.t - pad.b);
+    const series = [['boostBar', '#36b8ff', Math.max(1, alsTestResult.als.params.targetBoostBar * 1.3), 'BOOST'], ['shaftPct', '#48db9c', 110, 'AS %'], ['egtC', '#ff654d', 1250, 'EGT']];
+    series.forEach(([key, color, max, label], i) => {
+      ctx.beginPath(); tr.forEach((p, j) => (j ? ctx.lineTo(X(p.t), Y(p[key] / max)) : ctx.moveTo(X(p.t), Y(p[key] / max))));
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = color; ctx.font = '800 9px system-ui,sans-serif'; ctx.fillText(label, pad.l + i * 60, 13);
+    });
+    tr.forEach(p => { if (p.alsLimitedBy === 'cooldown') { ctx.fillStyle = 'rgba(255,83,101,.12)'; ctx.fillRect(X(p.t) - 2, pad.t, 4, h - pad.t - pad.b); } });
   }
 
   function renderTune() {
@@ -1437,6 +1542,8 @@
           <div class="notice ${camPct < 72 ? 'danger' : camPct < 88 ? 'stale' : 'success'}"><strong>${camPct >= 88 ? 'Mechanische basis ligt dicht bij de doeldata.' : 'Timing eerst mechanisch corrigeren.'}</strong> ECU-fasering kan een verkeerde mechanische basisstand niet netjes repareren.</div>
         </div>
       </div>`;
+    } else if (tunePanel === 'als') {
+      content = renderAntiLagPanel();
     } else {
       content = `<div class="tune-layout">
         <div class="card tune-card">
@@ -2536,20 +2643,27 @@
     const ready = s.staged && !s.deep;
     const launchLabel = s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : ready ? 'HOUD VOOR LAUNCH' : 'LAUNCH VERGRENDELD';
     return `<div class="v8-game v8-stage-game ${ready ? 'is-staged' : ''} ${rival?'has-rival':''}">
-      <div class="v8-scene-plate v8-stage-plate"></div><div class="v8-cinematic-shade"></div>
+      <div class="v8-scene-plate v8-stage-plate"><div class="ea-flame-host stage" id="ea-stage-flames"><span class="v7-flame left"></span><span class="v7-flame right"></span></div></div><div class="v8-cinematic-shade"></div>
       ${v7GameHeader('STAGE & TREE', 2, treeMode === 'pro' ? 'Pro tree · release op groen' : 'Sportsman tree · release op groen')}
       <main class="v8-stage-scene">
         <section class="v8-stage-hud">
           ${v7TachMarkup('v7-stage', s.rpm, 1)}
           <div class="v8-round-gauge"><span>BOOST</span><b id="v8-stage-boost">0.00</b><small>bar</small><i></i></div>
         </section>
+        <div class="v13-turbo-hud" id="v13-stage-turbo"><span>TURBO<b id="v13-stage-shaft">0k</b></span><span>EGT<b id="v13-stage-egt">—</b></span><span>ALS<b id="v13-stage-als">${raceGame?.alsInfo?.enabled ? 'GEREED' : 'UIT'}</b></span><span>SLIJTAGE<b id="v13-stage-wear">+0.000%</b></span></div>
         <div class="v8-tree-wrap"><div class="v8-tree-copy"><span>PRE-STAGE</span><span>STAGE</span></div>${v7TreeMarkup(false)}</div>
         ${rival ? `<div class="v12-stage-rival"><img src="images/rival-scirocco.svg" alt="${esc(rival.name)}"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>RT-venster ${rival.reactionMin.toFixed(3)}–${rival.reactionMax.toFixed(3)} s</small></div>` : ''}
         <div class="v8-stage-message"><span id="v7-stage-status">KRUIP NAAR PRE-STAGE</span><b id="v7-stage-depth">${Math.round(s.progress)}%</b></div>
         <div class="v8-rpm-hold"><span>HOUD TOERENTAL VAST</span><div><i id="v8-stage-rpm-fill"></i><em></em></div><b><strong id="v8-stage-rpm-number">${Math.round(s.rpm)}</strong> RPM</b></div>
         <div class="v8-stage-beam"><i class="pre-zone"></i><i class="stage-zone"></i><em id="v7-stage-marker" style="left:${s.progress}%"></em></div>
-        <div class="v8-stage-actions">
+        <div class="v8-stage-actions with-als">
           <button class="v8-stage-button creep" data-v7-control="creep"><span>↕</span><b>CREEP / STAGE</b><small>HOUD KORT VAST</small></button>
+        ${(() => {
+          const als = raceGame?.alsInfo;
+          const why = !als ? '' : als.capability.ecuLevel === 'none' ? `${als.capability.ecuName}: geen anti-lag` : als.mode === 'off' ? 'Anti-lag staat uit (Tune → Anti-lag)' : '';
+          return `<button class="v8-stage-button v13-als-button ${als?.enabled ? '' : 'off'}" id="v13-als-button" data-v7-control="antilag" ${als?.enabled ? '' : 'disabled'}><span>ALS</span><b>HOLD ANTILAG</b><small>${als?.enabled ? `${esc(ALS_MODE_LABELS[als.mode][0])} · doel ${als.params.targetBoostBar.toFixed(1)} bar · max EGT ${Math.round(als.params.maxEgtC)} °C` : esc(why)}</small></button>`;
+        })()}
+
           <button class="v8-stage-button launch ${ready ? 'ready' : ''} ${s.treeStarted ? 'armed' : ''} ${s.green ? 'go' : ''}" id="v7-launch-button" data-v7-control="throttle" ${ready && !s.launched ? '' : 'disabled'}><span>»</span><b>${launchLabel}</b><small>${ready ? 'vasthouden voor rpm · loslaten om te gaan' : 'rij eerst volledig in stage'}</small></button>
         </div>
         ${s.deep ? '<button class="v8-reset-stage" data-action="v7-reset-stage">TE DIEP GESTAGED · OPNIEUW</button>' : ''}
@@ -2593,7 +2707,7 @@
           ${shiftControl}
           <button class="v9-steer-button v10-steer-button right" data-v7-control="steerRight"><b>RECHTS</b><span>▶</span></button>
         </div>
-        <div class="v8-run-telemetry v9-run-telemetry v10-run-telemetry"><span><b id="v7-run-g">0.00 g</b>acceleratie</span><span><b id="v7-run-wheelspin">0%</b>wheelspin</span><span><b id="v8-run-distance-copy">0 / 402 m</b>afstand</span></div>
+        <div class="v8-run-telemetry v9-run-telemetry v10-run-telemetry"><span><b id="v7-run-g">0.00 g</b>acceleratie</span><span><b id="v7-run-wheelspin">0%</b>wheelspin</span><span><b id="v13-run-shaft">—</b>turbo-as</span><span><b id="v13-run-egt">—</b>EGT</span></div>
         <div class="v12-driveline-hud"><span><b id="v12-clutch-temp">58°C</b>koppeling</span><span><b id="v12-gearbox-temp">66°C</b>bak</span><span><b id="v12-stress">0%</b>stress</span></div>
       </main>
     </div>`;
@@ -2638,7 +2752,7 @@
     requestAnimationFrame(() => {
       if (!raceGame?.open) return;
       if (raceGame.phase.startsWith('burnout')) updateV7BurnoutDom();
-      else if (raceGame.phase === 'stage') updateV7StageDom();
+      else if (raceGame.phase === 'stage') { positionStageFlames(); updateV7StageDom(); }
       else if (raceGame.phase === 'run') updateV7RunDom(raceGame.run?.point || null);
     });
   }
@@ -2648,6 +2762,61 @@
     raceGameTimers = [];
   }
 
+  // Exhaust flames are only drawn for simulated combustion events (C.exhaustFlameEvent).
+  function emitExhaustFlame(host, fe) {
+    if (!host || !fe?.visible) return false;
+    const flames = $$('.v7-flame', host);
+    flames.forEach((f, i) => {
+      f.style.setProperty('--flame-scale', (fe.sizeScale * (i % 2 ? 1.08 : .94)).toFixed(3));
+      f.style.setProperty('--flame-ms', `${fe.durationMs}ms`);
+      f.dataset.color = fe.color;
+      f.classList.remove('fire'); void f.offsetWidth; f.classList.add('fire');
+    });
+    if (raceGame) {
+      raceGame.flameLog = raceGame.flameLog || [];
+      raceGame.flameLog.push({ kind: fe.kind, intensity: +fe.intensity.toFixed(3), color: fe.color, phase: raceGame.phase });
+      if (raceGame.flameLog.length > 200) raceGame.flameLog.shift();
+    }
+    return true;
+  }
+  function makeRaceTurbo() {
+    try { return C.createTurboRuntime(state); } catch (e) { return null; }
+  }
+  // Continuous ALS pops at the simulated pop rate while ALS fires.
+  function tickAlsFlames(snap, dt, host) {
+    if (!raceGame || !snap?.alsActive || !snap.flame?.visible) { if (raceGame) raceGame.popClock = 0; return; }
+    raceGame.popClock = (raceGame.popClock || 0) + dt * snap.popRateHz;
+    if (raceGame.popClock >= 1) { raceGame.popClock = 0; emitExhaustFlame(host, snap.flame); }
+  }
+  function positionStageFlames() {
+    const plate = $('.v8-stage-plate'), host = $('#ea-stage-flames');
+    if (!plate || !host) return;
+    const pw = plate.offsetWidth, ph = plate.offsetHeight, ar = 941 / 1672;
+    const iw = pw / ph > ar ? pw : ph * ar, ih = pw / ph > ar ? pw / ar : ph;
+    const ox = (pw - iw) / 2, oy = (ph - ih) / 2;
+    [[.291, .612], [.708, .612]].forEach(([x, y], i) => {
+      const f = $$('.v7-flame', host)[i];
+      if (!f) return;
+      const w = iw * .11;
+      f.style.width = `${w}px`; f.style.height = `${w}px`;
+      f.style.left = `${ox + x * iw - w / 2}px`; f.style.top = `${oy + y * ih - w / 2}px`;
+    });
+  }
+  function alsStatusText(snap) {
+    const als = raceGame?.alsInfo;
+    if (!als?.enabled) return 'UIT';
+    if (!snap) return 'GEREED';
+    if (snap.alsLockoutS > 0) return `COOLDOWN ${Math.ceil(snap.alsLockoutS)} s`;
+    if (snap.alsActive) return snap.alsLimitedBy === 'EGT-limiet' ? 'EGT-LIMIET' : snap.alsLimitedBy === 'as-limiet' ? 'AS-LIMIET' : `ACTIEF ${Math.round(snap.alsIntensity * 100)}%`;
+    return 'GEREED';
+  }
+  function applyRaceTurboWear() {
+    if (!raceGame?.turbo || raceGame.turboWearApplied) return;
+    raceGame.turboWearApplied = true;
+    state = C.applyRuntimeWear(state, raceGame.turbo.state);
+    if (raceGame.turbo.state.alsSeconds > 0.2) pushHistory({ type: 'als', label: `Anti-lag ${raceGame.turbo.state.alsSeconds.toFixed(1)} s · EGT max ${Math.round(raceGame.turbo.state.maxEgtC)} °C` });
+  }
+
   function startDragGame(auto = false) {
     if (!currentCompletedDyno()) return showToast('Voer eerst een volledige, geldige dynopull uit.');
     closeDragGame({ silent:true, noRender:true });
@@ -2655,7 +2824,7 @@
     const startingTemp = clamp(profile.trackC + 2, profile.trackC, profile.targetC - 8);
     burnoutRuntime = { key:`${profile.id}:${profile.trackC}:${state.vehicle.drivetrain}`, tempC:startingTemp, rpm:900, active:false, smoke:0, wheelSlip:0, startedAt:0, lastAt:0, elapsed:0 };
     raceGameAuto = !!auto;
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
     raceGame = {
       open:true,
       phase:'burnout',
@@ -2668,7 +2837,12 @@
       stage:{ progress:0, rpm:900, staged:false, deep:false, treeStarted:false, plannedGreen:0, green:false, launched:false, readySince:0 },
       run:null,
       finishResult:null,
-      rivalProfile:raceIsHeadsUp() ? selectedRival() : null
+      rivalProfile:raceIsHeadsUp() ? selectedRival() : null,
+      turbo:makeRaceTurbo(),
+      alsInfo:C.resolveAntiLag(state),
+      flameLog:[],
+      popClock:0,
+      turboWearApplied:false
     };
     raceGameLastFrame = performance.now();
     renderRaceGame();
@@ -2679,10 +2853,11 @@
   }
 
   function closeDragGame(options = {}) {
+    if (raceGame?.turbo && !raceGame.turboWearApplied) { applyRaceTurboWear(); saveState(); }
     if (raceGameRaf) cancelAnimationFrame(raceGameRaf);
     raceGameRaf = null;
     clearRaceGameTimers();
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
     raceGamePointerMap.clear();
     stopEngineAudio({ hard: true });
     raceGame = null;
@@ -2828,7 +3003,7 @@
     clearRaceGameTimers();
     raceGame.phase='stage';
     raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,readySince:0};
-    raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false};
+    raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false,antilag:false};
     renderRaceGame();
     updateEngineAudio(900,.12,0);
     haptic(18);
@@ -2854,7 +3029,9 @@
     }
     s.staged = s.progress >= 56 && s.progress <= 82 && !s.deep;
     const target = Number(state.tune.launchRpm || 4200);
-    const targetRpm = throttle && s.staged ? target : 900;
+    const alsHeld = !!raceGamePointer.antilag && !!raceGame.alsInfo?.enabled;
+    // Held ALS raises revs itself (bypass/throttle kick); the two-step caps them at launch rpm.
+    const targetRpm = throttle && s.staged ? target : alsHeld ? raceGame.alsInfo.params.targetRpm * .92 : 900;
     s.rpm += (targetRpm - s.rpm) * Math.min(1, dt * (throttle ? 4.25 : 5.2));
     s.rpm += throttle && s.staged ? Math.sin(now * .017) * 42 : 0;
     s.rpm = clamp(s.rpm, 850, Number(state.tune.revLimitRpm || 8000));
@@ -2868,7 +3045,10 @@
       s.readySince = 0;
     }
 
-    updateEngineAudio(s.rpm, throttle && s.staged ? .82 : .12, 0);
+    const snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: 0, twoStep: throttle && s.staged, alsRequest: alsHeld }) : null;
+    raceGame.turboSnap = snap;
+    tickAlsFlames(snap, dt, $('#ea-stage-flames'));
+    updateEngineAudio(s.rpm, throttle && s.staged ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, popRateHz: snap.popRateHz } : null);
     updateV7StageDom();
   }
 
@@ -2911,10 +3091,24 @@
     if (rpmNumber) rpmNumber.textContent = Math.round(s.rpm);
     const rpmFill = $('#v8-stage-rpm-fill');
     if (rpmFill) rpmFill.style.width = `${clamp(s.rpm / Math.max(1,target),0,1.22) * 82}%`;
-    const enginePoint = state.lastDyno?.samples ? C.interpolateCurve(state.lastDyno.samples, s.rpm) : null;
-    const boost = s.rpm > 1800 ? Math.max(0, Number(enginePoint?.boostBar || 0) * Number(state.tune.firstGearBoostPct || 100) / 100) : 0;
+    // Boost, turbo speed and EGT come from the realtime turbo runtime, never from a lookup.
+    const snap = raceGame.turboSnap;
     const boostNode = $('#v8-stage-boost');
-    if (boostNode) boostNode.textContent = boost.toFixed(2);
+    if (boostNode) boostNode.textContent = snap ? Math.max(0, snap.boostBar).toFixed(2) : '—';
+    const set = (id, v) => { const n = $(id); if (n) n.textContent = v; };
+    if (snap) {
+      set('#v13-stage-shaft', `${Math.round(snap.shaftRpm / 1000)}k · ${Math.round(snap.shaftPct)}%`);
+      set('#v13-stage-egt', `${Math.round(snap.egtC)} °C`);
+      const w = raceGame.turbo.state.wear;
+      set('#v13-stage-wear', `+${(w.turbo + w.manifold + w.valves).toFixed(3)}%`);
+      const egtNode = $('#v13-stage-egt'); if (egtNode) egtNode.className = snap.egtC > 1050 ? 'bad' : snap.egtC > 950 ? 'warn' : '';
+    }
+    set('#v13-stage-als', alsStatusText(snap));
+    const alsBtn = $('#v13-als-button');
+    if (alsBtn) {
+      alsBtn.classList.toggle('active', !!snap?.alsActive);
+      alsBtn.classList.toggle('lockout', !!(snap && snap.alsLockoutS > 0));
+    }
 
     const screen = $('.v8-stage-game');
     if (screen) {
@@ -3049,7 +3243,11 @@
       finished: false, finishReason: '', startMs: performance.now(),
       timeScale: auto ? (state.settings?.reducedMotion ? 6.0 : 2.15) : 1,
       burnoutTempC: raceGame.burn.tempC, burnoutScore: raceGame.burn.score || burnout.score,
-      raceMode:opponent ? 'heads_up' : 'solo', opponent, opponentGapM:0, opponentFinishShown:false
+      raceMode:opponent ? 'heads_up' : 'solo', opponent, opponentGapM:0, opponentFinishShown:false,
+      // The staging turbo runtime carries on: shaft speed built on ALS/two-step is kept at launch.
+      turbo: raceGame?.turbo || makeRaceTurbo(), turboSnap:null, pendingFlames:[], limiterFlameClock:0,
+      alsRolling: (() => { const a = raceGame?.alsInfo || C.resolveAntiLag(state); return !!(a.enabled && (a.mode === 'rally' || a.mode === 'drag' || (a.mode === 'custom' && a.params.aggressiveness >= 50))); })(),
+      flatShift: C.antiLagCapability(state).flatShift
     };
     run.point = realtimePoint(run, 0, 0);
     return run;
@@ -3086,7 +3284,6 @@
     const ratio = run.transInfo.gears[run.gearIndex] * run.transInfo.finalDrive;
     const coupledRpm = run.v / (2 * Math.PI * run.radius) * 60 * ratio;
     run.rpm = clamp(Math.max(900, coupledRpm), 850, Number(state.tune.revLimitRpm || 8000));
-    run.boostFactor *= run.autoShift ? .94 : .76;
     run.clutchTempC += run.autoShift ? 2.4 : shift.grade === 'perfect' ? 4.5 : shift.grade === 'late' ? 8.5 : 6.5;
     run.gearboxTempC += run.autoShift ? 1.4 : 2.2;
     run.drivelineStress += shift.grade === 'perfect' ? .8 : shift.grade === 'good' ? 1.3 : 2.4;
@@ -3119,6 +3316,15 @@
     run.gearboxTempC += grade === 'late' ? 2.2 : grade === 'early' ? 1.6 : .8;
     run.drivelineStress += grade === 'late' ? 1.8 : grade === 'early' ? 1.2 : .4;
     run.shifting = { from: run.gearIndex, to: run.gearIndex + 1, remaining: duration, duration, grade, source, rpm: run.rpm, target };
+    // Shift flame: DSG ignition-cut burp or flat-shift spark cut sends unburnt fuel into the
+    // exhaust; a late shift near the limiter carries more fuel and heat. A throttle lift on an
+    // ECU without flat-shift cuts fuel instead, so there is little to ignite.
+    const snap = run.turboSnap;
+    if (snap) {
+      const cutS = (run.autoShift ? .035 : run.flatShift ? .08 : .02) * (grade === 'late' ? 1.8 : 1);
+      const unburnt = run.flatShift || run.autoShift ? (grade === 'late' ? .75 : .5) : .12;
+      run.pendingFlames.push(C.exhaustFlameEvent({ kind: grade === 'late' ? 'shift-late' : 'shift', egtC: snap.egtC, fuelGps: snap.fuelGps, cutS, unburntFraction: unburnt, severity: grade === 'late' ? .85 : grade === 'early' ? .3 : .2 }));
+    }
     run.shiftHistory.push({ at: run.t, from: run.gearIndex + 1, to: run.gearIndex + 2, rpm: run.rpm, targetRpm: target, grade, source });
     showV7ShiftFeedback(label, grade === 'perfect' ? 'perfect' : grade === 'late' || grade === 'early' ? 'warn' : 'good');
     haptic(grade === 'perfect' ? [9,10,18] : 13);
@@ -3144,6 +3350,12 @@
     const revLimit = Number(state.tune.revLimitRpm || 8000);
     const launchRpm = clamp(Number(state.tune.launchRpm || 4200), 2200, revLimit - 400);
     const maxStep = .006;
+    // Turbo runtime once per frame: throttle closes during a shift (rolling ALS may fire then).
+    const firstGearPct = Number(state.tune.firstGearBoostPct || 100) / 100, secondGearPct = Number(state.tune.secondGearBoostPct || 100) / 100;
+    const frameGearBoost = run.gearIndex === 0 ? firstGearPct : run.gearIndex === 1 ? secondGearPct : 1;
+    const framePoint = C.interpolateCurve(state.lastDyno.samples, run.rpm);
+    if (run.turbo) run.turboSnap = run.turbo.step(dt, { rpm: run.rpm, throttle: run.shifting ? 0 : 1, alsRequest: run.alsRolling && !!run.shifting, targetBoostBar: Number(framePoint?.boostBar || 0) * frameGearBoost });
+    const snap = run.turboSnap;
     let remaining = dt;
     while (remaining > 1e-7 && !run.finished) {
       const h = Math.min(maxStep, remaining);
@@ -3172,17 +3384,32 @@
       const head = C.getPart(state, 'head');
       const naBase = 174 * (run.geometry.displacementL / 2) * Number(head.headFlow || 1) * (1 + Math.min(8, Number(state.tune.intakeCamAdvanceDeg || 0)) * .004);
       const gearBoost = run.gearIndex === 0 ? Number(state.tune.firstGearBoostPct || 100) / 100 : run.gearIndex === 1 ? Number(state.tune.secondGearBoostPct || 100) / 100 : 1;
-      const spoolRate = clamp(2.0 + run.rpm / 3000, 2.2, 6.2);
-      run.boostFactor += (1 - run.boostFactor) * clamp(h * spoolRate, 0, 1);
+      // Torque follows the boost the turbo runtime actually delivers relative to the
+      // steady dyno boost at this rpm (boost-by-gear is applied through its target).
       const steadyTorque = Number(enginePoint?.torqueNm || 0);
-      let torqueEngine = (naBase + (steadyTorque - naBase) * gearBoost * run.boostFactor) * run.airPowerFactor;
-      const boostBar = Math.max(0, Number(enginePoint?.boostBar || 0) * gearBoost * run.boostFactor);
-      const turboLoad = Number(enginePoint?.turboLoadPct || 0);
+      const steadyBoost = Number(enginePoint?.boostBar || 0);
+      let boostBar, boostShare;
+      if (snap) {
+        boostBar = Math.max(0, snap.boostBar);
+        boostShare = steadyBoost > .05 ? clamp(boostBar / steadyBoost, 0, 1.25) : 1;
+      } else {
+        run.boostFactor += (1 - run.boostFactor) * clamp(h * clamp(2.0 + run.rpm / 3000, 2.2, 6.2), 0, 1);
+        boostShare = gearBoost * run.boostFactor;
+        boostBar = Math.max(0, steadyBoost * boostShare);
+      }
+      let torqueEngine = (naBase + (steadyTorque - naBase) * boostShare) * run.airPowerFactor;
+      const turboLoad = snap ? snap.shaftPct : Number(enginePoint?.turboLoadPct || 0);
 
       let limiterCut = 1;
       if (run.rpm >= revLimit - 20) {
         limiterCut = Math.sin(run.t * 78) > -.05 ? .16 : .46;
         run.limiterTime += h;
+        // Spark-cut limiter (tuned ECUs) dumps unburnt fuel into a hot exhaust: bangs and flames.
+        run.limiterFlameClock += h * 11;
+        if (run.limiterFlameClock >= 1 && snap) {
+          run.limiterFlameClock = 0;
+          run.pendingFlames.push(C.exhaustFlameEvent({ kind: 'limiter', egtC: snap.egtC, fuelGps: snap.fuelGps, cutS: .09, unburntFraction: run.flatShift ? .75 : .08, severity: .8 }));
+        }
         run.gearboxTempC += h * .9;
         run.drivelineStress += h * 1.9;
         if (!run.autoShift && !run.limiterFlags.has(run.gearIndex)) {
@@ -3302,8 +3529,14 @@
     const scaledDt = clamp(dt * run.timeScale, 0, .18);
     stepRealtimePhysics(run, scaledDt);
     updateV7RunDom(run.point);
-    const enginePoint = C.interpolateCurve(state.lastDyno.samples, run.rpm);
-    updateEngineAudio(run.rpm, Math.max(.22, Number(enginePoint?.turboLoadPct || 20) / 100), run.wheelspin);
+    const carHost = $('#v7-run-car');
+    while (run.pendingFlames.length) emitExhaustFlame(carHost, run.pendingFlames.shift());
+    const snap = run.turboSnap;
+    tickAlsFlames(snap, scaledDt, carHost);
+    const egtNode = $('#v13-run-egt'); if (egtNode && snap) egtNode.textContent = `${Math.round(snap.egtC)}°C`;
+    const shaftNode = $('#v13-run-shaft'); if (shaftNode && snap) shaftNode.textContent = `${Math.round(snap.shaftPct)}%${snap.alsActive ? ' ALS' : ''}`;
+    const load = run.shifting ? .15 : 1;
+    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, popRateHz: snap.popRateHz } : null);
     if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
   }
 
@@ -3627,12 +3860,19 @@
       won,
       reward:run.opponent && won && !run.auto ? Number(run.opponent.profile.reward || 0) : 0,
       autoPass:!!run.auto,
+      turbo: run.turbo ? {
+        maxEgtC: Math.round(run.turbo.state.maxEgtC), maxShaftPct: Math.round(run.turbo.state.maxShaftPct),
+        maxEmpBar: +run.turbo.state.maxEmpBar.toFixed(2), alsSeconds: +run.turbo.state.alsSeconds.toFixed(2),
+        fuelUsedG: Math.round(run.turbo.state.fuelUsedG), mapType: C.getPart(state, 'turbo') && window.EA888Turbo?.DATA?.turbos?.[C.getPart(state, 'turbo').id]?.mapType || null
+      } : null,
+      flames: (raceGame?.flameLog || []).length,
       measuredAt: new Date().toISOString()
     };
     return result;
   }
 
   function commitV7DragResult(result){
+    applyRaceTurboWear();
     state.lastDrag=result;
     state.dragRuns=Array.isArray(state.dragRuns)?state.dragRuns:[];state.dragRuns.unshift({...result});state.dragRuns=state.dragRuns.slice(0,30);
     const key=state.vehicle.drivetrain;
@@ -3742,11 +3982,14 @@
 
         <div class="card">
           <span class="eyebrow">Conditie</span><h2>Slijtage en schade</h2>
-          <div class="wear-row"><span>Motorwear</span><b>${num(state.wear.engine,1)}%</b><i style="--wear:${state.wear.engine}%"></i></div>
-          <div class="wear-row"><span>Turbowear</span><b>${num(state.wear.turbo,1)}%</b><i style="--wear:${state.wear.turbo}%"></i></div>
-          <div class="wear-row"><span>Bakwear</span><b>${num(state.wear.transmission,1)}%</b><i style="--wear:${state.wear.transmission}%"></i></div>
-          <div class="wear-row danger"><span>Motorschade</span><b>${num(state.damage.engine,1)}%</b><i style="--wear:${state.damage.engine}%"></i></div>
-          <div class="wear-row danger"><span>Turboschade</span><b>${num(state.damage.turbo,1)}%</b><i style="--wear:${state.damage.turbo}%"></i></div>
+          <p class="wear-legend">Slijtage en schade: 0% = nieuw/heel, 100% = versleten/kapot.</p>
+          <div class="wear-row"><span>Slijtage motor</span><b>${num(state.wear.engine,1)}%</b><i style="--wear:${state.wear.engine}%"></i></div>
+          <div class="wear-row"><span>Slijtage turbo</span><b>${num(state.wear.turbo,1)}%</b><i style="--wear:${state.wear.turbo}%"></i></div>
+          <div class="wear-row"><span>Slijtage spruitstuk</span><b>${num(state.wear.manifold,2)}%</b><i style="--wear:${state.wear.manifold}%"></i></div>
+          <div class="wear-row"><span>Slijtage uitlaatkleppen</span><b>${num(state.wear.valves,2)}%</b><i style="--wear:${state.wear.valves}%"></i></div>
+          <div class="wear-row"><span>Slijtage versnellingsbak</span><b>${num(state.wear.transmission,1)}%</b><i style="--wear:${state.wear.transmission}%"></i></div>
+          <div class="wear-row danger"><span>Schade motor</span><b>${num(state.damage.engine,1)}%</b><i style="--wear:${state.damage.engine}%"></i></div>
+          <div class="wear-row danger"><span>Schade turbo</span><b>${num(state.damage.turbo,1)}%</b><i style="--wear:${state.damage.turbo}%"></i></div>
           <button class="btn secondary" data-action="open-rebuild">Inspecteren / reviseren</button>
         </div>
       </div>
@@ -3903,7 +4146,8 @@
   }
 
   function doRebuild() {
-    state.wear = { engine: 0, turbo: Math.max(0, state.wear.turbo - 10), transmission: Math.max(0, state.wear.transmission - 5) };
+    // A rebuild renews the engine incl. exhaust valves; the manifold is inspected and resurfaced.
+    state.wear = { engine: 0, turbo: Math.max(0, state.wear.turbo - 10), transmission: Math.max(0, state.wear.transmission - 5), valves: 0, manifold: Math.max(0, state.wear.manifold - 25) };
     state.damage = { engine: 0, turbo: 0, transmission: 0 };
     state.bank -= 6500;
     state.lastDynoSignature = '';
@@ -3975,7 +4219,7 @@
   });
 
   window.addEventListener('blur', () => {
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
     raceGamePointerMap.clear();
     if (burnoutRuntime?.active) stopBurnout({ silent: true });
   });
@@ -3991,6 +4235,11 @@
     if (btn.dataset.motorPanel) { motorPanel = btn.dataset.motorPanel; haptic(6); return render(); }
     if (btn.dataset.engineView) { engineView = btn.dataset.engineView; haptic(6); return render(); }
     if (btn.dataset.tunePanel) { tunePanel = btn.dataset.tunePanel; haptic(6); return render(); }
+    if (btn.dataset.alsMode) {
+      const m = btn.dataset.alsMode;
+      state.tune.als = m === 'custom' ? { ...C.resolveAntiLag(state).params, mode: 'custom' } : { ...state.tune.als, mode: m };
+      saveState(); haptic(8); return render();
+    }
     if (btn.dataset.dynoChannel) { dynoChannel = btn.dataset.dynoChannel; haptic(5); return render(); }
     if (btn.dataset.racePanel) { stopBurnout({ silent: true }); clearTreeTimers(); treeSession = null; racePanel = btn.dataset.racePanel; haptic(6); return render(); }
     if (btn.dataset.raceMode) {
@@ -4051,6 +4300,7 @@
       case 'toggle-v7-audio': toggleV7Audio(); break;
       case 'finish-to-overview': finishV7ToOverview(false); break;
       case 'start-dyno': startDyno(); break;
+      case 'als-test': runAlsTest(); break;
       case 'abort-dyno': abortDyno(); break;
       case 'toggle-compare': state.settings.dynoCompare = state.settings.dynoCompare === false; saveState(); render(); break;
       case 'reset-tune': {
@@ -4116,6 +4366,15 @@
       saveState(); renderHeader(); return;
     }
     if (el.id === 'build-code-input') { importBuffer = el.value; return; }
+    if (el.dataset.als) {
+      const current = C.resolveAntiLag(state);
+      if (state.tune.als.mode !== 'custom') state.tune.als = { ...current.params, mode: 'custom' };
+      state.tune.als[el.dataset.als] = Number(el.value);
+      const out = $(`[data-value-for="als.${el.dataset.als}"]`);
+      if (out) out.textContent = `${Number(el.value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`;
+      saveState(); clearTimeout(el._rerenderTimer); el._rerenderTimer = setTimeout(render, 260);
+      return;
+    }
     if (el.dataset.tune) {
       state.tune[el.dataset.tune] = Number(el.value);
       const out = $(`[data-value-for="tune.${el.dataset.tune}"]`);
@@ -4185,6 +4444,11 @@
 
   window.__EA888_DEBUG__ = {
     audio: () => audioDiagnostics(),
+    turbo: () => raceGame ? { phase: raceGame.phase, snap: raceGame.run?.turboSnap || raceGame.turboSnap || null, als: raceGame.alsInfo ? { enabled: raceGame.alsInfo.enabled, mode: raceGame.alsInfo.mode } : null, flames: (raceGame.flameLog || []).slice(-30), wear: raceGame.turbo ? cloneJson(raceGame.turbo.state.wear) : null, alsSeconds: raceGame.turbo?.state.alsSeconds || 0 } : null,
+    stateWear: () => ({ wear: cloneJson(state.wear), damage: cloneJson(state.damage) }),
+    enterStageForTest: () => { if (!raceGame?.open) return false; enterV7Stage(); return true; },
+    stageState: () => raceGame?.stage ? { progress: raceGame.stage.progress, staged: raceGame.stage.staged, rpm: raceGame.stage.rpm, treeStarted: raceGame.stage.treeStarted } : null,
+    setAntiLagForTest: mode => { state.tune.als = { ...state.tune.als, mode }; saveState(); return C.resolveAntiLag(state).enabled; },
     dyno: () => state.lastDyno ? {
       status: state.lastDyno.status, abortRpm: state.lastDyno.abortRpm, abortReason: state.lastDyno.abortReason,
       abortKind: state.lastDyno.abortKind, peakHp: state.lastDyno.peakHp, peakHpRpm: state.lastDyno.peakHpRpm,
@@ -4244,6 +4508,7 @@
   };
 
   window.addEventListener('resize', () => {
+    if (raceGame?.phase === 'stage') positionStageFlames();
     if (activeTab === 'dyno' && !dynoRunning && state.lastDyno) drawDynoChart($('#dyno-chart'), state.lastDyno, 1, !currentDyno(), dynoChannel, state.dynoRuns?.[1] || null);
     if (activeTab === 'drag' && racePanel === 'telemetry' && state.lastDrag) drawDragTelemetry($('#v12-telemetry-canvas'), state.lastDrag);
   });

@@ -325,6 +325,66 @@ def main() -> None:
         report['checks']['audio_stops_after_third_race'] = audio_after_third.get('exists') is False and audio_after_third.get('contextState') == 'none'
         report['audio_generations']['after_third'] = audio_after_third
 
+        # HOLD ANTILAG in staging on the reference build (Randy K04 hybrid, Syvecs):
+        # boost, shaft speed, EGT, flames and wear respond live to the held button.
+        click(page, '[data-nav="dyno"]')
+        page.evaluate("() => __EA888_DEBUG__.configureBuildForTest({preset: 'randy'})")
+        click(page, '[data-action="start-dyno"]')
+        page.wait_for_function("document.body.innerText.includes('Curve is geldig.')", timeout=12000)
+        click(page, '[data-nav="drag"]')
+        assert page.evaluate("window.__EA888_DEBUG__.setAntiLagForTest('drag')")
+        wear_before_als = page.evaluate("window.__EA888_DEBUG__.stateWear()")
+        click(page, '[data-action="open-drag-game"]')
+        page.wait_for_selector('#race-game-root .v8-burnout-game', state='visible')
+        assert page.evaluate("window.__EA888_DEBUG__.enterStageForTest()")
+        page.wait_for_selector('#v13-als-button', state='visible')
+        report['checks']['als_hold_button_enabled'] = not page.locator('#v13-als-button').is_disabled() and 'HOLD ANTILAG' in page.locator('#v13-als-button').inner_text()
+        creep = page.locator('[data-v7-control="creep"]')
+        creep.dispatch_event('pointerdown', {'pointerId': 42, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_function("window.__EA888_DEBUG__.stageState().progress >= 62", timeout=5000)
+        creep.dispatch_event('pointerup', {'pointerId': 42, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_timeout(250)
+        als_idle = page.evaluate("window.__EA888_DEBUG__.turbo()")
+        launch_btn = page.locator('#v7-launch-button')
+        als_btn = page.locator('#v13-als-button')
+        launch_btn.dispatch_event('pointerdown', {'pointerId': 43, 'pointerType': 'touch', 'isPrimary': True})
+        als_btn.dispatch_event('pointerdown', {'pointerId': 41, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_timeout(1300)
+        als_held = page.evaluate("window.__EA888_DEBUG__.turbo()")
+        if screenshots:
+            page.screenshot(path=str(screenshots / 'EA888-Lab-stage-antilag.png'), full_page=False, animations='disabled', timeout=12000)
+        report['checks']['als_button_shows_active'] = page.locator('#v13-als-button.active').count() == 1
+        als_btn.dispatch_event('pointerup', {'pointerId': 41, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_timeout(150)
+        als_released = page.evaluate("window.__EA888_DEBUG__.turbo()")
+        launch_btn.dispatch_event('pointerup', {'pointerId': 43, 'pointerType': 'touch', 'isPrimary': True})
+        i, h, r = als_idle['snap'], als_held['snap'], als_released['snap']
+        report['antilag_stage'] = {'idle': {k: i[k] for k in ('boostBar', 'shaftPct', 'egtC')}, 'held': {k: h[k] for k in ('boostBar', 'shaftPct', 'egtC', 'alsActive', 'empBar')}, 'released': {k: r[k] for k in ('boostBar', 'shaftPct', 'alsActive')}, 'flames': len(als_held['flames']), 'wear': als_held['wear']}
+        report['checks']['als_raises_boost_and_shaft'] = h['boostBar'] > i['boostBar'] + 0.5 and h['shaftPct'] > i['shaftPct'] + 20
+        report['checks']['als_raises_egt_and_emp'] = h['egtC'] > i['egtC'] + 100 and h['empBar'] > 0.5
+        report['checks']['als_flames_are_als_events'] = len(als_held['flames']) > 0 and all(f['kind'] == 'als' for f in als_held['flames'])
+        report['checks']['als_wear_accumulates'] = als_held['wear']['turbo'] + als_held['wear']['valves'] > 0
+        report['checks']['als_stops_on_release'] = r['alsActive'] is False and h['alsActive'] is True
+        page.wait_for_timeout(200)
+        click(page, '[data-action="close-drag-game"]')
+        page.wait_for_selector('.v7-race-overview', state='visible')
+        wear_after_als = page.evaluate("window.__EA888_DEBUG__.stateWear()")
+        report['checks']['als_wear_persisted'] = wear_after_als['wear']['turbo'] > wear_before_als['wear']['turbo'] and wear_after_als['wear']['valves'] > wear_before_als['wear']['valves']
+
+        # Race with drag ALS: rolling ALS on shifts and event-driven shift/ALS flames.
+        click(page, '[data-action="auto-drag-game"]')
+        page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=12000)
+        page.wait_for_timeout(500)
+        run_turbo = page.evaluate("window.__EA888_DEBUG__.turbo()")
+        report['checks']['race_uses_turbo_runtime'] = run_turbo['snap'] is not None and run_turbo['snap']['shaftPct'] > 0
+        page.wait_for_selector('#race-game-root .v8-game', state='detached', timeout=30000)
+        page.wait_for_selector('.v7-race-overview', state='visible')
+        als_drag = page.evaluate("window.__EA888_DEBUG__.lastDrag()")
+        report['antilag_race'] = als_drag.get('turbo')
+        report['checks']['race_turbo_stats_recorded'] = bool(als_drag.get('turbo')) and als_drag['turbo']['maxEgtC'] > 700 and als_drag['turbo']['alsSeconds'] > 0
+        report['checks']['race_flames_from_events'] = als_drag.get('flames', 0) > 0
+        page.evaluate("window.__EA888_DEBUG__.setAntiLagForTest('off')")
+
         print('CHECKPOINT drag done', flush=True)
         # Build-code roundtrip and internal self-test.
         click(page, '[data-go="data"]')
