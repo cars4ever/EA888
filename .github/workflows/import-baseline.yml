@@ -1,0 +1,72 @@
+name: Import EA888 baseline
+
+on:
+  push:
+    branches:
+      - claude-dev
+    paths:
+      - 'EA888-Lab-GitHub-ready.zip'
+      - '.github/workflows/import-baseline.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout claude-dev
+        uses: actions/checkout@v4
+        with:
+          ref: claude-dev
+          fetch-depth: 0
+
+      - name: Import source archive into repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f EA888-Lab-GitHub-ready.zip
+          rm -rf /tmp/ea888-import
+          mkdir -p /tmp/ea888-import
+          unzip -q EA888-Lab-GitHub-ready.zip -d /tmp/ea888-import
+          SRC="/tmp/ea888-import/EA888-Lab-GitHub-ready"
+          test -d "$SRC"
+
+          # Preserve repository-owned project instructions and metadata.
+          cp CLAUDE.md /tmp/CLAUDE.md.keep
+          cp README.md /tmp/README.md.keep
+          cp .gitignore /tmp/gitignore.keep
+
+          rsync -a --delete-excluded \
+            --exclude '.git/' \
+            --exclude 'CLAUDE.md' \
+            --exclude 'README.md' \
+            --exclude '.gitignore' \
+            "$SRC/" ./
+
+          cp /tmp/CLAUDE.md.keep CLAUDE.md
+          cp /tmp/README.md.keep README.md
+          cp /tmp/gitignore.keep .gitignore
+
+          # Use the newer repository signing-environment template from main.
+          git fetch origin main
+          git show origin/main:.env.example > .env.example
+
+          # The archive is only a transport artifact; source files are now canonical.
+          rm -f EA888-Lab-GitHub-ready.zip
+          rm -f .github/workflows/import-baseline.yml
+
+          # Safety checks: do not commit signing keys or local secrets.
+          if find . -type f \( -name '*.jks' -o -name '*.keystore' -o -name '.env' -o -name '*.p12' \) -print -quit | grep -q .; then
+            echo "Refusing import: secret/signing file detected."
+            exit 1
+          fi
+
+          node tests/test_sim.js
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git status --short
+          git commit -m "Import EA888 Lab v1.2.0 full source baseline"
+          git push origin HEAD:claude-dev
