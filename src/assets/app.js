@@ -4,7 +4,7 @@
   const C = window.EA888Core;
   const STORAGE_KEY = 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
 
   const NAV = [
     ['bank', 'garage', 'Garage'],
@@ -446,6 +446,14 @@
       audio.turboSource.playbackRate.setTargetAtTime(rate, t, .035);
       audio.turboGain.gain.setTargetAtTime(activeGain * spool * .17 + .0001, t, .05);
       audio.turboFilter.frequency.setTargetAtTime(hasShaft ? 1200 + extras.shaftPct * 42 : 1450 + boundedRpm * .48, t, .04);
+    }
+    // Two-step launch limiter: its own stutter one-shot (separate from the rev limiter).
+    if (extras?.twoStep && !extras.alsActive) {
+      const nowTs = performance.now();
+      if (nowTs - (audio.lastTwoStepMs || 0) > 380) {
+        audio.lastTwoStepMs = nowTs;
+        playSampleOneShot(audio, 'limiter', .22 + boundedLoad * .1, .9 + boundedRpm / 20000);
+      }
     }
     // ALS pops/bangs: separate one-shot layer at the simulated pop rate.
     if (extras?.alsActive && Number(extras.popRateHz) > 0) {
@@ -2239,6 +2247,7 @@
       `Rijlijn  ${f(r.maxLaneOffsetM,2)} m max · ${r.lineTouches || 0} correcties\n` +
       `Driveline ${f(r.maxClutchTempC,0)}°C clutch · ${f(r.maxGearboxTempC,0)}°C bak · ${f(r.drivelineStress,0)}% stress\n` +
       `Limiter  ${f(r.limiterTimeS,2)} s\n` +
+      (r.turbo ? `Turbo    as max ${f(r.turbo.maxShaftPct,0)}% · EGT max ${f(r.turbo.maxEgtC,0)}°C · EMP ${f(r.turbo.maxEmpBar,2)} bar\nALS      ${f(r.turbo.alsSeconds,1)} s · brandstof ${f(r.turbo.fuelUsedG,0)} g · ${r.flames || 0} vlammen\n` : '') +
       `${r.drivetrain || state.vehicle.drivetrain} · ${r.tireName || C.TIRE_MAP[state.vehicle.tireCompound]?.name}\n${r.tireSize || ''} op ${r.wheelSpec || ''} · Ø ${f(r.tireDiameterMm,0)} mm`;
   }
 
@@ -3048,7 +3057,16 @@
     const snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: 0, twoStep: throttle && s.staged, alsRequest: alsHeld }) : null;
     raceGame.turboSnap = snap;
     tickAlsFlames(snap, dt, $('#ea-stage-flames'));
-    updateEngineAudio(s.rpm, throttle && s.staged ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, popRateHz: snap.popRateHz } : null);
+    // Two-step without ALS: spark-cut launch limiter (tuned ECUs) pops small flames when hot enough.
+    const twoStep = throttle && s.staged;
+    if (snap && twoStep && !snap.alsActive) {
+      raceGame.twoStepClock = (raceGame.twoStepClock || 0) + dt * 8;
+      if (raceGame.twoStepClock >= 1) {
+        raceGame.twoStepClock = 0;
+        emitExhaustFlame($('#ea-stage-flames'), C.exhaustFlameEvent({ kind: '2step', egtC: snap.egtC, fuelGps: snap.fuelGps, cutS: .06, unburntFraction: C.antiLagCapability(state).flatShift ? .6 : .05, severity: .45 }));
+      }
+    }
+    updateEngineAudio(s.rpm, twoStep ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, popRateHz: snap.popRateHz, twoStep } : null);
     updateV7StageDom();
   }
 

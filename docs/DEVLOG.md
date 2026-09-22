@@ -91,3 +91,50 @@ Replaced the logistic spool curve and scalar `turboMaxHp` cap with turbo matchin
   compressor side is consistent, but the big-turbo presets overstate power per bar of boost.
 - Turbine efficiency is a simple function of expansion ratio (no blade-speed-ratio map); pulse/twin-scroll
   energy is a flat +3 %.
+
+## 3. Anti-lag, HOLD ANTILAG, flames, audio (done)
+
+- **Core** (`sim.js`): `tune.als` presets + custom parameters; `antiLagCapability` (OEM MED17: none, custom MED17:
+  limited, Syvecs/Promod: full; bypass air limited by the spool hardware: none 10 %, mild_als 20 %, hard_als 32 %).
+  `createTurboRuntime` keeps a realtime turbo state on the same maps as the dyno: two-step and ALS add exhaust
+  energy (ALS retard/enrichment/bypass), the ALS controller caps it at max EGT, limits at max shaft speed and
+  target boost, times out into a cooldown; spool-up/down are inertia limited; it accumulates turbo, manifold,
+  valve and engine wear, damage and fuel. Excessive settings damage the turbo (EGT > 1150 °C, overspeed).
+- **Flames**: `exhaustFlameEvent` gives intensity/size/colour from unburnt fuel and tailpipe temperature. Good
+  shifts → small/brief, late shifts and the spark-cut limiter → larger, ALS → frequent pops; no flame when the
+  exhaust is too cold or no fuel is left unburnt (e.g. fuel-cut throttle lift on OEM ECU).
+- **Gameplay**: staging has HOLD ANTILAG between CREEP and LAUNCH (hold control, two-thumb with the two-step);
+  boost/turbo speed/EGT/ALS state/session wear shown live from the runtime. The runtime carries into the run;
+  torque follows the delivered boost; rolling ALS on shifts for rally/drag. Wear is applied to the build at the
+  finish or when the drag screen is closed.
+- **Audio**: turbo loop follows simulated shaft speed; ALS pops/bangs and the two-step stutter are separate
+  one-shot layers; rev limiter, DSG burp and manual shift samples unchanged; audio lifecycle still hard-stops
+  after every race (smoke test covers 5 races/sessions).
+
+## Changelog (claude-dev)
+
+- `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
+- `153c845` compressor-map turbo model (vendor + modeled data, physics, UI, tests)
+- `6397d99` anti-lag core, realtime turbo runtime, flame events (tests)
+- `c333da2` anti-lag tune panel, HOLD ANTILAG, live flames, audio layers, wear persistence
+- next: two-step pops/stutter, timeslip turbo line, version 1.3.0-debug (code 130)
+
+## Remaining known inaccuracies
+
+- Turbo: see "Known inaccuracies (turbo)" above (outer map efficiency, reference conditions, modeled map shape,
+  inflated VE on the big pro-mod presets, simple turbine efficiency).
+- Spool transients use an effective inertia factor (×2.5) instead of modeling exhaust-manifold filling and
+  thermal lag.
+- ALS combustion is a lumped energy model (fraction of the fuel energy released in the manifold); there is no
+  per-cylinder or crank-angle model, and catalyst damage is not modeled.
+- The realtime race uses the dyno's WOT samples for engine airflow at part load/two-step (scaled), not a
+  separate part-load model.
+- Flame visuals are CSS sprites; timing/intensity are simulation-driven, the look is stylised.
+- The analytic `simulateDrag` (used for the rival) still uses the steady dyno curve (no transient turbo).
+
+## APK signing
+
+The repository has no signing key. Test APKs from this environment are signed with a throw-away session key,
+so they **cannot update** an app signed with the original certificate: uninstall the old app first (export the
+build code on the Data page before uninstalling; localStorage is lost with the app). For releases, build with
+the permanent keystore via `EA888_KEYSTORE` / `EA888_KEY_ALIAS` / `EA888_KEY_PASSWORD`.
