@@ -1,0 +1,39 @@
+# Android / build output
+dist/
+build/
+*.apk
+*.aab
+
+# Signing keys / secrets
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node / test output
+node_modules/
+coverage/
+playwright-report/
+test-results/
+
+# Local generated reports/screenshots
+screenshots/
+reports/
+browser-report.json
+*.log
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
