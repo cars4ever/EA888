@@ -58,15 +58,20 @@ assert(!C.isDynoCurrent(measured), 'part switch must mark the dyno result stale'
 const measuredAgain = C.simulateEngine(measured, { noise: false });
 assert.notStrictEqual(Math.round(measuredAgain.peakHp), Math.round(oldHp), 'a real pull should expose a changed result');
 
-// Big turbo spool strategy must have a physically meaningful effect without changing hardware.
+// Big turbo spool strategy must have a physically meaningful effect without changing hardware:
+// where boost is turbine-power (spool) limited, extra exhaust energy must raise achieved boost.
 const noAssistState = C.applyPreset(C.blankState(), 'pro98');
 noAssistState.selections.spool = 'none';
+noAssistState.tune.boostLowBar = 1.6;
+noAssistState.tune.boostMidBar = 2.6;
 const noAssist = C.simulateEngine(noAssistState, { noise: false });
 const assistedState = C.normalizeState(noAssistState);
 assistedState.selections.spool = 'n2o_150';
 const assisted = C.simulateEngine(assistedState, { noise: false });
-const boostAt = (r, rpm) => r.samples.find(p => p.rpm === rpm)?.boostBar ?? 0;
-assert(boostAt(assisted, 7000) > boostAt(noAssist, 7000) * 1.2, 'nitrous spool assistance is too weak');
+const sampleAt = (r, rpm) => r.samples.find(p => p.rpm === rpm);
+const boostAt = (r, rpm) => sampleAt(r, rpm)?.boostBar ?? 0;
+assert(/spool/.test(sampleAt(noAssist, 4500).boostLimitedBy), '98-mm turbo should be spool limited at 4500 rpm with this target');
+assert(boostAt(assisted, 4500) > boostAt(noAssist, 4500) * 1.2 + 0.3, 'nitrous spool assistance is too weak');
 
 // Assembly and lubrication are actual constraints, not cosmetic fields.
 const healthyAssembly = C.assemblyHealth(C.blankState());
@@ -148,6 +153,8 @@ assert.strictEqual(migrated.vehicle.steeringSensitivityPct, 100, 'steering sensi
 
 // Strict dyno result model (abort consistency) regression suite.
 const dynoResultSuite = require('./test_dyno_result.js');
+// Compressor-map turbo model: provenance, map fidelity, physical invariants.
+const turboSuite = require('./test_turbo_map.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -163,7 +170,8 @@ const report = {
   },
   benchConfidence: confidence,
   selfTestChecks: self.checks.length,
-  dynoAbortSweepCases: dynoResultSuite.abortedSweepCount
+  dynoAbortSweepCases: dynoResultSuite.abortedSweepCount,
+  turboMaps: turboSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

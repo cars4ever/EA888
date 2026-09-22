@@ -1386,6 +1386,7 @@
         <div class="card tune-card">
           <div class="card-title"><span>${icon('bolt')}</span><div><span class="eyebrow">Boostcurve</span><h2>${esc(turbo.name)}</h2></div></div>
           <div class="hardware-readout"><span>Compressor <b>${turbo.compressorMm || 'OEM'} mm</b></span><span>Regeling <b>${esc(boostHardware.name)}</b></span><span>Hardwarelimiet <b>${num(boostHardware.boostHardwareMaxBar,2)} bar</b></span></div>
+          ${turboMapProvenance(turbo.id)}
           ${slider('boostLowBar', 'Laagtoerig target', 0, 4.2, .05, t.boostLowBar, ' bar', 2, 'Rond 2500–3200 rpm; de turbo moet dit eerst werkelijk kunnen leveren.')}
           ${slider('boostMidBar', 'Middentoeren target', 0, 4.2, .05, t.boostMidBar, ' bar', 2, 'Rond 4500–5200 rpm; hier ontstaat meestal de hoogste cilinderdruk.')}
           ${slider('boostHighBar', 'Hoogtoerig target', 0, 4.5, .05, t.boostHighBar, ' bar', 2, 'Richting de rev limiter; airflow, as-toerental en EMP bepalen wat overblijft.')}
@@ -1475,7 +1476,7 @@
   }
 
   function dynoChannelTabs() {
-    const channels = [['power','PK / Nm'],['air','Lucht'],['fuel','Brandstof'],['thermal','Thermisch'],['risk','Risico']];
+    const channels = [['power','PK / Nm'],['air','Lucht'],['map','Turbokaart'],['fuel','Brandstof'],['thermal','Thermisch'],['risk','Risico']];
     return `<div class="dyno-channel-tabs">${channels.map(([id,label]) => `<button class="${dynoChannel === id ? 'active' : ''}" data-dyno-channel="${id}">${label}</button>`).join('')}</div>`;
   }
 
@@ -1605,7 +1606,8 @@
       air: [
         { key:'boostBar', label:'BOOST', color:'#36b8ff', unit:'bar' },
         { key:'empBar', label:'EMP', color:'#ff775a', unit:'bar' },
-        { key:'spoolPct', label:'SPOOL', color:'#b98cff', unit:'%' }
+        { key:'spoolPct', label:'SPOOL', color:'#b98cff', unit:'%' },
+        { key:'shaftSpeedPct', label:'AS', color:'#48db9c', unit:'%' }
       ],
       fuel: [
         { key:'fuelDutyPct', label:'DUTY', color:'#ffad17', unit:'%' },
@@ -1627,11 +1629,79 @@
     return defs[channel] || defs.power;
   }
 
+  function turboMapProvenance(turboId) {
+    const d = window.EA888Turbo?.DATA?.turbos?.[turboId];
+    if (!d) return '';
+    const vendor = d.mapType !== 'modeled';
+    return `<div class="map-provenance ${vendor ? 'vendor' : 'modeled'}"><b>${vendor ? 'FABRIEKSKAART' : 'GEMODELLEERDE KAART'}</b><span>${vendor ? `${esc(d.name)} · gedigitaliseerd uit de gepubliceerde compressor- en turbinekaart` : 'Geen betrouwbare publieke kaart: benadering, geen fabrieksdata'} · max as ${Math.round(d.maxShaftRpm / 1000)}k rpm · max η ${Math.round(d.peakEfficiency * 100)}%</span></div>`;
+  }
+
+  // Compressor map with the pull's operating line (only the samples revealed so far).
+  function drawCompressorMap(canvas, result, progress = 1, faded = false) {
+    const T = window.EA888Turbo;
+    const d = T?.DATA?.turbos?.[result.turboId];
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(280, rect.width || 360);
+    const height = width < 450 ? 300 : 340;
+    canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr); canvas.style.height = `${height}px`;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    ctx.fillStyle = '#0b1119'; ctx.fillRect(0, 0, width, height);
+    if (!d) { ctx.fillStyle = '#8290a4'; ctx.font = '700 12px system-ui,sans-serif'; ctx.fillText('Geen turbokaart voor deze meting', 16, 30); return; }
+    const pad = { l: 40, r: 12, t: 40, b: 30 }, plotW = width - pad.l - pad.r, plotH = height - pad.t - pad.b;
+    const samples = (result.samples || []).slice(0, Math.max(1, Math.round(1 + ((result.samples || []).length - 1) * clamp(progress, 0, 1))));
+    const wMax = Math.max(...d.chokeLine.map(p => p[0]), ...samples.map(p => p.correctedFlowLbMin || 0)) * 1.08;
+    const prMax = Math.max(...d.surgeLine.map(p => p[1]), ...d.chokeLine.map(p => p[1]), ...samples.map(p => p.compressorPr || 1)) * 1.05;
+    const X = w => pad.l + (w / wMax) * plotW, Y = pr => pad.t + plotH - ((pr - 1) / (prMax - 1)) * plotH;
+    ctx.strokeStyle = '#1f2a37'; ctx.lineWidth = 1; ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = '#728094';
+    const wStep = wMax > 150 ? 50 : wMax > 60 ? 20 : 10;
+    for (let w = 0; w <= wMax; w += wStep) { ctx.beginPath(); ctx.moveTo(X(w), pad.t); ctx.lineTo(X(w), pad.t + plotH); ctx.stroke(); ctx.fillText(String(w), X(w) - 6, height - 12); }
+    for (let pr = 1; pr <= prMax; pr += 0.5) { ctx.beginPath(); ctx.moveTo(pad.l, Y(pr)); ctx.lineTo(width - pad.r, Y(pr)); ctx.stroke(); ctx.fillText(pr.toFixed(1), 6, Y(pr) + 3); }
+    ctx.fillText('lb/min gecorrigeerd', width - pad.r - 112, pad.t + plotH - 6);
+    const poly = (pts, close) => { ctx.beginPath(); pts.forEach(([w, pr], i) => (i ? ctx.lineTo(X(w), Y(pr)) : ctx.moveTo(X(w), Y(pr)))); if (close) ctx.closePath(); };
+    ctx.globalAlpha = faded ? 0.4 : 1;
+    d.efficiencyIslands.slice().sort((a, b) => a.efficiency - b.efficiency).forEach((isl, i, all) => {
+      poly(isl.polygon, true); ctx.fillStyle = `rgba(72,219,156,${0.05 + (0.1 * i) / Math.max(1, all.length - 1)})`; ctx.fill();
+      ctx.strokeStyle = 'rgba(72,219,156,.55)'; ctx.stroke();
+    });
+    ctx.strokeStyle = '#3c4a5c'; ctx.lineWidth = 1;
+    d.speedLines.forEach(l => { poly(l.points); ctx.stroke(); const e = l.points[l.points.length - 1]; ctx.fillStyle = '#5d6b7e'; ctx.fillText(`${Math.round(l.rpm / 1000)}k`, X(e[0]) + 3, Y(e[1]) + 3); });
+    ctx.lineWidth = 2; ctx.strokeStyle = '#ff5365'; poly(d.surgeLine); ctx.stroke();
+    ctx.strokeStyle = '#ffad17'; poly(d.chokeLine); ctx.stroke();
+    // operating line
+    ctx.lineWidth = 2.5; ctx.strokeStyle = '#36b8ff'; ctx.beginPath();
+    samples.forEach((p, i) => (i ? ctx.lineTo(X(p.correctedFlowLbMin), Y(p.compressorPr)) : ctx.moveTo(X(p.correctedFlowLbMin), Y(p.compressorPr)))); ctx.stroke();
+    samples.forEach((p, i) => {
+      const warn = p.surge || p.chokeMarginPct < 3 || p.shaftSpeedPct > 97;
+      if (!warn && i % 5 && i !== samples.length - 1) return;
+      ctx.fillStyle = p.surge ? '#ff5365' : warn ? '#ffad17' : '#36b8ff';
+      ctx.beginPath(); ctx.arc(X(p.correctedFlowLbMin), Y(p.compressorPr), warn ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+    });
+    const last = samples[samples.length - 1];
+    if (last && Number.isFinite(last.correctedFlowLbMin)) {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(last.correctedFlowLbMin), Y(last.compressorPr), 5, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.font = '800 10px system-ui,sans-serif';
+    ctx.fillStyle = '#ff5365'; ctx.fillText('SURGE', pad.l + 4, 16);
+    ctx.fillStyle = '#ffad17'; ctx.fillText('CHOKE / MAX AS', pad.l + 52, 16);
+    ctx.fillStyle = '#48db9c'; ctx.fillText('η-EILANDEN', pad.l + 150, 16);
+    ctx.fillStyle = '#36b8ff'; ctx.fillText('WERKLIJN', pad.l + 222, 16);
+    ctx.fillStyle = d.mapType === 'modeled' ? '#b98cff' : '#48db9c'; ctx.font = '700 9px system-ui,sans-serif';
+    ctx.fillText(d.mapType === 'modeled' ? `${d.name} · GEMODELLEERDE KAART` : `${d.name} · FABRIEKSKAART (gedigitaliseerd)`, pad.l + 4, 31);
+    if (last && Number.isFinite(last.compressorEff)) {
+      ctx.fillStyle = '#dfe6ee'; ctx.font = '800 10px system-ui,sans-serif';
+      const txt = `${last.rpm} rpm · PR ${last.compressorPr.toFixed(2)} · η ${Math.round(last.compressorEff * 100)}% · as ${Math.round(last.turboShaftRpm / 1000)}k · ${last.boostLimitedBy}`;
+      ctx.fillText(txt, Math.max(pad.l, width - pad.r - ctx.measureText(txt).width), pad.t + 12);
+    }
+  }
+
   // progress = fraction of the result's own samples to draw. The axis always
   // spans the planned pull; scales use only the samples drawn so far, so a live
   // pull never reveals values it has not reached yet.
   function drawDynoChart(canvas, result, progress = 1, faded = false, channel = dynoChannel, comparison = null) {
     if (!canvas || !result) return;
+    if (channel === 'map') return drawCompressorMap(canvas, result, progress, faded);
     const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(280, rect.width || 360);
@@ -1675,7 +1745,7 @@
       if (def.key === 'hp' || def.key === 'torqueNm') { min = 0; max = Math.max(100, Math.ceil(Math.max(...visible.map(p => Math.max(p.hp || 0, p.torqueNm || 0)))/100)*100); }
       else if (def.key === 'boostBar' || def.key === 'empBar') { min=0; max=Math.max(1,Math.ceil(Math.max(...visible.map(p=>Math.max(p.boostBar||0,p.empBar||0)))*2)/2); }
       else if (def.key === 'railBar') { min=0; max=Math.max(200,Math.ceil(max/25)*25); }
-      else if (def.key === 'fuelDutyPct' || def.key === 'turboLoadPct' || def.key === 'spoolPct' || def.key === 'oilAerationPct') { min=0; max=Math.max(100,Math.ceil(max/25)*25); }
+      else if (def.key === 'fuelDutyPct' || def.key === 'turboLoadPct' || def.key === 'spoolPct' || def.key === 'shaftSpeedPct' || def.key === 'oilAerationPct') { min=0; max=Math.max(100,Math.ceil(max/25)*25); }
       else if (def.key === 'lambda') { min=.65; max=1.0; }
       else if (def.key === 'egtC') { min=500; max=Math.max(1000,Math.ceil(max/100)*100); }
       else if (def.key === 'iatC') { min=0; max=Math.max(80,Math.ceil(max/20)*20); }

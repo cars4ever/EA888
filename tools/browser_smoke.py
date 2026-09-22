@@ -26,13 +26,14 @@ def load_app(page, assets: Path) -> None:
     html = (assets / 'index.html').read_text(encoding='utf-8')
     # Keep the real DOM skeleton and metadata, but inject production assets below.
     html = re.sub(r'<link[^>]+href="styles\.css"[^>]*>', '', html)
-    html = re.sub(r'<script[^>]+src="(?:sim|audio-bank|app)\.js"[^>]*></script>', '', html)
+    html = re.sub(r'<script[^>]+src="(?:turbo-data|turbo|sim|audio-bank|app)\.js"[^>]*></script>', '', html)
     page.set_content(html, wait_until='domcontentloaded')
     css = (assets / 'styles.css').read_text(encoding='utf-8')
     for name in ('drag-strip-panorama.webp', 'drag-track-chase.webp', 'drag-burnout-box.webp', 'drag-v8-burnout.webp', 'drag-v8-stage.webp', 'drag-v8-race.webp', 'track-horizon-v10.webp'):
         css = css.replace(f'images/{name}', data_uri(assets / 'images' / name))
     page.add_style_tag(content=css)
-    page.add_script_tag(content=(assets / 'sim.js').read_text(encoding='utf-8'))
+    for script in ('turbo-data.js', 'turbo.js', 'sim.js'):
+        page.add_script_tag(content=(assets / script).read_text(encoding='utf-8'))
     page.add_script_tag(content=(assets / 'audio-bank.js').read_text(encoding='utf-8'))
     app_js = (assets / 'app.js').read_text(encoding='utf-8')
     image_names = (
@@ -101,7 +102,8 @@ def main() -> None:
         print('CHECKPOINT garage', flush=True)
         load_app(page, assets)
         report['checks']['garage_loaded'] = page.locator('.garage-page').count() == 1
-        report['checks']['initial_dyno_current'] = '521 pk' in page.locator('.v5-car-card').inner_text()
+        initial_hp = page.evaluate("() => Math.round(__EA888_DEBUG__.dyno().peakHp)")
+        report['checks']['initial_dyno_current'] = f'{initial_hp} pk' in page.locator('.v5-car-card').inner_text()
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-garage.png'), full_page=False)
 
@@ -164,13 +166,18 @@ def main() -> None:
         print('CHECKPOINT service done', flush=True)
         # New dyno pull; exercise all five channel views.
         click(page, '[data-nav="dyno"]')
-        for channel in ('power', 'air', 'fuel', 'thermal', 'risk'):
+        for channel in ('power', 'air', 'map', 'fuel', 'thermal', 'risk'):
             click(page, f'[data-dyno-channel="{channel}"]')
             assert page.locator(f'[data-dyno-channel="{channel}"].active').count() == 1
         click(page, '[data-action="start-dyno"]')
         page.wait_for_function("document.body.innerText.includes('Curve is geldig.')", timeout=12000)
         report['checks']['dyno_completed'] = 'Curve is geldig.' in page.locator('.dyno-page').inner_text()
         report['dyno_result'] = page.locator('.v4-result-card h2').first.inner_text()
+        click(page, '[data-dyno-channel="map"]')
+        report['checks']['dyno_turbo_map_channel'] = page.locator('[data-dyno-channel="map"].active').count() == 1
+        if screenshots:
+            page.locator('.dyno-chart-wrap').screenshot(path=str(screenshots / 'EA888-Lab-dyno-turbo-map.png'))
+        click(page, '[data-dyno-channel="power"]')
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-dyno.png'), full_page=False, animations='disabled', timeout=12000)
 
@@ -354,9 +361,11 @@ def main() -> None:
         aborted = page.evaluate("() => __EA888_DEBUG__.dyno()")
         card_text = page.locator('.v4-result-card').first.inner_text()
         report['aborted_dyno'] = {k: aborted[k] for k in ('status', 'abortRpm', 'abortReason', 'peakHp', 'peakHpRpm', 'reliabilityScore', 'sampleCount', 'maxSampleRpm')}
-        report['checks']['dyno_abort_status'] = aborted['status'] == 'aborted' and aborted['abortRpm'] == 5900 and 'knock' in aborted['abortReason'].lower()
+        report['checks']['dyno_abort_status'] = aborted['status'] == 'aborted' and 5400 <= aborted['abortRpm'] <= 6300 and 'knock' in aborted['abortReason'].lower()
         report['checks']['dyno_abort_no_future_samples'] = aborted['maxSampleRpm'] == aborted['abortRpm'] and (aborted['peakHpRpm'] or 0) <= aborted['abortRpm']
-        report['checks']['dyno_abort_no_future_rpm_in_ui'] = not re.search(r'@ (6[0-9]{3}|[7-9][0-9]{3}) rpm', card_text) and 'Afgebroken @ 5900 rpm' in card_text
+        abort_rpm = aborted['abortRpm']
+        quoted_rpms = [int(x) for x in re.findall(r'@ ([0-9]{4,5}) rpm', card_text)]
+        report['checks']['dyno_abort_no_future_rpm_in_ui'] = bool(quoted_rpms) and max(quoted_rpms) <= abort_rpm and f'Afgebroken @ {abort_rpm} rpm' in card_text
         report['checks']['dyno_abort_labelled_partial'] = 'Hoogst waargenomen' in card_text and 'partieel' in card_text.lower()
         report['checks']['dyno_abort_no_reliability'] = aborted['reliabilityScore'] is None and page.locator('.v4-result-card .score-badge.none').count() == 1
         report['checks']['dyno_abort_damage_recorded'] = aborted['damage']['engine'] > wear_before['damage']['engine'] and aborted['wear']['engine'] > wear_before['wear']['engine']

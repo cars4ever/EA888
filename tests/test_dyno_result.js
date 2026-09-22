@@ -12,7 +12,8 @@ const SUMMARY_KEYS = [
 ];
 
 // Reproduces the reported bug: v1.2.0 aborted this pull at 5900 rpm for severe
-// knock but still displayed a "peak" of 845 hp @ 7900 rpm.
+// knock but still displayed a "peak" of 845 hp @ 7900 rpm. (With the map-based
+// turbo model the same build knocks out at a similar rpm.)
 function knockAbortState() {
   const s = C.applyPreset(C.blankState(), 'hx52');
   s.tune.ignitionTrimDeg = 2;
@@ -53,12 +54,13 @@ function assertNoFutureData(r, label) {
 const knockState = knockAbortState();
 const knock = C.simulateEngine(knockState, { noise: false });
 assert.strictEqual(knock.status, ABORTED, 'knock fixture should abort');
-assert.strictEqual(knock.abortRpm, 5900, 'knock fixture abort rpm');
+assert(knock.abortRpm >= 5400 && knock.abortRpm <= 6300, `knock fixture abort rpm ${knock.abortRpm}`);
+const ABORT = knock.abortRpm;
 assert.strictEqual(knock.abortKind, 'engine-failure');
 assert.strictEqual(knock.abortCode, 'knock');
 assert(/knock/i.test(knock.abortReason), 'abort reason should name knock');
 assertNoFutureData(knock, 'knock fixture');
-assert(knock.peakHp !== null && knock.peakHpRpm <= 5900, 'observed partial peak should be quoted, at or below 5900 rpm');
+assert(knock.peakHp !== null && knock.peakHpRpm <= ABORT, 'observed partial peak should be quoted, at or below the abort rpm');
 assert(knock.peakHp < 845 * 0.8, `partial peak ${knock.peakHp} still resembles the unreached 7900 rpm value`);
 assert(knock.damage.engine >= 18, 'engine failure must record damage');
 
@@ -67,7 +69,7 @@ assertNoFutureData(C.simulateEngine(knockState), 'knock fixture with measurement
 
 // 2. Wear/damage of a failed pull equals the wear of the same pull stopped one
 // sample earlier plus only the failing sample: nothing after it is charged.
-const justBefore = C.simulateEngine(knockState, { noise: false, stopAtRpm: 5800 });
+const justBefore = C.simulateEngine(knockState, { noise: false, stopAtRpm: ABORT - 100 });
 assert.strictEqual(justBefore.status, ABORTED);
 assert.strictEqual(justBefore.abortKind, 'operator');
 assert.deepStrictEqual(knock.samples.slice(0, -1), justBefore.samples, 'samples before the abort must be identical to a shorter pull');
@@ -117,7 +119,7 @@ let st = C.commitDynoResult(knockState, knock);
 assert.strictEqual(st.lastDyno.status, ABORTED);
 assert(C.isDynoCurrent(st), 'aborted measurement is still the current measurement of this build');
 assert(!C.isCompletedDyno(st.lastDyno), 'but it is not a completed one');
-assert.strictEqual(st.dynoRuns[0].label, 'Afgebroken @ 5900 rpm');
+assert.strictEqual(st.dynoRuns[0].label, `Afgebroken @ ${ABORT} rpm`);
 assert(Math.abs(st.wear.engine - (knockState.wear.engine + knock.wear.engine)) < 1e-9, 'engine wear must come from the reached samples');
 assert(Math.abs(st.damage.engine - (knockState.damage.engine + knock.damage.engine)) < 1e-9, 'engine damage must come from the failure event');
 assert.strictEqual(st.history[0].partial, true);

@@ -30,7 +30,7 @@ PACKAGE = 'nl.randy.ea888lab.stabl'
 APP_ICON_RESOURCE_ID = 0x7F010000
 
 PRODUCTION_ASSETS = [
-    'index.html', 'styles.css', 'sim.js', 'audio-bank.js', 'app.js',
+    'index.html', 'styles.css', 'turbo-data.js', 'turbo.js', 'sim.js', 'audio-bank.js', 'app.js',
     'images/scirocco-app-icon.png',
     'images/randy-scirocco-hero.jpg',
     'images/randy-scirocco-garage.jpg',

@@ -1,0 +1,30 @@
+{
+  "description": "Charge-air, exhaust, wastegate and fuel parameters used by the turbo matching model. All values are modeled engineering estimates for the game catalogue parts, not measured data.",
+  "chargeAir": {
+    "_note": "Pressure loss dp = lossBarAtRef * (flow / refFlowLbMin)^2 for the intercooler + piping, and filterLossBarAtRef likewise for the inlet. Effectiveness drops once flow exceeds the core's reference flow.",
+    "oem_air": {"refFlowLbMin": 30, "lossBarAtRef": 0.12, "filterLossBarAtRef": 0.035},
+    "fmic": {"refFlowLbMin": 60, "lossBarAtRef": 0.12, "filterLossBarAtRef": 0.025},
+    "wmi": {"refFlowLbMin": 70, "lossBarAtRef": 0.12, "filterLossBarAtRef": 0.025},
+    "ice_tank": {"refFlowLbMin": 100, "lossBarAtRef": 0.12, "filterLossBarAtRef": 0.02},
+    "promod_ice_system": {"refFlowLbMin": 180, "lossBarAtRef": 0.12, "filterLossBarAtRef": 0.02}
+  },
+  "exhaust": {
+    "_note": "Post-turbine back pressure dp = 2757 * restriction * flow^2 / pipeMm^4 (bar, flow in lb/min); calibrated to about 0.25 bar for a 76 mm straight-through system at 55 lb/min.",
+    "oem_exhaust": {"pipeMm": 63.5, "restriction": 1.6},
+    "catted_3": {"pipeMm": 76, "restriction": 1.25},
+    "race_3": {"pipeMm": 76, "restriction": 1.0},
+    "side_35": {"pipeMm": 89, "restriction": 0.85},
+    "hood_4": {"pipeMm": 102, "restriction": 0.6}
+  },
+  "wastegate": {
+    "_note": "flowRatio = wastegate flow capacity relative to the turbine choke flow at the same inlet state. shaftSpeedSensor lets the controller cap boost at the shaft limit.",
+    "oem_internal": {"flowRatio": 0.40, "shaftSpeedSensor": false},
+    "uprated_internal": {"flowRatio": 0.61, "shaftSpeedSensor": false},
+    "single_44": {"flowRatio": 0.82, "shaftSpeedSensor": false},
+    "dual_44": {"flowRatio": 1.07, "shaftSpeedSensor": false},
+    "co2_dome": {"flowRatio": 1.18, "shaftSpeedSensor": false},
+    "dual_60_co2": {"flowRatio": 1.50, "shaftSpeedSensor": true}
+  },
+  "fuelStoichAfr": {"ron95": 14.7, "ron98": 14.7, "blend_wmi": 14.7, "e30": 13.4, "e85": 9.9, "race_fuel_type": 14.5, "methanol": 6.5},
+  "rotorInertia": {"_note": "Modeled: I = refKgM2 * (turbineMm / refTurbineMm)^exponent. Ball-bearing G-series cores use the same rule.", "refKgM2": 6.0e-5, "refTurbineMm": 54, "exponent": 4.5}
+}

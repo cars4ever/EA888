@@ -52,3 +52,42 @@ Now (`dynoResultVersion: 2`):
 - `tools/browser_smoke.py` hardcodes `/usr/bin/chromium` and the list of script files it injects.
 - `tools/generate_sim_v6.py` would overwrite `src/assets/sim.js` from an old template; treat it as legacy.
 - `wear` (0 = new) and `damage` are both shown as percentages; labels must keep "slijtage" vs "schade" distinct.
+
+## 2. Compressor-map turbo model (done)
+
+Replaced the logistic spool curve and scalar `turboMaxHp` cap with turbo matching on real/modeled maps.
+
+- **Data** (`data/turbo/`, provenance kept separate from UI):
+  - `garrett-g25-660.json`, `garrett-g30-770.json`: **vendor** maps, manually digitized from Garrett's published
+    compressor and turbine flow map images (URLs inside). Speed lines/surge/choke ±0.5 lb/min, ±0.02 PR.
+  - `modeled-turbos.json`: the other 16 catalogue turbos. No trustworthy public map exists for them, so they are
+    **modeled** (G25 map shape rescaled to the stated flow, PR, shaft speed and efficiency) and tagged as such
+    in the data and in the UI ("GEMODELLEERDE KAART").
+  - `charge-system.json`: intercooler/filter pressure loss, exhaust back pressure, wastegate capacity, fuel
+    stoichiometry, rotor inertia rule (all modeled estimates).
+  - `tools/build_turbo_data.js` generates `src/assets/turbo-data.js`; a test fails when it is stale.
+- **Physics** (`src/assets/turbo.js`): corrected mass flow, pressure ratio incl. filter + intercooler losses,
+  map efficiency (inner islands from vendor contours, outer region interpolated to assumed boundary values),
+  isentropic compressor outlet temperature → intercooler → charge density, turbine flow curve → EMP,
+  turbine/compressor power balance with wastegate split, wastegate creep, surge and choke limits,
+  shaft-speed limit (enforced when overboost cut or a shaft-speed sensor is present), rotor-inertia spool
+  (energy balance per dyno sample, so ramp rate matters). Engine demand comes from the existing VE/breathing
+  model; torque now scales with charge density and pays pumping/residual-gas cost for EMP > boost.
+- **UI**: dyno channel "Turbokaart" draws the map with the pull's operating line (revealed live), tune page
+  shows whether the map is vendor or modeled.
+- **Tests**: `tests/test_turbo_map.js` (schema/provenance, speed-line fidelity, vendor contour checks,
+  isentropic consistency, choke fall-off, spool vs turbo size, rotor inertia vs ramp rate, wastegate creep,
+  altitude, EMP vs turbine size).
+
+### Known inaccuracies (turbo)
+
+- Efficiency outside the digitized inner islands is interpolated: RMS error ≈3 %pt vs the vendor contour labels,
+  up to ≈6 %pt in the far choke/max-speed corner.
+- Garrett's corrected-flow reference conditions (545 R/13.95 psia compressor, 519 R/14.696 psia turbine) are
+  taken as commonly quoted; verify before relying on absolute turbine numbers.
+- Modeled maps reuse the G25 shape; real K03/K04/Holset/big-frame maps differ in width and surge slope.
+- The engine breathing multipliers of the catalogue imply volumetric efficiencies up to ~1.7–2.3 on the big
+  pro-mod builds (real engines ≈1.1–1.25). The map model uses the airflow those power levels require, so the
+  compressor side is consistent, but the big-turbo presets overstate power per bar of boost.
+- Turbine efficiency is a simple function of expansion ratio (no blade-speed-ratio map); pulse/twin-scroll
+  energy is a flat +3 %.

@@ -1920,3 +1920,10 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
   .v12-finish-card { top:49%; padding:14px; }
   .v12-finish-card h1 { font-size:46px; }
 }
+
+/* Turbo map provenance (vendor vs modeled data) */
+.map-provenance { display: grid; gap: 3px; margin: 10px 0 4px; padding: 9px 11px; border-radius: 12px; border: 1px solid #2c3847; background: #0f161f; font-size: 11px; }
+.map-provenance b { font-size: 10px; letter-spacing: .08em; }
+.map-provenance span { color: var(--muted); }
+.map-provenance.vendor b { color: var(--green); }
+.map-provenance.modeled b { color: #b98cff; }

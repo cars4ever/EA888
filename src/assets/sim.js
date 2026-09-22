@@ -4,6 +4,7 @@
  */
 (function (root) {
   'use strict';
+  const Turbo = typeof module !== 'undefined' && module.exports ? require('./turbo.js') : root.EA888Turbo;
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const lerp = (a, b, f) => a + (b - a) * f;
@@ -305,7 +306,10 @@
   function engineSignature(inputState) {
     const s = normalizeState(inputState),
       t = s.tune;
+    // The physics model version is part of the signature: a pull measured with
+    // an older model is shown as historical, never as the current result.
     return JSON.stringify({
+      model: ENGINE_MODEL_VERSION,
       selections: s.selections,
       tune: { ...compactObject(t, 3), revLimitRpm: Math.round(t.revLimitRpm) },
       assembly: compactObject(s.assembly, 3),
@@ -477,7 +481,7 @@
       const fs = getPart(s, 'fuelSystem'),
         fuel = getPart(s, 'fuel');
       const capacity = fs.fuelSystemHp * fuel.fuelFlowFactor;
-      const demand = Math.max(220, getPart(s, 'turbo').turboMaxHp * 0.72);
+      const demand = Math.max(220, turboFlowCapacityHp(getPart(s, 'turbo').id) * 0.72);
       const margin = ((capacity - demand) / demand) * 100;
       const rail = Math.min(s.tune.railTargetBar, fs.maxRailBar) - Math.max(0, -margin) * 0.25;
       score = clamp(72 + margin * 0.8, 0, 100);
@@ -626,8 +630,8 @@
       return fail('head_lift', 'engine', 'Head-lift: cilinderdruk overschreed de sealingmarge.', over(point.bmepBar, sealing.headClampBmep * 1.15));
     if (point.fuelDutyPct > 113 && !tune.railPressureCut)
       return fail('lean_out', 'engine', 'Brandstofsysteem liep leeg: lean-out onder boost.', over(point.fuelDutyPct, 113));
-    if (point.turboLoadPct > 122 && !tune.overboostCut)
-      return fail('turbo_overspeed', 'turbo', 'Turbo overspeed / compressor buiten kaart.', over(point.turboLoadPct, 122));
+    if (point.shaftSpeedPct > 112)
+      return fail('turbo_overspeed', 'turbo', 'Turbo overspeed: asoptoerental boven de compressorgrens.', over(point.shaftSpeedPct, 112, 0.15));
     if (point.knockRisk > 1.35 || (point.knockRisk > 1.05 && !tune.knockControl))
       return fail('knock', 'engine', 'Zware knock/detonatie.', over(point.knockRisk, tune.knockControl ? 1.35 : 1.05));
     if (point.boostBar > ignition.sparkBoostLimit * 1.22 && ignition.sparkQuality < 1.01)
@@ -651,11 +655,23 @@
     return null;
   }
 
+  // Engine air model calibration: the NA torque curve corresponds to a 308 K
+  // manifold charge, and about 10 crank hp are made per lb/min of air.
+  const CHARGE_REF_K = 308.15;
+  const HP_PER_LBMIN_AIR = 10.0;
+  // Power the compressor can flow at its choke limit (reference conditions).
+  function turboFlowCapacityHp(turboId) {
+    const map = Turbo.getMap(turboId);
+    return map ? map.wMax * HP_PER_LBMIN_AIR : 10000;
+  }
+
   // ---- Dyno result model ---------------------------------------------------
   // A dyno result only contains samples the simulated pull actually reached.
   // Every summary value (peaks, maxima, wear, damage) is derived from those
   // samples, so an aborted pull can never report data above its abort rpm.
   const DYNO_RESULT_VERSION = 2;
+  // Bump when the engine/turbo physics changes (4.1: compressor-map turbo model).
+  const ENGINE_MODEL_VERSION = '4.1';
   const DYNO_START_RPM = 1500;
   const DYNO_STEP_RPM = 100;
   // Below this many samples (400 rpm of data) a partial peak is not quoted.
@@ -864,18 +880,27 @@
       ramp = clamp(Number(state.dynoConfig.rampRpmPerSec || 550), 250, 1000),
       fan = clamp(Number(state.dynoConfig.fanSpeedPct || 85) / 100, 0.25, 1),
       heatSoak = clamp(650 / ramp, 0.72, 1.35);
+    // Turbo matching context: compressor/turbine map, charge air, exhaust, wastegate.
+    const turboMap = Turbo.getMap(turbo.id),
+      chargeAir = Turbo.DATA.chargeAir[air.id] || Turbo.DATA.chargeAir.oem_air,
+      exhaustSystem = Turbo.DATA.exhaust[exhaust.id] || Turbo.DATA.exhaust.oem_exhaust,
+      wastegate = Turbo.DATA.wastegate[boostControl.id] || Turbo.DATA.wastegate.oem_internal,
+      stoichAfr = Turbo.DATA.fuelStoichAfr[fuel.id] || 14.7,
+      baroBar = baro / 100,
+      ambientK = ambient + 273.15,
+      dtSample = DYNO_STEP_RPM / ramp;
+    let prevShaftRpm = NaN,
+      prevSpoolFrac = 0;
     for (let rpm = DYNO_START_RPM; !abort && rpm <= revLimit; rpm += DYNO_STEP_RPM) {
-      const desired = requestedBoostAt(tune, rpm, revLimit),
-        effectiveSpool = Math.max(1300, turbo.turboSpoolRpm - spoolAssist.spoolShiftRpm),
-        spoolWidth = Math.max(250, 360 + (turbo.turboSpoolRpm - 2000) * 0.092),
-        spool = 1 / (1 + Math.exp(-(rpm - effectiveSpool) / spoolWidth));
+      const desired = requestedBoostAt(tune, rpm, revLimit);
       const controlRipple = (1 - boostControl.boostControlQuality) * (0.04 * Math.sin(rpm / 285) + 0.025 * (rand() - 0.5)),
         hardwareLimit = boostControl.boostHardwareMaxBar,
         requestedRatio = desired / Math.max(0.15, hardwareLimit);
-      let actualBoost = desired * spool * (1 + controlRipple);
-      if (tune.overboostCut && requestedRatio > 1.03) actualBoost = Math.min(actualBoost, hardwareLimit * 1.04);
-      else if (requestedRatio > 1) actualBoost *= 1 + Math.min(0.18, (requestedRatio - 1) * 0.16);
-      actualBoost = Math.max(0, actualBoost);
+      // Boost the controller asks for; what the turbo can deliver follows from the map.
+      let targetBoost = desired * (1 + controlRipple);
+      if (tune.overboostCut && requestedRatio > 1.03) targetBoost = Math.min(targetBoost, hardwareLimit * 1.04);
+      else if (requestedRatio > 1) targetBoost *= 1 + Math.min(0.18, (requestedRatio - 1) * 0.16);
+      targetBoost = Math.max(0, targetBoost);
       const x = (rpm - 4300) / 2700,
         naTorque = clamp(184 - 30 * x * x, 108, 186),
         rpmBlend = clamp((rpm - 3800) / 2800, 0, 1),
@@ -887,38 +912,75 @@
       if (rpm < 4500) camAdvanceEffect += (commandedAdvance - 15) * 0.0015;
       if (rpm > 6200) camAdvanceEffect -= Math.max(0, commandedAdvance - 10) * 0.0018;
       const camTimingShape = camTiming.applicable ? camTiming.score * (rpm < 3600 ? 0.985 + (1 - camTiming.score) * 0.03 : 1) : 1,
-        pressureMultiplier = (1 + actualBoost) * 0.97,
         intakeFlowFactor = 1 + (air.flow - 1) * 0.8 + (manifold.intakeFlow - 1) * 0.86,
-        exhaustFlowFactor = 1 + (exhaust.exhaustFlow - 1) * 0.75,
-        turboPowerFactor = 0.98 + (turbo.turboEfficiency - 0.84) * 0.4;
-      const breathing = head.powerMultiplier * head.headFlow * camShape * intakeFlowFactor * exhaustFlowFactor * camTimingShape,
-        ringSeal = 0.94 + assembly.ringScore * 0.06 - assembly.ringWideRisk * 0.025,
+        exhaustFlowFactor = 1 + (exhaust.exhaustFlow - 1) * 0.75;
+      const breathing = head.powerMultiplier * head.headFlow * camShape * intakeFlowFactor * exhaustFlowFactor * camTimingShape;
+      // Charge density relative to the NA calibration (1.01325 bar, 308 K manifold).
+      const densityRatio = (B, tK) => ((baroBar + B) / 1.01325) * (CHARGE_REF_K / tK);
+      const airflowAt = (B, tK) =>
+        ((naTorque * densityRatio(B, tK) * 0.97 * breathing * camAdvanceEffect * rpm) / 7127 / HP_PER_LBMIN_AIR) / Turbo.LBMIN_PER_KGS;
+      const exhaustTempK = B =>
+        273.15 + 715 + B * 66 + Math.max(0, tune.lambda - 0.8) * 650 + Math.max(0, -tune.ignitionTrimDeg) * 13 + spoolAssist.spoolHeat * 145;
+      const chargeCooling = (t2K, flowLb) => {
+        // Catalogue "cooling" 0.28 (OEM core) .. 0.985 (ice system) maps to an
+        // intercooler effectiveness of 0.68 .. 0.99, falling once flow exceeds the core rating.
+        const eps = (0.55 + 0.45 * air.cooling) * clamp(1 - 0.35 * Math.max(0, flowLb / chargeAir.refFlowLbMin - 1), 0.4, 1);
+        return ambientK + 2 + (t2K - ambientK) * (1 - eps) * (1 - fuel.fuelCooling) * (1.18 - 0.48 * fan) * heatSoak + spoolAssist.spoolHeat * 22;
+      };
+      // Spool assistance adds exhaust energy while the turbo is still coming up.
+      const nitrousTaper =
+        spoolAssist.nitrousHp > 0 ? clamp((0.93 - prevSpoolFrac) / 0.58, 0, 1) * clamp((revLimit - rpm + 800) / 2200, 0, 1) : 0;
+      const extraExhaustKw =
+        spoolAssist.spoolHeat * 220 * (0.15 + 0.85 * clamp(1 - prevSpoolFrac, 0, 1)) + spoolAssist.nitrousHp * 0.7457 * 1.1 * nitrousTaper;
+      const tp = Turbo.matchEngine(
+        {
+          map: turboMap,
+          baroBar,
+          ambientK,
+          airflowAt,
+          exhaustTempK,
+          chargeCooling,
+          stoichAfr,
+          lambda: tune.lambda,
+          chargeAir,
+          exhaust: exhaustSystem,
+          wastegate,
+          protectShaftSpeed: !!(tune.overboostCut || wastegate.shaftSpeedSensor),
+          extraExhaustKw,
+          extraExhaustKgS: (spoolAssist.nitrousHp * 0.0075 * nitrousTaper) / Turbo.LBMIN_PER_KGS
+        },
+        { targetBoostBar: targetBoost, prevShaftRpm, dtS: dtSample }
+      );
+      prevShaftRpm = tp.shaftRpm;
+      const actualBoost = tp.boostBar,
+        spool = targetBoost > 0.05 ? clamp(actualBoost / targetBoost, 0, 1) : 1;
+      prevSpoolFrac = spool;
+      const manifoldK = tp.manifoldC + 273.15,
+        pManAbs = baroBar + actualBoost,
+        empRatio = tp.empBarAbs / pManAbs,
+        pressureMultiplier = densityRatio(actualBoost, manifoldK) * 0.97,
+        // Residual gas and pumping work follow exhaust manifold pressure vs boost.
+        residualFactor = clamp(1 - 0.05 * (empRatio - 1), 0.9, 1.02),
+        pumpingNm = ((tp.empBarAbs - pManAbs) * 1e5 * (geometry.displacementL / 1000)) / (4 * Math.PI);
+      const ringSeal = 0.94 + assembly.ringScore * 0.06 - assembly.ringWideRisk * 0.025,
         assemblyPower = 0.965 + assembly.score * 0.035;
       let spark = ignition.sparkQuality * (0.91 + assembly.sparkScore * 0.09);
       if (actualBoost > ignition.sparkBoostLimit) spark *= clamp(1 - (actualBoost - ignition.sparkBoostLimit) * 0.1, 0.7, 1);
       let torque =
         naTorque *
-        pressureMultiplier *
-        breathing *
-        turboPowerFactor *
-        camAdvanceEffect *
-        spark *
-        wearFactor *
-        ringSeal *
-        assemblyPower *
-        (0.997 + (crankcase.vacuumKpa < 0 ? 0.012 : 0));
-      if (spoolAssist.nitrousHp > 0) {
-        const taper = clamp((0.93 - spool) / 0.58, 0, 1) * clamp((revLimit - rpm + 800) / 2200, 0, 1);
-        torque += ((spoolAssist.nitrousHp * 7127) / Math.max(2600, rpm)) * taper;
-      }
+          pressureMultiplier *
+          breathing *
+          residualFactor *
+          camAdvanceEffect *
+          spark *
+          wearFactor *
+          ringSeal *
+          assemblyPower *
+          (0.997 + (crankcase.vacuumKpa < 0 ? 0.012 : 0)) -
+        Math.max(-4, pumpingNm);
+      if (spoolAssist.nitrousHp > 0) torque += ((spoolAssist.nitrousHp * 7127) / Math.max(2600, rpm)) * nitrousTaper;
       let rawHp = (torque * rpm) / 7127,
-        flowRamp = 0.58 + 0.42 * clamp((rpm - effectiveSpool + 900) / 2600, 0, 1),
-        turboFlowCap = turbo.turboMaxHp * flowRamp * clamp(0.9 + airDensityFactor * 0.1, 0.96, 1.02),
-        totalFlowCap =
-          (Math.min(turboFlowCap, effectiveFuelCapacity) *
-            (0.985 + (air.flow - 1) * 0.2 + (manifold.intakeFlow - 1) * 0.16) *
-            baseDynoFactor) /
-          oil.drag;
+        totalFlowCap = (effectiveFuelCapacity * (0.985 + (air.flow - 1) * 0.2 + (manifold.intakeFlow - 1) * 0.16) * baseDynoFactor) / oil.drag;
       if (rawHp > totalFlowCap) {
         torque *= totalFlowCap / rawHp;
         rawHp = totalFlowCap;
@@ -941,24 +1003,12 @@
         torque *= 1 - richLoss;
         rawHp = (torque * rpm) / 7127;
       }
-      const turboLoadPct =
-          (Math.max(
-            rawHp / Math.max(1, turbo.turboMaxHp),
-            desired / Math.max(0.1, turbo.turboMaxBoost),
-            (desired / Math.max(0.1, hardwareLimit)) * 0.94
-          ) *
-            100) /
-          Math.max(0.8, airDensityFactor),
-        shaftLimit = turbo.shaftSpeedLimitRpm || clamp(250000 - (turbo.compressorMm || 45) * 900, 108000, 207000),
-        turboShaftRpm = shaftLimit * clamp(0.34 + turboLoadPct / 145, 0.3, 1.34),
-        empBar = actualBoost * (1.05 + turboLoadPct / 185 + Math.max(0, 1 / exhaust.exhaustFlow - 1) * 1.6);
-      const compressorRise = (actualBoost * 50) / Math.max(0.7, turbo.turboEfficiency),
-        iatC =
-          ambient +
-          2 +
-          compressorRise * (1 - air.cooling) * (1 - fuel.fuelCooling) * (1.18 - 0.48 * fan) * heatSoak +
-          Math.max(0, rawHp - 500) * 0.008 +
-          spoolAssist.spoolHeat * 22,
+      // Turbo load = how close the compressor is to its shaft-speed or choke limit.
+      const turboLoadPct = Math.max(tp.shaftSpeedPct, 100 - tp.chokeMarginPct),
+        shaftLimit = turboMap.maxShaftRpm,
+        turboShaftRpm = tp.shaftRpm,
+        empBar = tp.empBarAbs - baroBar;
+      const iatC = tp.manifoldC,
         oilVaporOctaneLoss = crankcase.oilVaporPenalty * 35;
       let effectiveOctane = fuel.octane - oilVaporOctaneLoss;
       if (state.selections.air === 'wmi' && tune.methFailsafe) effectiveOctane += 1.5;
@@ -969,17 +1019,16 @@
           Math.max(0, tune.ignitionTrimDeg) * 1.45 +
           Math.max(0, actualLambda - 0.84) * 80 +
           spoolAssist.nitrousHp * 0.012 +
+          Math.max(0, empRatio - 1.15) * 5 +
           (camTiming.applicable ? (1 - camTiming.score) * 8.5 : 0),
         effectiveSafety = ecu.safetyQuality * (0.78 + sensors.sensorQuality * 0.22);
       let knockRisk = clamp((requiredOctane - effectiveOctane + 3) / 7, 0, 1.8);
       if (tune.knockControl) knockRisk *= 0.76 + (1 - effectiveSafety) * 0.29;
       const egtC =
-          715 +
-          actualBoost * 66 +
-          Math.max(0, actualLambda - 0.8) * 650 +
-          Math.max(0, -tune.ignitionTrimDeg) * 13 +
-          Math.max(0, turboLoadPct - 90) * 1.3 +
-          spoolAssist.spoolHeat * 145,
+          exhaustTempK(actualBoost) -
+          273.15 +
+          Math.max(0, Math.max(actualLambda, 0.8) - Math.max(tune.lambda, 0.8)) * 650 +
+          Math.max(0, turboLoadPct - 90) * 1.3,
         bmepBar = (torque * 4 * Math.PI) / (geometry.displacementL / 1000) / 100000,
         meanPistonSpeed = (2 * (geometry.strokeMm / 1000) * rpm) / 60;
       const oilTempC =
@@ -1023,7 +1072,21 @@
         oilFilmRisk,
         oilAerationPct,
         spoolPct: spool * 100,
-        airflowLbMin: rawHp / 9.55
+        airflowLbMin: tp.massFlowLbMin,
+        boostTargetBar: targetBoost,
+        boostLimitedBy: tp.limitedBy,
+        shaftSpeedPct: tp.shaftSpeedPct,
+        compressorPr: tp.pressureRatio,
+        correctedFlowLbMin: tp.correctedFlowLbMin,
+        compressorEff: tp.compressorEff,
+        compressorOutC: tp.compressorOutC,
+        surgeMarginPct: tp.surgeMarginPct,
+        chokeMarginPct: tp.chokeMarginPct,
+        surge: tp.surge,
+        wastegatePct: tp.wastegatePct,
+        turbineKw: tp.turbineKw,
+        compressorKw: tp.compressorKw,
+        volumetricEff: tp.massFlowKgS / ((pManAbs * 1e5) / (287.05 * manifoldK)) / ((geometry.displacementL / 1000) * (rpm / 120))
       };
       point.tS = (rpm - DYNO_START_RPM) / ramp;
       curve.push(point);
@@ -1319,7 +1382,7 @@
         : abort.rpm
           ? `Afgebroken @ ${abort.rpm} rpm: ${abort.reason}`
           : abort.reason,
-      safePowerLimitHp = Math.min(mechanicalHpLimit * 0.88, effectiveFuelCapacity * 0.88, turbo.turboMaxHp * 0.9),
+      safePowerLimitHp = Math.min(mechanicalHpLimit * 0.88, effectiveFuelCapacity * 0.88, turboFlowCapacityHp(turbo.id) * 0.9),
       wear = dynoWearFromSamples(curve, {
         rampRpmPerSec: ramp,
         mechanicalHpLimit,
@@ -1336,7 +1399,7 @@
     const quotePeak = completed || summary.sampleCount >= DYNO_MIN_PARTIAL_SAMPLES;
     const plannedSamples = Math.floor((revLimit - DYNO_START_RPM) / DYNO_STEP_RPM) + 1;
     return {
-      modelVersion: '4.1',
+      modelVersion: ENGINE_MODEL_VERSION,
       dynoResultVersion: DYNO_RESULT_VERSION,
       status: runStatus,
       partial: !completed,
@@ -1381,7 +1444,9 @@
       estimatedAirflowLbMin: quotePeak && summary.peakHp !== null ? summary.peakHp / 9.55 : null,
       oilHealth: health,
       oilFilm,
+      turboId: turbo.id,
       turboName: turbo.name,
+      turboMapType: turboMap.source.mapType,
       compressorMm: turbo.compressorMm,
       displacementCc: geometry.displacementCc,
       boreMm: geometry.boreMm,
@@ -1781,12 +1846,14 @@
     add('Randy K04 band', randy.peakHp > 420 && randy.peakHp < 590, round(randy.peakHp));
     const big = applyPreset(blankState(), 'pro98');
     big.selections.spool = 'none';
+    big.tune.boostLowBar = 1.6;
+    big.tune.boostMidBar = 2.6;
     const bigNo = simulateEngine(big, { noise: false });
     big.selections.spool = 'n2o_150';
     const bigYes = simulateEngine(big, { noise: false }),
-      pNo = bigNo.samples.find(p => p.rpm === 7000)?.boostBar || 0,
-      pYes = bigYes.samples.find(p => p.rpm === 7000)?.boostBar || 0;
-    add('98-mm spool assistance werkt', pYes > pNo * 1.2, `${pNo.toFixed(2)}→${pYes.toFixed(2)} bar @7000`);
+      pNo = bigNo.samples.find(p => p.rpm === 4500)?.boostBar || 0,
+      pYes = bigYes.samples.find(p => p.rpm === 4500)?.boostBar || 0;
+    add('98-mm spool assistance werkt', pYes > pNo * 1.2 + 0.3, `${pNo.toFixed(2)}→${pYes.toFixed(2)} bar @4500`);
     const lowOil = blankState();
     lowOil.service.liters = 3.7;
     const lowR = simulateEngine(lowOil, { noise: false });
