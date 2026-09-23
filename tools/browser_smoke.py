@@ -251,6 +251,22 @@ def main() -> None:
         click(page, '#toast button')
         ecu2 = page.evaluate("window.__EA888_DEBUG__.ecu()")
         report['checks']['ecu_table_undo'] = ecu2['spark'] == ecu0['spark'] and not ecu2['edited']['spark']
+        # Hold-and-drag selects a block (touch), then a step changes exactly that block.
+        page.evaluate("(() => { const el = document.querySelector('[data-ecu-cell=\"3,2\"]'); el.closest('.ecu-grid-wrap').scrollLeft = 0; window.scrollBy(0, el.getBoundingClientRect().top - innerHeight * 0.4); })()")
+        page.wait_for_timeout(150)
+        page.evaluate("""() => { const r = document.querySelector('[data-ecu-cell="2,1"]').getBoundingClientRect();
+          document.querySelector('[data-ecu-cell="2,1"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7, pointerType: 'touch', clientX: r.left + 10, clientY: r.top + 10, isPrimary: true })); }""")
+        page.wait_for_timeout(400)
+        page.evaluate("""() => { const z = document.querySelector('[data-ecu-cell="4,3"]').getBoundingClientRect();
+          const ev = t => document.elementFromPoint(z.left + 10, z.top + 10).dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 7, pointerType: 'touch', clientX: z.left + 10, clientY: z.top + 10, isPrimary: true }));
+          ev('pointermove'); ev('pointerup'); }""")
+        page.wait_for_timeout(150)
+        ecu3 = page.evaluate("window.__EA888_DEBUG__.ecu()")
+        click(page, '[data-action="ecu-step"][data-dir="1"]')
+        ecu4 = page.evaluate("window.__EA888_DEBUG__.ecu()")
+        changed = [(r, c) for r in range(len(ecu3['spark'])) for c in range(len(ecu3['spark'][0])) if abs(ecu4['spark'][r][c] - ecu3['spark'][r][c]) > 1e-9]
+        report['checks']['ecu_table_drag_select'] = sorted(changed) == [(r, c) for r in (2, 3, 4) for c in (1, 2, 3)]
+        click(page, '#toast button')
         report['checks']['ecu_table_touch_cells'] = page.eval_on_selector('.ecu-grid td[data-ecu-cell]', 'td => td.getBoundingClientRect().width >= 40 && td.getBoundingClientRect().height >= 32')
         click(page, '[data-tune-panel="fuel"]')
         report['checks']['fuel_hardware_readout'] = page.locator('.fuel-props').count() == 1 and 'kg/u' in page.locator('.capacity-panel').inner_text()

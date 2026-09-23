@@ -1697,7 +1697,7 @@
     const rows = ecuRows(name), trace = ecuTrace(name);
     const flat = table.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
     const dynoCurrent = C.isDynoCurrent(state);
-    const cells = table.map((row, r) => `<tr><th scope="row">${esc(rows[r])}</th>${row.map((v, c) => {
+    const cells = table.map((row, r) => `<tr><th scope="row" data-ecu-row="${r}">${esc(rows[r])}</th>${row.map((v, c) => {
       const h = hi > lo ? (v - lo) / (hi - lo) : 0.5, t = trace.get(`${r},${c}`);
       const cls = [ecuInSel(r, c) ? 'sel' : '', t ? 'hit' : '', t && name === 'spark' && t.knock > 0.4 ? 'knock' : ''].filter(Boolean).join(' ');
       return `<td class="${cls}" style="--h:${h.toFixed(3)}" data-ecu-cell="${r},${c}" ${t && name === 'spark' && t.knock > 0.4 ? `title="knockretard ${num(t.knock, 1)}°"` : ''}>${Number(v).toFixed(info.decimals)}</td>`;
@@ -1714,10 +1714,10 @@
       <p class="ecu-hint">${esc(info.hint)}</p>
       ${name === 'spark' ? `<div class="notice ${fuelChanged ? 'danger' : ''}"><strong>${fuelChanged ? 'Hardware of brandstof gewijzigd sinds de basismap.' : `Basismap voor ${esc(base?.label || hw.fuelLabel)}.`}</strong> ${fuelChanged ? 'De knockregeling moet nu terugnemen of er is ontsteking over; maak een nieuwe basismap of pas de cellen aan.' : 'Veilige start: 2° onder de knockgrens bij een koele inlaat. Wat daartussen zit vind je op de dyno.'}</div>` : ''}
       ${name === 'spark' && knockCells ? `<div class="notice danger"><strong>Knockretard in ${knockCells} cel${knockCells === 1 ? '' : 'len'} tijdens de laatste pull.</strong> Rood omrande cellen: daar nam de knockregeling ontsteking terug.</div>` : ''}
-      <div class="ecu-grid-wrap" data-scroll-x><table class="ecu-grid ${name}"><thead><tr><th>${info.rows === 'gear' ? 'versn.' : 'MAP'}</th>${e.rpmAxis.map(v => `<th>${v >= 10000 ? `${v / 1000}k` : v}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div>
+      <div class="ecu-grid-wrap" data-scroll-x><table class="ecu-grid ${name}"><thead><tr><th data-ecu-all title="Alles selecteren">${info.rows === 'gear' ? 'versn.' : 'MAP'}</th>${e.rpmAxis.map((v, c) => `<th data-ecu-col="${c}">${v >= 10000 ? `${v / 1000}k` : v}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div>
       <div class="ecu-legend"><span><i class="hit"></i>geraakt in laatste pull${dynoCurrent ? '' : ' (verouderde meting)'}</span>${name === 'spark' ? '<span><i class="knock"></i>knockretard</span>' : ''}<span>${info.rows === 'gear' ? 'rijen: versnelling' : 'rijen: MAP bar abs'} · kolommen: rpm</span></div>
       <div class="ecu-toolbar">
-        <div class="ecu-sel"><b>${esc(selText)}</b><small>${ecuView.range ? 'Bereik: tik de tegenoverliggende hoek' : 'Tik om te kiezen'}</small></div>
+        <div class="ecu-sel"><b>${esc(selText)}</b><small>${ecuView.range ? 'Bereik: tik de tegenoverliggende hoek' : 'Tik = cel · vasthouden en slepen = vak · kop = rij/kolom'}</small></div>
         <button class="btn ghost small ${ecuView.range ? 'armed' : ''}" data-action="ecu-range" aria-pressed="${ecuView.range}">Bereik</button>
         <button class="btn ghost small" data-action="ecu-step" data-dir="-1" ${ecuView.sel ? '' : 'disabled'} aria-label="Lager">−${info.step}</button>
         <button class="btn ghost small" data-action="ecu-step" data-dir="1" ${ecuView.sel ? '' : 'disabled'} aria-label="Hoger">+${info.step}</button>
@@ -1824,9 +1824,75 @@
       return showToast('Basismap berekend voor de huidige hardware.', { label: 'Ongedaan', run: () => { state.tune.ecu = before; saveState(); render(); } });
     }
   }
+  // Drag selection. Touch: a quick swipe keeps scrolling the table; hold ~0.25 s and drag to select a block
+  // (the table then auto-scrolls at its edges). Mouse/pen: drag at once. The DOM is only repainted during the
+  // drag; the page re-renders when the finger lifts.
+  let ecuDrag = null, ecuSuppressClick = false;
+  function ecuCellAt(x, y) {
+    const el = document.elementFromPoint(x, y)?.closest?.('[data-ecu-cell]');
+    return el ? el.dataset.ecuCell.split(',').map(Number) : null;
+  }
+  function paintEcuSel() {
+    $$('.ecu-grid td[data-ecu-cell]').forEach(td => { const [r, c] = td.dataset.ecuCell.split(',').map(Number); td.classList.toggle('sel', ecuInSel(r, c)); });
+    const b = ecuSelBounds(), label = $('.ecu-sel b');
+    if (b && label) {
+      const n = (b.r1 - b.r0 + 1) * (b.c1 - b.c0 + 1), e = state.tune.ecu;
+      label.textContent = n === 1 ? `${ecuRows(ecuView.table)[b.r0]} · ${e.rpmAxis[b.c0]} rpm` : `${n} cellen · ${e.rpmAxis[b.c0]}–${e.rpmAxis[b.c1]} rpm`;
+    }
+  }
+  function ecuDragBegin() {
+    if (!ecuDrag) return;
+    ecuDrag.active = true;
+    ecuView.sel = { r0: ecuDrag.r, c0: ecuDrag.c, r1: ecuDrag.r, c1: ecuDrag.c };
+    paintEcuSel();
+    haptic(8);
+  }
+  document.addEventListener('pointerdown', ev => {
+    const cell = ev.target.closest?.('[data-ecu-cell]');
+    if (!cell || ev.button > 0) return;
+    const [r, c] = cell.dataset.ecuCell.split(',').map(Number);
+    ecuDrag = { id: ev.pointerId, r, c, x0: ev.clientX, y0: ev.clientY, x: ev.clientX, y: ev.clientY, active: false, moved: false, timer: 0 };
+    if (ev.pointerType === 'mouse' || ev.pointerType === 'pen') ecuDrag.mouse = true;
+    else ecuDrag.timer = setTimeout(() => { if (ecuDrag && !ecuDrag.moved) ecuDragBegin(); }, 250);
+  });
+  document.addEventListener('pointermove', ev => {
+    if (!ecuDrag || ev.pointerId !== ecuDrag.id) return;
+    ecuDrag.x = ev.clientX; ecuDrag.y = ev.clientY;
+    if (!ecuDrag.active) {
+      const far = Math.hypot(ev.clientX - ecuDrag.x0, ev.clientY - ecuDrag.y0) > 8;
+      if (far && ecuDrag.mouse) ecuDragBegin();
+      else if (far) { ecuDrag.moved = true; clearTimeout(ecuDrag.timer); return; }
+      else return;
+    }
+    const at = ecuCellAt(ev.clientX, ev.clientY);
+    if (at && (at[0] !== ecuView.sel.r1 || at[1] !== ecuView.sel.c1)) { ecuView.sel = { ...ecuView.sel, r1: at[0], c1: at[1] }; paintEcuSel(); }
+    // auto-scroll the table when the finger nears its left/right edge
+    const wrap = $('.ecu-grid-wrap'), rect = wrap?.getBoundingClientRect();
+    if (rect) { if (ev.clientX > rect.right - 36) wrap.scrollLeft += 14; else if (ev.clientX < rect.left + 70) wrap.scrollLeft -= 14; }
+  });
+  // While a drag-select is active the finger must not scroll the page or the table.
+  document.addEventListener('touchmove', ev => { if (ecuDrag?.active) ev.preventDefault(); }, { passive: false });
+  function ecuDragEnd(ev) {
+    if (!ecuDrag || (ev && ev.pointerId !== ecuDrag.id)) return;
+    clearTimeout(ecuDrag.timer);
+    const wasActive = ecuDrag.active;
+    ecuDrag = null;
+    if (wasActive) { ecuSuppressClick = true; setTimeout(() => { ecuSuppressClick = false; }, 350); render(); }
+  }
+  document.addEventListener('pointerup', ecuDragEnd);
+  document.addEventListener('pointercancel', ev => { if (ecuDrag && !ecuDrag.active) { clearTimeout(ecuDrag.timer); ecuDrag = null; } else ecuDragEnd(ev); });
   document.addEventListener('click', ev => {
     const cell = ev.target.closest?.('[data-ecu-cell]');
-    if (cell) { const [r, c] = cell.dataset.ecuCell.split(',').map(Number); ecuCellTap(r, c); return; }
+    if (cell) { if (ecuSuppressClick) { ecuSuppressClick = false; return; } const [r, c] = cell.dataset.ecuCell.split(',').map(Number); ecuCellTap(r, c); return; }
+    const e = state.tune?.ecu, name = ecuView.table;
+    const rowHead = ev.target.closest?.('[data-ecu-row]'), colHead = ev.target.closest?.('[data-ecu-col]'), all = ev.target.closest?.('[data-ecu-all]');
+    if (e && (rowHead || colHead || all)) {
+      const rows = e[name].length - 1, cols = e.rpmAxis.length - 1;
+      if (rowHead) { const r = Number(rowHead.dataset.ecuRow); ecuView.sel = { r0: r, r1: r, c0: 0, c1: cols }; }
+      else if (colHead) { const c = Number(colHead.dataset.ecuCol); ecuView.sel = { r0: 0, r1: rows, c0: c, c1: c }; }
+      else ecuView.sel = { r0: 0, r1: rows, c0: 0, c1: cols };
+      haptic(6); render(); return;
+    }
     const tab = ev.target.closest?.('[data-ecu-table]');
     if (tab) { ecuView = { table: tab.dataset.ecuTable, sel: null, anchor: null, range: false }; haptic(6); render(); }
   });

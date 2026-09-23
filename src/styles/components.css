@@ -228,3 +228,6 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .log-actions { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:10px 0; }
 .log-actions small { color:var(--muted); font-size:12px; flex:1 1 200px; }
 .log-actions .btn { min-height:44px; }
+.ecu-grid th[data-ecu-row], .ecu-grid th[data-ecu-col], .ecu-grid th[data-ecu-all] { cursor:pointer; }
+.ecu-grid th[data-ecu-col] { min-width:44px; }
+.ecu-grid td { -webkit-touch-callout:none; -webkit-user-select:none; }
