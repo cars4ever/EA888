@@ -314,6 +314,17 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
   https origin (a secure context, as on Android) and checks the synth voice, acoustics, the panned rival,
   the sample fallback, the mixer and the 3D burnout/staging scenes.
 
+### 1.9.1: the dyno could hang
+
+- startDyno marked the pull as running and then started the sound; an exception in the sound start (or in
+  any per-frame audio update) ended the animation loop, so the pull never finished, was never saved, and
+  the tabs stayed locked ("de pull loopt nog"). The pull is now driven by time and cannot be stopped by
+  what is drawn or heard: every audio entry point is guarded, a failing frame is logged and the next one
+  runs, a timer watchdog keeps the pull going if the WebView stops delivering animation frames, and after
+  repeated audio failures the synthesized voice falls back to the sample voice for the session.
+- Error log: the last 20 errors are listed under the self-test (Data page), so a failure on the phone can
+  be reported. Smoke check dyno_survives_audio_failure runs a full pull with every audio call throwing.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

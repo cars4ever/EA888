@@ -602,7 +602,7 @@
     };
   }
   function engineWorkletSupported(ctx) {
-    return !!(ctx?.audioWorklet && typeof AudioWorkletNode === 'function' && window.EA888EngineVoice?.moduleSource && state.settings?.engineSound !== 'samples');
+    return !synthBroken && !!(ctx?.audioWorklet && typeof AudioWorkletNode === 'function' && window.EA888EngineVoice?.moduleSource && state.settings?.engineSound !== 'samples');
   }
   function loadEngineWorklet(ctx) {
     if (!engineWorkletSupported(ctx)) return Promise.resolve(false);
@@ -657,7 +657,9 @@
     audio.rivalDistanceM = d;
   }
 
+  let audioBrokenForTest = false;
   function applySampledAudio(audio, rpm, load, wheelSlip, extras = null) {
+    if (audioBrokenForTest) throw new Error('test audio failure');
     if (!audio) return;
     audio.lastExtras = extras;
     audio.lastRpm = clamp(Number(rpm || 900), 650, 10800);
@@ -900,61 +902,77 @@
   }
 
   function startEngineAudio(mode = 'engine') {
-    const audio = ensureEngineAudio(mode);
-    if (!audio) return;
-    audio.active = true;
-    audio.mode = mode;
     try {
-      if (audio.ctx.state !== 'running') audio.ctx.resume();
-      const t = audio.ctx.currentTime;
-      audio.master.gain.cancelScheduledValues(t);
-      audio.engineBusGain.gain.cancelScheduledValues(t);
-      audio.engineBusGain.gain.setValueAtTime(1, t);
-    } catch (e) {}
-    applySampledAudio(audio, audio.lastRpm || 900, mode === 'race' ? .62 : .15, 0);
+      const audio = ensureEngineAudio(mode);
+      if (!audio) return;
+      audio.active = true;
+      audio.mode = mode;
+      try {
+        if (audio.ctx.state !== 'running') audio.ctx.resume();
+        const t = audio.ctx.currentTime;
+        audio.master.gain.cancelScheduledValues(t);
+        audio.engineBusGain.gain.cancelScheduledValues(t);
+        audio.engineBusGain.gain.setValueAtTime(1, t);
+      } catch (e) {}
+      applySampledAudio(audio, audio.lastRpm || 900, mode === 'race' ? .62 : .15, 0);
+    } catch (e) { audioFault(e); }
   }
 
   // extras (optional, from the turbo runtime): shaftPct, boostBar, alsActive, alsIntensity, flameIntensity, popRateHz
   function updateEngineAudio(rpm, load = .5, wheelSlip = 0, extras = null) {
     if (!state.settings?.sound) return;
-    const audio = ensureEngineAudio(engineAudio?.mode || 'engine');
-    if (!audio) return;
-    applySampledAudio(audio, rpm, load, wheelSlip, extras);
+    try {
+      const audio = ensureEngineAudio(engineAudio?.mode || 'engine');
+      if (!audio) return;
+      applySampledAudio(audio, rpm, load, wheelSlip, extras);
+    } catch (e) { audioFault(e); }
+  }
+  // Sound must never stop the simulation or the UI: a failing audio update is logged; after repeated
+  // failures the synthesized voice is dropped for this session and the sample voice takes over.
+  let audioFaults = 0, synthBroken = false;
+  function audioFault(e) {
+    logAppError('audio', e);
+    if (audioBrokenForTest) return; // injected test failures say nothing about the synthesized voice
+    if (++audioFaults >= 3 && engineAudio?.synth) { synthBroken = true; audioFaults = 0; try { stopEngineAudio({ hard: true }); } catch (err) {} }
   }
 
   function engineShiftPop(intensity = .6, shiftType = 'auto') {
-    if (!state.settings?.sound) return;
-    const audio = ensureEngineAudio('race');
-    if (!audio) return;
-    const dsg = shiftType === 'dsg' || (shiftType === 'auto' && isDsgTransmission());
-    const t = audio.ctx.currentTime;
-    const fire = () => {
-      if (!audio.ready) return;
-      if (audio.synth) {
-        // DSG: the ECU cuts the ignition of about every other event while the clutches hand over (the
-        // "burp" is that unburnt charge going off in the exhaust). Manual shifts are the throttle lift and
-        // cut the race runtime reports; only the blow-off valve is a sample.
-        if (dsg) audio.synth.node.port.postMessage({ type: 'cut', kind: 'spark', fraction: .5, durationS: .085 });
+    try {
+      if (!state.settings?.sound) return;
+      const audio = ensureEngineAudio('race');
+      if (!audio) return;
+      const dsg = shiftType === 'dsg' || (shiftType === 'auto' && isDsgTransmission());
+      const t = audio.ctx.currentTime;
+      const fire = () => {
+        if (!audio.ready) return;
+        if (audio.synth) {
+          // DSG: the ECU cuts the ignition of about every other event while the clutches hand over (the
+          // "burp" is that unburnt charge going off in the exhaust). Manual shifts are the throttle lift and
+          // cut the race runtime reports; only the blow-off valve is a sample.
+          if (dsg) audio.synth.node.port.postMessage({ type: 'cut', kind: 'spark', fraction: .5, durationS: .085 });
+          playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
+          return;
+        }
+        const name = dsg ? 'shift_dsg' : 'shift_manual';
+        playSampleOneShot(audio, name, (dsg ? .48 : .40) * clamp(intensity, .2, 1.3), dsg ? .98 : 1.02);
         playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
-        return;
-      }
-      const name = dsg ? 'shift_dsg' : 'shift_manual';
-      playSampleOneShot(audio, name, (dsg ? .48 : .40) * clamp(intensity, .2, 1.3), dsg ? .98 : 1.02);
-      playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
-      audio.engineBusGain.gain.cancelScheduledValues(t);
-      audio.engineBusGain.gain.setValueAtTime(Math.max(.28, audio.engineBusGain.gain.value), t);
-      audio.engineBusGain.gain.setTargetAtTime(dsg ? .18 : .08, t + .006, .012);
-      audio.engineBusGain.gain.setTargetAtTime(1, t + (dsg ? .115 : .17), .042);
-    };
-    if (audio.ready) fire(); else audio.readyPromise?.then(fire);
+        audio.engineBusGain.gain.cancelScheduledValues(t);
+        audio.engineBusGain.gain.setValueAtTime(Math.max(.28, audio.engineBusGain.gain.value), t);
+        audio.engineBusGain.gain.setTargetAtTime(dsg ? .18 : .08, t + .006, .012);
+        audio.engineBusGain.gain.setTargetAtTime(1, t + (dsg ? .115 : .17), .042);
+      };
+      if (audio.ready) fire(); else audio.readyPromise?.then(fire);
+    } catch (e) { audioFault(e); }
   }
 
   function playLaunchCrackle(intensity = .7) {
-    if (!state.settings?.sound) return;
-    const audio = ensureEngineAudio('stage');
-    // The synthesized voice makes the launch from the two-step cut itself; the sample is the fallback.
-    const fire = () => { if (!audio?.synth) playSampleOneShot(audio, 'launch', .36 * clamp(intensity, .2, 1.2), .97 + intensity * .04); };
-    if (audio?.ready) fire(); else audio?.readyPromise?.then(fire);
+    try {
+      if (!state.settings?.sound) return;
+      const audio = ensureEngineAudio('stage');
+      // The synthesized voice makes the launch from the two-step cut itself; the sample is the fallback.
+      const fire = () => { if (!audio?.synth) playSampleOneShot(audio, 'launch', .36 * clamp(intensity, .2, 1.2), .97 + intensity * .04); };
+      if (audio?.ready) fire(); else audio?.readyPromise?.then(fire);
+    } catch (e) { audioFault(e); }
   }
 
   function silenceAudioGraph(audio, immediate = false) {
@@ -986,32 +1004,34 @@
   }
 
   function stopEngineAudio(options = {}) {
-    if (!engineAudio) return;
-    const audio = engineAudio;
-    audio.active = false;
-    audio.mode = 'idle';
-    audio.lastRpm = 900;
-    audio.lastLoad = 0;
-    audio.lastSlip = 0;
-    silenceAudioGraph(audio, !!options.hard);
-    stopTrackedOneShots(audio);
-    if (!options.hard) return;
-
-    // Detach the old context before stopping its sources. Generic taps after a
-    // finish can therefore never wake the last race sound back up.
-    if (engineAudio === audio) engineAudio = null;
-    if (decodedAudioBankPromise?.ctx === audio.ctx) decodedAudioBankPromise = null;
-    for (const v of [audio.synth, audio.rival]) {
-      if (!v?.node) continue;
-      try { v.node.port.postMessage({ type: 'stop' }); v.node.port.onmessage = null; v.node.disconnect(); } catch (e) {}
-    }
-    audio.synth = null; audio.rival = null;
     try {
-      for (const layer of audio.layers || []) { layer.source.onended = null; layer.source.stop(); layer.source.disconnect(); }
-      audio.turboSource?.stop(); audio.tyreSource?.stop(); audio.alsBedSource?.stop();
-      audio.turboSource?.disconnect(); audio.tyreSource?.disconnect(); audio.alsBedSource?.disconnect();
-    } catch (e) {}
-    try { audio.ctx.close(); } catch (e) {}
+      if (!engineAudio) return;
+      const audio = engineAudio;
+      audio.active = false;
+      audio.mode = 'idle';
+      audio.lastRpm = 900;
+      audio.lastLoad = 0;
+      audio.lastSlip = 0;
+      silenceAudioGraph(audio, !!options.hard);
+      stopTrackedOneShots(audio);
+      if (!options.hard) return;
+
+      // Detach the old context before stopping its sources. Generic taps after a
+      // finish can therefore never wake the last race sound back up.
+      if (engineAudio === audio) engineAudio = null;
+      if (decodedAudioBankPromise?.ctx === audio.ctx) decodedAudioBankPromise = null;
+      for (const v of [audio.synth, audio.rival]) {
+        if (!v?.node) continue;
+        try { v.node.port.postMessage({ type: 'stop' }); v.node.port.onmessage = null; v.node.disconnect(); } catch (e) {}
+      }
+      audio.synth = null; audio.rival = null;
+      try {
+        for (const layer of audio.layers || []) { layer.source.onended = null; layer.source.stop(); layer.source.disconnect(); }
+        audio.turboSource?.stop(); audio.tyreSource?.stop(); audio.alsBedSource?.stop();
+        audio.turboSource?.disconnect(); audio.tyreSource?.disconnect(); audio.alsBedSource?.disconnect();
+      } catch (e) {}
+      try { audio.ctx.close(); } catch (e) {}
+    } catch (e) { logAppError('audio stop', e); if (options.hard) engineAudio = null; }
   }
 
   function currentAudioSceneMode() {
@@ -1032,19 +1052,21 @@
   }
 
   function resumePersistentAudio() {
-    if (!state.settings?.sound || !engineAudio?.ctx) return;
-    resumeAudioContextOnly();
-    const mode = currentAudioSceneMode();
-    if (!mode) {
-      engineAudio.active = false;
-      silenceAudioGraph(engineAudio, true);
-      return;
-    }
     try {
-      engineAudio.active = true;
-      engineAudio.mode = mode;
-      applySampledAudio(engineAudio, engineAudio.lastRpm || 900, engineAudio.lastLoad || .12, engineAudio.lastSlip || 0);
-    } catch (e) {}
+      if (!state.settings?.sound || !engineAudio?.ctx) return;
+      resumeAudioContextOnly();
+      const mode = currentAudioSceneMode();
+      if (!mode) {
+        engineAudio.active = false;
+        silenceAudioGraph(engineAudio, true);
+        return;
+      }
+      try {
+        engineAudio.active = true;
+        engineAudio.mode = mode;
+        applySampledAudio(engineAudio, engineAudio.lastRpm || 900, engineAudio.lastLoad || .12, engineAudio.lastSlip || 0);
+      } catch (e) {}
+    } catch (e) { audioFault(e); }
   }
 
   function audioDiagnostics() {
@@ -1076,6 +1098,17 @@
       lastRpm: Math.round(engineAudio?.lastRpm || 0)
     };
   }
+
+  // Error log (last 20): shown in the self-test so a problem on the phone can be reported.
+  const appErrors = [];
+  function logAppError(where, e) {
+    const msg = `${where}: ${e?.message || e}`;
+    console.error('EA888', msg, e);
+    appErrors.push({ at: new Date().toISOString(), msg: msg.slice(0, 240) });
+    if (appErrors.length > 20) appErrors.shift();
+  }
+  window.addEventListener('error', ev => logAppError('script', ev.error || ev.message));
+  window.addEventListener('unhandledrejection', ev => logAppError('promise', ev.reason));
 
   function currentDyno() { return C.isDynoCurrent(state); }
   // Only a current AND completed pull may be presented as the build's result.
@@ -2698,34 +2731,55 @@
     const fullDuration = state.settings?.reducedMotion ? 1450 : 5600;
     dynoRunning = { result, start: performance.now(), msPerSample: fullDuration / (planned - 1), shown: 0 };
     if (!result.samples.length) { finishDyno(result); return; }
-    startEngineAudio();
     render();
+    startEngineAudio();
     requestAnimationFrame(() => {
+      // The pull is driven by elapsed time; nothing drawn or heard may stop it. A failing frame is logged
+      // and the next one runs, so the pull always reaches its end and gets saved.
       const tick = now => {
-        if (!dynoRunning || activeTab !== 'dyno') return;
+        if (!dynoRunning) return;
         const samples = dynoRunning.result.samples;
         const idx = Math.min(samples.length - 1, Math.floor((now - dynoRunning.start) / dynoRunning.msPerSample));
         dynoRunning.shown = idx;
-        const point = samples[idx];
-        drawDynoChart($('#dyno-chart'), dynoRunning.result, samples.length > 1 ? idx / (samples.length - 1) : 1, false, dynoChannel, null);
-        // the measured sample drives the voice: MAP, EGT, lambda, wastegate, retard from MBT and knock
-        updateEngineAudio(point.rpm, point.turboLoadPct / 100, 0, { mapBar: point.mapBarAbs, boostBar: point.boostBar, egtC: point.egtC, lambda: point.lambda,
-          wastegatePct: point.wastegatePct, retardDeg: Math.max(0, Number(point.mbtDeg) - Number(point.sparkDeg)) || 0, knock: audibleKnock(point.knockIndex), shaftPct: point.shaftSpeedPct });
-        const set = (id, value) => { const n = $(id); if (n) n.innerHTML = value; };
-        set('#live-rpm', Math.round(point.rpm));
-        set('#live-boost', `${num(point.boostBar,2)}<small> bar</small>`);
-        set('#live-hp', `${Math.round(point.hp)}<small> pk</small>`);
-        set('#live-egt', `${Math.round(point.egtC)}<small> °C</small>`);
-        set('#live-oil', `${num(point.oilPressureBar,1)}<small> bar</small>`);
-        set('#live-rail', `${Math.round(point.railBar)}<small> bar</small>`);
-        const planned = Math.max(2, dynoRunning.result.plannedSampleCount || samples.length);
-        const bar = $('#dyno-progress'); if (bar) bar.style.width = `${clamp(idx / (planned - 1), 0, 1) * 100}%`;
-        const status = $('#dyno-live-status');
-        if (status) status.textContent = `${Math.round(point.torqueNm)} Nm · λ ${num(point.lambda,2)} · duty ${Math.round(point.fuelDutyPct)}% · as ${Math.round(point.turboShaftRpm/1000)}k`;
-        if (idx < samples.length - 1) dynoRunning.raf = requestAnimationFrame(tick); else finishDyno(dynoRunning.result);
+        dynoRunning.lastTickAt = now;
+        if (idx >= samples.length - 1) {
+          try { finishDyno(dynoRunning.result); }
+          catch (e) { logAppError('dyno finish', e); dynoRunning = null; stopEngineAudio({ hard: true }); render(); }
+          return;
+        }
+        cancelAnimationFrame(dynoRunning.raf);
+        dynoRunning.raf = requestAnimationFrame(tick);
+        try { dynoFrame(samples, idx); } catch (e) { logAppError('dyno frame', e); }
       };
+      dynoRunning.tick = tick;
       dynoRunning.raf = requestAnimationFrame(tick);
+      // Watchdog: if the WebView stops delivering animation frames, a timer keeps the pull going.
+      const run = dynoRunning;
+      run.watchdog = setInterval(() => {
+        if (dynoRunning !== run) { clearInterval(run.watchdog); return; }
+        const now = performance.now();
+        if (now - (run.lastTickAt || run.start) > 400) tick(now);
+      }, 250);
     });
+  }
+
+  function dynoFrame(samples, idx) {
+    const point = samples[idx];
+    drawDynoChart($('#dyno-chart'), dynoRunning.result, samples.length > 1 ? idx / (samples.length - 1) : 1, false, dynoChannel, null);
+    // the measured sample drives the voice: MAP, EGT, lambda, wastegate, retard from MBT and knock
+    updateEngineAudio(point.rpm, point.turboLoadPct / 100, 0, { mapBar: point.mapBarAbs, boostBar: point.boostBar, egtC: point.egtC, lambda: point.lambda,
+      wastegatePct: point.wastegatePct, retardDeg: Math.max(0, Number(point.mbtDeg) - Number(point.sparkDeg)) || 0, knock: audibleKnock(point.knockIndex), shaftPct: point.shaftSpeedPct });
+    const set = (id, value) => { const n = $(id); if (n) n.innerHTML = value; };
+    set('#live-rpm', Math.round(point.rpm));
+    set('#live-boost', `${num(point.boostBar,2)}<small> bar</small>`);
+    set('#live-hp', `${Math.round(point.hp)}<small> pk</small>`);
+    set('#live-egt', `${Math.round(point.egtC)}<small> °C</small>`);
+    set('#live-oil', `${num(point.oilPressureBar,1)}<small> bar</small>`);
+    set('#live-rail', `${Math.round(point.railBar)}<small> bar</small>`);
+    const planned = Math.max(2, dynoRunning.result.plannedSampleCount || samples.length);
+    const bar = $('#dyno-progress'); if (bar) bar.style.width = `${clamp(idx / (planned - 1), 0, 1) * 100}%`;
+    const status = $('#dyno-live-status');
+    if (status) status.textContent = `${Math.round(point.torqueNm)} Nm · λ ${num(point.lambda,2)} · duty ${Math.round(point.fuelDutyPct)}% · as ${Math.round(point.turboShaftRpm/1000)}k`;
   }
 
   // Operator abort: the pull is re-simulated up to the last revealed sample
@@ -4573,7 +4627,7 @@
     const cutFraction = pt.limiter ? 1 : shiftCut ? 1 : 0;
     const cutKind = pt.limiter ? limiterCutKind() : 'spark';
     updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind } : { cutFraction, cutKind });
-    updateRivalAudio(run);
+    try { updateRivalAudio(run); } catch (e) { audioFault(e); }
     if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
   }
 
@@ -5696,7 +5750,8 @@
       case 'confirm-import': confirmImport(); break;
       case 'self-test': {
         const test = C.selfTest();
-        showModal(test.ok ? 'Zelftest geslaagd' : 'Zelftest heeft een fout', `<div class="test-list">${test.checks.map(x => `<div class="test-row ${x.ok ? 'pass' : 'fail'}"><span>${x.ok ? icon('check') : '!'}</span><div><b>${esc(x.name)}</b><small>${esc(x.value)}</small></div></div>`).join('')}</div>`);
+        const errs = appErrors.length ? `<div class="test-list app-errors"><b>Foutlog (deze sessie)</b>${appErrors.slice().reverse().map(e => `<div class="test-row fail"><span>!</span><div><b>${esc(e.msg)}</b><small>${esc(e.at)}</small></div></div>`).join('')}</div>` : '';
+        showModal(test.ok ? 'Zelftest geslaagd' : 'Zelftest heeft een fout', `<div class="test-list">${test.checks.map(x => `<div class="test-row ${x.ok ? 'pass' : 'fail'}"><span>${x.ok ? icon('check') : '!'}</span><div><b>${esc(x.name)}</b><small>${esc(x.value)}</small></div></div>`).join('')}</div>${errs}`);
         break;
       }
       case 'open-reset': showModal('Alle speldata resetten?', '<p class="modal-copy">Dit verwijdert je build, tune, montage, onderhoud, dynohistorie, dragruns, buildslots en challenges uit deze installatie.</p>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-reset">Alles resetten</button>'); break;
@@ -5834,6 +5889,9 @@
     ecu: () => cloneJson({ edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor }),
     career: () => ({ bank: state.bank, active: state.career?.active ? cloneJson(state.career.active) : null, rep: state.career?.rep || 0, historyCount: state.career?.history?.length || 0, inRound: !!raceGame?.careerRound }),
     replay: () => ({ open: !!raceGame?.replayOpen, active: !!raceGame?.replay3d, progress: raceGame?.replayProgress || 0, done: !!raceGame?.replayDone, frames: raceGame?.run?.replayFrames?.length || 0, lastDistanceM: raceGame?.run?.replayFrames?.at?.(-1)?.d || 0, flames: raceGame?.run?.replayFlames?.length || 0, info: raceGame?.replay3d?.info?.() || null }),
+    errors: () => appErrors.slice(),
+    // Test-only: make every audio update throw (on) to prove the dyno and races keep running.
+    breakAudioForTest: on => { audioBrokenForTest = !!on; return true; },
     setPreRace3dForTest: on => { preRace3DOff = !on; return true; },
     race3d: () => raceGame?.r3d ? { active: true, ...raceGame.r3d.info(), ...(raceGame.r3d.scene?.() || {}) } : { active: false, supported: !!window.EA888Race3D?.supported?.() },
     ghost: () => state.ghost ? { drivetrain: state.ghost.drivetrain, quarter: state.ghost.quarter, samples: state.ghost.trace.length } : null,

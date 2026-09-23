@@ -337,6 +337,14 @@ def main() -> None:
         page.wait_for_timeout(80)
         report['checks']['datalog_spark_channel'] = spark_drawn and page.locator('[data-action="export-dyno-log"]').count() == 1
         click(page, '[data-dyno-channel="power"]')
+        # Regression (v1.9.0 on the phone: the dyno hung): even when every audio call throws, the pull runs to
+        # its end and is saved; the failures land in the error log instead of stopping the loop.
+        page.evaluate("window.__EA888_DEBUG__.breakAudioForTest(true)")
+        runs_before = page.evaluate("window.__EA888_DEBUG__.errors().length")
+        click(page, '[data-action="start-dyno"]')
+        page.wait_for_function("!document.querySelector('[data-action=\"abort-dyno\"]')", timeout=20000)
+        page.evaluate("window.__EA888_DEBUG__.breakAudioForTest(false)")
+        report['checks']['dyno_survives_audio_failure'] = page.evaluate("window.__EA888_DEBUG__.dyno() !== null") and page.evaluate("window.__EA888_DEBUG__.errors().length") > runs_before
         print('CHECKPOINT dyno done', flush=True)
         # V7 drag workflow: overview -> separate fullscreen burnout -> separate staging/tree -> rear chase run -> overview.
         print('DRAG go', flush=True)
