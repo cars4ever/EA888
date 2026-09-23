@@ -258,3 +258,9 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .career-round-line.win { border-color:rgba(72,219,156,.6); } .career-round-line.win b { color:#48db9c; }
 .career-round-line.loss { border-color:rgba(255,83,101,.6); } .career-round-line.loss b { color:#ff6b78; }
 .career-round-line span { font-size:12px; color:#c9d1db; }
+
+/* ---- Sound: engine voice choice + mixer ---- */
+.sound-mixer-card .engine-sound-mode { margin: 10px 0 6px; }
+.sound-mixer-card .small-copy { font-size: var(--fs-sm, 13px); line-height: 1.45; margin: 6px 0 10px; }
+.sound-mixer-card .mixer-grid { display: grid; gap: 4px; grid-template-columns: 1fr; }
+@media (min-width: 720px) { .sound-mixer-card .mixer-grid { grid-template-columns: 1fr 1fr; column-gap: 18px; } }

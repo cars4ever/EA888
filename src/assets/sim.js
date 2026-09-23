@@ -263,7 +263,7 @@
       achievements: {},
       career: defaultCareer(),
       buildSlots: [null, null, null],
-      settings: { sound: true, haptics: true, reducedMotion: false, graphics3d: true },
+      settings: { sound: true, haptics: true, reducedMotion: false, graphics3d: true, engineSound: 'synth', mix: { engine: 100, turbo: 100, als: 100, tyre: 100, rival: 100, ui: 100 } },
       history: []
     };
   }

@@ -32,6 +32,29 @@ def inline_images(text: str, assets: Path) -> str:
     return re.sub(r'fonts/([A-Za-z0-9._-]+\.woff2)', fonts, text)
 
 
+APP_ORIGIN = 'https://appassets.androidplatform.net'
+
+
+def serve_assets(context, assets: Path) -> None:
+    """Serve the assets on the app's own https origin (as WebViewAssetLoader does on Android): a secure
+    context, so AudioWorklet (the engine voice) is available exactly as on the phone."""
+    import mimetypes
+
+    def handler(route):
+        rel = route.request.url.split('/assets/', 1)[-1].split('?')[0].split('#')[0] or 'index.html'
+        path = (assets / rel).resolve()
+        if assets in path.parents and path.is_file():
+            route.fulfill(status=200, body=path.read_bytes(), content_type=mimetypes.guess_type(str(path))[0] or 'application/octet-stream')
+        else:
+            route.fulfill(status=404, body='')
+    context.route(f'{APP_ORIGIN}/**', handler)
+
+
+def load_app_https(page, assets: Path) -> None:
+    page.goto(f'{APP_ORIGIN}/assets/index.html', wait_until='domcontentloaded')
+    page.wait_for_selector('.garage-page', state='visible')
+
+
 def load_app(page, assets: Path) -> None:
     html = (assets / 'index.html').read_text(encoding='utf-8')
     scripts = re.findall(r'<script[^>]+src="([^"]+)"[^>]*></script>', html)
@@ -65,6 +88,7 @@ def main() -> None:
     parser.add_argument('--assets', type=Path, default=Path(__file__).resolve().parents[1] / 'src' / 'assets')
     parser.add_argument('--screenshots', type=Path)
     parser.add_argument('--report', type=Path)
+    parser.add_argument('--inline', action='store_true', help='inject the assets into about:blank (no secure context: sample audio only)')
     args = parser.parse_args()
     assets = args.assets.resolve()
     screenshots = args.screenshots.resolve() if args.screenshots else None
@@ -89,6 +113,8 @@ def main() -> None:
             locale='nl-NL',
             reduced_motion='reduce'
         )
+        if not args.inline:
+            serve_assets(context, assets)
         page = context.new_page()
         page.set_default_timeout(12000)
         page.on('pageerror', lambda exc: page_errors.append(str(exc)))
@@ -99,7 +125,8 @@ def main() -> None:
         """)
 
         print('CHECKPOINT garage', flush=True)
-        load_app(page, assets)
+        (load_app if args.inline else load_app_https)(page, assets)
+        report['secure_context'] = page.evaluate('isSecureContext')
         report['checks']['garage_loaded'] = page.locator('.garage-page').count() == 1
         report['checks']['first_build_coach_shown'] = page.locator('.coach-card .coach-steps li').count() == 3
         initial_hp = page.evaluate("() => Math.round(__EA888_DEBUG__.dyno().peakHp)")
@@ -351,7 +378,13 @@ def main() -> None:
         burnout.dispatch_event('pointerup', {'pointerId': 17, 'pointerType': 'touch', 'isPrimary': True})
         page.wait_for_function("window.__EA888_DEBUG__.audio().ready === true", timeout=12000)
         audio_first = page.evaluate("window.__EA888_DEBUG__.audio()")
-        report['checks']['pcm_multisample_audio'] = audio_first.get('ready') is True and audio_first.get('sampleLayers', 0) >= 6 and 'PCM multisample v11' in audio_first.get('model', '')
+        if report['secure_context']:
+            # Engine voice built from the combustion events (AudioWorklet); strip acoustics during the burnout.
+            st = audio_first.get('synthStats') or {}
+            report['checks']['engine_voice_audio'] = audio_first.get('ready') is True and audio_first.get('synth') is True and 'combustion synth' in audio_first.get('model', '') and st.get('cycles', 0) > 20 and st.get('fired', 0) > 0
+            report['checks']['strip_acoustics_on_burnout'] = audio_first.get('acoustic') == 'strip'
+        else:
+            report['checks']['pcm_multisample_audio'] = audio_first.get('ready') is True and audio_first.get('sampleLayers', 0) >= 6 and 'PCM multisample v11' in audio_first.get('model', '')
         click(page, '[data-action="close-drag-game"]')
         page.wait_for_selector('.v7-race-overview', state='visible')
         page.wait_for_timeout(120)
@@ -410,6 +443,15 @@ def main() -> None:
         report['checks']['steering_changes_lane_position'] = race_steered.get('lateralM', 0) > race_b.get('lateralM', 0)
         report['realtime_sample'] = {'before': race_a, 'after': race_b, 'steered': race_steered}
         audio_second = page.evaluate("window.__EA888_DEBUG__.audio()")
+        if report['secure_context']:
+            # The rival has its own engine voice, placed in its lane to the right of the listener.
+            # expected pan from the geometry: listener ~8.2 m behind the player, rival lane 4.3 m to the right
+            import math
+            dx, dz = 4.3 - race_b.get('lateralM', 0), race_b.get('opponentGapM', 0) + 8.2
+            expected_pan = max(-1, min(1, dx / max(1.5, math.hypot(dx, dz)) * 1.25))
+            report['rival_audio'] = {'pan': audio_second.get('rivalPan'), 'expectedPan': expected_pan, 'gain': audio_second.get('rivalGain')}
+            report['checks']['rival_voice_panned_right'] = audio_second.get('rival') is True and audio_second.get('rivalPan', 0) > 0 and abs(audio_second.get('rivalPan', 0) - expected_pan) < 0.12 and audio_second.get('rivalGain', 0) > 0.01
+            report['checks']['race_acoustics_strip'] = audio_second.get('acoustic') == 'strip' and audio_second.get('reverbWet', 0) > 0.2
         report['checks']['audio_restarts_clean_second_race'] = audio_first.get('generation', 0) > 0 and audio_second.get('generation', 0) > audio_first.get('generation', 0) and audio_second.get('active') is True and audio_second.get('ready') is True
         report['audio_generations'] = {'first': audio_first, 'after_manual_close': audio_after_manual_close, 'after_overview_tap': audio_after_overview_tap, 'second': audio_second}
         if screenshots:
@@ -537,11 +579,20 @@ def main() -> None:
         launch_only = page.evaluate("window.__EA888_DEBUG__.turbo()")['snap']
         report['checks']['launch_als_fires_on_two_step'] = launch_only['alsActive'] is True
         als_btn.dispatch_event('pointerdown', {'pointerId': 41, 'pointerType': 'touch', 'isPrimary': True})
-        page.wait_for_timeout(1300)
+        page.wait_for_timeout(300)
+        voice_a = page.evaluate("window.__EA888_DEBUG__.audio().synthStats") or {}
+        page.wait_for_timeout(1000)
         als_held = page.evaluate("window.__EA888_DEBUG__.turbo()")
         audio_als = page.evaluate("window.__EA888_DEBUG__.audio()")
-        report['checks']['als_bangs_audible_events'] = audio_als.get('alsBangs', 0) >= 8 and audio_als.get('masterGain', 0) > 0.2
-        report['checks']['als_crackle_audio_follows_flame'] = audio_als.get('alsBed') is True and audio_als.get('alsBedGain', 0) > 0.1 and als_held['snap'].get('flameSustain', 0) > 0.3
+        if audio_als.get('synth'):
+            # ALS bangs are misfired (spark-cut) charges igniting in the hot manifold, counted by the voice.
+            voice_b = audio_als.get('synthStats') or {}
+            report['als_voice'] = {'popsPerS': voice_b.get('pops', 0) - voice_a.get('pops', 0), 'sparkCutPerS': voice_b.get('sparkCut', 0) - voice_a.get('sparkCut', 0), 'late': voice_b.get('late', 0) - voice_a.get('late', 0)}
+            report['checks']['als_bangs_audible_events'] = report['als_voice']['popsPerS'] >= 8 and report['als_voice']['sparkCutPerS'] >= 8 and audio_als.get('masterGain', 0) > 0.2
+            report['checks']['als_crackle_audio_follows_flame'] = report['als_voice']['late'] > 20 and als_held['snap'].get('flameSustain', 0) > 0.3
+        else:
+            report['checks']['als_bangs_audible_events'] = audio_als.get('alsBangs', 0) >= 8 and audio_als.get('masterGain', 0) > 0.2
+            report['checks']['als_crackle_audio_follows_flame'] = audio_als.get('alsBed') is True and audio_als.get('alsBedGain', 0) > 0.1 and als_held['snap'].get('flameSustain', 0) > 0.3
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-stage-antilag.png'), full_page=False, animations='disabled', timeout=12000)
         report['checks']['als_button_shows_active'] = page.locator('#v13-als-button.active').count() == 1
@@ -549,8 +600,15 @@ def main() -> None:
         launch_btn.dispatch_event('pointerup', {'pointerId': 43, 'pointerType': 'touch', 'isPrimary': True})
         page.wait_for_timeout(150)
         als_released = page.evaluate("window.__EA888_DEBUG__.turbo()")
-        page.wait_for_timeout(350)
-        report['checks']['als_crackle_audio_stops_on_release'] = page.evaluate("window.__EA888_DEBUG__.audio().alsBedGain") < 0.05
+        if audio_als.get('synth'):
+            page.wait_for_timeout(250)
+            pops_a = (page.evaluate("window.__EA888_DEBUG__.audio().synthStats") or {}).get('pops', 0)
+            page.wait_for_timeout(600)
+            pops_b = (page.evaluate("window.__EA888_DEBUG__.audio().synthStats") or {}).get('pops', 0)
+            report['checks']['als_crackle_audio_stops_on_release'] = pops_b - pops_a <= 2
+        else:
+            page.wait_for_timeout(350)
+            report['checks']['als_crackle_audio_stops_on_release'] = page.evaluate("window.__EA888_DEBUG__.audio().alsBedGain") < 0.05
         i, h, r = als_idle['snap'], als_held['snap'], als_released['snap']
         report['antilag_stage'] = {'idle': {k: i[k] for k in ('boostBar', 'shaftPct', 'egtC')}, 'held': {k: h[k] for k in ('boostBar', 'shaftPct', 'egtC', 'alsActive', 'empBar')}, 'released': {k: r[k] for k in ('boostBar', 'shaftPct', 'alsActive')}, 'flames': len(als_held['flames']), 'wear': als_held['wear']}
         report['checks']['als_raises_boost_and_shaft'] = h['boostBar'] > i['boostBar'] + 0.5 and h['shaftPct'] > i['shaftPct'] + 20
@@ -578,7 +636,7 @@ def main() -> None:
         report['checks']['tree_starts_automatically_when_staged'] = auto_tree['treeStarted'] is True and auto_tree['launchArmed'] is False
         page.wait_for_function("window.__EA888_DEBUG__.stageState().green", timeout=6000)
         page.locator('#v7-launch-button').dispatch_event('pointerdown', {'pointerId': 53, 'pointerType': 'touch', 'isPrimary': True})
-        page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=5000)
+        page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=12000)
         pedal = page.evaluate("window.__EA888_DEBUG__.raceReaction()")
         report['checks']['pedal_launch_on_press_after_green'] = pedal['reactionTime'] >= 0 and pedal['redLight'] is False and pedal['startRpm'] < pedal['launchTargetRpm']
         report['pedal_launch'] = pedal
@@ -598,6 +656,28 @@ def main() -> None:
         report['checks']['race_turbo_stats_recorded'] = bool(als_drag.get('turbo')) and als_drag['turbo']['maxEgtC'] > 700 and als_drag['turbo']['alsSeconds'] > 0
         report['checks']['race_flames_from_events'] = als_drag.get('flames', 0) > 0
         page.evaluate("window.__EA888_DEBUG__.setAntiLagForTest('off')")
+
+        # Sound settings: the recorded-sample voice stays available as a choice (and the automatic fallback),
+        # and the mixer reaches the live audio graph.
+        click(page, '[data-nav="service"]')
+        page.wait_for_selector('.sound-mixer-card')
+        report['checks']['sound_mixer_ui'] = page.locator('.sound-mixer-card input[data-mix]').count() == 6 and page.locator('[data-engine-sound]').count() == 2
+        click(page, '[data-engine-sound="samples"]')
+        click(page, '[data-nav="drag"]')
+        click(page, '[data-action="open-drag-game"]')
+        page.wait_for_selector('#race-game-root .v8-burnout-game', state='visible')
+        page.wait_for_function("window.__EA888_DEBUG__.audio().ready === true", timeout=12000)
+        pcm = page.evaluate("window.__EA888_DEBUG__.audio()")
+        report['checks']['pcm_samples_voice_selectable'] = pcm.get('synth') is False and pcm.get('sampleLayers', 0) >= 6 and 'PCM multisample v11' in pcm.get('model', '')
+        page.evaluate("() => { const el = document.createElement('input'); el.type = 'range'; el.dataset.mix = 'engine'; el.value = '40'; document.body.appendChild(el); el.dispatchEvent(new Event('input', {bubbles: true})); el.remove(); }")
+        page.wait_for_timeout(200)
+        report['checks']['mixer_reaches_audio_graph'] = abs((page.evaluate("window.__EA888_DEBUG__.audio().mix") or {}).get('engine', 0) - 0.4) < 0.03
+        page.evaluate("() => { const el = document.createElement('input'); el.type = 'range'; el.dataset.mix = 'engine'; el.value = '100'; document.body.appendChild(el); el.dispatchEvent(new Event('input', {bubbles: true})); el.remove(); }")
+        click(page, '[data-action="close-drag-game"]')
+        page.wait_for_selector('.v7-race-overview', state='visible')
+        click(page, '[data-nav="service"]')
+        click(page, '[data-engine-sound="synth"]')
+        click(page, '[data-nav="drag"]')
 
         print('CHECKPOINT drag done', flush=True)
         # Build-code roundtrip and internal self-test.

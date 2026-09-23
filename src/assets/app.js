@@ -493,7 +493,9 @@
       gain.gain.exponentialRampToValueAtTime(Math.max(.0002, gainValue), t + .006);
       const duration = source.buffer.duration / source.playbackRate.value;
       gain.gain.exponentialRampToValueAtTime(.0001, t + Math.max(.04, duration - .015));
-      source.connect(gain).connect(audio.transientBus);
+      // ALS bangs/crackle on the ALS channel, the blow-off valve on the turbo channel, the rest on the engine
+      const bus = name.startsWith('als_') ? audio.transientBus : name === 'blowoff' ? audio.mix?.turbo : audio.engineFx;
+      source.connect(gain).connect(bus || audio.transientBus);
       audio.oneShots = audio.oneShots || new Set();
       audio.oneShots.add(source);
       source.onended = () => {
@@ -504,6 +506,155 @@
       source.stop(t + duration + .04);
       return source;
     } catch (e) { return null; }
+  }
+
+  // ---- Mixer, acoustics and the synthesized engine voice --------------------------------------------
+  const MIX_CHANNELS = ['engine', 'turbo', 'als', 'tyre', 'rival', 'ui'];
+  function mixLevel(name) {
+    const v = Number(state.settings?.mix?.[name]);
+    return Number.isFinite(v) ? clamp(v, 0, 150) / 100 : 1;
+  }
+  function applyMix(audio = engineAudio) {
+    if (!audio?.mix || audio.ctx?.state === 'closed') return;
+    const t = audio.ctx.currentTime;
+    for (const name of MIX_CHANNELS) audio.mix[name]?.gain.setTargetAtTime(mixLevel(name), t, .03);
+  }
+  // Where the sound is heard: the garage (small concrete workshop), the dyno cell (absorptive test cell,
+  // nearly dry) or the strip (open air: a ground bounce, then the pit wall and the grandstand as distinct
+  // echoes). The impulse responses are generated here from those geometries, no recorded rooms.
+  const ACOUSTICS = Object.freeze({
+    garage: { lenS: 1.1, rt60: .85, wet: .5, lpHz: 5200, diffuse: .3, taps: [[.0062, .46], [.0105, .36], [.0148, .3], [.0213, .24], [.0287, .19], [.0342, .15]] },
+    dyno: { lenS: .5, rt60: .26, wet: .22, lpHz: 7000, diffuse: .11, taps: [[.0041, .22], [.0093, .1]] },
+    // ground bounce 2.5 ms, pit wall ~8.5 m (50 ms round trip), grandstand ~40 m (235 ms) and its second pass
+    strip: { lenS: 1.3, rt60: .32, wet: .42, lpHz: 3800, diffuse: .05, taps: [[.0025, .42], [.051, .26], [.236, .18], [.412, .07]] }
+  });
+  function acousticScene() {
+    if (dynoRunning || activeTab === 'dyno') return 'dyno';
+    if (raceGame?.open || burnoutRuntime?.active || dragAnimation) return 'strip';
+    return 'garage';
+  }
+  function makeImpulse(ctx, name) {
+    const a = ACOUSTICS[name] || ACOUSTICS.garage, sr = ctx.sampleRate;
+    const n = Math.round(a.lenS * sr), ir = ctx.createBuffer(2, n, sr);
+    let seed = 7919 * name.length + 17;
+    const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296 * 2 - 1; };
+    const k = Math.exp(-2 * Math.PI * a.lpHz / sr), norm = Math.sqrt((1 + k) / (1 - k));
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      let lp = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i / sr, x = rnd();
+        lp = x + (lp - x) * k;
+        // diffuse tail: -60 dB after rt60, building up over the first 4 ms
+        d[i] = lp * norm * a.diffuse * Math.exp(-6.91 * t / a.rt60) * Math.min(1, t / .004) * .25;
+      }
+      // discrete reflections: later (farther) ones are smeared and duller; left/right arrive slightly apart
+      for (const [time, gain] of a.taps) {
+        const at = Math.round((time + (ch ? .0003 : -.0002) * (1 + time * 20)) * sr), w = 1 + Math.round(time * 90);
+        for (let j = 0; j < w; j++) if (at + j < n && at + j >= 0) d[at + j] += gain * (ch ? .94 : 1) / w * (1 - j / (w + 1)) * 2;
+      }
+    }
+    return ir;
+  }
+  function applyScene(audio, name) {
+    if (!audio?.convolver || audio.scene === name || audio.ctx.state === 'closed') return;
+    audio.scene = name;
+    const t = audio.ctx.currentTime;
+    audio.wet.gain.cancelScheduledValues(t);
+    audio.wet.gain.setTargetAtTime(.0001, t, .012);
+    // swap the room while its return is muted (a convolver buffer change would click)
+    setTimeout(() => {
+      if (engineAudio !== audio || audio.ctx.state === 'closed' || audio.scene !== name) return;
+      try {
+        audio.impulses[name] = audio.impulses[name] || makeImpulse(audio.ctx, name);
+        audio.convolver.buffer = audio.impulses[name];
+        audio.wet.gain.setTargetAtTime(ACOUSTICS[name].wet, audio.ctx.currentTime, .06);
+      } catch (e) {}
+    }, 60);
+  }
+  function limiterCutKind() { return C.antiLagCapability(state).flatShift ? 'spark' : 'fuel'; }
+  // Audible knock: a knock index of 1.0 means the end gas auto-ignites before the flame front arrives;
+  // with cycle-to-cycle variation single cycles start to knock from about 0.9.
+  function audibleKnock(index) { return clamp((Number(index) - .9) / .35, 0, 1); }
+  // Two-step with the pedal floored: roughly 70 % of the events are cut to hold the unloaded engine at
+  // the launch rpm; the rest (with retarded ignition) just overcomes friction and pumping.
+  const TWO_STEP_CUT = .7;
+  const fin = v => typeof v === 'number' && Number.isFinite(v);
+  function synthParams(audio, extras) {
+    const x = extras || {};
+    const rpm = audio.lastRpm;
+    let cutFraction = fin(x.cutFraction) ? clamp(x.cutFraction, 0, 1) : 0;
+    let cutKind = x.cutKind || limiterCutKind();
+    let retardDeg = fin(x.retardDeg) ? Math.max(0, x.retardDeg) : 0;
+    if (x.alsActive) {
+      // ALS: the simulated bang rate is the firing frequency times the share of cut (misfired) events
+      if (Number(x.popRateHz) > 0) cutFraction = Math.max(cutFraction, clamp(x.popRateHz / Math.max(1, rpm / 30), 0, 1));
+      cutKind = 'spark';
+      retardDeg = Math.max(retardDeg, Number(C.resolveAntiLag(state).params?.retardDeg || 0));
+    } else if (x.twoStep) {
+      cutFraction = Math.max(cutFraction, TWO_STEP_CUT); cutKind = limiterCutKind(); retardDeg = Math.max(retardDeg, 10);
+    }
+    return {
+      rpm, load: audio.lastLoad, mapBar: fin(x.mapBar) ? x.mapBar : NaN, boostBar: Math.max(0, Number(x.boostBar) || 0),
+      egtC: fin(x.egtC) && x.egtC > 0 ? x.egtC : NaN, wastegatePct: fin(x.wastegatePct) ? x.wastegatePct : NaN,
+      knock: clamp(Number(x.knock) || 0, 0, 1), alsActive: !!x.alsActive, retardDeg, lambda: fin(x.lambda) && x.lambda > 0 ? x.lambda : 1,
+      cutFraction, cutKind, exhaust: state.selections?.exhaust || 'oem_exhaust', boreMm: audio.boreMm, running: true
+    };
+  }
+  function engineWorkletSupported(ctx) {
+    return !!(ctx?.audioWorklet && typeof AudioWorkletNode === 'function' && window.EA888EngineVoice?.moduleSource && state.settings?.engineSound !== 'samples');
+  }
+  function loadEngineWorklet(ctx) {
+    if (!engineWorkletSupported(ctx)) return Promise.resolve(false);
+    let url = '';
+    try { url = URL.createObjectURL(new Blob([window.EA888EngineVoice.moduleSource()], { type: 'application/javascript' })); } catch (e) { return Promise.resolve(false); }
+    return ctx.audioWorklet.addModule(url).then(() => true, error => { console.warn('EA888 engine worklet unavailable, using samples:', error?.message || error); return false; })
+      .finally(() => { try { URL.revokeObjectURL(url); } catch (e) {} });
+  }
+  function createEngineVoiceNode(ctx, seed, params) {
+    return new AudioWorkletNode(ctx, 'ea888-engine', { numberOfInputs: 0, numberOfOutputs: 3, outputChannelCount: [1, 1, 1], processorOptions: { seed, params } });
+  }
+  function createRivalVoice(audio, profile) {
+    try {
+      let exhaust = 'race_3';
+      try { exhaust = rivalState(profile).selections.exhaust || exhaust; } catch (e) {}
+      const ctx = audio.ctx;
+      const node = createEngineVoiceNode(ctx, 991, { exhaust, rpm: 900, load: .1 });
+      const sum = ctx.createGain(); sum.gain.value = 1;
+      node.connect(sum, 0); node.connect(sum, 1); node.connect(sum, 2);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6000; lp.Q.value = .5;
+      const gain = ctx.createGain(); gain.gain.value = .0001;
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      sum.connect(lp).connect(gain);
+      if (pan) gain.connect(pan).connect(audio.mix.rival); else gain.connect(audio.mix.rival);
+      return { node, sum, lp, gain, pan, exhaust, profileId: profile.id };
+    } catch (e) { return null; }
+  }
+  // The rival's own engine (same voice, its own build and exhaust), placed where it is on the strip:
+  // the listener rides with the chase camera ~8 m behind the player; the rival runs in the lane 4.3 m right.
+  function updateRivalAudio(run) {
+    const audio = engineAudio;
+    if (!audio?.synth || !audio.active || !run?.opponent || audio.ctx.state === 'closed') return;
+    if (audio.rival && audio.rival.profileId !== run.opponent.profile.id) {
+      try { audio.rival.node.port.postMessage({ type: 'stop' }); audio.rival.node.disconnect(); audio.rival.gain.disconnect(); } catch (e) {}
+      audio.rival = null;
+    }
+    if (!audio.rival) audio.rival = createRivalVoice(audio, run.opponent.profile);
+    const r = audio.rival;
+    if (!r) return;
+    const cur = run.opponent.current || {};
+    const drive = run.t + run.reactionTime - run.opponent.reactionTime - (run.opponent.startOffset || 0);
+    const staged = drive <= 0, done = !!run.opponent.finished;
+    r.node.port.postMessage({ type: 'set', p: {
+      rpm: staged ? 4000 : Number(cur.rpm || 900), load: staged ? .8 : done ? .05 : 1, boostBar: Math.max(0, Number(cur.boostBar) || 0),
+      cutFraction: staged ? TWO_STEP_CUT : 0, cutKind: 'spark', retardDeg: staged ? 10 : 0, exhaust: r.exhaust, running: true
+    } });
+    const dx = 4.3 - Number(run.lateralM || 0), dz = Number(run.opponentGapM || 0) + 8.2;
+    const d = Math.max(1.5, Math.hypot(dx, dz)), t = audio.ctx.currentTime;
+    r.pan?.pan.setTargetAtTime(clamp(dx / d * 1.25, -1, 1), t, .05);
+    r.gain.gain.setTargetAtTime(clamp(8 / d, .02, 1) * .75, t, .05);  // spherical spreading (1/r)
+    r.lp.frequency.setTargetAtTime(clamp(14000 / (1 + d / 30), 700, 12000), t, .08); // air absorption / masking
+    audio.rivalDistanceM = d;
   }
 
   function applySampledAudio(audio, rpm, load, wheelSlip, extras = null) {
@@ -518,6 +669,13 @@
     const boundedRpm = audio.lastRpm;
     const boundedLoad = audio.lastLoad;
     const slip = audio.lastSlip;
+    const activeGain = audio.active ? 1 : 0;
+    applyScene(audio, acousticScene());
+    const alsHarsh = extras?.alsActive ? clamp(.35 + Number(extras.alsIntensity || 0) * .65, 0, 1) : 0;
+    if (audio.synth) {
+      // The voice builds the note, the limiter, cuts, knock and afterfire from these simulation values.
+      if (audio.active) audio.synth.node.port.postMessage({ type: 'set', p: synthParams(audio, extras) });
+    } else {
     const anchors = audio.layers.map(layer => layer.rpm);
     let lower = 0;
     while (lower < anchors.length - 1 && anchors[lower + 1] <= boundedRpm) lower++;
@@ -526,7 +684,6 @@
     const b = anchors[upper];
     const mix = a === b ? 0 : clamp((boundedRpm - a) / (b - a), 0, 1);
     const smooth = mix * mix * (3 - 2 * mix);
-    const activeGain = audio.active ? 1 : 0;
     const loadGain = .18 + Math.pow(clamp(boundedLoad, 0, 1), .72) * .82;
 
     audio.layers.forEach((layer, index) => {
@@ -546,8 +703,8 @@
     audio.bodyEq.gain.setTargetAtTime(6.5 - boundedRpm / 2800 + boundedLoad * 2.2, t, .07);
     audio.raspEq.frequency.setTargetAtTime(760 + boundedRpm * .12, t, .055);
     // ALS makes the note harsher: more rasp and a more open exhaust while it fires.
-    const alsHarsh = extras?.alsActive ? clamp(.35 + Number(extras.alsIntensity || 0) * .65, 0, 1) : 0;
     audio.raspEq.gain.setTargetAtTime(-1 + boundedLoad * 4.4 + Math.max(0, boundedRpm - 4500) / 1700 + alsHarsh * 6.5, t, .06);
+    }
 
     if (audio.turboSource) {
       // With a turbo runtime the whine follows the simulated shaft speed; otherwise rpm/load.
@@ -559,7 +716,7 @@
       audio.turboFilter.frequency.setTargetAtTime(hasShaft ? 1200 + extras.shaftPct * 42 : 1450 + boundedRpm * .48, t, .04);
     }
     // Two-step launch limiter: its own stutter one-shot (separate from the rev limiter).
-    if (extras?.twoStep && !extras.alsActive) {
+    if (!audio.synth && extras?.twoStep && !extras.alsActive) {
       const nowTs = performance.now();
       if (nowTs - (audio.lastTwoStepMs || 0) > 380) {
         audio.lastTwoStepMs = nowTs;
@@ -570,7 +727,7 @@
     // The misfire/retard pattern is irregular, so the spacing is jittered and the variant changes per bang;
     // an occasional heavier bang comes from a larger unburnt charge. The crackle bed carries the after-burn
     // in between and follows the sustained-flame strength.
-    const alsOn = !!extras?.alsActive && Number(extras.popRateHz) > 0;
+    const alsOn = !audio.synth && !!extras?.alsActive && Number(extras.popRateHz) > 0;
     if (audio.alsBedGain) {
       const sustain = alsOn ? clamp(Number(extras.flameSustain || 0), 0, 1) : 0;
       audio.alsBedGain.gain.setTargetAtTime(activeGain * (alsOn ? .05 + sustain * .45 : 0) + .0001, t, alsOn ? .03 : .06);
@@ -601,13 +758,14 @@
       audio.tyreGain.gain.setTargetAtTime(activeGain * Math.pow(slip, .72) * (.12 + boundedLoad * .19) + .0001, t, .03);
     }
 
-    const output = activeGain * (.36 + boundedLoad * .30 + slip * .035);
+    // Samples: loudness follows load by gain; the synthesized voice is loud or quiet by its own physics.
+    const output = audio.synth ? activeGain * .6 : activeGain * (.36 + boundedLoad * .30 + slip * .035);
     audio.master.gain.setTargetAtTime(output + .0001, t, .025);
 
     // The limiter is now a real sampled cut/stutter instead of a text-only cue.
     const limit = Number(state?.tune?.revLimitRpm || 8000);
     const nowMs = performance.now();
-    if (boundedLoad > .58 && boundedRpm >= limit - 75 && nowMs - audio.lastLimiterMs > 470) {
+    if (!audio.synth && boundedLoad > .58 && boundedRpm >= limit - 75 && nowMs - audio.lastLimiterMs > 470) {
       playSampleOneShot(audio, 'limiter', .34 + boundedLoad * .12, .96 + Math.random() * .05);
       audio.lastLimiterMs = nowMs;
       audio.engineBusGain.gain.cancelScheduledValues(t);
@@ -623,6 +781,7 @@
       engineAudio.mode = mode;
       engineAudio.active = true;
       try { if (engineAudio.ctx.state !== 'running') engineAudio.ctx.resume(); } catch (e) {}
+      applyScene(engineAudio, acousticScene());
       return engineAudio;
     }
     try {
@@ -640,6 +799,16 @@
       const master = ctx.createGain();
       master.gain.value = .0001;
       master.connect(compressor);
+      // Room: everything the car makes goes dry plus through the scene's impulse response.
+      const sceneIn = ctx.createGain(); sceneIn.gain.value = 1;
+      const dry = ctx.createGain(); dry.gain.value = 1;
+      const wet = ctx.createGain(); wet.gain.value = .0001;
+      const convolver = ctx.createConvolver();
+      sceneIn.connect(dry).connect(master);
+      sceneIn.connect(convolver).connect(wet).connect(master);
+      // Mixer channels (settings): engine, turbo, ALS/afterfire, tyres, rival, UI.
+      const mix = {};
+      for (const name of MIX_CHANNELS) { mix[name] = ctx.createGain(); mix[name].gain.value = mixLevel(name); mix[name].connect(name === 'ui' ? master : sceneIn); }
 
       const engineBusGain = ctx.createGain();
       engineBusGain.gain.value = 1;
@@ -649,21 +818,23 @@
       bodyEq.type = 'peaking'; bodyEq.frequency.value = 118; bodyEq.Q.value = 1.05; bodyEq.gain.value = 7;
       const raspEq = ctx.createBiquadFilter();
       raspEq.type = 'peaking'; raspEq.frequency.value = 1250; raspEq.Q.value = .85; raspEq.gain.value = 2;
-      engineBusGain.connect(engineLowpass).connect(bodyEq).connect(raspEq).connect(master);
+      engineBusGain.connect(engineLowpass).connect(bodyEq).connect(raspEq).connect(mix.engine);
 
       const turboFilter = ctx.createBiquadFilter();
       turboFilter.type = 'bandpass'; turboFilter.frequency.value = 2500; turboFilter.Q.value = 2.7;
       const turboGain = ctx.createGain(); turboGain.gain.value = .0001;
-      turboFilter.connect(turboGain).connect(master);
+      turboFilter.connect(turboGain).connect(mix.turbo);
 
       const tyreFilter = ctx.createBiquadFilter();
       tyreFilter.type = 'bandpass'; tyreFilter.frequency.value = 1350; tyreFilter.Q.value = .9;
       const tyreGain = ctx.createGain(); tyreGain.gain.value = .0001;
-      tyreFilter.connect(tyreGain).connect(master);
+      tyreFilter.connect(tyreGain).connect(mix.tyre);
 
       const transientBus = ctx.createGain();
       transientBus.gain.value = .78;
-      transientBus.connect(master);
+      transientBus.connect(mix.als);
+      // engine one-shots of the sample fallback (limiter, launch, shift) sit on the engine channel
+      const engineFx = ctx.createGain(); engineFx.gain.value = .78; engineFx.connect(mix.engine);
       // ALS after-burn crackle bed (loop); its level follows the simulated sustained flame.
       const alsBedGain = ctx.createGain(); alsBedGain.gain.value = .0001;
       alsBedGain.connect(transientBus);
@@ -671,17 +842,36 @@
       engineAudioGeneration += 1;
       const audio = engineAudio = {
         ctx, compressor, master, engineBusGain, engineLowpass, bodyEq, raspEq,
-        turboFilter, turboGain, tyreFilter, tyreGain, transientBus, alsBedGain,
+        turboFilter, turboGain, tyreFilter, tyreGain, transientBus, engineFx, alsBedGain,
+        sceneIn, dry, wet, convolver, impulses: {}, scene: '', mix,
         layers: [], turboSource: null, tyreSource: null, alsBedSource: null, buffers: null, oneShots: new Set(),
+        synth: null, rival: null, synthStats: null,
+        boreMm: Number(C.engineGeometry(state)?.boreMm || 82.5),
         mode, active: true, ready: false, loading: true,
         generation: engineAudioGeneration, lastRpm: 900, lastLoad: .12, lastSlip: 0,
         lastLimiterMs: 0, model: 'EA888 PCM multisample v11'
       };
+      applyScene(audio, acousticScene());
 
-      audio.readyPromise = decodeSampleBank(ctx).then(buffers => {
+      audio.readyPromise = Promise.all([decodeSampleBank(ctx), loadEngineWorklet(ctx)]).then(([buffers, worklet]) => {
         if (engineAudio !== audio || ctx.state === 'closed') return audio;
         audio.buffers = buffers;
-        audio.layers = Object.entries(buffers)
+        if (worklet) {
+          try {
+            // Synthesized voice: exhaust and afterfire on their own mixer channels, the engine bay
+            // (intake, injectors, valvetrain, knock) a little under the exhaust.
+            const node = createEngineVoiceNode(ctx, 1 + (audio.generation % 97), synthParams(audio, null));
+            const exh = ctx.createGain(); exh.gain.value = .55;
+            const bay = ctx.createGain(); bay.gain.value = .45;
+            const pops = ctx.createGain(); pops.gain.value = .6;
+            node.connect(exh, 0); node.connect(bay, 1); node.connect(pops, 2);
+            exh.connect(mix.engine); bay.connect(mix.engine); pops.connect(mix.als);
+            node.port.onmessage = ev => { if (ev.data?.type === 'stats') audio.synthStats = ev.data.stats; };
+            audio.synth = { node, exh, bay, pops };
+            audio.model = 'EA888 combustion synth v1 (AudioWorklet)';
+          } catch (error) { audio.synth = null; console.warn('EA888 engine voice failed, using samples:', error?.message || error); }
+        }
+        if (!audio.synth) audio.layers = Object.entries(buffers)
           .filter(([name, meta]) => name.startsWith('engine_') && Number(meta.rpm))
           .sort((a, b) => Number(a[1].rpm) - Number(b[1].rpm))
           .map(([name, meta]) => {
@@ -691,9 +881,9 @@
           });
         if (buffers.turbo?.buffer) audio.turboSource = startLoopSource(ctx, buffers.turbo.buffer, turboFilter, .8);
         if (buffers.tyre?.buffer) audio.tyreSource = startLoopSource(ctx, buffers.tyre.buffer, tyreFilter, 1);
-        if (buffers.als_crackle?.buffer) audio.alsBedSource = startLoopSource(ctx, buffers.als_crackle.buffer, alsBedGain, 1);
+        if (!audio.synth && buffers.als_crackle?.buffer) audio.alsBedSource = startLoopSource(ctx, buffers.als_crackle.buffer, alsBedGain, 1);
         audio.ready = true; audio.loading = false;
-        applySampledAudio(audio, audio.lastRpm, audio.lastLoad, audio.lastSlip);
+        applySampledAudio(audio, audio.lastRpm, audio.lastLoad, audio.lastSlip, audio.lastExtras);
         return audio;
       }).catch(error => {
         audio.loading = false;
@@ -740,6 +930,14 @@
     const t = audio.ctx.currentTime;
     const fire = () => {
       if (!audio.ready) return;
+      if (audio.synth) {
+        // DSG: the ECU cuts the ignition of about every other event while the clutches hand over (the
+        // "burp" is that unburnt charge going off in the exhaust). Manual shifts are the throttle lift and
+        // cut the race runtime reports; only the blow-off valve is a sample.
+        if (dsg) audio.synth.node.port.postMessage({ type: 'cut', kind: 'spark', fraction: .5, durationS: .085 });
+        playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
+        return;
+      }
       const name = dsg ? 'shift_dsg' : 'shift_manual';
       playSampleOneShot(audio, name, (dsg ? .48 : .40) * clamp(intensity, .2, 1.3), dsg ? .98 : 1.02);
       playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
@@ -754,7 +952,8 @@
   function playLaunchCrackle(intensity = .7) {
     if (!state.settings?.sound) return;
     const audio = ensureEngineAudio('stage');
-    const fire = () => playSampleOneShot(audio, 'launch', .36 * clamp(intensity, .2, 1.2), .97 + intensity * .04);
+    // The synthesized voice makes the launch from the two-step cut itself; the sample is the fallback.
+    const fire = () => { if (!audio?.synth) playSampleOneShot(audio, 'launch', .36 * clamp(intensity, .2, 1.2), .97 + intensity * .04); };
     if (audio?.ready) fire(); else audio?.readyPromise?.then(fire);
   }
 
@@ -774,6 +973,7 @@
     mute(audio.turboGain?.gain);
     mute(audio.tyreGain?.gain);
     mute(audio.alsBedGain?.gain);
+    mute(audio.rival?.gain?.gain);
     for (const layer of audio.layers || []) mute(layer.gain?.gain);
   }
 
@@ -801,6 +1001,11 @@
     // finish can therefore never wake the last race sound back up.
     if (engineAudio === audio) engineAudio = null;
     if (decodedAudioBankPromise?.ctx === audio.ctx) decodedAudioBankPromise = null;
+    for (const v of [audio.synth, audio.rival]) {
+      if (!v?.node) continue;
+      try { v.node.port.postMessage({ type: 'stop' }); v.node.port.onmessage = null; v.node.disconnect(); } catch (e) {}
+    }
+    audio.synth = null; audio.rival = null;
     try {
       for (const layer of audio.layers || []) { layer.source.onended = null; layer.source.stop(); layer.source.disconnect(); }
       audio.turboSource?.stop(); audio.tyreSource?.stop(); audio.alsBedSource?.stop();
@@ -860,6 +1065,14 @@
       masterGain: Number(engineAudio?.master?.gain?.value || 0),
       alsBedGain: Number(engineAudio?.alsBedGain?.gain?.value || 0),
       sceneMode: currentAudioSceneMode() || 'none',
+      synth: !!engineAudio?.synth,
+      synthStats: engineAudio?.synthStats || null,
+      acoustic: engineAudio?.scene || 'none',
+      reverbWet: Number(engineAudio?.wet?.gain?.value || 0),
+      rival: !!engineAudio?.rival,
+      rivalGain: Number(engineAudio?.rival?.gain?.gain?.value || 0),
+      rivalPan: Number(engineAudio?.rival?.pan?.pan?.value || 0),
+      mix: engineAudio?.mix ? Object.fromEntries(MIX_CHANNELS.map(n => [n, Number(engineAudio.mix[n].gain.value.toFixed(3))])) : null,
       lastRpm: Math.round(engineAudio?.lastRpm || 0)
     };
   }
@@ -2495,7 +2708,9 @@
         dynoRunning.shown = idx;
         const point = samples[idx];
         drawDynoChart($('#dyno-chart'), dynoRunning.result, samples.length > 1 ? idx / (samples.length - 1) : 1, false, dynoChannel, null);
-        updateEngineAudio(point.rpm, point.turboLoadPct / 100);
+        // the measured sample drives the voice: MAP, EGT, lambda, wastegate, retard from MBT and knock
+        updateEngineAudio(point.rpm, point.turboLoadPct / 100, 0, { mapBar: point.mapBarAbs, boostBar: point.boostBar, egtC: point.egtC, lambda: point.lambda,
+          wastegatePct: point.wastegatePct, retardDeg: Math.max(0, Number(point.mbtDeg) - Number(point.sparkDeg)) || 0, knock: audibleKnock(point.knockIndex), shaftPct: point.shaftSpeedPct });
         const set = (id, value) => { const n = $(id); if (n) n.innerHTML = value; };
         set('#live-rpm', Math.round(point.rpm));
         set('#live-boost', `${num(point.boostBar,2)}<small> bar</small>`);
@@ -3746,7 +3961,7 @@
         emitExhaustFlame($('#ea-stage-flames'), C.exhaustFlameEvent({ kind: '2step', egtC: snap.egtC, fuelGps: snap.fuelGps, cutS: .06, unburntFraction: C.antiLagCapability(state).flatShift ? .6 : .05, severity: .45 }));
       }
     }
-    updateEngineAudio(s.rpm, twoStep ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, twoStep } : null);
+    updateEngineAudio(s.rpm, twoStep ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, twoStep } : { twoStep });
     updateV7StageDom();
   }
 
@@ -4298,7 +4513,13 @@
     const egtNode = $('#v13-run-egt'); if (egtNode && snap) egtNode.textContent = `${Math.round(snap.egtC)}°C`;
     const shaftNode = $('#v13-run-shaft'); if (shaftNode && snap) shaftNode.textContent = `${Math.round(snap.shaftPct)}%${snap.alsActive ? ' ALS' : ''}`;
     const load = run.shifting ? .15 : 1;
-    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz } : null);
+    // Cuts come from the vehicle runtime: the rev limiter, and the ignition cut of a flat/dog shift.
+    const pt = run.point || {};
+    const shiftCut = pt.shifting && !run.autoShift && (run.flatShift || selectedTransmissionId() === 'sequential');
+    const cutFraction = pt.limiter ? 1 : shiftCut ? 1 : 0;
+    const cutKind = pt.limiter ? limiterCutKind() : 'spark';
+    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind } : { cutFraction, cutKind });
+    updateRivalAudio(run);
     if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
   }
 
@@ -4742,7 +4963,7 @@
     startEngineAudio('race');
     if(!engineAudio)return;
     try{
-      const {ctx,master}=engineAudio;const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='square';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(gainValue,ctx.currentTime+.008);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);osc.connect(gain).connect(master);engineAudio.oneShots=engineAudio.oneShots||new Set();engineAudio.oneShots.add(osc);osc.onended=()=>{engineAudio?.oneShots?.delete(osc);try{osc.disconnect();gain.disconnect();}catch(e){}};osc.start();osc.stop(ctx.currentTime+duration+.02);
+      const {ctx,master}=engineAudio;const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='square';osc.frequency.value=frequency;gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(gainValue,ctx.currentTime+.008);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);osc.connect(gain).connect(engineAudio.mix?.ui||master);engineAudio.oneShots=engineAudio.oneShots||new Set();engineAudio.oneShots.add(osc);osc.onended=()=>{engineAudio?.oneShots?.delete(osc);try{osc.disconnect();gain.disconnect();}catch(e){}};osc.start();osc.stop(ctx.currentTime+duration+.02);
     }catch(e){}
   }
 
@@ -4815,6 +5036,19 @@
         ${switchRow('haptics', 'Trillingsfeedback', 'Trilling bij schakelen, tree-lampen, fouten en dynostart.', 'settings')}
         ${switchRow('reducedMotion', 'Minder animatie', 'Versnelt dyno- en raceanimaties en beperkt beweging.', 'settings')}
         ${switchRow('graphics3d', '3D-racebeeld', window.EA888Race3D?.supported?.() ? 'Realtime 3D-baan met je Scirocco, rook en vlammen. Uit = de lichtere 2D-weergave.' : 'Niet beschikbaar: dit toestel ondersteunt geen WebGL.', 'settings')}
+      </div>
+      <div class="card settings-card sound-mixer-card">
+        <span class="eyebrow">Geluid</span><h2>Motorgeluid & mixer</h2>
+        <div class="segment-control engine-sound-mode" role="group" aria-label="Soort motorgeluid">
+          <button class="${state.settings.engineSound !== 'samples' ? 'active' : ''}" data-engine-sound="synth">Synthese</button>
+          <button class="${state.settings.engineSound === 'samples' ? 'active' : ''}" data-engine-sound="samples">Opnames</button>
+        </div>
+        <p class="muted small-copy">${state.settings.engineSound === 'samples'
+          ? 'Eerdere opname-lagen per toerental. Werkt ook op toestellen zonder AudioWorklet.'
+          : 'Elke verbrandingsslag (1-3-4-2) wordt live opgebouwd: uitlaatpulsen door jouw uitlaat, cuts van limiter, two-step en schakelen, knock en naverbranding. Zonder AudioWorklet valt de app terug op opnames.'}</p>
+        <div class="mixer-grid">
+          ${[['engine','Motor & uitlaat'],['turbo','Turbo & blow-off'],['als','Anti-lag & knallen'],['tyre','Banden'],['rival','Rivaal'],['ui','Interface']].map(([k, label]) => slider(k, label, 0, 150, 5, Number(state.settings.mix?.[k] ?? 100), '%', 0, '', 'mix')).join('')}
+        </div>
       </div>
     </section>`;
   }
@@ -5265,6 +5499,11 @@
     if (btn.dataset.engineView) { engineView = btn.dataset.engineView; haptic(6); return render(); }
     if (btn.dataset.tunePanel) { tunePanel = btn.dataset.tunePanel; haptic(6); return render(); }
     if (btn.dataset.careerEnter) return careerEnter(btn.dataset.careerEnter);
+    if (btn.dataset.engineSound) {
+      state.settings.engineSound = btn.dataset.engineSound === 'samples' ? 'samples' : 'synth';
+      stopEngineAudio({ hard: true }); // the next sound start builds the chosen engine voice
+      saveState(); haptic(6); return render();
+    }
     if (btn.dataset.dynoCorrection) {
       const announce = offerUndo([['dynoConfig', 'correction']], `Correctienorm → ${C.DYNO_CORRECTIONS[btn.dataset.dynoCorrection]?.label || ''}`);
       state.dynoConfig.correction = btn.dataset.dynoCorrection; saveState(); haptic(6); render(); return announce();
@@ -5454,6 +5693,12 @@
       const out = $('[data-value-for="career.dialIn"]'); if (out) out.textContent = `${state.career.active.dialIn.toFixed(2)} s`;
       saveState();
       return;
+    }
+    if (el.dataset.mix) {
+      state.settings.mix = { engine: 100, turbo: 100, als: 100, tyre: 100, rival: 100, ui: 100, ...(state.settings.mix || {}), [el.dataset.mix]: Number(el.value) };
+      const out = $(`[data-value-for="mix.${el.dataset.mix}"]`);
+      if (out) out.textContent = `${Math.round(Number(el.value))}%`;
+      applyMix(); saveState(); return;
     }
     if (el.dataset.dynoConfig) {
       state.dynoConfig[el.dataset.dynoConfig] = Number(el.value);

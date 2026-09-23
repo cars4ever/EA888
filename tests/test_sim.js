@@ -185,6 +185,8 @@ const engineSuite = require('./test_engine.js');
 const vehicleSuite = require('./test_vehicle.js');
 // Career events and bracket (dial-in) racing rules.
 const careerSuite = require('./test_career.js');
+// Engine voice: sound synthesized from the combustion events (firing order, cuts, afterfire, knock).
+const audioSuite = require('./test_audio.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -205,7 +207,8 @@ const report = {
   antiLag: antiLagSuite,
   engine: engineSuite,
   vehicle: vehicleSuite,
-  career: careerSuite
+  career: careerSuite,
+  audio: audioSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));
