@@ -4,7 +4,7 @@
   const C = window.EA888Core;
   const STORAGE_KEY = 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
-  const APP_VERSION = '1.3.2';
+  const APP_VERSION = '1.3.3';
 
   const NAV = [
     ['bank', 'garage', 'Garage'],

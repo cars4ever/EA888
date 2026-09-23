@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Patch the binary AndroidManifest.xml for EA888 Lab v1.3.2.
+"""Patch the binary AndroidManifest.xml for EA888 Lab v1.3.3.
 
 Besides package/version updates, the script repurposes the unused
 android:fullBackupContent slot as android:icon and points it at resource
@@ -232,6 +232,61 @@ def patch_icon(data: bytearray, pool: StringPool, icon_string_index: int) -> Non
         raise ValueError('application icon attribute slot not found')
 
 
+def sort_attributes(data: bytearray) -> int:
+    """Re-sort each element's attributes by framework resource ID, as aapt writes them.
+
+    The framework looks attributes up with a sorted merge over resource IDs. Repurposing the
+    fullBackupContent slot (0x01010473) as android:icon (0x01010002) left icon last in <application>,
+    so the launcher never found it and showed the default Android icon. Attributes without a resource
+    ID keep their relative order after the ones that have one."""
+    rmap: list[int] = []
+    for off, chunk_type, header_size, size in iter_chunks(data):
+        if chunk_type == RES_XML_RESOURCE_MAP_TYPE:
+            rmap = [u32(data, off + header_size + 4 * i) for i in range((size - header_size) // 4)]
+    moved = 0
+    for off, chunk_type, _header_size, _size in iter_chunks(data):
+        if chunk_type != RES_XML_START_ELEMENT_TYPE:
+            continue
+        ext = off + 16
+        attr_start, attr_size, attr_count = u16(data, ext + 8), u16(data, ext + 10), u16(data, ext + 12)
+        base = ext + attr_start
+        blocks = [bytes(data[base + i * attr_size: base + (i + 1) * attr_size]) for i in range(attr_count)]
+        def key(item):
+            i, block = item
+            name = struct.unpack_from('<I', block, 4)[0]
+            rid = rmap[name] if name < len(rmap) else 0
+            return (0, rid, i) if rid else (1, 0, i)
+        order = sorted(enumerate(blocks), key=key)
+        if [i for i, _ in order] == list(range(attr_count)):
+            continue
+        for new_pos, (_old, block) in enumerate(order):
+            data[base + new_pos * attr_size: base + (new_pos + 1) * attr_size] = block
+        # idIndex/classIndex/styleIndex are 1-based attribute positions (0 = none).
+        new_index = {old + 1: new + 1 for new, (old, _b) in enumerate(order)}
+        for field in (14, 16, 18):
+            v = u16(data, ext + field)
+            if v:
+                struct.pack_into('<H', data, ext + field, new_index[v])
+        moved += 1
+    return moved
+
+
+def verify_sorted(data: bytearray) -> None:
+    rmap: list[int] = []
+    for off, chunk_type, header_size, size in iter_chunks(data):
+        if chunk_type == RES_XML_RESOURCE_MAP_TYPE:
+            rmap = [u32(data, off + header_size + 4 * i) for i in range((size - header_size) // 4)]
+    for off, chunk_type, _h, _s in iter_chunks(data):
+        if chunk_type != RES_XML_START_ELEMENT_TYPE:
+            continue
+        ext = off + 16
+        attr_start, attr_size, attr_count = u16(data, ext + 8), u16(data, ext + 10), u16(data, ext + 12)
+        ids = [rmap[n] if n < len(rmap) else 0 for n in (u32(data, ext + attr_start + i * attr_size + 4) for i in range(attr_count))]
+        framework = [i for i in ids if i]
+        if framework != sorted(framework) or (0 in ids and any(ids[ids.index(0):])):
+            raise ValueError(f'attributes not sorted by resource id: {[hex(i) for i in ids]}')
+
+
 def verify_icon(data: bytearray, pool: StringPool) -> None:
     found = False
     for off, chunk_type, _header_size, _size in iter_chunks(data):
@@ -261,7 +316,7 @@ def main() -> None:
     pool = find_string_pool(data)
     replacements = [
         ('nl.randy.ea888lab.debug', 'nl.randy.ea888lab.stabl'),
-        ('0.1.1-debug', '1.3.2-debug'),
+        ('0.1.1-debug', '1.3.3-debug'),
         ('EA888 Lab', 'EA888 LAB'),
     ]
     for old, new in replacements:
@@ -276,7 +331,7 @@ def main() -> None:
     patch_icon(data, pool, icon_index)
 
     changes = patch_integer_attributes(data, pool, {
-        'versionCode': 132,
+        'versionCode': 133,
         'targetSdkVersion': 29,
     })
     for name, old, new in changes:
@@ -285,6 +340,8 @@ def main() -> None:
     if {'versionCode', 'targetSdkVersion'} - changed_names:
         raise ValueError(f'missing integer attributes: {sorted({"versionCode", "targetSdkVersion"} - changed_names)}')
 
+    print(f'sorted attributes in {sort_attributes(data)} element(s)')
+    verify_sorted(data)
     verify_icon(data, pool)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(data)

@@ -1,70 +1,102 @@
 #!/usr/bin/env python3
+"""Launcher icon: Randy's blue Scirocco from behind on the night strip.
+
+Full-bleed square (no transparent corners, no own frame): launchers mask legacy icons into their own shape
+(Samsung squircle, Pixel circle), so everything important sits inside the central ~80 % safe zone.
+Rendered at 1024 px and downsampled for clean edges.
+"""
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFilter, ImageEnhance, ImageChops
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / 'src' / 'assets' / 'images' / 'randy-scirocco-race-v10.png'
+SRC = ROOT / 'src' / 'assets' / 'images' / 'randy-scirocco-rear-photo.png'
 ASSET_OUT = ROOT / 'src' / 'assets' / 'images' / 'scirocco-app-icon.png'
 RES_OUT = ROOT / 'res' / 'mipmap' / 'app_icon.png'
+S = 1024
 
-size = 512
-src = Image.open(SRC).convert('RGBA')
-# Build a moody blurred track backdrop from the same scene.
-bg = src.convert('RGB').resize((size, size), Image.Resampling.LANCZOS)
-bg = bg.filter(ImageFilter.GaussianBlur(18))
-bg = ImageEnhance.Brightness(bg).enhance(0.38).convert('RGBA')
 
-# Radial-ish dark vignette.
-overlay = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-pix = overlay.load()
-cx = cy = size / 2
-for y in range(size):
-    for x in range(size):
-        dx = (x - cx) / cx
-        dy = (y - cy) / cy
-        r = min(1.0, (dx*dx + dy*dy) ** 0.5)
-        alpha = int(30 + 130 * (r ** 1.8))
-        pix[x, y] = (2, 6, 12, alpha)
-bg.alpha_composite(overlay)
+def radial(size, cx, cy, rx, ry, color, strength=1.0, power=1.6):
+    y, x = np.mgrid[0:size, 0:size].astype(float)
+    r = np.sqrt(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2)
+    a = np.clip(1 - r, 0, 1) ** power * strength
+    img = np.zeros((size, size, 4))
+    img[..., :3] = color
+    img[..., 3] = a * 255
+    return Image.fromarray(img.astype(np.uint8), 'RGBA')
 
-# Crop/scale the recognizable Scirocco rear so it reads at launcher size.
-car = src.copy()
-# Trim a little of the upper background while keeping the full car width.
-car = car.crop((0, 38, car.width, car.height))
-scale = min(468 / car.width, 352 / car.height)
-car = car.resize((round(car.width * scale), round(car.height * scale)), Image.Resampling.LANCZOS)
-# Soften the rectangular source edge with a rounded alpha mask.
-mask = Image.new('L', car.size, 0)
-md = ImageDraw.Draw(mask)
-md.rounded_rectangle((0, 0, car.width - 1, car.height - 1), radius=44, fill=255)
-mask = mask.filter(ImageFilter.GaussianBlur(1.2))
-car.putalpha(ImageChops.multiply(car.getchannel('A'), mask))
 
-# Ground glow behind the car.
-glow = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-gd = ImageDraw.Draw(glow)
-gd.ellipse((55, 285, 457, 486), fill=(0, 101, 255, 74))
-glow = glow.filter(ImageFilter.GaussianBlur(34))
-bg.alpha_composite(glow)
+def background():
+    y = np.linspace(0, 1, S)[:, None]
+    top, mid, bot = np.array([14, 30, 58]), np.array([7, 13, 26]), np.array([3, 5, 9])
+    col = np.where(y < .55, top + (mid - top) * (y / .55), mid + (bot - mid) * ((y - .55) / .45))
+    img = np.repeat(col[:, None, :], S, axis=1).reshape(S, S, 3)
+    bg = Image.fromarray(img.astype(np.uint8), 'RGB').convert('RGBA')
+    # Strip flood lights on the horizon, soft bokeh.
+    lights = Image.new('RGBA', (S, S))
+    d = ImageDraw.Draw(lights)
+    for i, x in enumerate(np.linspace(40, S - 40, 11)):
+        r = 10 + (i % 3) * 3
+        d.ellipse((x - r, 270 - r, x + r, 270 + r), fill=(255, 214, 140, 150))
+    bg.alpha_composite(lights.filter(ImageFilter.GaussianBlur(9)))
+    bg.alpha_composite(radial(S, S / 2, 270, 620, 120, (255, 170, 70), .35))
+    # Orange glow on the wet asphalt below the car.
+    bg.alpha_composite(radial(S, S / 2, 900, 520, 170, (255, 120, 20), .55))
+    return bg
 
-x = (size - car.width) // 2
-y = 112
-bg.alpha_composite(car, (x, y))
 
-# Premium EA888 orange ring and inner keyline.
-d = ImageDraw.Draw(bg)
-d.rounded_rectangle((12, 12, size - 13, size - 13), radius=106, outline=(255, 157, 24, 255), width=15)
-d.rounded_rectangle((31, 31, size - 32, size - 32), radius=90, outline=(255, 198, 84, 90), width=3)
+def car_layer():
+    car = Image.open(SRC).convert('RGBA')
+    arr = np.array(car).astype(float)
+    # Clean the cut-out edge: drop faint speckles, firm up the silhouette.
+    arr[..., 3] = np.clip((arr[..., 3] - 60) * 1.35, 0, 255)
+    car = Image.fromarray(arr.astype(np.uint8), 'RGBA').crop((16, 15, 957, 638))
+    # The cut-out still carries a light fringe from the original photo background: shrink the silhouette by
+    # a few pixels and darken what remains of the edge so it sits cleanly on the night background.
+    alpha = car.getchannel('A').filter(ImageFilter.MinFilter(7)).filter(ImageFilter.GaussianBlur(1.4))
+    edge = np.array(car.getchannel('A').filter(ImageFilter.MinFilter(15))).astype(float) / 255
+    rgbf = np.array(car.convert('RGB')).astype(float)
+    rgbf *= (0.55 + 0.45 * edge)[..., None]
+    car = Image.fromarray(rgbf.astype(np.uint8), 'RGB').convert('RGBA')
+    car.putalpha(alpha)
+    rgb = ImageEnhance.Contrast(car.convert('RGB')).enhance(1.12)
+    rgb = ImageEnhance.Color(rgb).enhance(1.18)
+    car = Image.merge('RGBA', (*rgb.split(), car.getchannel('A')))
+    w = 930
+    return car.resize((w, round(car.height * w / car.width)), Image.Resampling.LANCZOS)
 
-# Small orange road stripe at the bottom; no text so the icon stays clear.
-d.rounded_rectangle((126, 451, 386, 469), radius=9, fill=(255, 155, 20, 235))
-d.rounded_rectangle((191, 476, 321, 486), radius=5, fill=(225, 234, 243, 185))
 
-ASSET_OUT.parent.mkdir(parents=True, exist_ok=True)
-RES_OUT.parent.mkdir(parents=True, exist_ok=True)
-bg.convert('RGBA').save(ASSET_OUT, optimize=True)
-bg.convert('RGBA').save(RES_OUT, optimize=True)
-print(ASSET_OUT)
-print(RES_OUT)
+def main():
+    icon = background()
+    car = car_layer()
+    x, y = (S - car.width) // 2, 300
+    # Reflection on the wet strip.
+    refl = car.transpose(Image.Transpose.FLIP_TOP_BOTTOM).filter(ImageFilter.GaussianBlur(5))
+    fade = np.linspace(.32, 0, refl.height)[:, None]
+    ra = np.array(refl).astype(float)
+    ra[..., 3] *= fade
+    icon.alpha_composite(Image.fromarray(ra.astype(np.uint8), 'RGBA'), (x, y + car.height - 18))
+    # Contact shadow.
+    icon.alpha_composite(radial(S, S / 2, y + car.height - 10, 470, 38, (0, 0, 0), .85, 1.2))
+    icon.alpha_composite(car, (x, y))
+    # Anti-lag glow at the two tailpipes (photo coordinates: 20 % / 80 % width, 87 % height).
+    for px in (.197, .816):
+        cx, cy = x + px * car.width, y + .872 * car.height
+        icon.alpha_composite(radial(S, cx, cy, 70, 46, (255, 120, 20), .9, 1.4))
+        icon.alpha_composite(radial(S, cx, cy, 30, 20, (255, 236, 190), 1.0, 1.2))
+    # Soft vignette keeps the corners calm under any launcher mask.
+    yy, xx = np.mgrid[0:S, 0:S].astype(float)
+    r = np.sqrt(((xx - S / 2) / (S / 2)) ** 2 + ((yy - S / 2) / (S / 2)) ** 2)
+    vig = np.zeros((S, S, 4))
+    vig[..., 3] = np.clip((r - .75) / .6, 0, 1) ** 1.5 * 200
+    icon.alpha_composite(Image.fromarray(vig.astype(np.uint8), 'RGBA'))
+    out = icon.convert('RGB').resize((512, 512), Image.Resampling.LANCZOS)
+    for path in (ASSET_OUT, RES_OUT):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        out.save(path, optimize=True)
+        print(path)
 
-# Helper avoids importing ImageChops before the main setup on older Pillow builds.
+
+if __name__ == '__main__':
+    main()

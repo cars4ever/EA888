@@ -167,6 +167,15 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
   a delegated handler moves them only after a clearly horizontal drag, a vertical swipe scrolls, a tap does
   nothing. Bigger touch thumb. Browser checks for both gestures.
 
+## 7. Launcher icon (v1.3.3)
+
+- The launcher showed the default Android icon although the APK carried `res/mipmap/app_icon.png`. The
+  manifest patch repurposed the `fullBackupContent` attribute slot as `android:icon`, leaving icon (0x01010002)
+  last in `<application>`. The framework looks attributes up with a merge over sorted resource IDs, so it
+  never found the icon. `patch_manifest.py` now re-sorts attributes like aapt and verifies the order.
+- New full-bleed icon from the rear photo of the Scirocco on the night strip (no own frame: launchers mask
+  legacy icons themselves). A proper adaptive icon comes with the Gradle project (phase 1 of the proposal).
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
