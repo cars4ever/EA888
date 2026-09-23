@@ -1,0 +1,11 @@
+<resources>
+    <!-- Dark from the first frame: no white flash before the WebView paints. -->
+    <style name="Theme.EA888Lab" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ea_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <color name="ea_bg">#07090D</color>
+    <color name="ic_background">#07090D</color>
+</resources>

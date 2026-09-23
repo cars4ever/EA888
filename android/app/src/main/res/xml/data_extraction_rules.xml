@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Saves are backed up explicitly by the player (export to a file); no silent cloud backup. -->
+<data-extraction-rules>
+    <cloud-backup><exclude domain="root" /></cloud-backup>
+    <device-transfer><include domain="root" /></device-transfer>
+</data-extraction-rules>

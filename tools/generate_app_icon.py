@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / 'src' / 'assets' / 'images' / 'randy-scirocco-rear-photo.png'
 ASSET_OUT = ROOT / 'src' / 'assets' / 'images' / 'scirocco-app-icon.png'
 RES_OUT = ROOT / 'res' / 'mipmap' / 'app_icon.png'
+ANDROID_RES = ROOT / 'android' / 'app' / 'src' / 'main' / 'res'
+DENSITIES = {'mdpi': 108, 'hdpi': 162, 'xhdpi': 216, 'xxhdpi': 324, 'xxxhdpi': 432}
 S = 1024
 
 
@@ -67,24 +69,47 @@ def car_layer():
     return car.resize((w, round(car.height * w / car.width)), Image.Resampling.LANCZOS)
 
 
-def main():
-    icon = background()
-    car = car_layer()
-    x, y = (S - car.width) // 2, 300
+def place_car(icon, car, x, y):
+    """Car with wet-strip reflection, contact shadow and tailpipe glow, composited onto icon."""
     # Reflection on the wet strip.
     refl = car.transpose(Image.Transpose.FLIP_TOP_BOTTOM).filter(ImageFilter.GaussianBlur(5))
     fade = np.linspace(.32, 0, refl.height)[:, None]
     ra = np.array(refl).astype(float)
     ra[..., 3] *= fade
-    icon.alpha_composite(Image.fromarray(ra.astype(np.uint8), 'RGBA'), (x, y + car.height - 18))
+    icon.alpha_composite(Image.fromarray(ra.astype(np.uint8), 'RGBA'), (x, y + car.height - round(18 * car.width / 930)))
     # Contact shadow.
-    icon.alpha_composite(radial(S, S / 2, y + car.height - 10, 470, 38, (0, 0, 0), .85, 1.2))
+    k = car.width / 930
+    icon.alpha_composite(radial(S, x + car.width / 2, y + car.height - 10 * k, 470 * k, 38 * k, (0, 0, 0), .85, 1.2))
     icon.alpha_composite(car, (x, y))
     # Anti-lag glow at the two tailpipes (photo coordinates: 20 % / 80 % width, 87 % height).
     for px in (.197, .816):
         cx, cy = x + px * car.width, y + .872 * car.height
-        icon.alpha_composite(radial(S, cx, cy, 70, 46, (255, 120, 20), .9, 1.4))
-        icon.alpha_composite(radial(S, cx, cy, 30, 20, (255, 236, 190), 1.0, 1.2))
+        icon.alpha_composite(radial(S, cx, cy, 70 * k, 46 * k, (255, 120, 20), .9, 1.4))
+        icon.alpha_composite(radial(S, cx, cy, 30 * k, 20 * k, (255, 236, 190), 1.0, 1.2))
+
+
+def adaptive_layers(car):
+    """Android adaptive icon (108 dp canvas; the launcher mask keeps the central 66 dp circle, 61 %).
+    Background: the night strip. Foreground: the car, 54 % of the canvas wide, inside the safe zone."""
+    bg = background()
+    w = round(S * .54)
+    small = car.resize((w, round(car.height * w / car.width)), Image.Resampling.LANCZOS)
+    fg = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    x, y = (S - small.width) // 2, round(S * .53 - small.height / 2)
+    place_car(fg, small, x, y)
+    for dens, px in DENSITIES.items():
+        folder = ANDROID_RES / f'mipmap-{dens}'
+        folder.mkdir(parents=True, exist_ok=True)
+        bg.convert('RGB').resize((px, px), Image.Resampling.LANCZOS).save(folder / 'ic_launcher_background.png', optimize=True)
+        fg.resize((px, px), Image.Resampling.LANCZOS).save(folder / 'ic_launcher_foreground.png', optimize=True)
+    print(ANDROID_RES / 'mipmap-*')
+
+
+def main():
+    icon = background()
+    car = car_layer()
+    x, y = (S - car.width) // 2, 300
+    place_car(icon, car, x, y)
     # Soft vignette keeps the corners calm under any launcher mask.
     yy, xx = np.mgrid[0:S, 0:S].astype(float)
     r = np.sqrt(((xx - S / 2) / (S / 2)) ** 2 + ((yy - S / 2) / (S / 2)) ** 2)
@@ -96,6 +121,7 @@ def main():
         path.parent.mkdir(parents=True, exist_ok=True)
         out.save(path, optimize=True)
         print(path)
+    adaptive_layers(car)
 
 
 if __name__ == '__main__':

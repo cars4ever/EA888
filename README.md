@@ -12,7 +12,21 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.3.1 (branch `claude-dev`)
+## v1.4.0 (branch `claude-dev`) — phase 1: foundation
+
+- **Real Android project** (`android/`, Gradle + AGP 8.13): targetSdk 35, minSdk 26, v2 + v3 signing, APK and
+  AAB (Play Store), adaptive launcher icon, edge-to-edge with system-bar insets passed to the CSS, Android back
+  button closes the top layer first, screen stays on during pulls and races, assets served by
+  WebViewAssetLoader from a fixed https origin (no file:// access).
+- **One permanent release key**, supplied only through the environment (see below). No more uninstalling for
+  updates after this version.
+- **Web build step** (`tools/build_web.py` → `build/web`): esbuild bundle of `src/web/platform.js`,
+  version from `version.json`, images recompressed to WebP (web app 11 → 5.2 MB, APK 7.8 → 4.4 MB).
+- **Targeted DOM updates** (morphdom): re-rendering no longer swaps whole pages, so scroll position, focus and
+  canvases stay put.
+- **Full backup to a file** (Data page): the whole game, restorable after a reinstall or on a new phone.
+
+## v1.3.1
 
 - **Precision Turbo catalogue** (small to large, PT5558 … PT10603 Pro Mod) replaces the generic modeled
   turbos. PT6062/6466/6870/7675 use Precision's published compressor maps (CM-60/64/68/76, digitized); the
@@ -58,14 +72,25 @@ python3 tools/browser_smoke.py \
   --screenshots /tmp/ea888-shots \
   --report /tmp/ea888-browser-report.json
 
-python3 tools/build_apk.py --output /tmp/EA888-Lab.apk
+npm install                       # esbuild + morphdom
+python3 tools/build_web.py        # build/web (Android assets, browser test target)
+python3 tools/browser_smoke.py --assets build/web --report /tmp/ea888-browser-report.json
+
+tools/setup_android_sdk.sh        # once: Android SDK platform 35 + build-tools
+python3 tools/build_android.py --debug   # debug APK (package .dev, installs next to the release)
+python3 tools/build_android.py           # release APK + AAB in dist/, signed with the permanent key
 ```
+
+Release signing reads `EA888_KEYSTORE` (path) or `EA888_KEYSTORE_B64` (base64, for cloud environments),
+`EA888_KEY_ALIAS` and `EA888_KEY_PASSWORD` from the environment. Never commit the keystore or its password.
+The build prints the signing certificate SHA-256; it must be the same for every release.
+`tools/build_apk.py` (hand-patched template APK, v1 signing) is legacy and only kept for reference.
 
 ## Android identity
 
 - App label: `EA888 LAB`
 - Package: `nl.randy.ea888lab.stabl`
-- Version: `1.3.3-debug` (code `133`); baseline was `1.2.0-debug` (code `120`)
+- Version: from `version.json` (now `1.4.0`, code `140`); debug builds are `nl.randy.ea888lab.stabl.dev`
 
 ## Accuracy boundary
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Build and v1-sign the offline EA888 Lab v1.3.3 Android APK.
+"""LEGACY (up to v1.3.3): hand-patched template APK with v1 signing. Use tools/build_android.py instead.
+
+Build and v1-sign the offline EA888 Lab v1.3.3 Android APK.
 
 No Android SDK is required. The builder patches the binary manifest/resource
 table, installs a real Scirocco launcher icon, generates a tiny WebView DEX,

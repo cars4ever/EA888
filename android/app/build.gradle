@@ -1,0 +1,83 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'com.android.application'
+}
+
+// One version source for the web app and the Android package: /version.json.
+def version = new JsonSlurper().parse(rootProject.file('../version.json'))
+
+// Release signing comes only from the environment; no key material or password is stored in the repo.
+//   EA888_KEYSTORE        path to the permanent release/upload keystore
+//   EA888_KEY_ALIAS       key alias
+//   EA888_KEY_PASSWORD    key password
+//   EA888_STORE_PASSWORD  keystore password (defaults to the key password)
+def ks = System.getenv('EA888_KEYSTORE')
+def hasReleaseKey = ks && file(ks).exists() && System.getenv('EA888_KEY_PASSWORD')
+
+android {
+    namespace 'nl.randy.ea888lab'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'nl.randy.ea888lab.stabl'
+        minSdk 26
+        targetSdk 35
+        versionCode version.versionCode
+        versionName version.versionName
+        // Only the app's own languages; drops library translations from the package.
+        resourceConfigurations += ['nl', 'en']
+    }
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(ks)
+                storePassword System.getenv('EA888_STORE_PASSWORD') ?: System.getenv('EA888_KEY_PASSWORD')
+                keyAlias System.getenv('EA888_KEY_ALIAS') ?: 'ea888lab'
+                keyPassword System.getenv('EA888_KEY_PASSWORD')
+                enableV1Signing false   // minSdk 26: v2 + v3 only
+                enableV2Signing true
+                enableV3Signing true
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseKey) signingConfig signingConfigs.release
+        }
+        debug {
+            applicationIdSuffix '.dev'
+            versionNameSuffix '-dev'
+        }
+    }
+
+    sourceSets {
+        // Web assets come from the web build step (tools/build_web.js -> build/web).
+        main.assets.srcDirs = [rootProject.file('../build/web')]
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures { buildConfig true }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.14.0'
+    implementation 'androidx.core:core:1.16.0'
+    implementation 'androidx.activity:activity:1.10.1'
+}
+
+tasks.register('checkReleaseKey') {
+    doLast {
+        if (!hasReleaseKey) throw new GradleException('Release signing needs EA888_KEYSTORE, EA888_KEY_ALIAS and EA888_KEY_PASSWORD in the environment.')
+    }
+}
+tasks.matching { it.name in ['assembleRelease', 'bundleRelease'] }.configureEach { dependsOn 'checkReleaseKey' }

@@ -176,6 +176,23 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 - New full-bleed icon from the rear photo of the Scirocco on the night strip (no own frame: launchers mask
   legacy icons themselves). A proper adaptive icon comes with the Gradle project (phase 1 of the proposal).
 
+## 8. Phase 1 foundation (v1.4.0)
+
+- `android/`: Gradle project replacing the hand-patched template APK. Java `MainActivity` (WebView,
+  WebViewAssetLoader on `https://appassets.androidplatform.net/assets/`, external links open in the browser,
+  edge-to-edge insets → `--native-safe-*`, back → `window.__ea888HandleBack()`), `NativeBridge`
+  (`window.EA888Native`: saveFile/openFile via the Storage Access Framework, haptic, keepScreenOn,
+  appVersion). R8 keeps the `@JavascriptInterface` methods. Adaptive icon from `tools/generate_app_icon.py`.
+- Signing: release config only exists when the key is in the environment; `enableV1Signing false` (minSdk 26).
+  `tools/build_android.py` decodes `EA888_KEYSTORE_B64` to a private temp file and deletes it after the build.
+- Web: `tools/build_web.py`, `src/web/platform.js` (morphdom patchHtml, native wrapper with browser
+  fallbacks). `render()`, header and nav are patched instead of replaced; the smoke test checks node identity
+  and scroll position across a re-render.
+- Storage: the new origin starts with empty localStorage, and the new key needs a one-time uninstall anyway.
+  Export (build code or, from v1.4.0, full backup) before switching.
+- No emulator here (no KVM): Android verification is aapt2 badging, apksigner, dexdump of the bridge and the
+  full browser smoke test on the assets extracted from the release APK.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
