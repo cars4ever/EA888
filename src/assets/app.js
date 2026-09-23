@@ -2403,9 +2403,71 @@
         ${r.wear ? `<div><span>Slijtage van deze pull</span><b>motor +${num(r.wear.engine,2)}% · turbo +${num(r.wear.turbo,2)}% · ${num(r.wear.durationS,1)} s belast${r.damage && (r.damage.engine || r.damage.turbo) ? ` · schade motor +${num(r.damage.engine,0)}% / turbo +${num(r.damage.turbo,0)}%` : ''}</b></div>` : ''}
       </div>
       <div class="section-head small diagnostic-title"><div><span class="eyebrow">Automatische diagnose</span><h3>${completed ? 'Wat begrenst deze combinatie?' : 'Waarom stopte de pull?'}</h3></div></div>
-      <div class="diagnostic-grid">${diagnostics.map(d => `<article class="diagnostic-card ${d.severity}"><span>${esc(d.system)}</span><b>${esc(d.observation)}</b><p>${esc(d.action)}</p></article>`).join('')}</div>
+      <div class="diagnostic-grid">${diagnostics.map(d => `<article class="diagnostic-card ${d.severity}"><span>${esc(d.system)}</span><b>${esc(d.observation)}</b><p>${esc(d.action)}</p>${clean && d.key && d.key !== 'run' ? adviceBlock(d.key) : ''}</article>`).join('')}</div>
       ${warnings ? `<div class="warning-list">${warnings}</div>` : completed ? '<div class="notice success"><strong>Geen extra hoofdwaarschuwingen.</strong> De run bleef binnen de gemodelleerde systeemgrenzen.</div>' : ''}
     </div>`;
+  }
+
+  // ---- Tuner advice (sim.js adviceCandidates / evaluateAdvice) ----------------------------------------
+  // Bought per diagnosis for the measured build; the tuner runs every candidate change through the dyno
+  // simulation (no measurement noise) and lists what each does to the problem and to the power.
+  let adviceJob = null;
+  function adviceId(key) { return `${state.lastDynoSignature || ''}|${key}`; }
+  function adviceStore() { if (!state.advice || typeof state.advice !== 'object') state.advice = {}; return state.advice; }
+  function adviceBlock(key) {
+    const bought = adviceStore()[adviceId(key)];
+    if (adviceJob && adviceJob.id === adviceId(key)) return `<div class="advice-box running"><b>Tuner rekent ${adviceJob.done}/${adviceJob.total} opties door op de dyno…</b><i style="--p:${adviceJob.total ? adviceJob.done / adviceJob.total * 100 : 0}%"></i></div>`;
+    if (!bought) {
+      const enough = Number(state.bank || 0) >= C.ADVICE_PRICE;
+      return `<div class="advice-box"><button class="btn small" data-advice-buy="${esc(key)}" ${enough && !adviceJob ? '' : 'disabled'}>Tuneradvies · ${euro(C.ADVICE_PRICE)}</button><small>${!enough ? `Budget te laag (${euro(state.bank)}).` : adviceJob ? 'De tuner is nog met een ander advies bezig.' : 'De tuner test onderdelen en instellingen op jouw motor en zegt exact wat het oplost.'}</small></div>`;
+    }
+    const recs = bought.evals.slice(0, 4);
+    return `<div class="advice-box bought"><span class="eyebrow">Tuneradvies · ${esc(recs[0]?.metric || '')}</span>${recs.map((e, i) => {
+      const dHp = Math.round(e.hpAfter - e.hpBefore);
+      const tag = e.resolved ? 'good' : e.improved ? 'warn' : 'bad';
+      return `<div class="advice-rec ${tag}"><div><b>${e.resolved ? '✔ Lost het op' : e.improved ? '↗ Helpt, lost het niet op' : '✕ Helpt niet'}${i === 0 && e.resolved ? ' · beste keuze' : ''}</b><p>${esc(e.label)}</p><small>${esc(e.metric)} ${esc(e.beforeText)} → ${esc(e.afterText)} · ${Math.round(e.hpBefore)} → ${Math.round(e.hpAfter)} pk (${dHp >= 0 ? '+' : ''}${dHp}) · ${e.cost ? euro(e.cost) : 'gratis'}${e.sideEffects?.length ? ` · let op: ${esc(e.sideEffects.join('; '))}` : ''}</small></div>${e.resolved || e.improved ? `<button class="btn small ghost" data-advice-apply="${esc(key)}" data-advice-rec="${esc(e.id)}">Toepassen</button>` : ''}</div>`;
+    }).join('')}<small class="advice-note">Voorspeld met dezelfde simulatie als de dyno, zonder meetruis. Meet na het toepassen opnieuw.</small></div>`;
+  }
+  function buyAdvice(key) {
+    if (adviceJob || Number(state.bank || 0) < C.ADVICE_PRICE || !currentDyno()) return;
+    state.bank -= C.ADVICE_PRICE;
+    pushHistory({ type: 'advice', label: `Tuneradvies gekocht (${key}) · ${euro(C.ADVICE_PRICE)}` });
+    saveState();
+    const snapshot = C.normalizeState(cloneJson(state));
+    const cands = C.adviceCandidates(snapshot, key);
+    const job = adviceJob = { id: adviceId(key), key, done: 0, total: cands.length + 1, evals: [], base: null };
+    render();
+    const next = () => {
+      if (adviceJob !== job) return;
+      try {
+        if (!job.base) job.base = C.adviceBaseline(snapshot);
+        else if (job.done - 1 < cands.length) job.evals.push(C.evaluateAdvice(snapshot, key, cands[job.done - 1], job.base));
+        else if (!job.combo) {
+          job.combo = true;
+          const combo = job.evals.some(e => e.resolved) ? null : C.adviceCombination(job.evals);
+          if (combo) job.evals.push(C.evaluateAdvice(snapshot, key, combo, job.base));
+        }
+      } catch (e) { logAppError('advice', e); }
+      job.done++;
+      if (job.done <= cands.length + 1) { if (activeTab === 'dyno') render(); setTimeout(next, 16); return; }
+      adviceStore()[job.id] = { at: new Date().toISOString(), key, evals: C.rankAdvice(job.evals).map(e => ({ ...e })) };
+      const ids = Object.keys(state.advice); if (ids.length > 16) delete state.advice[ids[0]];
+      adviceJob = null;
+      saveState(); render();
+      showToast('Tuneradvies klaar.');
+    };
+    setTimeout(next, 30);
+  }
+  function applyAdvice(key, recId) {
+    const e = adviceStore()[adviceId(key)]?.evals.find(x => x.id === recId);
+    if (!e) return;
+    const paths = [];
+    for (const k of ['selections', 'tune', 'service', 'assembly', 'dynoConfig']) for (const sub of Object.keys(e.patch[k] || {})) paths.push([k, sub]);
+    if (Number.isFinite(e.patch.boostTableDelta)) paths.push(['tune', 'ecu']);
+    const announce = offerUndo(paths, `Toegepast: ${e.label.slice(0, 80)}. Meet opnieuw op de dyno.`);
+    state = C.applyAdvicePatch(state, e.patch);
+    saveState(); haptic(14); render();
+    return announce();
   }
 
   function compareOn() { return state.settings?.dynoCompare !== false; }
@@ -3081,6 +3143,7 @@
           </div>
           <div class="card">
             <span class="eyebrow">Start & chassis</span><h3>Launchgedrag</h3>
+            ${vehicleRange('burnoutRpm', 'Burnout-toerental', 3000, 7000, 100, v.burnoutRpm ?? 5000, ' rpm', 0, 'Dit toerental houd je vast tijdens de burnout (altijd zonder anti-lag). Hoger = meer slipvermogen en sneller warm.')}
             ${vehicleRange('burnoutLevel', 'Opgeslagen bandwarmte', 0, 100, 1, v.burnoutLevel, '%', 0, 'De interactieve burnout overschrijft dit met de werkelijk behaalde temperatuur.')}
             ${vehicleRange('suspensionTransferPct', 'Gewichtsoverdracht', 25, 100, 1, v.suspensionTransferPct, '%', 0, 'FWD wil minder achterwaartse transfer; RWD profiteert van gecontroleerde squat.')}
             ${vehicleRange('shiftRpm', 'Schakeltoerental', 4500, 10000, 100, v.shiftRpm, ' rpm', 0, 'De game geeft een shiftcue rond dit toerental.')}
@@ -3814,7 +3877,7 @@
     };
     // Burnout on the vehicle model; the tyres start at the track temperature (the car rolled in cold).
     try {
-      raceGame.burnRt = C.createBurnoutRuntime(state, { turbo: raceGame.turbo, targetRpm: 5000, startC: profile.trackC });
+      raceGame.burnRt = C.createBurnoutRuntime(state, { turbo: raceGame.turbo, targetRpm: Number(state.vehicle.burnoutRpm || 5000), startC: profile.trackC });
       raceGame.tyreThermal = { ...raceGame.burnRt.tyreThermal };
       Object.assign(raceGame.burn, { surfaceC: profile.trackC, bulkC: profile.trackC, tempC: predictedLaunchTyreC(raceGame.burnRt.tyreThermal) });
     } catch (e) { logAppError('burnout', e); }
@@ -5655,6 +5718,8 @@
       stopEngineAudio({ hard: true }); // the next sound start builds the chosen engine voice
       saveState(); haptic(6); return render();
     }
+    if (btn.dataset.adviceBuy) { buyAdvice(btn.dataset.adviceBuy); return; }
+    if (btn.dataset.adviceApply) return applyAdvice(btn.dataset.adviceApply, btn.dataset.adviceRec);
     if (btn.dataset.dynoCorrection) {
       const announce = offerUndo([['dynoConfig', 'correction']], `Correctienorm → ${C.DYNO_CORRECTIONS[btn.dataset.dynoCorrection]?.label || ''}`);
       state.dynoConfig.correction = btn.dataset.dynoCorrection; saveState(); haptic(6); render(); return announce();

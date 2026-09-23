@@ -251,6 +251,7 @@
         humidityPct: 68,
         headwindKmh: 0,
         burnoutLevel: 15,
+        burnoutRpm: 5000,
         shiftRpm: 7600,
         suspensionTransferPct: 60,
         cdA: 0.68,
@@ -2657,9 +2658,15 @@
     const fz = mass * g * staticDriven;
     const ambientC = Number(state.vehicle.ambientTempC ?? 20), trackC = Number(state.vehicle.trackTempC ?? 28);
     const th = opts.tyreThermal ? { ...opts.tyreThermal } : makeTyreThermal(Number.isFinite(opts.startC) ? opts.startC : trackC);
-    const targetRpm = clamp(Number(opts.targetRpm ?? 5000), 2500, em.revLimit - 300);
+    // The rpm the driver holds is a setting (vehicle.burnoutRpm); the burnout runs without anti-lag.
+    const targetRpm = clamp(Number(opts.targetRpm ?? state.vehicle.burnoutRpm ?? 5000), 2500, em.revLimit - 300);
+    // The burnout starts in the water box: a wet tyre keeps ~45 % of its dry street grip (the track prep sits
+    // under the water), which is what lets the engine break a sticky drag tyre loose. The spinning tyre
+    // flings and boils the water off (dry after ~1.5 s at 60 kW of slip); a dry tyre on the burnout pad
+    // grips ~80 % of dry street, heats fast and smokes.
+    const streetGrip = ty.mu / ty.base;
     const clutchNm = (DRIVELINE[trans.id] || DRIVELINE.oem_6mt).clutchNm;
-    const s = { t: 0, we: (900 * Math.PI) / 30, ww: 0, pedal: 0, smoke: 0, slipPowerW: 0, fx: 0, torqueNm: 0, energyJ: 0, turboSnap: null, turboClock: 1, cut: false };
+    const s = { t: 0, water: 1, we: (900 * Math.PI) / 30, ww: 0, pedal: 0, smoke: 0, slipPowerW: 0, fx: 0, torqueNm: 0, energyJ: 0, turboSnap: null, turboClock: 1, cut: false };
     const rpm = () => (s.we * 30) / Math.PI;
     function substep(h, throttle) {
       s.t += h;
@@ -2681,8 +2688,10 @@
         // Rev with the clutch in, then dump it: the clutch slips (capacity limited) until engine and wheels
         // turn together; locked, the car stands still, so the whole tyre surface speed is slip.
         if (!s.dumped && rpm() >= targetRpm * 0.92) s.dumped = true;
+        // bogged down (the tyres held): the driver clutches in and revs up again
+        if (s.dumped && s.engage >= 1 && rpm() < targetRpm * 0.45) { s.dumped = false; s.engage = 0; }
         s.engage = s.dumped ? Math.min(1, (s.engage || 0) + h / 0.15) : 0;
-        const mu = tyreMu(ty, tyreGripTempC(th), 1);
+        const mu = tyreMu(ty, tyreGripTempC(th), 1) * streetGrip * (0.8 - 0.35 * s.water);
         const vSlip = s.ww * r;
         const grip = mu * fz;
         const fxRoll = vSlip < 0.02 ? 0 : grip * magicFormula(vSlip / 1.0, ty.peakSlip);
@@ -2711,6 +2720,7 @@
         s.we += (((900 * Math.PI) / 30) - s.we) * clamp(h * 4, 0, 1);
         s.slipPowerW = 0; s.fx = 0;
       }
+      s.water = Math.max(0, s.water - (s.slipPowerW / 60000) * h / 1.5);
       s.energyJ += s.slipPowerW * h;
       tyreThermalStep(th, h, { slipPowerW: s.slipPowerW, tyres, speedMs: 0, ambientC, trackC });
       // Smoke: oils and rubber vaporise off a skin above ~110 C, more with more slip power.
@@ -2727,7 +2737,7 @@
         left -= h;
         s.turboClock += h;
         if (s.turboClock >= 0.01 || !s.turboSnap) {
-          s.turboSnap = turbo.step(s.turboClock, { rpm: rpm(), throttle: throttle ? s.pedal : 0, gearIndex: 0 });
+          s.turboSnap = turbo.step(s.turboClock, { rpm: rpm(), throttle: throttle ? s.pedal : 0, gearIndex: 0, twoStep: false, alsRequest: false });
           s.turboClock = 0;
         }
         substep(h, throttle);
@@ -2845,7 +2855,9 @@
   function diagnoseDyno(result) {
     if (!result) return [];
     const out = [];
-    const add = (system, severity, observation, action) => out.push({ system, severity, observation, action });
+    let key = '';
+    const add = (system, severity, observation, action) => out.push({ key, system, severity, observation, action });
+    key = result.status === DYNO_STATUS.ABORTED && result.abortKind !== 'operator' ? `abort:${result.abortCode || 'other'}` : 'run';
     if (result.status === DYNO_STATUS.FAILED_TO_START)
       add('Run', 'danger', `Pull niet gestart: ${result.abortReason}`, 'Herstel de motor voordat opnieuw wordt gemeten.');
     else if (result.status === DYNO_STATUS.ABORTED)
@@ -2857,6 +2869,7 @@
           ? 'Voer een volledige pull uit voor een geldige meting.'
           : 'Herstel de oorzaak en virtuele schade voordat opnieuw wordt gemeten.'
       );
+    key = 'fuel';
     if (result.maxFuelDuty > 88)
       add(
         'Brandstof',
@@ -2864,6 +2877,7 @@
         `Maximale duty ${Math.round(result.maxFuelDuty)}%.`,
         `Vergroot de flowmarge of verlaag de vraag; controleer de raildrukcurve.`
       );
+    key = 'turbo';
     if (result.maxTurboLoad > 92)
       add(
         'Turbo',
@@ -2871,13 +2885,17 @@
         `Turbo-load ${Math.round(result.maxTurboLoad)}% en geschatte as ${Math.round(result.maxTurboShaftRpm / 1000)}k rpm.`,
         'Gebruik minder druk buiten het efficiënte gebied, meer turbine/wastegateflow of een passend compressorframe.'
       );
-    if (result.maxKnockRisk > 0.55)
+    // 1.0 = the end gas auto-ignites before the flame arrives; above ~0.93 the knock control margin is used
+    // up and single cycles start to knock (the same threshold the race uses).
+    key = 'knock';
+    if (result.maxKnockRisk > 0.93)
       add(
         'Verbranding',
         result.maxKnockRisk > 1 ? 'danger' : 'warn',
-        `Knock-index piekte op ${result.maxKnockRisk.toFixed(2)}.`,
-        'Vergroot brandstof-, temperatuur- en ontstekingsmarge; controleer mechanische noktiming.'
+        `Knock-index piekte op ${result.maxKnockRisk.toFixed(2)} (1,00 = klop): de ontsteking staat op de klopgrens.`,
+        'Meer marge: minder ontsteking of boost, hoger octaan, koelere inlaatlucht.'
       );
+    key = 'iat';
     if (result.maxIatC > 50)
       add(
         'Inlaatlucht',
@@ -2885,6 +2903,7 @@
         `IAT bereikte ${Math.round(result.maxIatC)}°C.`,
         'Verbeter koeling, ventilator/ice-tank of verminder heat-soak en compressorbelasting.'
       );
+    key = 'oil';
     const minOil = result.minOilPressureBar;
     if ((minOil !== null && minOil < 2.8) || result.maxOilTempC > 135)
       add(
@@ -2893,6 +2912,7 @@
         `Min ${minOil === null ? '—' : minOil.toFixed(1)} bar, max ${Math.round(result.maxOilTempC)}°C, aeratie ${Math.round(result.maxOilAerationPct)}%.`,
         'Controleer vulniveau, clearances, pickup/cartercontrole, viscositeit en koeling.'
       );
+    key = 'cam';
     if (result.camTiming?.applicable && result.camTiming.score < 0.88)
       add(
         'Nokken',
@@ -2900,6 +2920,7 @@
         `Timingmatch ${Math.round(result.camTiming.score * 100)}%.`,
         'Meet opnieuw op overlap-TDC en herstel de mechanische basisstand voordat de map wordt beoordeeld.'
       );
+    key = 'assembly';
     if (result.assembly?.score < 0.85)
       add(
         'Montage',
@@ -2907,6 +2928,7 @@
         `Montagescore ${Math.round(result.assembly.score * 100)}%.`,
         'Controleer ringgap, lagerclearance, bougiegap, priming en montageprocedure.'
       );
+    key = '';
     if (!out.length)
       add(
         'Resultaat',
@@ -2915,6 +2937,121 @@
         'Bewaar de run als referentie en vergelijk herhaalbaarheid bij dezelfde condities.'
       );
     return out;
+  }
+
+
+  // ---- Tuner advice ------------------------------------------------------------------------------
+  // For a diagnosis the tuner tries concrete changes (a part, an exact setting, a service) on the same
+  // simulation the dyno uses, without measurement noise, and reports what each one does to the problem
+  // and to the power. Nothing here is a rule of thumb: every number is a simulated pull.
+  const ADVICE_PRICE = 150; // euro per diagnosis: the tuner's hour
+  const ADVICE_ISSUES = Object.freeze({
+    fuel: { label: 'fuel duty', value: r => r.maxFuelDuty, ok: v => v <= 88, fmt: v => `${Math.round(v)}%` },
+    turbo: { label: 'turbo-load', value: r => r.maxTurboLoad, ok: v => v <= 92, fmt: v => `${Math.round(v)}%` },
+    knock: { label: 'knock-index', value: r => r.maxKnockRisk, ok: v => v <= 0.93, fmt: v => v.toFixed(2) },
+    iat: { label: 'max IAT', value: r => r.maxIatC, ok: v => v <= 50, fmt: v => `${Math.round(v)} °C` },
+    oil: { label: 'min oliedruk', value: r => (r.maxOilTempC > 135 ? Math.min(r.minOilPressureBar ?? 9, 2.79) : r.minOilPressureBar ?? 0), ok: v => v >= 2.8, fmt: v => `${v.toFixed(1)} bar` },
+    cam: { label: 'nokkenmatch', value: r => (r.camTiming?.score ?? 1) * 100, ok: v => v >= 88, fmt: v => `${Math.round(v)}%` },
+    assembly: { label: 'montagescore', value: r => (r.assembly?.score ?? 1) * 100, ok: v => v >= 85, fmt: v => `${Math.round(v)}%` },
+    abort: { label: 'pull', value: r => (r.status === DYNO_STATUS.COMPLETED ? 1 : 0), ok: v => v === 1, fmt: v => (v ? 'voltooid' : 'afgebroken') }
+  });
+  function adviceIssue(key) { return ADVICE_ISSUES[String(key).startsWith('abort') ? 'abort' : key] || null; }
+  // Change the boost where the build keeps it: the quick setup when the tables follow it, else every table cell.
+  function adviceBoostPatch(state, delta) {
+    const t = state.tune, edited = !!t.ecu?.edited?.boost;
+    if (!edited) {
+      const f = v => round(clamp(Number(v) + delta, 0.2, 4.5), 2);
+      return { patch: { tune: { boostLowBar: f(t.boostLowBar), boostMidBar: f(t.boostMidBar), boostHighBar: f(t.boostHighBar) } },
+        label: `Boost laag/midden/hoog ${t.boostLowBar.toFixed(2)}/${t.boostMidBar.toFixed(2)}/${t.boostHighBar.toFixed(2)} → ${f(t.boostLowBar).toFixed(2)}/${f(t.boostMidBar).toFixed(2)}/${f(t.boostHighBar).toFixed(2)} bar (Tune → Boost)` };
+    }
+    return { patch: { boostTableDelta: delta }, label: `Boosttabel ${delta > 0 ? '+' : ''}${delta.toFixed(1)} bar in elke cel (Tune → Tabellen → Boost)` };
+  }
+  function adviceCandidates(inputState, key) {
+    const state = normalizeState(inputState), t = state.tune, out = [];
+    const part = (cat, item) => ({ id: `part:${cat}:${item.id}`, kind: 'part', cost: item.price || 0,
+      label: `Monteer ${item.name} (${CATEGORY_MAP[cat].label})`, patch: { selections: { [cat]: item.id } } });
+    const nextParts = (cat, n, better = null) => {
+      const cur = getPart(state, cat);
+      return CATEGORY_MAP[cat].items.filter(i => i.id !== cur.id && (better ? better(i, cur) : i.price > cur.price))
+        .sort((a, b) => (better ? 0 : a.price - b.price) || a.price - b.price).slice(0, n).map(i => part(cat, i));
+    };
+    const boost = d => { const b = adviceBoostPatch(state, d); return { id: `boost:${d}`, kind: 'setting', cost: 0, ...b }; };
+    const spark = d => { const v = round(Number(t.ignitionTrimDeg || 0) + d, 1); return { id: `spark:${d}`, kind: 'setting', cost: 0, label: `Ontstekingstrim ${Number(t.ignitionTrimDeg || 0).toFixed(1)}° → ${v.toFixed(1)}° (Tune → Ontsteking)`, patch: { tune: { ignitionTrimDeg: v } } }; };
+    const toggle = (name, label) => (t[name] ? null : { id: `on:${name}`, kind: 'setting', cost: 0, label: `${label} aan (Tune → Beveiliging)`, patch: { tune: { [name]: true } } });
+    const byMetric = (cat, field, n) => nextParts(cat, n, (i, cur) => Number(i[field]) > Number(cur[field])).sort((a, b) => 0);
+    const groups = {
+      fuel: () => [...byMetric('fuelSystem', 'fuelSystemHp', 3), boost(-0.1), boost(-0.2)],
+      turbo: () => [boost(-0.1), boost(-0.2), boost(-0.3), ...nextParts('boostControl', 2), ...byMetric('turbo', 'compressorMm', 2)],
+      knock: () => [spark(-1), spark(-2), spark(-3), ...byMetric('fuel', 'octane', 3), ...byMetric('air', 'cooling', 2), boost(-0.1), boost(-0.2), toggle('knockControl', 'Knock control')],
+      iat: () => [...byMetric('air', 'cooling', 3), boost(-0.2),
+        state.dynoConfig.fanSpeedPct < 100 ? { id: 'fan:100', kind: 'setting', cost: 0, label: `Testcelfan ${Math.round(state.dynoConfig.fanSpeedPct)}% → 100% (Dyno → Testcel)`, patch: { dynoConfig: { fanSpeedPct: 100 } } } : null],
+      oil: () => [...['10w50_ester', '10w60_race', '5w40_ester'].filter(id => id !== state.service.oilId && OIL_MAP[id]).map(id => ({ id: `oil:${id}`, kind: 'service', cost: OIL_MAP[id].price + FILTER_MAP[state.service.filterId].price, label: `Olie verversen naar ${OIL_MAP[id].name} (Service)`, patch: { service: { oilId: id, oilAgeKm: 0, oilRuns: 0 } } })),
+        ...nextParts('oiling', 2), { id: 'rev:-300', kind: 'setting', cost: 0, label: `Toerenbegrenzer ${t.revLimitRpm} → ${t.revLimitRpm - 300} rpm (Tune)`, patch: { tune: { revLimitRpm: t.revLimitRpm - 300 } } }, toggle('oilPressureProtection', 'Oliedrukbeveiliging')],
+      cam: () => { const c = camTimingHealth(state); return [{ id: 'cam:target', kind: 'setting', cost: 0, label: `Noktiming op TDC: uitlaat ${Number(t.exhaustTdcLiftMm).toFixed(2)} → ${c.targetExhaustTdcMm.toFixed(2)} mm, inlaat ${Number(t.intakeTdcLiftMm).toFixed(2)} → ${c.targetIntakeTdcMm.toFixed(2)} mm (Bouw → Nokken)`, patch: { tune: { exhaustTdcLiftMm: c.targetExhaustTdcMm, intakeTdcLiftMm: c.targetIntakeTdcMm } } }]; },
+      assembly: () => { const a = assemblyHealth(state).targets, cur = state.assembly; const f = v => round(v, 3);
+        return [{ id: 'assembly:target', kind: 'setting', cost: 0, label: `Montage op maat: ringgap ${cur.topRingGapMm}/${cur.secondRingGapMm} → ${f(a.topRingGapMm)}/${f(a.secondRingGapMm)} mm, lagers ${cur.rodClearanceMm}/${cur.mainClearanceMm} → ${f(a.rodClearanceMm)}/${f(a.mainClearanceMm)} mm, bougiegap ${cur.sparkGapMm} → ${f(a.sparkGapMm)} mm, procedure 99%, geprimed (Bouw → Montage)`,
+          patch: { assembly: { topRingGapMm: f(a.topRingGapMm), secondRingGapMm: f(a.secondRingGapMm), rodClearanceMm: f(a.rodClearanceMm), mainClearanceMm: f(a.mainClearanceMm), sparkGapMm: f(a.sparkGapMm), balanceQualityPct: 99, deckSealQualityPct: 99, fastenerProcedurePct: 99, oilPrimed: true } } }]; }
+    };
+    const code = String(key).startsWith('abort:') ? key.slice(6) : '';
+    let list;
+    if (!code) list = (groups[key] || (() => []))();
+    else if (code === 'knock') list = groups.knock();
+    else if (code === 'lean_out') list = [...groups.fuel(), toggle('railPressureCut', 'Raildrukcut')];
+    else if (code === 'turbo_overspeed') list = groups.turbo();
+    else if (code.startsWith('oil')) list = groups.oil();
+    else if (code === 'mechanical_power' || code === 'torque') list = [boost(-0.2), boost(-0.4), ...nextParts('block', 2), ...nextParts('crank', 1), ...(code === 'torque' ? nextParts('transmission', 1, (i, c) => i.transTorque > c.transTorque) : [])];
+    else if (code === 'overrev') list = [{ id: 'rev:-400', kind: 'setting', cost: 0, label: `Toerenbegrenzer ${t.revLimitRpm} → ${t.revLimitRpm - 400} rpm (Tune)`, patch: { tune: { revLimitRpm: t.revLimitRpm - 400 } } }, ...nextParts('valvetrain', 2)];
+    else if (code === 'head_lift') list = [...nextParts('sealing', 2), boost(-0.2), boost(-0.4)];
+    else if (code === 'misfire') list = [...nextParts('ignition', 2), boost(-0.2)];
+    else if (code === 'ecu_control') list = [...nextParts('ecu', 1), ...nextParts('sensors', 1), boost(-0.3)];
+    else if (code === 'ring_butt' || code === 'bearing_clearance' || code.includes('prime')) list = groups.assembly();
+    else list = [boost(-0.2), spark(-2)];
+    return list.filter(Boolean);
+  }
+  function applyAdvicePatch(inputState, patch) {
+    const state = normalizeState(inputState);
+    for (const k of ['selections', 'tune', 'service', 'assembly', 'dynoConfig']) if (patch[k]) state[k] = { ...state[k], ...deepClone(patch[k]) };
+    if (Number.isFinite(patch.boostTableDelta)) {
+      const ecu = deepClone(state.tune.ecu);
+      ecu.boost = ecu.boost.map(row => row.map(v => round(Math.max(0, v + patch.boostTableDelta), 3)));
+      state.tune.ecu = ecu;
+    }
+    return normalizeState(state);
+  }
+  // Baseline of the current build on the advice terms (no measurement noise, same conditions).
+  function adviceBaseline(inputState) {
+    const r = simulateEngine(inputState, { noise: false, soakK: 0 });
+    return { peakHp: r.peakHp, result: r };
+  }
+  function evaluateAdvice(inputState, key, candidate, baseline) {
+    const issue = adviceIssue(key);
+    const base = baseline || adviceBaseline(inputState);
+    const next = applyAdvicePatch(inputState, candidate.patch);
+    const r = simulateEngine(next, { noise: false, soakK: 0 });
+    const before = issue.value(base.result), after = issue.value(r);
+    const others = diagnoseDyno(r).filter(d => d.severity === 'danger' && d.key && !String(d.key).startsWith(String(key).split(':')[0]));
+    return {
+      id: candidate.id, kind: candidate.kind, label: candidate.label, cost: candidate.cost, patch: candidate.patch,
+      metric: issue.label, before, after, beforeText: issue.fmt(before), afterText: issue.fmt(after),
+      resolved: issue.ok(after) && r.status === DYNO_STATUS.COMPLETED && !others.length,
+      improved: issue.label === 'pull' ? after > before : (issue.ok(1e9) ? after > before : after < before),
+      hpBefore: base.peakHp, hpAfter: r.peakHp, completed: r.status === DYNO_STATUS.COMPLETED,
+      sideEffects: others.map(d => `${d.system}: ${d.observation}`)
+    };
+  }
+  // Best first: solutions before improvements; within those the lowest "price" where every percent of
+  // power lost counts as EUR 500 (a free setting that costs 5 % is worse than a EUR 900 part that costs none).
+  function advicePenalty(e) { return e.cost + Math.max(0, (e.hpBefore - e.hpAfter) / Math.max(1, e.hpBefore) * 100) * 500; }
+  function rankAdvice(evals) {
+    return evals.slice().sort((a, b) => (b.resolved - a.resolved) || (b.improved - a.improved) || (advicePenalty(a) - advicePenalty(b)));
+  }
+  // When no single change solves it: the two best improvements of different kinds together.
+  function adviceCombination(evals) {
+    const top = rankAdvice(evals).filter(e => e.improved && !e.resolved);
+    const a = top[0], b = top.find(e => e.id !== a?.id && e.id.split(':')[0] !== a?.id.split(':')[0]);
+    if (!a || !b) return null;
+    const merge = (x, y) => { const out = { ...x }; for (const k of Object.keys(y)) out[k] = typeof y[k] === 'object' && !Array.isArray(y[k]) ? { ...(x[k] || {}), ...y[k] } : y[k]; return out; };
+    return { id: `combo:${a.id}+${b.id}`, kind: 'combo', cost: a.cost + b.cost, label: `Combinatie: ${a.label} + ${b.label}`, patch: merge(a.patch, b.patch) };
   }
 
   function applyPreset(inputState, presetId) {
@@ -3224,6 +3361,13 @@
     applyRuntimeWear,
     interpolateCurve,
     diagnoseDyno,
+    ADVICE_PRICE,
+    adviceCandidates,
+    applyAdvicePatch,
+    adviceBaseline,
+    evaluateAdvice,
+    rankAdvice,
+    adviceCombination,
     applyPreset,
     totalPartsPrice,
     evaluateChallenges,

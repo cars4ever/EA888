@@ -128,3 +128,16 @@ console.log('PASS tyre, burnout and knock tests');
   // a solid mount passes vibration into the driveline on every pass
   assert(C.hopWearPct({ hopS: 0, hopMaxI: 0 }, C.CATEGORY_MAP.mounts.items.find(m => m.id === 'solid_race')) > 0, 'solid mounts: NVH wear');
 }
+
+// 8. Regression (1.10.0: sticky tyres on a prepped track bogged the burnout to ~1100 rpm, which looked like
+//    anti-lag cutting in): the burnout starts in the water box, holds the rpm set in the setup and never
+//    runs anti-lag.
+for (const tyre of ['drag_radial', 'slick', 'pro_radial']) for (const rpm of [4000, 6000]) {
+  const st = build('randy', s => { s.vehicle.tireCompound = tyre; s.vehicle.preparedTrack = true; s.vehicle.burnoutRpm = rpm; s.tune.als = { ...s.tune.als, mode: 'drag' }; });
+  const b = C.createBurnoutRuntime(st, { startC: 28 });
+  let minRpm = 1e9, alsSeen = false;
+  for (let t = 0; t < 5; t += 0.02) { const p = b.step(0.02, { throttle: true }); if (t > 1.5) minRpm = Math.min(minRpm, p.rpm); if (b.turbo.state.alsActive) alsSeen = true; }
+  assert(minRpm > rpm - 250, `${tyre} ${rpm}: burnout must hold the set rpm (min ${Math.round(minRpm)})`);
+  assert(!alsSeen, `${tyre}: no anti-lag during the burnout`);
+  assert(b.point().smoke > 0 || rpm < 5000, `${tyre} ${rpm}: a dried tyre at high rpm smokes`);
+}
