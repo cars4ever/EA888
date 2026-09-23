@@ -385,7 +385,8 @@
         if (hpfpCcS(p) >= need - 1e-9) break;
       }
       diCc = Math.min(diShare, diCcS(rail), hpfpCcS(rail));
-      if (diCc < diShare - 1e-6) limitedBy = hpfpCcS(rail) <= diCcS(rail) ? 'hpfp' : 'di-window';
+      // A falling rail means the pump is the bottleneck; at full rail pressure it is the injection window.
+      if (diCc < diShare - 1e-6) limitedBy = rail < railTarget - 1e-9 || hpfpCcS(rail) <= diCcS(rail) ? 'hpfp' : 'di-window';
     }
     if (mpi) {
       mpiCc = Math.min(Math.max(0, demandCcS - diCc), mpiCcS, mech ? mechCcS : Infinity);

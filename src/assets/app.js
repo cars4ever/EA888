@@ -1529,8 +1529,9 @@
   }
 
   function tuneTabs() {
-    return `<div class="segment-control tune-segments five">
+    return `<div class="segment-control tune-segments six">
       <button class="${tunePanel === 'boost' ? 'active' : ''}" data-tune-panel="boost">Boost</button>
+      <button class="${tunePanel === 'tables' ? 'active' : ''}" data-tune-panel="tables">Tabellen</button>
       <button class="${tunePanel === 'als' ? 'active' : ''}" data-tune-panel="als">Anti-lag</button>
       <button class="${tunePanel === 'fuel' ? 'active' : ''}" data-tune-panel="fuel">Brandstof</button>
       <button class="${tunePanel === 'cams' ? 'active' : ''}" data-tune-panel="cams">Nokken</button>
@@ -1624,6 +1625,178 @@
     tr.forEach(p => { if (p.alsLimitedBy === 'cooldown') { ctx.fillStyle = 'rgba(255,83,101,.12)'; ctx.fillRect(X(p.t) - 2, pad.t, 4, h - pad.t - pad.b); } });
   }
 
+  // ---- ECU tables (phase 4) ------------------------------------------------------------------------
+  // The calibration as tables: boost target per gear x rpm; spark, lambda and intake cam per MAP x rpm.
+  // Cells the last pull passed through are marked; spark cells where knock control had to retard are red.
+  const ECU_TABLES = Object.freeze({
+    boost: { label: 'Boost', title: 'Boosttarget', unit: ' bar', decimals: 2, step: 0.05, min: 0, max: 5, rows: 'gear', hint: 'Doeldruk (bar overdruk) per versnelling en toerental. De dyno meet in de ingestelde dynoversnelling.' },
+    spark: { label: 'Ontsteking', title: 'Ontstekingstabel', unit: '°', decimals: 1, step: 0.5, min: -15, max: 50, rows: 'load', hint: 'Voorontsteking (° voor TDC) per inlaatdruk (MAP, bar absoluut) en toerental. Meer is sterker tot MBT, maar dichter bij knock.' },
+    lambda: { label: 'Lambda', title: 'Lambdatarget', unit: '', decimals: 2, step: 0.01, min: 0.6, max: 1.1, rows: 'load', hint: 'Doelmengsel per MAP en toerental. Rijker koelt en beschermt, maar kost brandstof en boven ~0,75 ook koppel.' },
+    cam: { label: 'Nokken', title: 'Inlaatnok-advance', unit: '°', decimals: 0, step: 1, min: -5, max: 42, rows: 'load', hint: 'Gevraagde inlaatfasering (krukasgraden). Advance vult beter onderin en vergroot de overlap; bij hoge uitlaatdruk kost overlap juist vulling.' }
+  });
+  let ecuView = { table: 'spark', sel: null, anchor: null, range: false };
+  function ecuTableInfo(name) { return ECU_TABLES[name] || ECU_TABLES.spark; }
+  function ecuRows(name) {
+    const e = state.tune.ecu;
+    return ecuTableInfo(name).rows === 'gear' ? e.boost.map((_, i) => `${i + 1}e`) : e.loadAxis.map(v => num(v, 2));
+  }
+  // Cells visited by the last dyno pull (and knock retard there), from the logged samples.
+  function ecuTrace(name) {
+    const d = state.lastDyno, e = state.tune.ecu, hits = new Map();
+    if (!d?.samples?.length) return hits;
+    const nearest = (axis, v) => axis.reduce((best, a, i) => (Math.abs(a - v) < Math.abs(axis[best] - v) ? i : best), 0);
+    const gear = clamp(Number(d.dynoConfig?.gear || 4), 1, 6) - 1;
+    for (const p of d.samples) {
+      const c = nearest(e.rpmAxis, p.rpm);
+      const r = ecuTableInfo(name).rows === 'gear' ? gear : nearest(e.loadAxis, Number(p.mapBarAbs ?? (1.013 + p.boostBar)));
+      const key = `${r},${c}`, prev = hits.get(key) || { n: 0, knock: 0 };
+      hits.set(key, { n: prev.n + 1, knock: Math.max(prev.knock, Number(p.knockRetardDeg || 0)) });
+    }
+    return hits;
+  }
+  function ecuInSel(r, c) {
+    const s = ecuView.sel;
+    return !!s && r >= Math.min(s.r0, s.r1) && r <= Math.max(s.r0, s.r1) && c >= Math.min(s.c0, s.c1) && c <= Math.max(s.c0, s.c1);
+  }
+  function renderEcuTable() {
+    const e = state.tune.ecu, name = ecuView.table, info = ecuTableInfo(name), table = e[name];
+    const rows = ecuRows(name), trace = ecuTrace(name);
+    const flat = table.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
+    const dynoCurrent = C.isDynoCurrent(state);
+    const cells = table.map((row, r) => `<tr><th scope="row">${esc(rows[r])}</th>${row.map((v, c) => {
+      const h = hi > lo ? (v - lo) / (hi - lo) : 0.5, t = trace.get(`${r},${c}`);
+      const cls = [ecuInSel(r, c) ? 'sel' : '', t ? 'hit' : '', t && name === 'spark' && t.knock > 0.4 ? 'knock' : ''].filter(Boolean).join(' ');
+      return `<td class="${cls}" style="--h:${h.toFixed(3)}" data-ecu-cell="${r},${c}" ${t && name === 'spark' && t.knock > 0.4 ? `title="knockretard ${num(t.knock, 1)}°"` : ''}>${Number(v).toFixed(info.decimals)}</td>`;
+    }).join('')}</tr>`).join('');
+    const selCount = ecuView.sel ? (Math.abs(ecuView.sel.r1 - ecuView.sel.r0) + 1) * (Math.abs(ecuView.sel.c1 - ecuView.sel.c0) + 1) : 0;
+    const selText = ecuView.sel ? (selCount === 1 ? `${rows[ecuView.sel.r0]} · ${e.rpmAxis[ecuView.sel.c0]} rpm` : `${selCount} cellen`) : 'Tik een cel';
+    const hw = C.engineHardware(state), base = e.baseMapFor;
+    const fuelChanged = name === 'spark' && base && (base.fuel !== state.selections.fuel || (base.ethanolPct ?? hw.ethanolPct) !== hw.ethanolPct || base.head !== state.selections.head || base.block !== state.selections.block);
+    const edited = !!e.edited?.[name];
+    const knockCells = name === 'spark' ? [...trace.values()].filter(t => t.knock > 0.4).length : 0;
+    return `<div class="card tune-card ecu-card">
+      <div class="card-title"><span>${icon('tune')}</span><div><span class="eyebrow">ECU-tabel${edited ? ' · handmatig aangepast' : ''}</span><h2>${esc(info.title)}</h2></div></div>
+      <div class="segment-control ecu-table-tabs">${Object.entries(ECU_TABLES).map(([k, t]) => `<button class="${k === name ? 'active' : ''}" data-ecu-table="${k}">${esc(t.label)}</button>`).join('')}</div>
+      <p class="ecu-hint">${esc(info.hint)}</p>
+      ${name === 'spark' ? `<div class="notice ${fuelChanged ? 'danger' : ''}"><strong>${fuelChanged ? 'Hardware of brandstof gewijzigd sinds de basismap.' : `Basismap voor ${esc(base?.label || hw.fuelLabel)}.`}</strong> ${fuelChanged ? 'De knockregeling moet nu terugnemen of er is ontsteking over; maak een nieuwe basismap of pas de cellen aan.' : 'Veilige start: 2° onder de knockgrens bij een koele inlaat. Wat daartussen zit vind je op de dyno.'}</div>` : ''}
+      ${name === 'spark' && knockCells ? `<div class="notice danger"><strong>Knockretard in ${knockCells} cel${knockCells === 1 ? '' : 'len'} tijdens de laatste pull.</strong> Rood omrande cellen: daar nam de knockregeling ontsteking terug.</div>` : ''}
+      <div class="ecu-grid-wrap" data-scroll-x><table class="ecu-grid ${name}"><thead><tr><th>${info.rows === 'gear' ? 'versn.' : 'MAP'}</th>${e.rpmAxis.map(v => `<th>${v >= 10000 ? `${v / 1000}k` : v}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div>
+      <div class="ecu-legend"><span><i class="hit"></i>geraakt in laatste pull${dynoCurrent ? '' : ' (verouderde meting)'}</span>${name === 'spark' ? '<span><i class="knock"></i>knockretard</span>' : ''}<span>${info.rows === 'gear' ? 'rijen: versnelling' : 'rijen: MAP bar abs'} · kolommen: rpm</span></div>
+      <div class="ecu-toolbar">
+        <div class="ecu-sel"><b>${esc(selText)}</b><small>${ecuView.range ? 'Bereik: tik de tegenoverliggende hoek' : 'Tik om te kiezen'}</small></div>
+        <button class="btn ghost small ${ecuView.range ? 'armed' : ''}" data-action="ecu-range" aria-pressed="${ecuView.range}">Bereik</button>
+        <button class="btn ghost small" data-action="ecu-step" data-dir="-1" ${ecuView.sel ? '' : 'disabled'} aria-label="Lager">−${info.step}</button>
+        <button class="btn ghost small" data-action="ecu-step" data-dir="1" ${ecuView.sel ? '' : 'disabled'} aria-label="Hoger">+${info.step}</button>
+        <button class="btn ghost small" data-action="ecu-set" ${ecuView.sel ? '' : 'disabled'}>Waarde…</button>
+        <button class="btn ghost small" data-action="ecu-smooth" ${selCount > 1 ? '' : 'disabled'}>Glad</button>
+        <button class="btn ghost small" data-action="ecu-interp" ${selCount > 2 ? '' : 'disabled'}>Interpoleer</button>
+        ${name === 'boost' ? `<button class="btn ghost small" data-action="ecu-copy-gears" ${ecuView.sel ? '' : 'disabled'}>Naar alle versn.</button>` : ''}
+      </div>
+      <div class="ecu-actions">
+        ${name === 'spark' ? '<button class="btn secondary" data-action="ecu-basemap">Nieuwe basismap</button>' : `<button class="btn ghost" data-action="ecu-follow-quick" ${edited ? '' : 'disabled'}>Volg snelinstelling</button>`}
+        <button class="btn" data-go="dyno">Meten op de dyno</button>
+      </div>
+    </div>`;
+  }
+  // Edits: every change records the whole ECU before it, so "Ongedaan" restores exactly that edit.
+  function ecuEdit(label, mutate) {
+    const before = cloneJson(state.tune.ecu);
+    const name = ecuView.table, info = ecuTableInfo(name);
+    const t = state.tune.ecu[name].map(r => r.slice());
+    mutate(t, info);
+    for (const row of t) for (let c = 0; c < row.length; c++) row[c] = Math.round(clamp(row[c], info.min, info.max) / info.step * 1e6) / 1e6 * info.step, row[c] = Number(row[c].toFixed(4));
+    state.tune.ecu[name] = t;
+    state.tune.ecu.edited = { ...(state.tune.ecu.edited || {}), [name]: true };
+    saveState();
+    render();
+    showToast(label, { label: 'Ongedaan', run: () => { state.tune.ecu = before; saveState(); render(); showToast('ECU-wijziging teruggezet.'); } });
+  }
+  function ecuSelBounds() {
+    const s = ecuView.sel;
+    return s ? { r0: Math.min(s.r0, s.r1), r1: Math.max(s.r0, s.r1), c0: Math.min(s.c0, s.c1), c1: Math.max(s.c0, s.c1) } : null;
+  }
+  function ecuForSel(t, fn) {
+    const b = ecuSelBounds();
+    if (!b) return;
+    for (let r = b.r0; r <= b.r1; r++) for (let c = b.c0; c <= b.c1; c++) t[r][c] = fn(t[r][c], r, c, b);
+  }
+  function ecuCellTap(r, c) {
+    if (ecuView.range && ecuView.sel) ecuView.sel = { ...ecuView.sel, r1: r, c1: c };
+    else ecuView.sel = { r0: r, c0: c, r1: r, c1: c };
+    haptic(4);
+    render();
+  }
+  function ecuAction(action, btn) {
+    const info = ecuTableInfo(ecuView.table);
+    if (action === 'ecu-range') { ecuView.range = !ecuView.range; return render(); }
+    if (action === 'ecu-step') {
+      const dir = Number(btn?.dataset.dir || 1);
+      return ecuEdit(`${info.title}: ${dir > 0 ? '+' : '−'}${info.step}${info.unit} op selectie`, t => ecuForSel(t, v => v + dir * info.step));
+    }
+    if (action === 'ecu-set') {
+      const b = ecuSelBounds(); if (!b) return;
+      const v = state.tune.ecu[ecuView.table][b.r0][b.c0];
+      showModal(esc(info.title),
+        `<label class="value-editor"><span>Waarde voor de selectie${info.unit.trim() ? ` (${esc(info.unit.trim())})` : ''}</span><input id="ecu-value-field" type="number" inputmode="decimal" min="${info.min}" max="${info.max}" step="${info.step}" value="${v}"></label><p class="modal-copy">Bereik ${info.min} – ${info.max}${esc(info.unit)}, stap ${info.step}.</p>`,
+        '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-action="ecu-set-apply">Toepassen</button>');
+      setTimeout(() => { const f = $('#ecu-value-field'); f?.focus(); f?.select(); }, 60);
+      return;
+    }
+    if (action === 'ecu-set-apply') {
+      const raw = Number(String($('#ecu-value-field')?.value ?? '').replace(',', '.'));
+      closeModal();
+      if (!Number.isFinite(raw)) return showToast('Geen geldig getal.');
+      return ecuEdit(`${info.title}: selectie op ${num(raw, info.decimals)}${info.unit}`, t => ecuForSel(t, () => raw));
+    }
+    if (action === 'ecu-smooth') return ecuEdit(`${info.title}: selectie gladgemaakt`, t => {
+      const src = t.map(r => r.slice());
+      ecuForSel(t, (v, r, c) => {
+        let sum = 0, n = 0;
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const x = src[r + dr]?.[c + dc]; if (Number.isFinite(x)) { sum += x * (dr || dc ? 1 : 2); n += dr || dc ? 1 : 2; } }
+        return sum / n;
+      });
+    });
+    if (action === 'ecu-interp') return ecuEdit(`${info.title}: lineair geïnterpoleerd`, t => {
+      const b = ecuSelBounds();
+      // Bilinear between the four corner cells of the selection.
+      const q = (r, c) => t[r][c], a = q(b.r0, b.c0), bb = q(b.r0, b.c1), cc = q(b.r1, b.c0), d = q(b.r1, b.c1);
+      ecuForSel(t, (v, r, c) => {
+        const fr = b.r1 > b.r0 ? (r - b.r0) / (b.r1 - b.r0) : 0, fc = b.c1 > b.c0 ? (c - b.c0) / (b.c1 - b.c0) : 0;
+        return (a * (1 - fc) + bb * fc) * (1 - fr) + (cc * (1 - fc) + d * fc) * fr;
+      });
+    });
+    if (action === 'ecu-copy-gears') return ecuEdit('Boost: rij gekopieerd naar alle versnellingen', t => {
+      const b = ecuSelBounds();
+      for (let r = 0; r < t.length; r++) if (r !== b.r0) for (let c = b.c0; c <= b.c1; c++) t[r][c] = t[b.r0][c];
+    });
+    if (action === 'ecu-follow-quick') {
+      const before = cloneJson(state.tune.ecu);
+      state.tune.ecu.edited = { ...state.tune.ecu.edited, [ecuView.table]: false };
+      state.tune.ecu.quickKey = '';
+      saveState(); render();
+      return showToast(`${info.title} volgt weer de snelinstelling.`, { label: 'Ongedaan', run: () => { state.tune.ecu = before; saveState(); render(); } });
+    }
+    if (action === 'ecu-basemap') {
+      const hw = C.engineHardware(state);
+      return showModal('Nieuwe basismap',
+        `<p class="modal-copy">De ontstekingstabel wordt opnieuw berekend voor de gemonteerde kop, compressieverhouding en <b>${esc(hw.fuelLabel)}${hw.ethanolPct ? ` (E${hw.ethanolPct})` : ''}</b>: per cel 2° onder de knockgrens, nooit voorbij MBT. Handmatige wijzigingen in de ontsteking gaan verloren (ongedaan maken kan).</p>`,
+        '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-action="ecu-basemap-apply">Berekenen</button>');
+    }
+    if (action === 'ecu-basemap-apply') {
+      closeModal();
+      const before = cloneJson(state.tune.ecu);
+      state = C.regenerateBaseMap(state);
+      saveState(); render();
+      return showToast('Basismap berekend voor de huidige hardware.', { label: 'Ongedaan', run: () => { state.tune.ecu = before; saveState(); render(); } });
+    }
+  }
+  document.addEventListener('click', ev => {
+    const cell = ev.target.closest?.('[data-ecu-cell]');
+    if (cell) { const [r, c] = cell.dataset.ecuCell.split(',').map(Number); ecuCellTap(r, c); return; }
+    const tab = ev.target.closest?.('[data-ecu-table]');
+    if (tab) { ecuView = { table: tab.dataset.ecuTable, sel: null, anchor: null, range: false }; haptic(6); render(); }
+  });
+
   function renderTune() {
     const t = state.tune;
     const turbo = C.getPart(state, 'turbo');
@@ -1637,7 +1810,6 @@
     const camPct = Math.round(cam.score * 100);
     const requestedPeak = Math.max(t.boostLowBar, t.boostMidBar, t.boostHighBar);
     const boostHeadroom = boostHardware.boostHardwareMaxBar - requestedPeak;
-    const fuelCapacity = fuelSystem.fuelSystemHp * fuel.fuelFlowFactor;
     let content = '';
 
     if (tunePanel === 'boost') {
@@ -1660,24 +1832,40 @@
         </div>
       </div>`;
     } else if (tunePanel === 'fuel') {
+      // Fuel: the blend's real properties and what the installed hardware can deliver on it.
+      const hw = C.engineHardware(state), fp = hw.fuel, E = C.Engine;
+      const flexFuel = !!E.DATA.fuelGrades[state.selections.fuel]?.flex;
+      const cap = rpm => E.fuelDelivery(hw.fuelSys, { rpm, demandKgS: 1, fuel: fp, railTargetBar: t.railTargetBar, mapBarAbs: 2.8 });
+      const capMid = cap(3500), capTop = cap(6500);
+      // pk the delivered fuel can feed at a typical full-load brake efficiency of 31 %.
+      const pkFor = kgS => kgS * fp.lhvMJkg * 1000 * 0.31 * 1.3596;
+      const parts = [hw.fuelSys.hpfp && `HPFP ${E.DATA.pumps[hw.fuelSys.hpfp].ccPerRev.toFixed(2)} cc/omw`, hw.fuelSys.di && `DI ${E.DATA.injectors[hw.fuelSys.di].ccMinAt100Bar} cc/min @100 bar`, hw.fuelSys.mpi && `${hw.fuelSys.mpiCount}× MPI ${E.DATA.injectors[hw.fuelSys.mpi].ccMinAt3Bar} cc/min`, hw.fuelSys.mechanical && 'mechanische pomp', hw.fuelSys.lpfp && `LPFP ${E.DATA.pumps[hw.fuelSys.lpfp].lphAt5Bar} L/u`].filter(Boolean);
+      const limitText = { hpfp: 'hogedrukpomp', 'di-window': 'injectievenster', mpi: 'poortinjectoren', lpfp: 'lagedrukpomp', 'mech-pump': 'mechanische pomp' };
       content = `<div class="tune-layout">
         <div class="card tune-card">
           <div class="card-title"><span>${icon('engine')}</span><div><span class="eyebrow">Verbranding</span><h2>Lambda & ontsteking</h2></div></div>
           ${slider('lambda', 'Lambda vollast', .66, .94, .01, t.lambda, ' λ', 2, 'Rijker is niet onbeperkt veiliger; te rijk kost verbrandingsefficiëntie en kan de olie verdunnen.')}
-          ${slider('ignitionTrimDeg', 'Ontstekingstrim', -8, 7, .25, t.ignitionTrimDeg, '°', 2, 'Positief vraagt meer octaan-, temperatuur- en knockmarge.')}
-          ${slider('revLimitRpm', 'Rev limiter', 5500, 10000, 100, t.revLimitRpm, ' rpm', 0, 'Met 92,8-mm slag loopt de gemiddelde zuigersnelheid snel op.')}
+          ${slider('ignitionTrimDeg', 'Ontstekingstrim', -8, 7, .25, t.ignitionTrimDeg, '°', 2, 'Globale correctie bovenop de ontstekingstabel (Tunen → Tabellen).')}
+          ${slider('revLimitRpm', 'Rev limiter', 5500, 10500, 100, t.revLimitRpm, ' rpm', 0, 'Met 92,8-mm slag loopt de gemiddelde zuigersnelheid snel op.')}
           <div class="hardware-readout"><span>Brandstof <b>${esc(fuel.name)}</b></span><span>Ontsteking <b>${esc(ignition.name)}</b></span><span>ECU <b>${esc(ecu.name)}</b></span></div>
         </div>
         <div class="card tune-card">
-          <div class="card-title"><span>${icon('service')}</span><div><span class="eyebrow">Direct injection</span><h2>Raildruk & flow</h2></div></div>
-          ${slider('railTargetBar', 'Raildruktarget', 110, 230, 1, t.railTargetBar, ' bar', 0, 'De pomp- en injectorcapaciteit bepalen of dit target onder belasting gehaald wordt.')}
-          <div class="capacity-panel">
-            <div><span>Hardwarecapaciteit</span><b>${Math.round(fuelCapacity)} pk-equivalent</b></div>
-            <div><span>Max rail hardware</span><b>${Math.round(fuelSystem.maxRailBar)} bar</b></div>
-            <div><span>Brandstofkoeling</span><b>${Math.round(fuel.fuelCooling * 100)}%</b></div>
-            <div><span>Meetkwaliteit</span><b>${Math.round(sensors.diagnosticConfidence * 100)}%</b></div>
+          <div class="card-title"><span>${icon('service')}</span><div><span class="eyebrow">Brandstof</span><h2>${esc(hw.fuelLabel)}${flexFuel ? ` · E${hw.ethanolPct}` : ''}</h2></div></div>
+          ${flexFuel ? slider('ethanolPct', 'Ethanolgehalte (flexsensor)', 0, 100, 1, t.ethanolPct ?? 85, '%', 0, 'Pomp-E85 is in de winter vaak E70. Meer ethanol: hogere octaanindex en koeling, maar ~40 % meer brandstofvolume.') : ''}
+          <div class="fuel-props">
+            <div><span>RON / MON</span><b>${num(fp.ron, 1)} / ${num(fp.mon, 1)}</b></div>
+            <div><span>Stoich AFR</span><b>${num(fp.afrSt, 2)}</b></div>
+            <div><span>Verbrandingswaarde</span><b>${num(fp.lhvMJkg, 1)} MJ/kg</b></div>
+            <div><span>Verdampingswarmte</span><b>${Math.round(fp.hfgKJkg)} kJ/kg</b></div>
           </div>
-          ${t.railTargetBar > fuelSystem.maxRailBar ? '<div class="notice danger"><strong>Target boven hardwarelimiet.</strong> De werkelijke raildruk zal wegzakken; de cut kan ingrijpen.</div>' : '<div class="notice"><strong>Flow wordt pas onder belasting beoordeeld.</strong> De flowtest en dynolog tonen duty en raildrukmarge zonder vooraf pk te onthullen.</div>'}
+          ${slider('railTargetBar', 'Raildruktarget', 110, 230, 1, t.railTargetBar, ' bar', 0, 'Hogere druk: meer flow per injector (√Δp), maar de pomp levert minder per slag.')}
+          <div class="capacity-panel">
+            <div><span>Levering @ 3500 rpm</span><b>${Math.round(capMid.deliveredKgS * 3600)} kg/u · ~${Math.round(pkFor(capMid.deliveredKgS))} pk</b></div>
+            <div><span>Levering @ 6500 rpm</span><b>${Math.round(capTop.deliveredKgS * 3600)} kg/u · ~${Math.round(pkFor(capTop.deliveredKgS))} pk</b></div>
+            <div><span>Begrenzer midden / top</span><b>${esc(limitText[capMid.limitedBy] || '—')} / ${esc(limitText[capTop.limitedBy] || '—')}</b></div>
+            <div><span>Hardware</span><b>${esc(parts.join(' · '))}</b></div>
+          </div>
+          <div class="notice"><strong>Hardwarecapaciteit, geen vermogensbelofte.</strong> Een nokgedreven HPFP levert per omwenteling een vaste slag: bij lage toeren en veel koppel raakt hij het eerst vol. Direct injection heeft per cyclus maar een beperkt injectievenster: bovenin raken de injectoren vol. De dynolog toont raildruk en duty.</div>
         </div>
       </div>`;
     } else if (tunePanel === 'cams') {
@@ -1698,6 +1886,8 @@
       </div>`;
     } else if (tunePanel === 'als') {
       content = renderAntiLagPanel();
+    } else if (tunePanel === 'tables') {
+      content = `<div class="tune-layout ecu-layout">${renderEcuTable()}</div>`;
     } else {
       content = `<div class="tune-layout">
         <div class="card tune-card">
@@ -4936,10 +5126,13 @@
       case 'toggle-compare': state.settings.dynoCompare = state.settings.dynoCompare === false; saveState(); render(); break;
       case 'reset-tune': {
         const stock = C.applyPreset(C.blankState(), 'stock');
-        state.tune = { ...state.tune, ...stock.tune, exhaustTdcLiftMm: state.tune.exhaustTdcLiftMm, intakeTdcLiftMm: state.tune.intakeTdcLiftMm, vvtEnabled: state.tune.vvtEnabled };
+        // OEM quick setup, with a fresh base spark map for the hardware that is actually fitted.
+        state.tune = { ...state.tune, ...stock.tune, ecu: undefined, exhaustTdcLiftMm: state.tune.exhaustTdcLiftMm, intakeTdcLiftMm: state.tune.intakeTdcLiftMm, vvtEnabled: state.tune.vvtEnabled };
         saveState(); haptic(12); showToast('OEM-achtige map geladen; mechanische nokmetingen behouden.'); render(); break;
       }
       case 'run-all-bench': runAllBench(); break;
+      case 'ecu-range': case 'ecu-step': case 'ecu-set': case 'ecu-set-apply': case 'ecu-smooth': case 'ecu-interp':
+      case 'ecu-copy-gears': case 'ecu-follow-quick': case 'ecu-basemap': case 'ecu-basemap-apply': ecuAction(btn.dataset.action, btn); break;
       case 'apply-assembly-targets': {
         const targets = C.assemblyTargets(state);
         for (const key of ['topRingGapMm','secondRingGapMm','rodClearanceMm','mainClearanceMm','sparkGapMm']) state.assembly[key] = targets[key];
@@ -5104,6 +5297,7 @@
     rerender: () => { render(); return true; },
     holdFinishForTest: on => { holdFinishForTest = !!on; return holdFinishForTest; },
     setGraphics3dForTest: on => { state.settings.graphics3d = !!on; saveState(); return state.settings.graphics3d; },
+    ecu: () => cloneJson({ edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor }),
     replay: () => ({ open: !!raceGame?.replayOpen, active: !!raceGame?.replay3d, progress: raceGame?.replayProgress || 0, done: !!raceGame?.replayDone, frames: raceGame?.run?.replayFrames?.length || 0, lastDistanceM: raceGame?.run?.replayFrames?.at?.(-1)?.d || 0, flames: raceGame?.run?.replayFlames?.length || 0, info: raceGame?.replay3d?.info?.() || null }),
     race3d: () => raceGame?.r3d ? { active: true, ...raceGame.r3d.info() } : { active: false, supported: !!window.EA888Race3D?.supported?.() },
     ghost: () => state.ghost ? { drivetrain: state.ghost.drivetrain, quarter: state.ghost.quarter, samples: state.ghost.trace.length } : null,

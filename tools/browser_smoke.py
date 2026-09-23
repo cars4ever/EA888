@@ -239,6 +239,21 @@ def main() -> None:
         if page.locator('#toast.show').count():
             page.evaluate("document.querySelector('#toast').classList.remove('show')")
 
+        # ECU tables: select a range, step it, undo restores the exact table.
+        click(page, '[data-nav="tune"]')
+        click(page, '[data-tune-panel="tables"]')
+        page.wait_for_selector('.ecu-grid td[data-ecu-cell]', timeout=5000)
+        ecu0 = page.evaluate("window.__EA888_DEBUG__.ecu()")
+        click(page, '[data-ecu-cell="8,9"]'); click(page, '[data-action="ecu-range"]'); click(page, '[data-ecu-cell="9,10"]')
+        click(page, '[data-action="ecu-step"][data-dir="1"]')
+        ecu1 = page.evaluate("window.__EA888_DEBUG__.ecu()")
+        report['checks']['ecu_table_edit'] = ecu1['edited']['spark'] is True and abs(ecu1['spark'][8][9] - ecu0['spark'][8][9] - 0.5) < 1e-6 and abs(ecu1['spark'][9][10] - ecu0['spark'][9][10] - 0.5) < 1e-6 and ecu1['spark'][7][9] == ecu0['spark'][7][9]
+        click(page, '#toast button')
+        ecu2 = page.evaluate("window.__EA888_DEBUG__.ecu()")
+        report['checks']['ecu_table_undo'] = ecu2['spark'] == ecu0['spark'] and not ecu2['edited']['spark']
+        report['checks']['ecu_table_touch_cells'] = page.eval_on_selector('.ecu-grid td[data-ecu-cell]', 'td => td.getBoundingClientRect().width >= 40 && td.getBoundingClientRect().height >= 32')
+        click(page, '[data-tune-panel="fuel"]')
+        report['checks']['fuel_hardware_readout'] = page.locator('.fuel-props').count() == 1 and 'kg/u' in page.locator('.capacity-panel').inner_text()
         print('CHECKPOINT tune done', flush=True)
         # Enable the faster animation path through the real settings UI.
         click(page, '[data-nav="service"]')
