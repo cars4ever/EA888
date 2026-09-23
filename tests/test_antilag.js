@@ -42,6 +42,16 @@ const lockedOut = mild.trace.filter(p => p.t > 2.7);
 assert(lockedOut.length && lockedOut.every(p => !p.alsActive && p.alsLimitedBy === 'cooldown'), 'timeout must lock ALS out for the cooldown');
 assert(at(mild, 3.9).boostBar < at(mild, 2.0).boostBar, 'boost must fall once ALS times out');
 
+// 3b. Aggressive ALS crackles continuously: the bang rate follows the ALS strategy (firing frequency x cut
+// fraction), not the boost-hold trim, so it keeps going once boost is on target and the tailpipe flame is
+// continuous (consecutive flames overlap). A mild strategy only pops.
+const dragHeld = drag.trace.filter(p => p.t >= 1.2 && p.alsActive);
+assert(dragHeld.length > 20, 'drag ALS should stay active through a 4 s hold');
+assert(dragHeld.every(p => p.popRateHz >= 10 && p.flameSustain > 0.5), 'drag ALS flame must be continuous while held');
+assert(modes[0][1].trace.every(p => p.flameSustain < 0.2), 'mild ALS must only pop, not burn continuously');
+const rpmRate = rpm => hold(withAls('drag'), { rpm }).trace.filter(p => p.t > 1.5 && p.alsActive).map(p => p.popRateHz)[0];
+assert(rpmRate(4600) > rpmRate(3200), 'bang rate must follow engine speed (firing frequency)');
+
 // 4. Overly aggressive ALS is not free: it damages the turbo and manifold.
 const abusive = hold(withAls('custom', { aggressiveness: 100, retardDeg: 45, extraFuelPct: 40, bypassPct: 40, maxEgtC: 1250, maxShaftPct: 110, timeoutS: 15, targetBoostBar: 3 }), { seconds: 8 });
 assert(abusive.damage.turbo > 1, 'abusive ALS must damage the turbo');

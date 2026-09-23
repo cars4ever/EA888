@@ -1539,6 +1539,15 @@
       rho0 = 1.225;
     return 44330 * (1 - Math.pow(rho / rho0, 0.234969));
   }
+  // Race mass: vehicle base weight (OEM parts, incl. driver and fluids) plus drivetrain layout, every selected
+  // part's mass difference versus OEM (block, oiling, turbo, ice tank, gearbox, ...) and rotating wheel mass.
+  function buildMassKg(state) {
+    const vehicle = state.vehicle;
+    const parts = CATEGORIES.reduce((sum, cat) => sum + Number(getPart(state, cat.id)?.massDeltaKg || 0), 0);
+    const wheelMassPenalty = Math.max(0, Number(vehicle.wheelMassKg || 0) - 7.5) * 4 * 1.35;
+    return Math.max(750, Number(vehicle.massKg || 1350) + Number(DRIVETRAINS[vehicle.drivetrain]?.mass || 0) + parts + wheelMassPenalty);
+  }
+
   function gripFactor(vehicle) {
     const tire = TIRE_MAP[vehicle.tireCompound],
       geometry = wheelFitment(vehicle),
@@ -1585,8 +1594,7 @@
       drive = DRIVETRAINS[vehicle.drivetrain],
       trans = getPart(state, 'transmission'),
       grip = gripFactor(vehicle),
-      wheelMassPenalty = Math.max(0, vehicle.wheelMassKg - 7.5) * 4 * 1.35,
-      mass = Math.max(750, vehicle.massKg + drive.mass + trans.massDeltaKg + wheelMassPenalty),
+      mass = buildMassKg(state),
       radius = grip.geometry.radiusM,
       gears = trans.gearRatios,
       finalDrive = trans.finalDrive,
@@ -1722,9 +1730,9 @@
   // manifold pressure, fuel and turbo/manifold/valve life.
   const ANTI_LAG_PRESETS = Object.freeze({
     mild: { targetRpm: 3800, targetBoostBar: 0.5, retardDeg: 12, extraFuelPct: 6, bypassPct: 6, aggressiveness: 25, maxEgtC: 950, maxShaftPct: 88, timeoutS: 2.5, cooldownS: 6 },
-    street: { targetRpm: 4000, targetBoostBar: 0.9, retardDeg: 18, extraFuelPct: 10, bypassPct: 10, aggressiveness: 40, maxEgtC: 980, maxShaftPct: 90, timeoutS: 3, cooldownS: 6 },
-    rally: { targetRpm: 4300, targetBoostBar: 1.3, retardDeg: 28, extraFuelPct: 18, bypassPct: 18, aggressiveness: 70, maxEgtC: 1050, maxShaftPct: 94, timeoutS: 5, cooldownS: 5 },
-    drag: { targetRpm: 4600, targetBoostBar: 1.8, retardDeg: 34, extraFuelPct: 24, bypassPct: 24, aggressiveness: 90, maxEgtC: 1100, maxShaftPct: 97, timeoutS: 3.5, cooldownS: 8 }
+    street: { targetRpm: 4000, targetBoostBar: 0.9, retardDeg: 18, extraFuelPct: 10, bypassPct: 10, aggressiveness: 40, maxEgtC: 980, maxShaftPct: 90, timeoutS: 4, cooldownS: 6 },
+    rally: { targetRpm: 4300, targetBoostBar: 1.3, retardDeg: 28, extraFuelPct: 18, bypassPct: 18, aggressiveness: 70, maxEgtC: 1050, maxShaftPct: 94, timeoutS: 30, cooldownS: 5 },
+    drag: { targetRpm: 4600, targetBoostBar: 1.8, retardDeg: 34, extraFuelPct: 24, bypassPct: 24, aggressiveness: 90, maxEgtC: 1100, maxShaftPct: 97, timeoutS: 15, cooldownS: 8 }
   });
   const ANTI_LAG_MODES = ['off', 'mild', 'street', 'rally', 'drag', 'custom'];
   const ANTI_LAG_LIMITS = Object.freeze({
@@ -1736,7 +1744,7 @@
     aggressiveness: [0, 100],
     maxEgtC: [850, 1250],
     maxShaftPct: [70, 110],
-    timeoutS: [0.5, 15],
+    timeoutS: [0.5, 60],
     cooldownS: [0, 30]
   });
   function defaultAntiLag() {
@@ -1948,6 +1956,12 @@
             severity: 0.5 * aggr + 0.5 * k
           })
         : { visible: false, intensity: 0 };
+      // Bang rate: firing frequency (4 cylinders, 4-stroke: rpm / 30) times the fraction of events the ALS
+      // strategy cuts/retards into the manifold. It follows the strategy, not the boost-hold trim k, so the
+      // crackle keeps going while the controller only holds boost.
+      const popRateHz = rt.alsActive && flame.visible ? (rpm / 30) * (0.04 + 0.12 * aggr) * (0.6 + 0.4 * k) : 0;
+      // Consecutive flames overlap once rate x flame duration > 1: the tailpipe flame is then continuous.
+      const flameSustain = popRateHz > 0 ? clamp((popRateHz * flame.durationMs) / 1000 - 0.6, 0, 1) * flame.intensity : 0;
       rt.last = {
         rpm,
         boostBar: rt.boostBar,
@@ -1965,7 +1979,8 @@
         fuelGps: fuelKgS * 1000,
         lambda,
         flame,
-        popRateHz: rt.alsActive ? 4 + 18 * k : 0,
+        popRateHz,
+        flameSustain,
         steadyBoostBar: bSteady
       };
       return rt.last;
@@ -2209,6 +2224,7 @@
     tireGeometry,
     wheelFitment,
     gripFactor,
+    buildMassKg,
     airDensity,
     densityAltitude,
     oilHealth,

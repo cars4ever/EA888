@@ -144,6 +144,19 @@ const red = C.simulateDrag(randy.state, randy.result, { reactionTime: -0.031 });
 assert.strictEqual(red.redLight, true, 'red-light not detected');
 assert.strictEqual(red.valid, false, 'red-light pass should be invalid');
 
+// Part masses count in the race: the drag model uses the whole build's mass, not only the gearbox.
+{
+  const light = C.blankState();
+  const heavy = C.normalizeState(light);
+  heavy.selections.oiling = 'dry_sump';
+  heavy.selections.air = 'ice_tank';
+  const delta = C.buildMassKg(heavy) - C.buildMassKg(light);
+  const expected = C.CATEGORY_MAP.oiling.items.find(x => x.id === 'dry_sump').massDeltaKg - C.getPart(light, 'oiling').massDeltaKg
+    + C.CATEGORY_MAP.air.items.find(x => x.id === 'ice_tank').massDeltaKg - C.getPart(light, 'air').massDeltaKg;
+  assert(Math.abs(delta - expected) < 1e-9 && delta > 0, `part masses ignored: +${delta} kg vs +${expected} kg`);
+  assert.strictEqual(C.simulateDrag(randy.state, randy.result, { reactionTime: 0.1 }).totalMassKg, C.buildMassKg(randy.state), 'drag must use the build mass');
+}
+
 // Normalization protects import/migration flows and preserves supported values.
 const migrated = C.normalizeState({ version: 2, selections: { turbo: '106mm' }, vehicle: { drivetrain: 'AWD', rimDiameterIn: 18 } });
 assert.strictEqual(migrated.version, 12, 'state schema was not upgraded');
