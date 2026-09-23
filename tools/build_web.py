@@ -5,7 +5,8 @@
   python3 tools/build_web.py --no-images  skip image recompression (faster local iterations)
 
 Steps:
-  1. copy src/assets (without the unused raw WAV sources; the sound bank is embedded in audio-bank.js)
+  1. copy src/assets (without the unused raw WAV sources; the sound bank is embedded in audio-bank.js) and
+     assemble styles.css from src/styles (fonts, tokens, app, race, components: the design system comes last and wins)
   2. bundle src/web/platform.js with esbuild (morphdom + the Android bridge wrapper)
   3. stamp the version from version.json into app.js
   4. recompress large PNG/JPEG images to WebP when that saves at least 15 %, and rewrite references
@@ -25,6 +26,8 @@ SRC = ROOT / 'src' / 'assets'
 OUT = ROOT / 'build' / 'web'
 ESBUILD = ROOT / 'node_modules' / '.bin' / 'esbuild'
 TEXT_FILES = ('app.js', 'styles.css', 'index.html')
+# styles.css is assembled from src/styles in this order (cascade order matters).
+STYLE_ORDER = ('fonts.css', 'tokens.css', 'app.css', 'race.css', 'components.css')
 # The launcher/favicon PNG stays PNG (the legacy APK pipeline and some launchers expect it).
 KEEP_FORMAT = {'scirocco-app-icon.png'}
 
@@ -32,10 +35,19 @@ KEEP_FORMAT = {'scirocco-app-icon.png'}
 def copy_assets() -> None:
     if OUT.exists():
         shutil.rmtree(OUT)
-    shutil.copytree(SRC, OUT, ignore=shutil.ignore_patterns('*.wav'))
+    shutil.copytree(SRC, OUT, ignore=shutil.ignore_patterns('*.wav', 'styles.css'))
     audio = OUT / 'audio'
     if audio.exists() and not any(audio.iterdir()):
         audio.rmdir()
+
+
+def build_styles() -> None:
+    parts = []
+    for name in STYLE_ORDER:
+        path = ROOT / 'src' / 'styles' / name
+        if path.exists():
+            parts.append(f'/* ---- {name} ---- */\n' + path.read_text(encoding='utf-8'))
+    (OUT / 'styles.css').write_text('\n'.join(parts), encoding='utf-8')
 
 
 def bundle_platform() -> None:
@@ -93,6 +105,7 @@ def main() -> None:
     ap.add_argument('--no-images', action='store_true')
     args = ap.parse_args()
     copy_assets()
+    build_styles()
     bundle_platform()
     version = stamp_version()
     saved = (0, 0) if args.no_images else recompress_images()

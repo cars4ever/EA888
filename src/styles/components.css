@@ -1,0 +1,103 @@
+/* EA888 LAB components. Every component is defined once, here, from the tokens in tokens.css.
+   Button states are the same everywhere: default / disabled (reason shown next to it) / armed / active / danger. */
+
+/* ---------- Type ---------- */
+body { font-family: var(--font-body); font-size: var(--fs-body); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+h1, h2, h3, p { margin-top: 0; }
+h1 { margin-bottom: var(--s-2); font: 800 var(--fs-h1)/.98 var(--font-display); letter-spacing: -.2px; text-wrap: balance; }
+h2 { margin-bottom: var(--s-2); font: 700 var(--fs-h2)/1.05 var(--font-display); letter-spacing: 0; text-wrap: balance; }
+h3 { margin-bottom: var(--s-1); font: 650 var(--fs-h3)/1.2 var(--font-body); letter-spacing: -.1px; }
+p { color: var(--c-text-2); font-size: var(--fs-body); line-height: 1.55; }
+small { font-size: var(--fs-small); }
+.eyebrow { display: block; margin-bottom: var(--s-2); color: var(--c-accent); font: 700 13px/1 var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
+/* Numbers read as instruments: condensed display face, tabular figures. */
+b, strong, output, .num { font-variant-numeric: tabular-nums; }
+.data-kpis b, .v4-data-kpis b, .v5-car-stats b, .kpi-grid b, .dyno-kpis b, .stat b { font-family: var(--font-display); font-weight: 700; letter-spacing: .01em; }
+code, kbd, .mono { font-family: var(--font-mono); }
+
+/* ---------- Focus ---------- */
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; border-radius: 6px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  min-height: var(--touch); padding: 12px 18px; border: 1px solid transparent; border-radius: var(--r-control);
+  background: linear-gradient(160deg, #ffc23a, var(--c-accent) 45%, var(--c-accent-2));
+  color: var(--c-accent-ink); font: 650 14px/1.1 var(--font-body); letter-spacing: .01em; text-align: center;
+  box-shadow: 0 8px 22px rgba(255, 140, 20, .22);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-base) var(--ease), background var(--t-base) var(--ease), opacity var(--t-base);
+  -webkit-user-select: none; user-select: none;
+}
+.btn:active:not(:disabled) { transform: translateY(1px) scale(.99); }
+.btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn.secondary { background: var(--c-surface-3); color: var(--c-text); border-color: var(--c-line-strong); box-shadow: none; }
+.btn.ghost { background: transparent; color: var(--c-text-2); border-color: var(--c-line); box-shadow: none; }
+.btn.danger { background: linear-gradient(160deg, #ff6b7b, var(--c-bad) 50%, #c9223a); color: #fff; box-shadow: 0 8px 22px rgba(255, 83, 101, .22); }
+.btn.small { min-height: 44px; padding: 9px 14px; font-size: 13px; }
+/* State: disabled. The reason is shown next to the button (never a silent grey button). */
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; filter: saturate(.3); box-shadow: none; cursor: not-allowed; }
+/* State: armed (waiting for the next step, e.g. tree running). */
+.btn.armed { box-shadow: 0 0 0 2px var(--c-accent), 0 0 22px rgba(255, 173, 23, .35); }
+/* State: active (toggled on / selected). */
+.btn.active, .btn[aria-pressed="true"] { background: var(--c-accent-soft); color: var(--c-accent); border-color: var(--c-accent); box-shadow: none; }
+.btn-row { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.why { color: var(--c-text-3); font-size: var(--fs-small); }
+
+/* ---------- Segmented control ---------- */
+.segment-control { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: none; gap: var(--s-1); margin-bottom: var(--s-4); padding: var(--s-1); border: 1px solid var(--c-line); border-radius: calc(var(--r-control) + 4px); background: var(--c-surface-1); }
+.segment-control button { min-height: 44px; padding: 8px 6px; border: 0; border-radius: var(--r-control); background: transparent; color: var(--c-text-3); font: 600 13px/1.1 var(--font-body); transition: background var(--t-base), color var(--t-base); }
+.segment-control button.active { background: var(--c-surface-3); color: var(--c-text); box-shadow: inset 0 -2px 0 var(--c-accent), inset 0 0 0 1px var(--c-line-strong); }
+
+/* ---------- Notices ---------- */
+.notice { margin-bottom: var(--s-4); padding: 12px 14px; border: 1px solid var(--c-line); border-left: 4px solid var(--c-text-3); border-radius: var(--r-control); background: var(--c-surface-1); color: var(--c-text-2); font-size: 13.5px; line-height: 1.45; }
+.notice strong { color: var(--c-text); }
+.notice.success { border-left-color: var(--c-good); background: linear-gradient(90deg, var(--c-good-soft), var(--c-surface-1) 60%); }
+.notice.danger { border-left-color: var(--c-bad); background: linear-gradient(90deg, var(--c-bad-soft), var(--c-surface-1) 60%); }
+.notice.stale { border-left-color: var(--c-warn); background: linear-gradient(90deg, var(--c-warn-soft), var(--c-surface-1) 60%); }
+
+/* ---------- Bottom navigation: docked, full width, clear of the gesture bar ---------- */
+:root { --nav-height: 62px; }
+#bottom-nav {
+  position: fixed; z-index: 80; left: 0; right: 0; bottom: 0; height: auto;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 0;
+  padding: 6px max(8px, var(--native-safe-left, 0px)) calc(6px + var(--safe-bottom)) max(8px, var(--native-safe-right, 0px));
+  border: 0; border-top: 1px solid var(--c-line); border-radius: 0;
+  background: rgba(9, 12, 17, .96); backdrop-filter: blur(18px) saturate(1.2); box-shadow: 0 -10px 30px rgba(0, 0, 0, .35);
+}
+.nav-btn { position: relative; min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: var(--r-control); background: transparent; color: var(--c-text-3); font: 600 11px/1 var(--font-body); letter-spacing: .02em; text-transform: none; transition: color var(--t-base); }
+.nav-btn .nav-icon { display: grid; place-items: center; width: 44px; height: 28px; border-radius: var(--r-pill); transition: background var(--t-base); }
+.nav-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav-btn.active { color: var(--c-accent); background: transparent; box-shadow: none; }
+.nav-btn.active .nav-icon { background: var(--c-accent-soft); }
+#content { padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + var(--s-6)); }
+
+/* ---------- Toast (with optional action, e.g. undo) ---------- */
+#toast {
+  position: fixed; z-index: 110; left: 50%; bottom: calc(var(--nav-height) + var(--safe-bottom) + var(--s-4));
+  display: flex; align-items: center; gap: var(--s-3); width: max-content; max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px; border: 1px solid var(--c-line-strong); border-radius: var(--r-control);
+  background: rgba(20, 27, 36, .97); color: var(--c-text); font-size: 13.5px; line-height: 1.35; box-shadow: var(--e-2);
+  opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity var(--t-base), transform var(--t-base) var(--ease);
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast .toast-action { min-height: 36px; padding: 6px 12px; border: 1px solid var(--c-accent); border-radius: 10px; background: transparent; color: var(--c-accent); font: 650 13px/1 var(--font-body); white-space: nowrap; }
+
+/* ---------- Top bar ---------- */
+.brand-mark { font: 800 25px/1 var(--font-display); letter-spacing: .01em; }
+.brand-lab { font: 700 16px/1 var(--font-display); letter-spacing: .28em; color: var(--c-accent); }
+.version-tag { font: 600 11px/1 var(--font-mono); letter-spacing: 0; }
+.build-line { font-size: var(--fs-small); font-weight: 550; letter-spacing: 0; color: var(--c-text-3); }
+.status-pill { border-radius: var(--r-control); border-color: var(--c-line); background: var(--c-surface-1); }
+.status-pill b { font: 700 14px/1 var(--font-display); letter-spacing: .08em; white-space: nowrap; }
+.status-pill span { font-size: 11px; }
+
+/* Segments with many options (tune panels): one line per label. */
+.segment-control.five button, .segment-control button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.segment-control.five button { font-size: 12.5px; padding-inline: 2px; }
+
+/* Tab rows that are segmented controls under another name (engine view, race overview). */
+.engine-view-tabs, .v12-race-segments { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: none; gap: var(--s-1); padding: var(--s-1); border: 1px solid var(--c-line); border-radius: calc(var(--r-control) + 4px); background: var(--c-surface-1); }
+.engine-view-tabs button, .v12-race-segments button { min-height: 44px; padding: 8px 4px; border: 0; border-radius: var(--r-control); background: transparent; color: var(--c-text-3); font: 600 13px/1.1 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.engine-view-tabs button span { display: none; }
+.engine-view-tabs button.active, .v12-race-segments button.active { background: var(--c-surface-3); color: var(--c-text); box-shadow: inset 0 -2px 0 var(--c-accent), inset 0 0 0 1px var(--c-line-strong); }

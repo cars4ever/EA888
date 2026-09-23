@@ -951,7 +951,7 @@
 
   function engineViewTabs() {
     return `<div class="engine-view-tabs v5-engine-tabs" aria-label="Motorweergave">
-      <button class="${engineView === 'realistic' ? 'active' : ''}" data-engine-view="realistic"><span>3D</span> Garage render</button>
+      <button class="${engineView === 'realistic' ? 'active' : ''}" data-engine-view="realistic"><span>3D</span> Render</button>
       <button class="${engineView === 'intake' ? 'active' : ''}" data-engine-view="intake"><span>01</span> Inlaatzijde</button>
       <button class="${engineView === 'turbo' ? 'active' : ''}" data-engine-view="turbo"><span>02</span> Turbozijde</button>
       <button class="${engineView === 'cutaway' ? 'active' : ''}" data-engine-view="cutaway"><span>03</span> Intern</button>

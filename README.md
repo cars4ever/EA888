@@ -26,6 +26,14 @@ Current systems include engine parts/tuning, dyno simulation, wear/damage, servi
   canvases stay put.
 - **Full backup to a file** (Data page): the whole game, restorable after a reinstall or on a new phone.
 
+## Styles
+
+`src/styles/` is the source (the build concatenates it into `styles.css`):
+`fonts.css` (bundled Barlow Condensed / Inter / JetBrains Mono, OFL) → `tokens.css` (colour, type, spacing,
+radius, elevation, motion) → `app.css` (pages) → `race.css` (fullscreen race scenes, rebuilt in phase 3) →
+`components.css` (the design system: every shared component defined once; last in the cascade so it wins).
+The browser smoke test runs against `build/web`.
+
 ## v1.3.1
 
 - **Precision Turbo catalogue** (small to large, PT5558 … PT10603 Pro Mod) replaces the generic modeled
@@ -73,7 +81,7 @@ python3 tools/browser_smoke.py \
   --report /tmp/ea888-browser-report.json
 
 npm install                       # esbuild + morphdom
-python3 tools/build_web.py        # build/web (Android assets, browser test target)
+python3 tools/build_web.py        # build/web (Android assets, browser test target); styles from src/styles
 python3 tools/browser_smoke.py --assets build/web --report /tmp/ea888-browser-report.json
 
 tools/setup_android_sdk.sh        # once: Android SDK platform 35 + build-tools

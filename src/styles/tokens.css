@@ -1,0 +1,73 @@
+/* EA888 LAB design tokens: the single source for colour, type, spacing, radius, elevation and motion.
+   Dark metal + orange identity. Semantic colours (good / warn / bad / info) are separate from the accent. */
+:root {
+  /* Surfaces: graphite with a slight blue bias, from page ground up to raised controls. */
+  --c-bg: #07090d;
+  --c-surface-1: #0e131a;
+  --c-surface-2: #141b24;
+  --c-surface-3: #1b2430;
+  --c-line: #243040;
+  --c-line-strong: #36465b;
+  /* Text: contrast >= 4.5:1 on surface-2 for --c-text-3 and up. */
+  --c-text: #f2f5f9;
+  --c-text-2: #c1cad6;
+  --c-text-3: #8d9aac;
+  /* Accent: the EA888 LAB orange. */
+  --c-accent: #ffad17;
+  --c-accent-2: #ff7a1f;
+  --c-accent-ink: #1a1206;
+  --c-accent-soft: rgba(255, 173, 23, .14);
+  /* Semantic. */
+  --c-good: #36d17f;
+  --c-warn: #ffd24a;
+  --c-bad: #ff5365;
+  --c-info: #4cc0ff;
+  --c-good-soft: rgba(54, 209, 127, .13);
+  --c-warn-soft: rgba(255, 210, 74, .12);
+  --c-bad-soft: rgba(255, 83, 101, .14);
+
+  /* Type. Display: condensed, for titles and numbers. Body: Inter. Data: JetBrains Mono. */
+  --font-display: 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', Roboto, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --fs-label: 11px;   /* uppercase labels, eyebrows */
+  --fs-small: 12.5px; /* captions, hints */
+  --fs-body: 14.5px;
+  --fs-h3: 18px;
+  --fs-h2: 24px;
+  --fs-h1: clamp(30px, 8vw, 44px);
+  --fs-number: 26px;  /* KPI values */
+
+  /* Spacing on a 4 px grid. */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px;
+  /* Radius: controls, cards, sheets. */
+  --r-control: 12px;
+  --r-card: 16px;
+  --r-sheet: 22px;
+  --r-pill: 999px;
+  /* Touch: minimum target (Android 48 dp). */
+  --touch: 48px;
+  /* Elevation. */
+  --e-1: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 8px 24px rgba(0, 0, 0, .28);
+  --e-2: 0 18px 48px rgba(0, 0, 0, .45);
+  /* Motion. */
+  --t-fast: 120ms;
+  --t-base: 200ms;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+
+  /* Legacy names used across app.css / race.css, mapped onto the tokens. */
+  --bg: var(--c-bg);
+  --panel: var(--c-surface-1);
+  --panel-2: var(--c-surface-2);
+  --panel-3: var(--c-surface-3);
+  --line: var(--c-line);
+  --line-bright: var(--c-line-strong);
+  --text: var(--c-text);
+  --muted: var(--c-text-3);
+  --orange: var(--c-accent);
+  --orange-2: var(--c-accent-2);
+  --green: var(--c-good);
+  --red: var(--c-bad);
+  --blue: var(--c-info);
+}
+@media (prefers-reduced-motion: reduce) { :root { --t-fast: 0ms; --t-base: 0ms; } }

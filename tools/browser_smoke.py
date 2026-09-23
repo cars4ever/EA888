@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 def data_uri(path: Path) -> str:
     mime = {
         '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
-        '.webp': 'image/webp', '.svg': 'image/svg+xml'
+        '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2'
     }.get(path.suffix.lower(), 'application/octet-stream')
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
@@ -27,7 +27,9 @@ def inline_images(text: str, assets: Path) -> str:
     def repl(m):
         path = assets / 'images' / m.group(1)
         return data_uri(path) if path.is_file() else m.group(0)
-    return re.sub(r'images/([A-Za-z0-9._-]+\.(?:png|jpe?g|webp|svg))', repl, text)
+    text = re.sub(r'images/([A-Za-z0-9._-]+\.(?:png|jpe?g|webp|svg))', repl, text)
+    fonts = lambda m: data_uri(assets / 'fonts' / m.group(1)) if (assets / 'fonts' / m.group(1)).is_file() else m.group(0)
+    return re.sub(r'fonts/([A-Za-z0-9._-]+\.woff2)', fonts, text)
 
 
 def load_app(page, assets: Path) -> None:
@@ -196,7 +198,13 @@ def main() -> None:
         if reduced.get_attribute('aria-pressed') != 'true':
             reduced.click()
             page.wait_for_timeout(80)
-        report['checks']['safe_bottom_navigation'] = page.eval_on_selector('#bottom-nav', "e => { const r=e.getBoundingClientRect(); return r.bottom < innerHeight && r.bottom > innerHeight-80; }")
+        # Docked navigation: flush with the screen bottom, every button above the safe (gesture) area.
+        report['checks']['safe_bottom_navigation'] = page.eval_on_selector('#bottom-nav', """e => {
+          const r = e.getBoundingClientRect();
+          const safe = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 12;
+          const buttons = [...e.querySelectorAll('.nav-btn')].map(b => b.getBoundingClientRect());
+          return Math.abs(r.bottom - innerHeight) < 1 && buttons.length === 6 && buttons.every(b => b.bottom <= innerHeight - Math.min(safe, 12) && b.height >= 48);
+        }""")
 
         print('CHECKPOINT service done', flush=True)
         # New dyno pull; exercise all five channel views.
