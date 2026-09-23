@@ -12,10 +12,10 @@
       "prTop": 2.4,
       "maxShaftRpm": 210000,
       "peakEfficiency": 0.7,
-      "turbineChokeFlowLbMin": 12.6,
+      "turbineChokeFlowLbMin": 7.6,
       "turbineEfficiency": 0.68,
       "twinScroll": false,
-      "basis": "OEM CAWB K03 is commonly quoted at about 25 lb/min / 250 hp; small journal-bearing wheel."
+      "basis": "OEM CAWB K03 is commonly quoted at about 25 lb/min / 250 hp; small journal-bearing wheel. Turbine flow re-sized in phase 4 (engine airflow now from the physical VE model) so the K03 reaches full boost near 2000 rpm like the production CAWB."
     },
     "k04": {
       "name": "K04-064",

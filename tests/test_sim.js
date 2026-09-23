@@ -22,25 +22,29 @@ assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'pt10603' && x.compressorMm
 const ptSizes = C.CATEGORY_MAP.turbo.items.filter(x => /^pt/.test(x.id)).map(x => x.compressorMm);
 assert.deepStrictEqual(ptSizes, [...ptSizes].sort((a, b) => a - b), 'Precision turbos must be ordered small to large');
 
-// Plausible deterministic reference bands.
+// Reference bands (pk = PS). Stock: VW quotes 147 kW / 200 PS and 280 Nm for the CAWB; a chassis-dyno pull on
+// the physical model must land within ~7 % of that. The K04-064 hybrid is rated ~500 hp; on its 1.9 bar map
+// with E20 + WMI it lands a little below the rating. BMEP stays in the range a 2.0 TSI actually runs (< 36 bar).
 const stock = presetResult('stock');
-approxBetween(stock.result.peakHp, 165, 250, 'OEM horsepower');
-approxBetween(stock.result.peakTorqueNm, 215, 335, 'OEM torque');
+approxBetween(stock.result.peakHp, 186, 214, 'OEM power (200 PS +/- 7 %)');
+approxBetween(stock.result.peakTorqueNm, 260, 300, 'OEM torque (280 Nm +/- 7 %)');
 
 const randy = presetResult('randy');
-approxBetween(randy.result.peakHp, 450, 590, 'Randy K04 horsepower');
-approxBetween(randy.result.peakTorqueNm, 620, 780, 'Randy K04 torque');
+approxBetween(randy.result.peakHp, 430, 540, 'Randy K04 hybrid power');
+approxBetween(randy.result.peakTorqueNm, 470, 600, 'Randy K04 hybrid torque');
+approxBetween(randy.result.maxBmepBar, 25, 36, 'Randy K04 hybrid BMEP');
 assert.strictEqual(randy.result.failureRpm, 0, randy.result.failureReason || 'Randy preset failed');
 approxBetween(C.engineGeometry(randy.state).displacementCc, 2005, 2012, 'JE83 displacement');
 
 const hx52 = presetResult('hx52');
-approxBetween(hx52.result.peakHp, 690, 850, 'HX52 horsepower');
+approxBetween(hx52.result.peakHp, 540, 720, 'HX52 power (~2.1 bar E85 on 2.0 L)');
 assert.strictEqual(hx52.result.failureRpm, 0, hx52.result.failureReason || 'HX52 preset failed');
 
+// Pro builds: 80-86 mm compressors (a 98/106 mm wheel surges on 2.0 L at any rpm it can reach).
 const bigRanges = {
-  pro98: [1250, 1750, 98],
-  outlaw106: [1250, 1750, 106],
-  unlimited: [1850, 2400, 106]
+  pro98: [850, 1150, 86],
+  outlaw106: [950, 1250, 80],
+  unlimited: [1300, 1750, 86]
 };
 for (const [id, [minHp, maxHp, compressorMm]] of Object.entries(bigRanges)) {
   const entry = presetResult(id);
@@ -175,6 +179,8 @@ const dynoResultSuite = require('./test_dyno_result.js');
 const turboSuite = require('./test_turbo_map.js');
 // Anti-lag, realtime turbo runtime and exhaust flames.
 const antiLagSuite = require('./test_antilag.js');
+// Physical engine model: combustion, breathing, knock, fuel system, ECU tables.
+const engineSuite = require('./test_engine.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -192,7 +198,8 @@ const report = {
   selfTestChecks: self.checks.length,
   dynoAbortSweepCases: dynoResultSuite.abortedSweepCount,
   turboMaps: turboSuite,
-  antiLag: antiLagSuite
+  antiLag: antiLagSuite,
+  engine: engineSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

@@ -1,0 +1,20 @@
+{
+  "_about": "Pure fuel components and the fuel grades in the catalogue. Component properties are handbook values (Heywood, Internal Combustion Engine Fundamentals, 2nd ed., table D.4; ASTM/EN 228 typical gasoline). Blends are computed in engine.js: energy, stoichiometry and heat of vaporisation by mass, octane linear in molar fraction (Anderson et al., SAE 2012-01-1274). Pump gasoline in the EU already contains up to 5-10 % ethanol; the 'gasoline' component here is the ethanol-free base.",
+  "components": {
+    "gasoline": { "lhvMJkg": 43.0, "afrSt": 14.6, "hfgKJkg": 350, "densityKgL": 0.745, "molarMass": 100, "ron": 95, "mon": 85, "source": "typical EN 228 hydrocarbon base; RON/MON set per grade" },
+    "ethanol": { "lhvMJkg": 26.8, "afrSt": 9.0, "hfgKJkg": 920, "densityKgL": 0.789, "molarMass": 46.07, "ron": 109, "mon": 90, "source": "Heywood table D.4; neat-ethanol RON/MON from Anderson et al. 2012" },
+    "methanol": { "lhvMJkg": 19.9, "afrSt": 6.47, "hfgKJkg": 1100, "densityKgL": 0.792, "molarMass": 32.04, "ron": 109, "mon": 89, "source": "Heywood table D.4" },
+    "race_hc": { "lhvMJkg": 43.3, "afrSt": 14.8, "hfgKJkg": 330, "densityKgL": 0.72, "molarMass": 105, "ron": 116, "mon": 104, "source": "leaded/oxygen-free race fuel class (C16-type): modeled from published RON/MON typicals" }
+  },
+  "grades": {
+    "ron95": { "volume": { "gasoline": 0.95, "ethanol": 0.05 }, "gasolineRon": 93.6, "gasolineMon": 84.2, "label": "Euro 95 (E5)", "mapType": "modeled", "note": "base chosen so the E5 blend lands at 95 RON / ~85 MON" },
+    "ron98": { "volume": { "gasoline": 0.95, "ethanol": 0.05 }, "gasolineRon": 96.8, "gasolineMon": 86.4, "label": "Euro 98 (E5)", "mapType": "modeled", "note": "E5 blend lands at 98 RON / ~87 MON" },
+    "blend_wmi": { "volume": { "gasoline": 0.8, "ethanol": 0.2 }, "gasolineRon": 96.8, "gasolineMon": 86.4, "label": "98 + E20-blend (+ WMI hardware)", "mapType": "modeled", "note": "98 base with about 20 % ethanol; water-methanol comes from the WMI kit" },
+    "e30": { "volume": { "gasoline": 0.7, "ethanol": 0.3 }, "gasolineRon": 96.8, "gasolineMon": 86.4, "label": "E30", "mapType": "modeled" },
+    "e85": { "volume": { "gasoline": 0.15, "ethanol": 0.85 }, "gasolineRon": 93.6, "gasolineMon": 84.2, "label": "E85", "mapType": "modeled", "note": "EN 15293 E85 is 70-85 % ethanol depending on season" },
+    "race_fuel_type": { "volume": { "race_hc": 0.85, "ethanol": 0.15 }, "label": "Race-brandstof (C16-klasse + 15 % ethanol)", "mapType": "modeled" },
+    "methanol": { "volume": { "methanol": 1 }, "label": "M1 methanol", "mapType": "modeled" },
+    "flex": { "volume": { "gasoline": 0.15, "ethanol": 0.85 }, "gasolineRon": 93.6, "gasolineMon": 84.2, "label": "Flex (ethanolsensor)", "flex": true, "mapType": "modeled", "note": "ethanol content set in the tune (E0-E100) and measured by the flex sensor" }
+  },
+  "water": { "hfgKJkg": 2300, "source": "latent heat near 60 C" }
+}

@@ -5,6 +5,7 @@
 (function (root) {
   'use strict';
   const Turbo = typeof module !== 'undefined' && module.exports ? require('./turbo.js') : root.EA888Turbo;
+  const Engine = typeof module !== 'undefined' && module.exports ? require('./engine.js') : root.EA888Engine;
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const lerp = (a, b, f) => a + (b - a) * f;
@@ -108,7 +109,7 @@
   // prettier-ignore
   const DRIVETRAINS = {"FWD":{"name":"FWD","frontStatic":0.63,"loss":0.1,"mass":0,"tractionUse":1},"RWD":{"name":"RWD swap","frontStatic":0.51,"loss":0.13,"mass":35,"tractionUse":1},"AWD":{"name":"AWD","frontStatic":0.56,"loss":0.17,"mass":95,"tractionUse":0.92}};
   // prettier-ignore
-  const PRESETS = {"stock":{"name":"OEM CAWB 200","selections":{"block":"oem_block","crank":"oem_crank","oiling":"wet_sump","head":"oem_head","valvetrain":"oem_valves","turbo":"k03","air":"oem_air","fuelSystem":"oem_fuel","fuel":"ron98","exhaust":"oem_exhaust","ecu":"med17","ignition":"oem_ignition","sealing":"oem_bolts","transmission":"oem_6mt","spool":"none","crankcase":"oem_pcv","boostControl":"oem_internal","manifold":"oem_manifold","sensors":"oem_sensors"},"tune":{"boostLowBar":0.5,"boostMidBar":0.82,"boostHighBar":0.6,"lambda":0.82,"ignitionTrimDeg":0,"revLimitRpm":6500,"railTargetBar":150,"intakeCamAdvanceDeg":18,"launchRpm":3000,"firstGearBoostPct":76,"secondGearBoostPct":90}},"k04":{"name":"K04 straat","selections":{"block":"rods","crank":"fluidampr","oiling":"baffled","head":"mild_cams","valvetrain":"springs","turbo":"k04","air":"fmic","fuelSystem":"nostrum","fuel":"ron98","exhaust":"catted_3","ecu":"custom_med17","ignition":"fresh_coils","sealing":"studs","transmission":"built_6mt","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"street_sensor_pack"},"tune":{"boostLowBar":1.15,"boostMidBar":1.7,"boostHighBar":1.25,"lambda":0.8,"ignitionTrimDeg":-0.5,"revLimitRpm":7200,"railTargetBar":170,"intakeCamAdvanceDeg":12,"launchRpm":3800,"firstGearBoostPct":62,"secondGearBoostPct":82}},"randy":{"name":"Randy CAWB JE83 K04","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"k04_hybrid","air":"wmi","fuelSystem":"randy_nostrum_rsx","fuel":"blend_wmi","exhaust":"race_3","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"randy_cometic_arp","transmission":"randy_o2q","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.95,"boostMidBar":1.88,"boostHighBar":1.72,"lambda":0.79,"ignitionTrimDeg":-0.5,"revLimitRpm":8000,"railTargetBar":175,"intakeCamAdvanceDeg":8,"exhaustTdcLiftMm":0.85,"intakeTdcLiftMm":0.25,"vvtEnabled":true,"launchRpm":4200,"firstGearBoostPct":55,"secondGearBoostPct":78,"knockControl":true,"railPressureCut":true,"lambdaProtection":true,"methFailsafe":true,"oilPressureProtection":true,"overboostCut":true}},"hx52":{"name":"HX52 high-rpm","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"hx52","air":"wmi","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vented_can","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.3,"boostMidBar":1.1,"boostHighBar":2.2,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8400,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5000,"firstGearBoostPct":48,"secondGearBoostPct":72}},"pro98":{"name":"Precision 9803 Pro Mod 2.0","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt9803","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.1,"boostMidBar":0.8,"boostHighBar":2.6,"lambda":0.74,"ignitionTrimDeg":-2,"revLimitRpm":9500,"railTargetBar":225,"intakeCamAdvanceDeg":0,"launchRpm":6800,"firstGearBoostPct":45,"secondGearBoostPct":68},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.56,"secondRingGapMm":0.62,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.52,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"outlaw106":{"name":"Precision 10603 Outlaw 2.0","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt10603","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.05,"boostMidBar":0.65,"boostHighBar":2.8,"lambda":0.73,"ignitionTrimDeg":-2.5,"revLimitRpm":9200,"railTargetBar":225,"intakeCamAdvanceDeg":-1,"launchRpm":7200,"firstGearBoostPct":42,"secondGearBoostPct":65},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.57,"secondRingGapMm":0.63,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.5,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"unlimited":{"name":"Precision 10603 Unlimited 2.0","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","crankcase":"vacuum_pump","head":"promod_head","valvetrain":"promod_valvetrain","turbo":"pt10603","boostControl":"dual_60_co2","air":"promod_ice_system","manifold":"billet_120","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","sensors":"pro_instrumentation","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_250"},"tune":{"boostLowBar":0.05,"boostMidBar":0.3,"boostHighBar":2.8,"lambda":0.72,"ignitionTrimDeg":-3.0,"revLimitRpm":9800,"railTargetBar":225,"intakeCamAdvanceDeg":-2,"launchRpm":7800,"firstGearBoostPct":34,"secondGearBoostPct":54},"assembly":{"topRingGapMm":0.58,"secondRingGapMm":0.64,"rodClearanceMm":0.062,"mainClearanceMm":0.06,"sparkGapMm":0.49,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0}}};
+  const PRESETS = {"stock":{"name":"OEM CAWB 200","selections":{"block":"oem_block","crank":"oem_crank","oiling":"wet_sump","head":"oem_head","valvetrain":"oem_valves","turbo":"k03","air":"oem_air","fuelSystem":"oem_fuel","fuel":"ron98","exhaust":"oem_exhaust","ecu":"med17","ignition":"oem_ignition","sealing":"oem_bolts","transmission":"oem_6mt","spool":"none","crankcase":"oem_pcv","boostControl":"oem_internal","manifold":"oem_manifold","sensors":"oem_sensors"},"tune":{"boostLowBar":1.0,"boostMidBar":1.0,"boostHighBar":0.74,"lambda":0.82,"ignitionTrimDeg":0,"revLimitRpm":6500,"railTargetBar":150,"intakeCamAdvanceDeg":18,"launchRpm":3000,"firstGearBoostPct":76,"secondGearBoostPct":90}},"k04":{"name":"K04 straat","selections":{"block":"rods","crank":"fluidampr","oiling":"baffled","head":"mild_cams","valvetrain":"springs","turbo":"k04","air":"fmic","fuelSystem":"nostrum","fuel":"ron98","exhaust":"catted_3","ecu":"custom_med17","ignition":"fresh_coils","sealing":"studs","transmission":"built_6mt","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"street_sensor_pack"},"tune":{"boostLowBar":1.15,"boostMidBar":1.7,"boostHighBar":1.25,"lambda":0.8,"ignitionTrimDeg":-0.5,"revLimitRpm":7200,"railTargetBar":170,"intakeCamAdvanceDeg":12,"launchRpm":3800,"firstGearBoostPct":62,"secondGearBoostPct":82}},"randy":{"name":"Randy CAWB JE83 K04","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"k04_hybrid","air":"wmi","fuelSystem":"randy_nostrum_rsx","fuel":"blend_wmi","exhaust":"race_3","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"randy_cometic_arp","transmission":"randy_o2q","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.95,"boostMidBar":1.88,"boostHighBar":1.72,"lambda":0.79,"ignitionTrimDeg":-0.5,"revLimitRpm":8000,"railTargetBar":175,"intakeCamAdvanceDeg":8,"exhaustTdcLiftMm":0.85,"intakeTdcLiftMm":0.25,"vvtEnabled":true,"launchRpm":4200,"firstGearBoostPct":55,"secondGearBoostPct":78,"knockControl":true,"railPressureCut":true,"lambdaProtection":true,"methFailsafe":true,"oilPressureProtection":true,"overboostCut":true}},"hx52":{"name":"HX52 high-rpm","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"hx52","air":"wmi","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vented_can","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.3,"boostMidBar":1.1,"boostHighBar":2.2,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8400,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5000,"firstGearBoostPct":48,"secondGearBoostPct":72}},"pro98":{"name":"Pro Mod 2.0 · PT8685 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8685","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.6,"boostMidBar":1.6,"boostHighBar":3.6,"lambda":0.74,"ignitionTrimDeg":-2,"revLimitRpm":9500,"railTargetBar":225,"intakeCamAdvanceDeg":0,"launchRpm":6800,"firstGearBoostPct":45,"secondGearBoostPct":68},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.56,"secondRingGapMm":0.62,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.52,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"outlaw106":{"name":"Outlaw 2.0 · PT8085 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8085","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.7,"boostMidBar":1.9,"boostHighBar":3.3,"lambda":0.74,"ignitionTrimDeg":-2.5,"revLimitRpm":9200,"railTargetBar":225,"intakeCamAdvanceDeg":-1,"launchRpm":7200,"firstGearBoostPct":42,"secondGearBoostPct":65},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.57,"secondRingGapMm":0.63,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.5,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"unlimited":{"name":"Unlimited 2.0 · PT8685 + promod head","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","crankcase":"vacuum_pump","head":"promod_head","valvetrain":"promod_valvetrain","turbo":"pt8685","boostControl":"dual_60_co2","air":"promod_ice_system","manifold":"billet_120","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","sensors":"pro_instrumentation","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_250"},"tune":{"boostLowBar":0.6,"boostMidBar":1.8,"boostHighBar":4.2,"lambda":0.72,"ignitionTrimDeg":-3.0,"revLimitRpm":10000,"railTargetBar":225,"intakeCamAdvanceDeg":-2,"launchRpm":7800,"firstGearBoostPct":34,"secondGearBoostPct":54},"assembly":{"topRingGapMm":0.58,"secondRingGapMm":0.64,"rodClearanceMm":0.062,"mainClearanceMm":0.06,"sparkGapMm":0.49,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0}}};
 
   const BENCH_TESTS = [
     { id: 'oilPrime', name: 'Oliedruk primen', detail: 'Controleert de gemodelleerde druk bij starttoerental vóór de eerste pull.' },
@@ -186,6 +187,7 @@
       methFailsafe: true,
       oilPressureProtection: true,
       overboostCut: true,
+      ethanolPct: 85,
       als: defaultAntiLag()
     };
   }
@@ -210,7 +212,7 @@
       tune: defaultTune(),
       assembly: defaultAssembly(),
       bench: { results: {} },
-      dynoConfig: { rampRpmPerSec: 550, fanSpeedPct: 85, ambientTempC: 20, baroKpa: 101.3 },
+      dynoConfig: { rampRpmPerSec: 550, fanSpeedPct: 85, ambientTempC: 20, baroKpa: 101.3, humidityPct: 50, gear: 4 },
       service: {
         oilId: '5w40_ester',
         liters: 4.6,
@@ -268,9 +270,9 @@
     if (!cat) throw new Error(`Unknown category ${categoryId}`);
     return cat.items.find(x => x.id === state.selections[categoryId]) || cat.items[0];
   }
-  function normalizeState(input) {
+  function normalizeState(input, opts = {}) {
     const base = blankState();
-    if (!input || typeof input !== 'object') return base;
+    if (!input || typeof input !== 'object') return opts.noEcu ? base : withEcu(base);
     const s = { ...base, ...input };
     for (const k of [
       'selections',
@@ -300,7 +302,27 @@
     if (!FILTER_MAP[s.service.filterId]) s.service.filterId = base.service.filterId;
     if (!TIRE_MAP[s.vehicle.tireCompound]) s.vehicle.tireCompound = base.vehicle.tireCompound;
     if (!DRIVETRAINS[s.vehicle.drivetrain]) s.vehicle.drivetrain = base.vehicle.drivetrain;
+    return opts.noEcu ? s : withEcu(s);
+  }
+  // The ECU calibration tables are part of the canonical state; builds without them (older saves,
+  // presets, a blank state) get tables derived from their quick-setup values and a base spark map.
+  function withEcu(s) {
+    if (!validEcu(s.tune.ecu)) s.tune.ecu = buildEcu(s, { previous: s.tune.ecu });
+    else if (s.tune.ecu.quickKey !== quickSetupKey(s.tune)) {
+      // Quick setup changed: tables that were not edited by hand follow it (spark map stays as calibrated).
+      const e = s.tune.ecu, t = s.tune;
+      s.tune.ecu = {
+        ...e,
+        boost: e.edited?.boost ? e.boost : legacyBoostTable(t),
+        lambda: e.edited?.lambda ? e.lambda : legacyLambdaTable(t),
+        cam: e.edited?.cam ? e.cam : legacyCamTable(t),
+        quickKey: quickSetupKey(t)
+      };
+    }
     return s;
+  }
+  function quickSetupKey(t) {
+    return [t.boostLowBar, t.boostMidBar, t.boostHighBar, t.firstGearBoostPct, t.secondGearBoostPct, t.revLimitRpm, t.lambda, t.intakeCamAdvanceDeg, t.vvtEnabled].map(v => (typeof v === 'number' ? round(v, 4) : String(v))).join('|');
   }
 
   function compactObject(obj, decimals = 3) {
@@ -324,7 +346,7 @@
     });
   }
   function benchSignature(inputState) {
-    const s = normalizeState(inputState);
+    const s = normalizeState(inputState, { noEcu: true });
     return JSON.stringify({
       selections: s.selections,
       tune: {
@@ -347,7 +369,7 @@
   }
 
   function engineGeometry(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       block = getPart(s, 'block');
     const boreMm = Number(block.boreMm || 82.5),
       strokeMm = Number(block.strokeMm || 92.8),
@@ -363,7 +385,7 @@
     };
   }
   function camTimingHealth(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       head = getPart(s, 'head');
     if (!Number.isFinite(head.targetExhaustTdcMm) || !Number.isFinite(head.targetIntakeTdcMm))
       return { applicable: false, score: 1, exhaustErrorMm: 0, intakeErrorMm: 0, targetExhaustTdcMm: null, targetIntakeTdcMm: null };
@@ -381,7 +403,7 @@
   }
 
   function assemblyTargets(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       g = engineGeometry(s),
       boost = Math.max(s.tune.boostLowBar, s.tune.boostMidBar, s.tune.boostHighBar),
       rev = s.tune.revLimitRpm;
@@ -398,7 +420,7 @@
     return clamp(1 - Math.abs(value - target) / Math.max(0.0001, tolerance), 0, 1);
   }
   function assemblyHealth(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       a = s.assembly,
       t = assemblyTargets(s);
     const top = centeredScore(a.topRingGapMm, t.topRingGapMm, 0.22),
@@ -433,7 +455,7 @@
   }
 
   function runBenchTest(inputState, id) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       sig = benchSignature(s),
       rand = mulberry32(fnv1a(sig + '|' + id)),
       a = assemblyHealth(s),
@@ -525,7 +547,7 @@
     return { id, signature: sig, measuredAt: new Date().toISOString(), score: Math.round(score), status, summary, values };
   }
   function benchConfidence(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       sig = benchSignature(s),
       results = s.bench.results || {};
     let current = 0,
@@ -677,7 +699,8 @@
   // samples, so an aborted pull can never report data above its abort rpm.
   const DYNO_RESULT_VERSION = 2;
   // Bump when the engine/turbo physics changes (4.1: compressor-map turbo model).
-  const ENGINE_MODEL_VERSION = '4.1';
+  // 5.0: physical engine model (engine.js), ECU tables, fuel-system hardware; power is quoted in pk (PS).
+  const ENGINE_MODEL_VERSION = '5.0';
   const DYNO_START_RPM = 1500;
   const DYNO_STEP_RPM = 100;
   // Below this many samples (400 rpm of data) a partial peak is not quoted.
@@ -817,6 +840,182 @@
     return out;
   }
 
+  // ---- Engine hardware and ECU calibration (phase 4) ------------------------------
+  // The physical engine model (engine.js) needs geometry, head breathing data, the fuel blend and the
+  // fuel system. The ECU holds the calibration as tables, exactly as a calibrator sees it:
+  //   boost target (bar, gauge) per gear x rpm; spark advance (deg BTDC), lambda target and intake-cam
+  //   advance per MAP (bar abs) x rpm; plus a global spark trim, IAT spark compensation and knock control.
+  const ECU_RPM_AXIS = Object.freeze([1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 10500]);
+  const ECU_LOAD_AXIS = Object.freeze([1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]);
+  const ECU_GEARS = 6;
+  const ECU_VERSION = 1;
+  function axisPos(axis, v) {
+    if (v <= axis[0]) return [0, 0, 0];
+    const n = axis.length - 1;
+    if (v >= axis[n]) return [n, n, 0];
+    let i = 0;
+    while (axis[i + 1] < v) i++;
+    return [i, i + 1, (v - axis[i]) / (axis[i + 1] - axis[i])];
+  }
+  // Bilinear lookup with clamping at the table edges (what every ECU does).
+  function tableLookup(table, rowAxis, colAxis, rowValue, colValue) {
+    const [r0, r1, fr] = axisPos(rowAxis, rowValue), [c0, c1, fc] = axisPos(colAxis, colValue);
+    const a = table[r0][c0] * (1 - fc) + table[r0][c1] * fc, b = table[r1][c0] * (1 - fc) + table[r1][c1] * fc;
+    return a * (1 - fr) + b * fr;
+  }
+  function fuelSpecFor(state) {
+    const s = state, grade = Engine.DATA.fuelGrades[s.selections.fuel] || Engine.DATA.fuelGrades.ron98;
+    if (!grade.flex) return grade;
+    const e = clamp(Number(s.tune.ethanolPct ?? 85), 0, 100) / 100;
+    return { ...grade, volume: { gasoline: 1 - e, ethanol: e } };
+  }
+  function engineHardware(inputState) {
+    const s = normalizeState(inputState, { noEcu: true }),
+      block = getPart(s, 'block'),
+      head = getPart(s, 'head'),
+      manifold = getPart(s, 'manifold'),
+      air = getPart(s, 'air'),
+      turbo = getPart(s, 'turbo'),
+      oil = OIL_MAP[s.service.oilId],
+      crankcase = getPart(s, 'crankcase');
+    const geometry = engineGeometry(s);
+    const geo = Engine.makeGeometry({ boreMm: geometry.boreMm, strokeMm: geometry.strokeMm, rodMm: 144, compressionRatio: geometry.compressionRatio, cylinders: 4 });
+    const headData = Engine.DATA.heads[head.id] || Engine.DATA.heads.oem_head;
+    const fuelSpec = fuelSpecFor(s);
+    const fuel = Engine.fuelBlend(fuelSpec);
+    const fuelSys = Engine.DATA.fuelSystems[s.selections.fuelSystem] || Engine.DATA.fuelSystems.oem_fuel;
+    const turboMap = Turbo.getMap(turbo.id);
+    return {
+      geo,
+      head: headData,
+      fuel,
+      fuelSpec,
+      fuelLabel: fuelSpec.label,
+      ethanolPct: Math.round((fuelSpec.volume?.ethanol || 0) * 100),
+      fuelSys,
+      twinScroll: !!turboMap?.source?.turbine?.twinScroll || /twin-scroll/i.test(`${turbo.specs} ${turbo.name}`),
+      // runners/plenum raise VE a little beyond the head's own breathing
+      veScale: 1 + (Number(manifold.intakeFlow || 1) - 1) * 0.45,
+      // hot viscosity relative to a 5W-40, plus crankcase vacuum (less windage and ring drag)
+      viscosityFactor: (oil ? oil.hotViscosity / 0.94 : 1),
+      extraFmepBar: crankcase.vacuumKpa < 0 ? -0.08 : 0,
+      wmi: s.selections.air === 'wmi' ? { ccMin: 1000, ratio: 0.18, methanolFrac: 0.5 } : null,
+      assumedIatC: 45 - 25 * clamp(Number(air.cooling || 0.3), 0, 1),
+      block
+    };
+  }
+  // Boost targets from the quick-setup points (low/mid/high and the gear percentages).
+  function legacyBoostRow(tune, gearPct) {
+    const rev = clamp(Math.round(Number(tune.revLimitRpm || 8000) / 100) * 100, 5000, 10500);
+    return ECU_RPM_AXIS.map(rpm => round(Math.max(0, requestedBoostAt(tune, rpm, rev) * gearPct), 3));
+  }
+  function legacyBoostTable(tune) {
+    const g1 = clamp(Number(tune.firstGearBoostPct ?? 100), 0, 100) / 100, g2 = clamp(Number(tune.secondGearBoostPct ?? 100), 0, 100) / 100;
+    return Array.from({ length: ECU_GEARS }, (_, g) => legacyBoostRow(tune, g === 0 ? g1 : g === 1 ? g2 : 1));
+  }
+  // Lambda: near stoichiometric off boost, enriching to the full-load target (component protection).
+  function legacyLambdaTable(tune) {
+    const wot = clamp(Number(tune.lambda || 0.8), 0.6, 1.05);
+    return ECU_LOAD_AXIS.map(load => ECU_RPM_AXIS.map(rpm => round(load <= 1.1 ? 0.98 : load >= 1.9 ? wot : 0.98 + (wot - 0.98) * ((load - 1.1) / 0.8), 3)));
+  }
+  function legacyCamTable(tune) {
+    const adv = tune.vvtEnabled === false ? 0 : clamp(Number(tune.intakeCamAdvanceDeg ?? 8), -5, 42);
+    return ECU_LOAD_AXIS.map(() => ECU_RPM_AXIS.map(() => adv));
+  }
+  // Base spark map: at every cell the lower of MBT and the knock-limited advance minus a margin, for
+  // the installed hardware and fuel at an assumed charge temperature. This is what a calibrator delivers
+  // as a safe starting map; power left between it and the knock limit is for the player to find.
+  const baseMapCache = new Map();
+  function generateSparkMap(inputState, ecu, options = {}) {
+    const s = normalizeState(inputState, { noEcu: true }), hw = engineHardware(s);
+    const margin = Number.isFinite(options.marginDeg) ? options.marginDeg : 2;
+    const key = JSON.stringify({ sel: s.selections, eth: hw.ethanolPct, lam: ecu.lambda, cam: ecu.cam, margin, v: ENGINE_MODEL_VERSION });
+    if (baseMapCache.has(key)) return baseMapCache.get(key).map(r => r.slice());
+    const iatK = hw.assumedIatC + 273.15;
+    const map = ECU_LOAD_AXIS.map((load, li) =>
+      ECU_RPM_AXIS.map((rpm, ci) => {
+        const op = Engine.operatingPoint({
+          geo: hw.geo, head: hw.head, rpm, mapBarAbs: load, manifoldK: iatK, empBarAbs: load * (load > 1.5 ? 1.35 : 1.1),
+          lambda: ecu.lambda[li][ci], fuel: hw.fuel, camAdvanceDeg: ecu.cam[li][ci], twinScroll: hw.twinScroll, exhaustK: 1180,
+          veScale: hw.veScale, waterPerAir: hw.wmi && load > 1.6 ? (hw.wmi.ratio * 0.5) / (hw.fuel.afrSt * ecu.lambda[li][ci]) : 0,
+          stepDeg: 3
+        });
+        const klsa = op.klsaDeg ?? op.mbtDeg;
+        return round(clamp(Math.min(op.mbtDeg, klsa - margin), -10, 45), 1);
+      })
+    );
+    baseMapCache.set(key, map);
+    if (baseMapCache.size > 40) baseMapCache.delete(baseMapCache.keys().next().value);
+    return map.map(r => r.slice());
+  }
+  function defaultKnockSettings() {
+    return { maxRetardDeg: 10, iatRetardDegPerC: 0.12, iatRetardFromC: 45 };
+  }
+  // Builds the ECU from the quick-setup fields. Spark is generated for the current hardware.
+  function buildEcu(inputState, options = {}) {
+    const s = inputState;
+    const t = s.tune;
+    const ecu = {
+      version: ECU_VERSION,
+      rpmAxis: ECU_RPM_AXIS.slice(),
+      loadAxis: ECU_LOAD_AXIS.slice(),
+      boost: legacyBoostTable(t),
+      lambda: legacyLambdaTable(t),
+      cam: legacyCamTable(t),
+      spark: null,
+      sparkTrimDeg: 0,
+      knock: defaultKnockSettings(),
+      edited: { boost: false, spark: false, lambda: false, cam: false },
+      baseMapFor: null,
+      quickKey: quickSetupKey(t)
+    };
+    const prev = options.previous;
+    if (prev && prev.version === ECU_VERSION) {
+      for (const k of ['boost', 'lambda', 'cam', 'spark']) if (prev.edited?.[k] && Array.isArray(prev[k])) { ecu[k] = prev[k]; ecu.edited[k] = true; }
+      if (!options.regenerateSpark && Array.isArray(prev.spark)) ecu.spark = prev.spark;
+      ecu.knock = { ...ecu.knock, ...(prev.knock || {}) };
+      ecu.baseMapFor = prev.baseMapFor;
+    }
+    if (!ecu.spark) {
+      ecu.spark = generateSparkMap({ ...s, tune: { ...t, ecu } }, ecu, { marginDeg: options.marginDeg });
+      const hw = engineHardware({ ...s, tune: { ...t, ecu } });
+      ecu.baseMapFor = { fuel: s.selections.fuel, ethanolPct: hw.ethanolPct, head: s.selections.head, block: s.selections.block, label: `${hw.fuelLabel}${hw.ethanolPct && Engine.DATA.fuelGrades[s.selections.fuel]?.flex ? ` E${hw.ethanolPct}` : ''}` };
+      ecu.edited.spark = false;
+    }
+    return ecu;
+  }
+  function validEcu(ecu) {
+    const okTable = (t, rows, cols) => Array.isArray(t) && t.length === rows && t.every(r => Array.isArray(r) && r.length === cols && r.every(Number.isFinite));
+    return !!ecu && ecu.version === ECU_VERSION && okTable(ecu.boost, ECU_GEARS, ECU_RPM_AXIS.length) && okTable(ecu.spark, ECU_LOAD_AXIS.length, ECU_RPM_AXIS.length) &&
+      okTable(ecu.lambda, ECU_LOAD_AXIS.length, ECU_RPM_AXIS.length) && okTable(ecu.cam, ECU_LOAD_AXIS.length, ECU_RPM_AXIS.length);
+  }
+  // Quick setup changed (boost points, gear %, lambda, cam): rewrite the tables that are not hand-edited.
+  function syncEcuFromQuickSetup(inputState) {
+    const s = normalizeState(inputState, { noEcu: true });
+    s.tune.ecu = buildEcu(s, { previous: s.tune.ecu });
+    return s;
+  }
+  // Generates a fresh base spark map for the current hardware and fuel (the "tuner's base map").
+  function regenerateBaseMap(inputState, options = {}) {
+    const s = normalizeState(inputState, { noEcu: true });
+    const prev = { ...s.tune.ecu, edited: { ...(s.tune.ecu?.edited || {}), spark: false } };
+    s.tune.ecu = buildEcu(s, { previous: prev, regenerateSpark: true, marginDeg: options.marginDeg });
+    return s;
+  }
+  function ecuBoostTarget(ecu, gearIndex, rpm) {
+    const row = ecu.boost[clamp(Math.round(gearIndex), 0, ECU_GEARS - 1)];
+    const [c0, c1, f] = axisPos(ECU_RPM_AXIS, rpm);
+    return row[c0] * (1 - f) + row[c1] * f;
+  }
+  function ecuCell(ecu, name, mapBarAbs, rpm) {
+    return tableLookup(ecu[name], ECU_LOAD_AXIS, ECU_RPM_AXIS, mapBarAbs, rpm);
+  }
+  // Knock-control behaviour of the installed ECU: better ECUs/sensors hold closer to the limit.
+  function knockControlFor(state, ecuPart, sensors) {
+    const q = clamp(ecuPart.safetyQuality * (0.78 + sensors.sensorQuality * 0.22), 0, 1);
+    return { enabled: state.tune.knockControl !== false, marginDeg: 0.4 + (1 - q) * 2.6, maxRetardDeg: clamp(Number(state.tune.ecu?.knock?.maxRetardDeg ?? 10), 2, 20), boostProtection: state.tune.knockControl !== false };
+  }
+
   function simulateEngine(inputState, options = {}) {
     const state = normalizeState(inputState),
       block = getPart(state, 'block'),
@@ -891,14 +1090,28 @@
       chargeAir = Turbo.DATA.chargeAir[air.id] || Turbo.DATA.chargeAir.oem_air,
       exhaustSystem = Turbo.DATA.exhaust[exhaust.id] || Turbo.DATA.exhaust.oem_exhaust,
       wastegate = Turbo.DATA.wastegate[boostControl.id] || Turbo.DATA.wastegate.oem_internal,
-      stoichAfr = Turbo.DATA.fuelStoichAfr[fuel.id] || 14.7,
+      hw = engineHardware(state),
+      ecuCal = state.tune.ecu,
+      stoichAfr = hw.fuel.afrSt,
+      humidity = Number(state.dynoConfig.humidityPct ?? 50),
       baroBar = baro / 100,
+      dryFraction = Engine.dryAirBar(baroBar, ambient, humidity) / baroBar,
       ambientK = ambient + 273.15,
-      dtSample = DYNO_STEP_RPM / ramp;
+      dtSample = DYNO_STEP_RPM / ramp,
+      dynoGear = clamp(Math.round(Number(state.dynoConfig.gear || 4)), 1, 6) - 1,
+      knockCtl = knockControlFor(state, ecu, sensors),
+      // Blow-by and worn rings lose trapped charge; assembly quality and plug gap decide combustion quality.
+      ringSeal = (0.94 + assembly.ringScore * 0.06 - assembly.ringWideRisk * 0.025) * wearFactor,
+      assemblyPower = 0.965 + assembly.score * 0.035,
+      camTimingVe = camTiming.applicable ? 0.9 + 0.1 * camTiming.score : 1;
     let prevShaftRpm = NaN,
-      prevSpoolFrac = 0;
+      prevSpoolFrac = 0,
+      empRatio = 1.25,
+      t3K = 1150,
+      prevBoost = 0,
+      prevFuelKw = 0;
     for (let rpm = DYNO_START_RPM; !abort && rpm <= revLimit; rpm += DYNO_STEP_RPM) {
-      const desired = requestedBoostAt(tune, rpm, revLimit);
+      const desired = ecuBoostTarget(ecuCal, dynoGear, rpm);
       const controlRipple = (1 - boostControl.boostControlQuality) * (0.04 * Math.sin(rpm / 285) + 0.025 * (rand() - 0.5)),
         hardwareLimit = boostControl.boostHardwareMaxBar,
         requestedRatio = desired / Math.max(0.15, hardwareLimit);
@@ -907,136 +1120,89 @@
       if (tune.overboostCut && requestedRatio > 1.03) targetBoost = Math.min(targetBoost, hardwareLimit * 1.04);
       else if (requestedRatio > 1) targetBoost *= 1 + Math.min(0.18, (requestedRatio - 1) * 0.16);
       targetBoost = Math.max(0, targetBoost);
-      const x = (rpm - 4300) / 2700,
-        naTorque = clamp(184 - 30 * x * x, 108, 186),
-        rpmBlend = clamp((rpm - 3800) / 2800, 0, 1),
-        camShape =
-          lerp(head.lowRpmMultiplier, head.highRpmMultiplier, rpmBlend) *
-          lerp(manifold.lowRpmMultiplier, manifold.highRpmMultiplier, rpmBlend);
-      let camAdvanceEffect = 1,
-        commandedAdvance = tune.vvtEnabled === false ? 0 : tune.intakeCamAdvanceDeg;
-      if (rpm < 4500) camAdvanceEffect += (commandedAdvance - 15) * 0.0015;
-      if (rpm > 6200) camAdvanceEffect -= Math.max(0, commandedAdvance - 10) * 0.0018;
-      const camTimingShape = camTiming.applicable ? camTiming.score * (rpm < 3600 ? 0.985 + (1 - camTiming.score) * 0.03 : 1) : 1,
-        intakeFlowFactor = 1 + (air.flow - 1) * 0.8 + (manifold.intakeFlow - 1) * 0.86,
-        exhaustFlowFactor = 1 + (exhaust.exhaustFlow - 1) * 0.75;
-      const breathing = head.powerMultiplier * head.headFlow * camShape * intakeFlowFactor * exhaustFlowFactor * camTimingShape;
-      // Charge density relative to the NA calibration (1.01325 bar, 308 K manifold).
-      const densityRatio = (B, tK) => ((baroBar + B) / 1.01325) * (CHARGE_REF_K / tK);
-      const airflowAt = (B, tK) =>
-        ((naTorque * densityRatio(B, tK) * 0.97 * breathing * camAdvanceEffect * rpm) / 7127 / HP_PER_LBMIN_AIR) / Turbo.LBMIN_PER_KGS;
-      const exhaustTempK = B =>
-        273.15 + 715 + B * 66 + Math.max(0, tune.lambda - 0.8) * 650 + Math.max(0, -tune.ignitionTrimDeg) * 13 + spoolAssist.spoolHeat * 145;
+      const meanPistonSpeed = (2 * (geometry.strokeMm / 1000) * rpm) / 60;
+      // Intercooler: effectiveness falls once flow exceeds the core rating; fan and ramp decide heat soak.
       const chargeCooling = (t2K, flowLb) => {
-        // Catalogue "cooling" 0.28 (OEM core) .. 0.985 (ice system) maps to an
-        // intercooler effectiveness of 0.68 .. 0.99, falling once flow exceeds the core rating.
         const eps = (0.55 + 0.45 * air.cooling) * clamp(1 - 0.35 * Math.max(0, flowLb / chargeAir.refFlowLbMin - 1), 0.4, 1);
-        return ambientK + 2 + (t2K - ambientK) * (1 - eps) * (1 - fuel.fuelCooling) * (1.18 - 0.48 * fan) * heatSoak + spoolAssist.spoolHeat * 22;
+        return ambientK + 2 + (t2K - ambientK) * (1 - eps) * (1.18 - 0.48 * fan) * heatSoak + spoolAssist.spoolHeat * 22;
       };
-      // Spool assistance adds exhaust energy while the turbo is still coming up.
+      // Spool shot: armed in its rpm window (from 3000 rpm), fading out as the turbo comes up.
       const nitrousTaper =
-        spoolAssist.nitrousHp > 0 ? clamp((0.93 - prevSpoolFrac) / 0.58, 0, 1) * clamp((revLimit - rpm + 800) / 2200, 0, 1) : 0;
-      const extraExhaustKw =
-        spoolAssist.spoolHeat * 220 * (0.15 + 0.85 * clamp(1 - prevSpoolFrac, 0, 1)) + spoolAssist.nitrousHp * 0.7457 * 1.1 * nitrousTaper;
-      const tp = Turbo.matchEngine(
-        {
-          map: turboMap,
-          baroBar,
-          ambientK,
-          airflowAt,
-          exhaustTempK,
-          chargeCooling,
-          stoichAfr,
-          lambda: tune.lambda,
-          chargeAir,
-          exhaust: exhaustSystem,
-          wastegate,
-          protectShaftSpeed: !!(tune.overboostCut || wastegate.shaftSpeedSensor),
-          extraExhaustKw,
-          extraExhaustKgS: (spoolAssist.nitrousHp * 0.0075 * nitrousTaper) / Turbo.LBMIN_PER_KGS
-        },
-        { targetBoostBar: targetBoost, prevShaftRpm, dtS: dtSample }
-      );
+        spoolAssist.nitrousHp > 0 && rpm >= 3000 ? clamp((0.93 - prevSpoolFrac) / 0.58, 0, 1) * clamp((revLimit - rpm + 800) / 2200, 0, 1) * clamp((rpm - 3000) / 400, 0, 1) : 0;
+      // Rolling anti-lag / spool strategy: part of the fuel energy is released in the manifold (retarded
+      // combustion) while the turbo is still coming up; that energy is taken from the crank, not created.
+      const alsSpoolShare = spoolAssist.spoolHeat * 0.12 * clamp(1 - prevSpoolFrac, 0, 1);
+      // Nitrous spool shot: N2O + its fuel (about 0.06 lb/min per hp of shot) burn in the cylinder; the exhaust
+      // carries roughly the same heat as the added shaft power.
+      const extraExhaustKw = alsSpoolShare * prevFuelKw + spoolAssist.nitrousHp * 0.7457 * 0.9 * nitrousTaper;
+      const matchAt = (boostTarget, camDeg) => {
+        const airflowAt = (B, tK) =>
+          Engine.airflowKgS({ geo: hw.geo, head: hw.head, rpm, mapBarAbs: baroBar + B, manifoldK: tK, empBarAbs: (baroBar + B) * empRatio, exhaustK: t3K,
+            camAdvanceDeg: camDeg, twinScroll: hw.twinScroll, veScale: hw.veScale * ringSeal * camTimingVe, dryFraction });
+        const exhaustTempK = B => t3K + 45 * (B - prevBoost);
+        return Turbo.matchEngine(
+          { map: turboMap, baroBar, ambientK, airflowAt, exhaustTempK, chargeCooling, stoichAfr, lambda: ecuCell(ecuCal, 'lambda', baroBar + boostTarget, rpm),
+            chargeAir, exhaust: exhaustSystem, wastegate, protectShaftSpeed: !!(tune.overboostCut || wastegate.shaftSpeedSensor), extraExhaustKw,
+            extraExhaustKgS: (spoolAssist.nitrousHp * 0.06 * nitrousTaper) / Turbo.LBMIN_PER_KGS },
+          { targetBoostBar: boostTarget, prevShaftRpm, dtS: dtSample }
+        );
+      };
+      // One pass = turbo match, fuel delivery, combustion. Exhaust pressure and temperature feed back into
+      // breathing, so the pass is repeated with the updated values; ECU protections may lower the target.
+      let tp, op, fd, mapAbs, lambdaTarget, actualLambda, camDeg, sparkCmd, protectedBy = '', boostCmd = targetBoost;
+      for (let pass = 0; pass < 4; pass++) {
+        camDeg = tune.vvtEnabled === false ? 0 : ecuCell(ecuCal, 'cam', baroBar + boostCmd, rpm);
+        tp = matchAt(boostCmd, camDeg);
+        mapAbs = baroBar + tp.boostBar;
+        lambdaTarget = ecuCell(ecuCal, 'lambda', mapAbs, rpm);
+        camDeg = tune.vvtEnabled === false ? 0 : ecuCell(ecuCal, 'cam', mapAbs, rpm);
+        const manifoldK = tp.manifoldC + 273.15;
+        fd = Engine.fuelDelivery(hw.fuelSys, { rpm, demandKgS: tp.massFlowKgS / (stoichAfr * lambdaTarget), fuel: hw.fuel, railTargetBar: tune.railTargetBar, mapBarAbs: mapAbs });
+        actualLambda = tp.massFlowKgS / Math.max(1e-9, stoichAfr * fd.deliveredKgS);
+        // Spark: table + global trim, retarded for hot charge air.
+        const iatC = tp.manifoldC;
+        sparkCmd = ecuCell(ecuCal, 'spark', mapAbs, rpm) + Number(ecuCal.sparkTrimDeg || 0) + Number(tune.ignitionTrimDeg || 0) -
+          Math.max(0, iatC - (ecuCal.knock?.iatRetardFromC ?? 45)) * (ecuCal.knock?.iatRetardDegPerC ?? 0.12);
+        const water = hw.wmi && tp.boostBar > 0.8 ? (hw.wmi.ratio * 0.5) / (stoichAfr * lambdaTarget) : 0;
+        op = Engine.operatingPoint({
+          geo: hw.geo, head: hw.head, rpm, mapBarAbs: mapAbs, manifoldK, empBarAbs: tp.empBarAbs, lambda: clamp(actualLambda, 0.55, 1.6), fuel: hw.fuel,
+          sparkCmdDeg: sparkCmd, camAdvanceDeg: camDeg, twinScroll: hw.twinScroll, exhaustK: t3K, waterPerAir: water, dryFraction,
+          veScale: hw.veScale * ringSeal * camTimingVe, viscosityFactor: hw.viscosityFactor, extraFmepBar: hw.extraFmepBar,
+          combustionEff: assemblyPower, knockControl: knockCtl, stepDeg: 2
+        });
+        empRatio = tp.empBarAbs / mapAbs;
+        t3K = op.exhaustK;
+        // ECU protections: lean (fuel system saturated) or knock beyond the retard limit lower the boost target.
+        const lean = actualLambda > lambdaTarget + 0.04 && tp.boostBar > 0.3;
+        const knockLimit = knockCtl.boostProtection && op.knockIndex > 1.0 && tp.boostBar > 0.3;
+        if (lean && tune.lambdaProtection) { protectedBy = 'fuel'; boostCmd = Math.max(0, tp.boostBar - 0.12 - (actualLambda - lambdaTarget) * 3); continue; }
+        if (knockLimit) { protectedBy = 'knock'; boostCmd = Math.max(0, tp.boostBar - 0.15); continue; }
+        if (pass >= 1) break;
+      }
       prevShaftRpm = tp.shaftRpm;
+      prevBoost = tp.boostBar;
       const actualBoost = tp.boostBar,
         spool = targetBoost > 0.05 ? clamp(actualBoost / targetBoost, 0, 1) : 1;
       prevSpoolFrac = spool;
-      const manifoldK = tp.manifoldC + 273.15,
-        pManAbs = baroBar + actualBoost,
-        empRatio = tp.empBarAbs / pManAbs,
-        pressureMultiplier = densityRatio(actualBoost, manifoldK) * 0.97,
-        // Residual gas and pumping work follow exhaust manifold pressure vs boost.
-        residualFactor = clamp(1 - 0.05 * (empRatio - 1), 0.9, 1.02),
-        pumpingNm = ((tp.empBarAbs - pManAbs) * 1e5 * (geometry.displacementL / 1000)) / (4 * Math.PI);
-      const ringSeal = 0.94 + assembly.ringScore * 0.06 - assembly.ringWideRisk * 0.025,
-        assemblyPower = 0.965 + assembly.score * 0.035;
+      prevFuelKw = fd.deliveredKgS * hw.fuel.lhvMJkg * 1000;
+      let torque = op.torqueNm * (1 - alsSpoolShare * 2.2);
       let spark = ignition.sparkQuality * (0.91 + assembly.sparkScore * 0.09);
       if (actualBoost > ignition.sparkBoostLimit) spark *= clamp(1 - (actualBoost - ignition.sparkBoostLimit) * 0.1, 0.7, 1);
-      let torque =
-        naTorque *
-          pressureMultiplier *
-          breathing *
-          residualFactor *
-          camAdvanceEffect *
-          spark *
-          wearFactor *
-          ringSeal *
-          assemblyPower *
-          (0.997 + (crankcase.vacuumKpa < 0 ? 0.012 : 0)) -
-        Math.max(-4, pumpingNm);
-      if (spoolAssist.nitrousHp > 0) torque += ((spoolAssist.nitrousHp * 7127) / Math.max(2600, rpm)) * nitrousTaper;
-      let rawHp = (torque * rpm) / 7127,
-        totalFlowCap = (effectiveFuelCapacity * (0.985 + (air.flow - 1) * 0.2 + (manifold.intakeFlow - 1) * 0.16) * baseDynoFactor) / oil.drag;
-      if (rawHp > totalFlowCap) {
-        torque *= totalFlowCap / rawHp;
-        rawHp = totalFlowCap;
-      } else {
-        torque *= baseDynoFactor / oil.drag;
-        rawHp = (torque * rpm) / 7127;
-      }
-      let fuelDutyPct = (rawHp / Math.max(1, effectiveFuelCapacity)) * 100,
-        railDrop = Math.max(0, fuelDutyPct - 88) * 1.15 + Math.max(0, tune.railTargetBar - fuelSystem.maxRailBar),
-        railBar = Math.max(35, Math.min(tune.railTargetBar, fuelSystem.maxRailBar) - railDrop);
-      if (fuelDutyPct > 100 && tune.railPressureCut) {
-        const cut = clamp((112 - fuelDutyPct) / 12, 0.52, 1);
-        torque *= cut;
-        rawHp = (torque * rpm) / 7127;
-        fuelDutyPct = (rawHp / Math.max(1, effectiveFuelCapacity)) * 100;
-      }
-      let actualLambda = tune.lambda + Math.max(0, fuelDutyPct - 94) * 0.0035 + Math.max(0, tune.railTargetBar - railBar) * 0.0009;
-      if (tune.lambda < 0.7) {
-        const richLoss = clamp((0.7 - tune.lambda) * 2.8, 0, 0.1);
-        torque *= 1 - richLoss;
-        rawHp = (torque * rpm) / 7127;
-      }
-      // Turbo load = how close the compressor is to its shaft-speed or choke limit.
+      torque *= clamp(spark, 0.6, 1.02);
+      if (spoolAssist.nitrousHp > 0) torque += ((spoolAssist.nitrousHp * 7023) / Math.max(2600, rpm)) * nitrousTaper;
+      // Measurement repeatability of the dyno (load cell / roller), then pk (PS) from torque.
+      torque *= baseDynoFactor;
+      const rawHp = (torque * rpm) / 7023;
+      const fuelDutyPct = Math.max(fd.dutyPct, fd.diDutyPct, fd.hpfpDutyPct, fd.mpiDutyPct);
+      const railBar = fd.railBar ?? (hw.fuelSys.mpiPressureBar || 4);
       const turboLoadPct = Math.max(tp.shaftSpeedPct, 100 - tp.chokeMarginPct),
         shaftLimit = turboMap.maxShaftRpm,
         turboShaftRpm = tp.shaftRpm,
         empBar = tp.empBarAbs - baroBar;
-      const iatC = tp.manifoldC,
-        oilVaporOctaneLoss = crankcase.oilVaporPenalty * 35;
-      let effectiveOctane = fuel.octane - oilVaporOctaneLoss;
-      if (state.selections.air === 'wmi' && tune.methFailsafe) effectiveOctane += 1.5;
-      const requiredOctane =
-          90.8 +
-          actualBoost * 4.8 +
-          Math.max(0, iatC - 35) * 0.075 +
-          Math.max(0, tune.ignitionTrimDeg) * 1.45 +
-          Math.max(0, actualLambda - 0.84) * 80 +
-          spoolAssist.nitrousHp * 0.012 +
-          Math.max(0, empRatio - 1.15) * 5 +
-          (camTiming.applicable ? (1 - camTiming.score) * 8.5 : 0),
-        effectiveSafety = ecu.safetyQuality * (0.78 + sensors.sensorQuality * 0.22);
-      let knockRisk = clamp((requiredOctane - effectiveOctane + 3) / 7, 0, 1.8);
-      if (tune.knockControl) knockRisk *= 0.76 + (1 - effectiveSafety) * 0.29;
-      const egtC =
-          exhaustTempK(actualBoost) -
-          273.15 +
-          Math.max(0, Math.max(actualLambda, 0.8) - Math.max(tune.lambda, 0.8)) * 650 +
-          Math.max(0, turboLoadPct - 90) * 1.3,
-        bmepBar = (torque * 4 * Math.PI) / (geometry.displacementL / 1000) / 100000,
-        meanPistonSpeed = (2 * (geometry.strokeMm / 1000) * rpm) / 60;
+      const iatC = tp.manifoldC;
+      // Turbine-inlet temperature: engine-out gas plus any spool-assist energy released in the manifold.
+      const egtC = tp.t3C,
+        bmepBar = op.bmepBar;
       const oilTempC =
           88 +
           rawHp * (0.108 - oiling.oilCooling * 0.067) * heatSoak +
@@ -1058,21 +1224,49 @@
       const point = {
         rpm,
         hp: rawHp,
+        kw: rawHp / 1.359622,
         torqueNm: torque,
         boostBar: actualBoost,
+        mapBarAbs: mapAbs,
         lambda: actualLambda,
-        lambdaTarget: tune.lambda,
+        lambdaTarget,
         iatC,
         egtC,
         railBar,
+        railTargetBar: fd.railTargetBar,
         fuelDutyPct,
+        diDutyPct: fd.diDutyPct,
+        hpfpDutyPct: fd.hpfpDutyPct,
+        mpiDutyPct: fd.mpiDutyPct,
+        diPulseMs: fd.diPulseMs,
+        fuelLimitedBy: fd.limitedBy,
+        fuelShortfallPct: fd.shortfallPct,
+        fuelGps: fd.deliveredKgS * 1000,
+        bsfcGkWh: op.bsfcGkWh,
+        ethanolPct: hw.ethanolPct,
         turboLoadPct,
         turboShaftRpm,
         shaftLimitRpm: shaftLimit,
         empBar,
         bmepBar,
+        imepBar: op.imepBar,
+        pmepBar: op.pmepBar,
+        fmepBar: op.fmepBar,
+        pMaxBar: op.pMaxBar,
+        ca50Deg: op.ca50Deg,
+        burn1090Deg: op.burn1090Deg,
+        sparkDeg: op.sparkDeg,
+        sparkCmdDeg: sparkCmd,
+        mbtDeg: op.mbtDeg,
+        klsaDeg: op.klsaDeg,
+        knockRetardDeg: op.knockRetardDeg,
+        knockIndex: op.knockIndex,
+        octaneIndex: op.octaneIndex,
+        camAdvanceDeg: camDeg,
+        residualPct: op.residualFrac * 100,
         meanPistonSpeed,
-        knockRisk,
+        // Knock index at the actual spark: 1.0 = end gas auto-ignites before the flame arrives.
+        knockRisk: op.knockIndex,
         oilTempC,
         oilPressureBar,
         oilFilmRisk,
@@ -1080,7 +1274,7 @@
         spoolPct: spool * 100,
         airflowLbMin: tp.massFlowLbMin,
         boostTargetBar: targetBoost,
-        boostLimitedBy: tp.limitedBy,
+        boostLimitedBy: protectedBy ? `${protectedBy}-protection` : tp.limitedBy,
         shaftSpeedPct: tp.shaftSpeedPct,
         compressorPr: tp.pressureRatio,
         correctedFlowLbMin: tp.correctedFlowLbMin,
@@ -1092,9 +1286,11 @@
         wastegatePct: tp.wastegatePct,
         turbineKw: tp.turbineKw,
         compressorKw: tp.compressorKw,
-        volumetricEff: tp.massFlowKgS / ((pManAbs * 1e5) / (287.05 * manifoldK)) / ((geometry.displacementL / 1000) * (rpm / 120))
+        volumetricEff: op.ve
       };
       point.tS = (rpm - DYNO_START_RPM) / ramp;
+      // Logged channels are stored at 3 decimals (well beyond a real dyno's resolution) to keep saves small.
+      for (const k of Object.keys(point)) if (typeof point[k] === 'number') point[k] = round(point[k], 3);
       curve.push(point);
       const event = criticalFailure(point, {
         tune,
@@ -1752,7 +1948,7 @@
   }
   // What the installed ECU and bypass hardware allow.
   function antiLagCapability(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       ecu = getPart(s, 'ecu'),
       spool = getPart(s, 'spool');
     const ecuLevel = ecu.id === 'med17' ? 'none' : ecu.id === 'custom_med17' ? 'limited' : 'full';
@@ -1760,7 +1956,7 @@
     return { ecuLevel, ecuName: ecu.name, bypassMaxPct, maxAggressiveness: ecuLevel === 'limited' ? 45 : ecuLevel === 'none' ? 0 : 100, flatShift: ecuLevel !== 'none' };
   }
   function resolveAntiLag(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       cfg = { ...defaultAntiLag(), ...(s.tune.als || {}) },
       mode = ANTI_LAG_MODES.includes(cfg.mode) ? cfg.mode : 'off',
       cap = antiLagCapability(s),
@@ -2093,7 +2289,7 @@
   }
 
   function applyPreset(inputState, presetId) {
-    const state = normalizeState(inputState),
+    const state = normalizeState(inputState, { noEcu: true }),
       p = PRESETS[presetId];
     if (!p) throw new Error(`Unknown preset ${presetId}`);
     state.buildName = p.name;
@@ -2104,6 +2300,8 @@
     if (p.dynoConfig) state.dynoConfig = { ...state.dynoConfig, ...deepClone(p.dynoConfig) };
     if (p.vehicle) state.vehicle = { ...state.vehicle, ...deepClone(p.vehicle) };
     state.bench = { results: {} };
+    // A preset comes with its own calibration: tables from its quick setup and a base spark map for its hardware.
+    state.tune.ecu = buildEcu(state);
     return state;
   }
   function createInitialState() {
@@ -2121,7 +2319,7 @@
     return CATEGORIES.reduce((sum, cat) => sum + getPart(state, cat.id).price, 0);
   }
   function evaluateChallenges(inputState) {
-    const s = normalizeState(inputState),
+    const s = normalizeState(inputState, { noEcu: true }),
       r = s.lastDyno,
       d = s.lastDrag,
       b = benchConfidence(s),
@@ -2229,6 +2427,20 @@
     densityAltitude,
     oilHealth,
     simulateEngine,
+    engineHardware,
+    buildEcu,
+    validEcu,
+    syncEcuFromQuickSetup,
+    regenerateBaseMap,
+    generateSparkMap,
+    tableLookup,
+    ecuBoostTarget,
+    ecuCell,
+    ECU_RPM_AXIS,
+    ECU_LOAD_AXIS,
+    ECU_GEARS,
+    ENGINE_MODEL_VERSION,
+    Engine,
     commitDynoResult,
     isCompletedDyno,
     summarizeDynoSamples,

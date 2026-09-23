@@ -17,7 +17,7 @@
   // Effective inertia multiplier for spool transients: the rotor alone would spool
   // unrealistically fast because exhaust-manifold filling and thermal lag are not
   // modeled explicitly (approximation, tuned to ~0.3-0.8 s turbo lag).
-  const TRANSIENT_INERTIA_FACTOR = 2.5;
+  const TRANSIENT_INERTIA_FACTOR = 2.0;
   const LBMIN_PER_KGS = 132.277;
   const COMP_REF = { tK: 302.6, pBar: 0.9618 }; // Garrett compressor reference, 545 R / 13.95 psia
   const TURB_REF = { tK: 288.3, pBar: 1.01325 }; // turbine flow correction, 519 R / 14.696 psia
@@ -157,6 +157,8 @@
       turbineFlow,
       turbineFlowMax: tMax,
       turbineNozzle: er => (tMax * nozzle(er)) / nozzle(4),
+      // wastegate valve: an orifice with its own flow capacity, same nozzle law
+      wastegateFlow: (er, wg) => ((wg.flowLbMin ?? (wg.flowRatio || 0) * tMax) * nozzle(er)) / nozzle(4),
       turbineEfficiency: er => src.turbine.maxEfficiency * clamp(0.55 + (0.45 * (er - 1)) / 0.8, 0.55, 1) * (src.turbine.twinScroll ? 1.03 : 1),
       inertia: src.rotorInertiaKgM2
     };
@@ -222,7 +224,7 @@
       const corr = p3 => p3 / TURB_REF.pBar / Math.sqrt(t3 / TURB_REF.tK);
       const flowAt = p3 => {
         const er = p3 / p4;
-        return (map.turbineFlow(er) + u * wg.flowRatio * map.turbineNozzle(er)) * corr(p3);
+        return (map.turbineFlow(er) + u * map.wastegateFlow(er, wg)) * corr(p3);
       };
       let lo = p4 * 1.0005, hi = p4 * 9;
       if (flowAt(hi) < lbExh) lo = hi;

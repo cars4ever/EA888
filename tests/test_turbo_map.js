@@ -76,15 +76,21 @@ for (const p of randy.samples) {
   assert(p.iatC < p.compressorOutC, 'intercooler must cool the charge');
   assert(Number.isFinite(p.surgeMarginPct) && Number.isFinite(p.chokeMarginPct));
 }
-// Randy's K04 hybrid runs out of compressor at the top end: choked and shaft-limited, boost falls off.
-assert(at(randy, 7500).chokeMarginPct < 5, 'K04 hybrid should be near choke at 7500 rpm');
-assert(at(randy, 7500).boostBar < at(randy, 7500).boostTargetBar - 0.15, 'boost must fall off once the compressor chokes');
-assert(at(randy, 7500).compressorEff < at(randy, 4500).compressorEff - 0.1, 'efficiency must drop at choke');
+// Randy's K04 hybrid (rated ~500 hp) holds its 1.9 bar target with margin. Asked for 2.6 bar it runs into the
+// edge of its map: shaft speed near the limit and efficiency falling, then the fuel system caps the boost.
+const pushed = run('randy', s => { s.tune.boostMidBar = 2.6; s.tune.boostHighBar = 2.6; });
+assert(at(randy, 7500).chokeMarginPct > 10, 'K04 hybrid should not be choked at its own 1.9 bar target');
+assert(at(pushed, 6000).shaftSpeedPct > 93, 'a 2.6 bar request must drive the K04 hybrid close to its shaft limit');
+assert(at(pushed, 6000).compressorEff < at(randy, 6000).compressorEff - 0.05, 'efficiency must fall toward the edge of the map');
+assert(pushed.samples.some(p => p.boostLimitedBy === 'fuel-protection'), 'the saturated fuel system must cap boost (lambda protection)');
+assert(pushed.peakHp > randy.peakHp, 'more boost within the map must still make more power');
 
 // A bigger turbo on the same build spools later but flows more at the top end.
 const bigger = run('randy', s => { s.selections.turbo = 'hx52'; s.selections.boostControl = 'dual_44'; });
 assert(at(bigger, 3000).boostBar < at(randy, 3000).boostBar, 'HX52 should build less boost than the K04 hybrid at 3000 rpm');
-assert(at(bigger, 7500).boostBar > at(randy, 7500).boostBar, 'HX52 should hold more boost at 7500 rpm');
+const biggerPushed = run('randy', s => { s.selections.turbo = 'hx52'; s.selections.boostControl = 'dual_44'; s.tune.boostMidBar = 2.4; s.tune.boostHighBar = 2.4; });
+const pushed24 = run('randy', s => { s.tune.boostMidBar = 2.4; s.tune.boostHighBar = 2.4; });
+assert(at(biggerPushed, 7500).shaftSpeedPct < at(pushed24, 7500).shaftSpeedPct - 5, 'HX52 should run far from its shaft limit where the K04 hybrid is near it');
 assert(bigger.samples.some(p => /spool/.test(p.boostLimitedBy)), 'HX52 on 2.0 L should be spool limited somewhere');
 
 // Rotor inertia: a faster dyno ramp leaves less time to spool.
@@ -93,10 +99,14 @@ const fastRamp = run('hx52', s => { s.dynoConfig.rampRpmPerSec = 1000; });
 const spoolSum = r => r.samples.filter(p => p.rpm >= 3500 && p.rpm <= 6000).reduce((a, p) => a + p.boostBar, 0);
 assert(spoolSum(fastRamp) < spoolSum(slowRamp), 'fast ramp should show more turbo lag (rotor inertia)');
 
-// Wastegate flow limit: the OEM internal gate cannot hold low boost at high rpm (creep); a big external gate can.
+// Wastegate flow limit: the small OEM internal port cannot bypass enough exhaust to hold a low boost target at
+// high rpm (creep); a 44 mm external valve can. At the factory target the OEM gate holds boost.
+const lowBoost = s => { s.tune.boostLowBar = 0.3; s.tune.boostMidBar = 0.35; s.tune.boostHighBar = 0.3; };
 const stock = run('stock');
-assert(stock.samples.some(p => p.boostLimitedBy === 'wastegate-creep'), 'OEM internal wastegate should creep');
-const stockGate = run('stock', s => { s.selections.boostControl = 'single_44'; });
+assert(!stock.samples.some(p => p.boostLimitedBy === 'wastegate-creep'), 'OEM gate must hold the factory boost target');
+const stockLow = run('stock', lowBoost);
+assert(stockLow.samples.some(p => p.boostLimitedBy === 'wastegate-creep'), 'OEM internal wastegate should creep at a low target');
+const stockGate = run('stock', s => { lowBoost(s); s.selections.boostControl = 'single_44'; });
 assert(!stockGate.samples.some(p => p.boostLimitedBy === 'wastegate-creep'), '44 mm external gate should control boost');
 
 // Altitude: lower inlet pressure raises PR and corrected flow for the same boost, costing power on a choked compressor.
