@@ -275,6 +275,45 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - ECU table editor: hold-and-drag block selection, row/column/all headers.
 - Tests: tests/test_career.js; smoke checks for the drag selection and the career flow.
 
+## 13. Phase 6: engine voice, acoustics, 3D burnout and staging (v1.9.0)
+
+- Engine sound (src/assets/engine-voice.js, an AudioWorklet): built sample by sample from the combustion
+  events instead of played back from recordings.
+  - Crank angle drives, per cylinder in firing order 1-3-4-2, a spark decision at TDC: burn, late burn
+    (retard/ALS), spark cut (the charge leaves unburnt) or fuel cut. Cut patterns rotate (Bresenham), like
+    ECU cut tables.
+  - At EVO a blowdown pulse whose strength follows the cylinder pressure left at EVO against the exhaust
+    back pressure (boost, wastegate), with cycle-to-cycle variation (larger at idle) and valve jet noise.
+  - Unequal runners into the collector, turbine smoothing, then the exhaust pipe as a digital waveguide:
+    the sound speed follows the gas temperature (EGT), reflections at the turbine and the open tailpipe,
+    wall losses, tailpipe radiation and a muffler per exhaust part (OEM, catted 3", race 3", side 3.5",
+    4" hood dump).
+  - Unburnt charges collect in the exhaust and ignite when it is hot enough: limiter pops (spark cut
+    only; a fuel cut has nothing to burn), ALS bangs (misfired charges in the manifold, at the bang rate
+    the ALS model computes), DSG upshift burp (ignition cut during the clutch handover). Late combustion
+    afterburns as crackle.
+  - Knock: a damped ring at the first circumferential chamber mode f = 1.841 c / (pi B) (~7 kHz for
+    82.5 mm), at the rate of the dyno's knock index.
+  - Engine bay: intake pulses through the airbox, throttle hiss at part load, DI injector and valvetrain
+    ticks.
+  - Inputs: the dyno samples (MAP, EGT, lambda, wastegate, retard from MBT, knock index), the race runtime
+    (limiter, flat/dog shift cut, ALS), the two-step. The recorded-sample voice stays as a setting and as the
+    automatic fallback without AudioWorklet.
+- Acoustics per place from generated impulse responses: garage (concrete workshop), dyno cell (absorptive,
+  nearly dry), strip (open air: ground bounce, pit wall at ~8.5 m, grandstand at ~40 m as distinct echoes).
+- The heads-up rival has its own voice (its build's exhaust), panned and attenuated by its position on the
+  strip relative to the chase camera; the rival stages on the two-step before its launch.
+- Mixer in settings: engine, turbo, ALS, tyres, rival, UI.
+- 3D burnout and staging on the same renderer as the run: the burnout behind the water box with tyre
+  smoke from the driven tyres (rate from the tyre surface speed through first gear and the burnout state),
+  staging photocells and the tree bulbs switched by the tree sequence; the car creeps into the beams at
+  the staging depth (pre-stage 178 mm before stage). 2D stays the fallback.
+- Tests: tests/test_audio.js (event rate rpm/30, firing-order dominance, load and overrun, fuel vs spark
+  cut pops, cold vs hot exhaust, half order from alternating cuts, ALS, knock mode and bore, sound speed vs
+  EGT, muffler, determinism, worklet registration). The browser smoke test now serves the app on its own
+  https origin (a secure context, as on Android) and checks the synth voice, acoustics, the panned rival,
+  the sample fallback, the mixer and the 3D burnout/staging scenes.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
@@ -299,7 +338,11 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - Knock in the race is taken from the map (knock control result); there are no individual knock events.
 - Turbo: see "Known inaccuracies (turbo)" above; spool transients still use an effective inertia factor.
 - ALS combustion is a lumped energy model; flame visuals are stylised, timing/intensity are simulation-driven.
-- The ALS sound is synthesized; it is not a recording of a real car.
+- Engine voice: the exhaust is one waveguide with lumped turbine and muffler filters, not a 1D gas-dynamics
+  solution; blowdown pulse shapes and the engine-bay levels are tuned, not measured. It is an original
+  synthesis, not a recording of a real car.
+- The burnout's thermal model is still the simple heating model; the smoke follows it and the tyre surface
+  speed, not a rubber pyrolysis model.
 - 2D fallback track perspective is stylised; the 3D car is a procedural model without suspension motion.
 - Oil temperature, oil film and wear are still empirical models.
 

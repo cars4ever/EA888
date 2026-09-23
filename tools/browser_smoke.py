@@ -340,6 +340,9 @@ def main() -> None:
         print('CHECKPOINT dyno done', flush=True)
         # V7 drag workflow: overview -> separate fullscreen burnout -> separate staging/tree -> rear chase run -> overview.
         print('DRAG go', flush=True)
+        # Timing-based checks run burnout/staging in 2D (software GL in CI renders ~1 fps); the 3D pre-race
+        # scenes get their own checks with generous timeouts below.
+        page.evaluate("window.__EA888_DEBUG__.setPreRace3dForTest(false)")
         click(page, '[data-nav="drag"]')
         report['checks']['v7_drag_overview'] = page.locator('.v7-race-overview').count() == 1
         report['checks']['overview_rear_view'] = page.locator('.v7-overview-car').count() == 1
@@ -678,6 +681,38 @@ def main() -> None:
         click(page, '[data-nav="service"]')
         click(page, '[data-engine-sound="synth"]')
         click(page, '[data-nav="drag"]')
+
+        # 3D burnout and staging: the car does its burnout behind the water box, smoke follows the tyre slip,
+        # then creeps into the beams while the tree bulbs follow the staging state.
+        page.evaluate("window.__EA888_DEBUG__.setPreRace3dForTest(true)")
+        click(page, '[data-action="open-drag-game"]')
+        page.wait_for_selector('#race-game-root .v8-burnout-game.has-3d', state='visible', timeout=15000)
+        b3 = page.evaluate("window.__EA888_DEBUG__.race3d()")
+        report['checks']['burnout_3d_scene'] = b3.get('active') is True and b3.get('mode') == 'burnout' and b3.get('carZ', 0) > 10 and b3.get('smoke', 1) == 0
+        thr = page.locator('#v7-burn-throttle')
+        thr.dispatch_event('pointerdown', {'pointerId': 61, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_function("window.__EA888_DEBUG__.race3d().smoke > 12", timeout=60000)
+        if screenshots:
+            page.screenshot(path=str(screenshots / 'EA888-Lab-burnout-3d.png'), full_page=False, animations='disabled', timeout=20000)
+        thr.dispatch_event('pointerup', {'pointerId': 61, 'pointerType': 'touch', 'isPrimary': True})
+        report['checks']['burnout_3d_smoke_from_slip'] = page.evaluate("window.__EA888_DEBUG__.race3d().smoke") > 12
+        assert page.evaluate("window.__EA888_DEBUG__.enterStageForTest()")
+        page.wait_for_selector('#race-game-root .v8-stage-game.has-3d', state='visible', timeout=15000)
+        page.wait_for_timeout(600)
+        s0 = page.evaluate("window.__EA888_DEBUG__.race3d()")
+        creep = page.locator('[data-v7-control="creep"]')
+        creep.dispatch_event('pointerdown', {'pointerId': 62, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_function("window.__EA888_DEBUG__.stageState().progress >= 62", timeout=90000)
+        creep.dispatch_event('pointerup', {'pointerId': 62, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_function("window.__EA888_DEBUG__.race3d().lit.includes('stageL')", timeout=30000)
+        s1 = page.evaluate("window.__EA888_DEBUG__.race3d()")
+        if screenshots:
+            page.screenshot(path=str(screenshots / 'EA888-Lab-stage-3d.png'), full_page=False, animations='disabled', timeout=20000)
+        report['stage_3d'] = {'before': s0, 'staged': s1}
+        report['checks']['stage_3d_scene'] = s0.get('mode') == 'stage' and s0.get('carZ', 0) > 1.0 and abs(s1.get('carZ', 9)) < 0.06
+        report['checks']['stage_3d_tree_bulbs'] = 'preL' in s1.get('lit', []) and 'stageL' in s1.get('lit', [])
+        click(page, '[data-action="close-drag-game"]')
+        page.wait_for_selector('.v7-race-overview', state='visible')
 
         print('CHECKPOINT drag done', flush=True)
         # Build-code roundtrip and internal self-test.

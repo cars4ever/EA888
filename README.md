@@ -12,7 +12,14 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.8.0 (branch `claude-dev`) — phase 5: career and bracket racing
+## v1.9.0 (branch `claude-dev`) — phase 6: engine voice, acoustics, 3D burnout and staging
+
+- Engine sound built live from every combustion event (firing order 1-3-4-2, exhaust pulses through your exhaust, limiter/two-step/shift cuts, afterfire, ALS bangs, knock), not from recordings.
+- Acoustics per place: garage, dry dyno cell, open strip with pit-wall and grandstand echoes; the rival is heard from its lane.
+- Sound mixer in settings; the recorded-sample sound stays selectable.
+- Burnout and staging in 3D: tyre smoke from the driven tyres, staging beams and a live tree.
+
+## v1.8.0 — phase 5: career and bracket racing
 
 - Career events with class rules, entry fees, prize money, reputation and knock-out rounds against real rival builds.
 - Bracket racing with dial-in: handicap start, breakout rule, red light, package.

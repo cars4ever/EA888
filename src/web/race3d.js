@@ -10,6 +10,13 @@ const WHEEL_R = 0.323;          // 235/40 R18
 const WHEELBASE = 2.58, TRACK_W = 1.57, CAR_W = 1.81;
 const BEVEL = 0.07;             // body edge rounding; the extrusion grows the outline by this much
 const REAR = 2.14 + BEVEL;      // rear face of the body (z), where lights, plate, diffuser and tips sit
+// Staging: the stage beam sits where the front tyre's leading edge is when the car root is at z = 0 (the
+// run starts there); the pre-stage beam is 7 in (178 mm) behind it. Burnout box behind the water box.
+const STAGE_Z = -(WHEELBASE / 2 + WHEEL_R), PRESTAGE_M = 0.178;
+const BURNOUT_Z = 13.5, WATER_Z = 19;
+const TREE_ROWS = [['pre', 2.4], ['stage', 2.25], ['a1', 2.05], ['a2', 1.9], ['a3', 1.75], ['g', 1.55], ['r', 1.4]];
+const BULB_ON = { pre: [3.2, 2.9, 2.2], stage: [3.2, 2.9, 2.2], a1: [4, 1.9, .25], a2: [4, 1.9, .25], a3: [4, 1.9, .25], g: [.5, 4, .9], r: [4, .35, .3] };
+const BULB_OFF = { pre: 0x2a2a22, stage: 0x2a2a22, a1: 0x2e2210, a2: 0x2e2210, a3: 0x2e2210, g: 0x0f2a14, r: 0x2e1010 };
 
 // ---------------------------------------------------------------- helpers
 function canvasTex(w, h, draw, { repeat = null, srgb = true, aniso = 8 } = {}) {
@@ -372,7 +379,25 @@ function buildTrack(scene, maps) {
     m.rotation.x = -Math.PI / 2; m.position.set(cx, 0.01, z);
     group.add(m);
   };
-  line(0, 0.2);
+  line(STAGE_Z, 0.2);
+  // Staging photocells: posts either side of each lane with the pre-stage and stage beam heads (the beams
+  // themselves are infrared, not drawn).
+  const cellMat = new THREE.MeshStandardMaterial({ color: 0x1c2129, metalness: .4, roughness: .6 });
+  const lens = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, .25, .2) });
+  for (const laneX of [0, LANE]) for (const side of [-1, 1]) {
+    const x = laneX + side * (TRACK_W / 2 + 0.62);
+    for (const [z, h] of [[STAGE_Z + PRESTAGE_M, 0.34], [STAGE_Z, 0.26]]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.09, h, 0.09), cellMat);
+      post.position.set(x, h / 2, z); group.add(post);
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.03), lens);
+      eye.position.set(x - side * 0.06, 0.11, z); group.add(eye);
+    }
+  }
+  // Water box (wet, reflective) and the dark rubber of countless burnouts just past it.
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 2 - 0.4, 5.5), new THREE.MeshStandardMaterial({ color: 0x0d1217, roughness: .08, metalness: .6, transparent: true, opacity: .92 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(cx, 0.006, WATER_Z); group.add(water);
+  const rubber = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 2, 9), new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(0,0,0,.55)', 'rgba(0,0,0,0)'), transparent: true, depthWrite: false }));
+  rubber.rotation.x = -Math.PI / 2; rubber.position.set(cx, 0.007, BURNOUT_Z - 2); group.add(rubber);
   for (const [d] of MARKS) line(-d, 0.08);
   const checker = canvasTex(256, 32, (g, w, h) => { for (let i = 0; i < 32; i++) for (let j = 0; j < 4; j++) { g.fillStyle = (i + j) % 2 ? '#111' : '#f2f2f2'; g.fillRect(i * 8, j * 8, 8, 8); } });
   line(-FINISH, 1.0, new THREE.MeshBasicMaterial({ map: checker }));
@@ -405,14 +430,22 @@ function buildTrack(scene, maps) {
   pole.position.y = 1.15; tree.add(pole);
   const box = new THREE.Mesh(new THREE.BoxGeometry(0.62, 1.2, 0.14), new THREE.MeshStandardMaterial({ color: 0x0c0e12 }));
   box.position.y = 1.9; tree.add(box);
-  const bulb = c => new THREE.MeshBasicMaterial({ color: c });
-  [[2.4, 0x3a3a2a], [2.25, 0x3a3a2a], [2.05, 0x3a2a10], [1.9, 0x3a2a10], [1.75, 0x3a2a10], [1.55, 0x2cff4a], [1.4, 0x3a1010]].forEach(([y, c]) => {
-    for (const sx of [-1, 1]) {
-      const b = new THREE.Mesh(new THREE.CircleGeometry(0.075, 16), bulb(c));
-      b.position.set(sx * 0.16, y - 0.4, 0.075); b.rotation.y = Math.PI;
-      tree.add(b);
-    }
-  });
+  // Bulbs by name (preL, stageR, a1L, gR, rL, ...), switched by the app from the tree sequence. The tree
+  // faces the drivers (rotated half a turn), so local +x is the left (player) lane.
+  const bulbs = {};
+  const glowTex = softDot(64, 'rgba(255,255,255,1)', 'rgba(255,255,255,0)');
+  for (const [row, y] of TREE_ROWS) for (const [side, sx] of [['L', 1], ['R', -1]]) {
+    const mat = new THREE.MeshBasicMaterial({ color: BULB_OFF[row] });
+    const b = new THREE.Mesh(new THREE.CircleGeometry(0.075, 16), mat);
+    b.position.set(sx * 0.16, y - 0.4, 0.075); b.rotation.y = Math.PI;
+    tree.add(b);
+    const [r, g2, bl] = BULB_ON[row];
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(r / 4, g2 / 4, bl / 4), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+    glow.scale.set(.5, .5, 1); glow.position.set(sx * 0.16, y - 0.4, 0.09);
+    tree.add(glow);
+    bulbs[row + side] = { mat, glow, on: false, onColor: new THREE.Color(r, g2, bl), offColor: new THREE.Color(BULB_OFF[row]) };
+  }
+  group.userData.bulbs = bulbs;
   tree.position.set(LANE / 2, 0, -4.5);
   tree.rotation.y = Math.PI;
   group.add(tree);
@@ -457,19 +490,20 @@ function buildTrack(scene, maps) {
 function makeSmoke(scene) {
   const tex = softDot(128, 'rgba(220,224,230,.9)', 'rgba(200,205,212,0)');
   const pool = [];
-  for (let i = 0; i < 140; i++) {
+  for (let i = 0; i < 240; i++) {
     const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, color: 0xcfd4da });
     const s = new THREE.Sprite(m); s.visible = false; scene.add(s);
     pool.push({ s, life: 0, max: 1, vx: 0, vy: 0, vz: 0, grow: 1 });
   }
   let next = 0;
   return {
-    spawn(pos, strength) {
+    // o: { life, grow, vz, wind } for the burnout (big, slow, long-lived clouds thrown back by the tyre)
+    spawn(pos, strength, o = null) {
       const p = pool[next]; next = (next + 1) % pool.length;
       p.s.position.copy(pos); p.s.visible = true;
-      p.life = 0; p.max = 1.4 + Math.random() * 1.4;
-      p.vx = (Math.random() - .5) * 2.2; p.vy = .5 + Math.random() * .8; p.vz = 1 + Math.random() * 2;
-      p.grow = 1.2 + strength * 1.6;
+      p.life = 0; p.max = (o?.life || 1.4) + Math.random() * (o?.life || 1.4);
+      p.vx = (Math.random() - .5) * 2.2 + (o?.wind || 0); p.vy = .5 + Math.random() * .8; p.vz = (o?.vz ?? 1) + Math.random() * 2;
+      p.grow = (o?.grow || 1.2) + strength * 1.6;
       p.base = .26 + strength * .4;
       p.s.scale.setScalar(.6);
     },
@@ -485,6 +519,7 @@ function makeSmoke(scene) {
         p.s.material.opacity = p.base * (1 - k) * Math.min(1, k * 6);
       }
     },
+    active() { return pool.reduce((n, p) => n + (p.s.visible ? 1 : 0), 0); },
     dispose() { tex.dispose(); pool.forEach(p => p.s.material.dispose()); }
   };
 }
@@ -567,7 +602,22 @@ export function create(canvas, opts = {}) {
   const rim = new THREE.DirectionalLight(0x9fb8ff, 0.8); rim.position.set(20, 14, -30); scene.add(rim);
 
   const maps = { strip: stripTexture(), pad: launchPadTexture(), wall: wallTexture(), crowd: crowdTexture() };
-  buildTrack(scene, maps);
+  const track = buildTrack(scene, maps);
+  const bulbs = track.userData.bulbs;
+  let litKey = '';
+  // names: the lit bulbs (e.g. ['preL','preR','stageL']); null = the run default (both greens lit)
+  function setLights(names) {
+    const list = names || ['gL', 'gR'];
+    const key = list.join(',');
+    if (key === litKey) return;
+    litKey = key;
+    for (const [name, b] of Object.entries(bulbs)) {
+      const on = list.includes(name);
+      b.mat.color.copy(on ? b.onColor : b.offColor);
+      b.glow.material.opacity = on ? .85 : 0;
+    }
+  }
+  setLights(null);
 
   const player = buildCar({ color: opts.playerColor ?? 0x1f4fd8, plate: opts.plate || 'KK-895-H', envMap });
   scene.add(player.root);
@@ -608,12 +658,88 @@ export function create(canvas, opts = {}) {
     return g[g.length - 1];
   }
 
+  // Where the car stands while staging: from 3 m short of the pre-stage beam (progress 0) to the pre-stage
+  // beam (25 %), the stage beam (56 %) and deep (past 90 %, the pre-stage light goes out). z of the car
+  // root equals the front tyre's distance past the stage beam (the run starts at root z = 0).
+  function stageRootZ(progress) {
+    const p = Math.max(0, Math.min(100, progress));
+    return p < 25 ? PRESTAGE_M + (25 - p) / 25 * 3.0 : PRESTAGE_M - (p - 25) / 31 * PRESTAGE_M;
+  }
+  const pre = { z: null, lastZ: null, mode: '' };
+  // Burnout and staging. frame: { scene, rpm, wheelSpeedKmh (driven tyre surface), smoke 0..1, tyreTempC,
+  // stageProgress, lights[] }
+  function updatePreRace(frame, dt, mode) {
+    setLights(frame.lights || []);
+    if (pre.mode !== mode) { pre.mode = mode; pre.z = null; }
+    const target = mode === 'burnout' ? BURNOUT_Z : stageRootZ(Number(frame.stageProgress) || 0);
+    pre.lastZ = pre.z ?? target;
+    pre.z = pre.z == null ? target : pre.z + (target - pre.z) * Math.min(1, dt * 5);
+    const vCar = (pre.lastZ - pre.z) / Math.max(dt, 1e-3);
+    player.root.position.set(0, 0, pre.z);
+    player.root.rotation.y = 0;
+    const vSurf = Math.max(vCar, (Number(frame.wheelSpeedKmh) || 0) / 3.6);
+    player.wheels.forEach((w, i) => { w.rotation.x -= (driven.includes(i) ? vSurf : vCar) * dt / WHEEL_R; });
+    const smokeK = Math.max(0, Math.min(1, Number(frame.smoke) || 0));
+    const rpm = Number(frame.rpm) || 900;
+    // Engine rock on its mounts under load, the body shaking on spinning tyres.
+    const shake = opts.reducedMotion ? 0 : (.0015 + smokeK * .006) * Math.min(1.5, rpm / 4000);
+    player.body.rotation.z = THREE.MathUtils.lerp(player.body.rotation.z, (Math.random() - .5) * shake * 4, Math.min(1, dt * 12));
+    player.body.rotation.x = THREE.MathUtils.lerp(player.body.rotation.x, mode === 'burnout' ? -smokeK * .012 : 0, Math.min(1, dt * 4));
+    player.body.position.y = (Math.random() - .5) * shake;
+    if (rival) { rival.root.position.set(LANE, 0, stageRootZ(60)); rivalFlames.update(dt, time); }
+    if (ghost) ghost.root.visible = false;
+    // Burnout smoke: rubber boils off the driven tyres; the amount follows the slip power (tyre surface
+    // speed) and the tyre state from the burnout model. Thrown rearwards by the tread, drifting in the wind.
+    if (mode === 'burnout' && smokeK > .04) {
+      smokeAcc += dt * smokeK * (18 + Math.min(1.4, vSurf / 14) * 70);
+      while (smokeAcc >= 1) {
+        smokeAcc -= 1;
+        const w = player.wheels[driven[(Math.random() * driven.length) | 0]];
+        w.getWorldPosition(tmp);
+        tmp.y = .2; tmp.x += (tmp.x > 0 ? .25 : -.25); tmp.z += WHEEL_R * .8;
+        smoke.spawn(tmp, smokeK, { life: 2.4, grow: 2.6, vz: 2.2 + vSurf * .12, wind: .5 });
+      }
+    }
+    smoke.update(dt);
+    flames.update(dt, time);
+    // Cameras: the burnout from the side of the driven axle, slowly swinging; staging from behind the car,
+    // low, with the tree in view.
+    // Distance that fits the car (plus its smoke) across the view on a portrait phone screen.
+    const fitR = (widthM, fovDeg) => {
+      const hHalf = Math.atan(Math.tan(fovDeg * Math.PI / 360) * camera.aspect);
+      return Math.max(5.5, Math.min(14, widthM / 2 / Math.tan(hHalf)));
+    };
+    if (mode === 'burnout') {
+      // A front (FWD/AWD) or rear (RWD) three-quarter view of the driven axle; a side view does not fit
+      // between the pit wall (3.45 m left) and the far wall.
+      const base = opts.drivetrain === 'RWD' ? 0.5 : 2.72;
+      const ang = base + Math.sin(time * .16) * .12, R = fitR(4.6, 48);
+      const x = Math.max(-2.8, Math.min(7.2, Math.sin(ang) * R));
+      camera.position.set(x, 1.6 + Math.sin(time * .1) * .12, pre.z + Math.cos(ang) * R);
+      tmp.set(0.4, .7, pre.z + (opts.drivetrain === 'RWD' ? .8 : -.4));
+      camera.lookAt(tmp);
+      camera.position.x += (Math.random() - .5) * shake * 6;
+      if (Math.abs(camera.fov - 48) > .05) { camera.fov = 48; camera.updateProjectionMatrix(); }
+    } else {
+      // Behind the car, above the roof line: the car in the lower half, the tree and the beams ahead.
+      const R = fitR(3.2, 46);
+      camera.position.set(-0.2, 2.1, pre.z + R);
+      tmp.set(LANE / 2 - 1.2, 1.1, STAGE_Z - 4);
+      camera.lookAt(tmp);
+      if (Math.abs(camera.fov - 46) > .05) { camera.fov = 46; camera.updateProjectionMatrix(); }
+    }
+    renderer.render(scene, camera);
+    last = null;
+  }
+
   // frame: { t, distanceM, lateralM, lateralVelocity, speedKmh, accelerationG, wheelspinPct, opponentDistanceM }
   function update(frame, dt) {
     if (disposed) return;
     resize();
     dt = Math.min(Math.max(dt || 0, 0), .1);
     time += dt;
+    if (frame.scene && frame.scene !== 'run') return updatePreRace(frame, dt, frame.scene);
+    setLights(frame.lights || null);
     const d = Number(frame.distanceM) || 0, v = (Number(frame.speedKmh) || 0) / 3.6;
     const accG = Number(frame.accelerationG) || 0;
     // Player car.
@@ -741,6 +867,7 @@ export function create(canvas, opts = {}) {
     sustain: (k, color) => flames.setSustain(k, color),
     renderer,
     dispose,
+    scene: () => ({ mode: pre.mode || 'run', carZ: player.root.position.z, lit: litKey ? litKey.split(',') : [], smoke: smoke.active() }),
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries })
   };
 }

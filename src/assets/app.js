@@ -3482,7 +3482,7 @@
     const targetLeft = clamp((p.targetC - 8) / (p.cautionC + 18) * 100, 0, 100);
     const targetWidth = clamp(18 / (p.cautionC + 18) * 100, 8, 24);
     return `<div class="v8-game v8-burnout-game drive-${String(state.vehicle.drivetrain).toLowerCase()}">
-      <div class="v8-scene-plate v8-burnout-plate"></div><div class="v8-cinematic-shade"></div>
+      <div class="v8-scene-plate v8-burnout-plate"></div><canvas id="race3d-canvas" class="race3d-canvas" aria-hidden="true"></canvas><div class="v8-cinematic-shade"></div>
       ${v7GameHeader('BURNOUT', 1, 'Warm de aangedreven banden op zonder ze te oververhitten')}
       <main class="v8-burnout-scene">
         <section class="v8-burnout-hud">
@@ -3507,7 +3507,7 @@
     const ready = s.staged && !s.deep;
     const launchLabel = s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : ready ? 'HOUD VOOR LAUNCH' : 'LAUNCH VERGRENDELD';
     return `<div class="v8-game v8-stage-game ${ready ? 'is-staged' : ''} ${rival?'has-rival':''}">
-      <div class="v8-scene-plate v8-stage-plate"></div><div class="v8-cinematic-shade"></div>
+      <div class="v8-scene-plate v8-stage-plate"></div><canvas id="race3d-canvas" class="race3d-canvas" aria-hidden="true"></canvas><div class="v8-cinematic-shade"></div>
       ${v7GameHeader('STAGE & TREE', 2, treeMode === 'pro' ? 'Pro tree · release op groen' : 'Sportsman tree · release op groen')}
       <main class="v8-stage-scene">
         <section class="v8-stage-hud">
@@ -3632,8 +3632,8 @@
     else if (raceGame.phase === 'finish') root.innerHTML = renderV7FinishScene();
     requestAnimationFrame(() => {
       if (!raceGame?.open) return;
-      if (raceGame.phase.startsWith('burnout')) updateV7BurnoutDom();
-      else if (raceGame.phase === 'stage') { positionStageFlames(); updateV7StageDom(); }
+      if (raceGame.phase.startsWith('burnout')) { startPreRace3D(); updateV7BurnoutDom(); }
+      else if (raceGame.phase === 'stage') { startPreRace3D(); positionStageFlames(); updateV7StageDom(); }
       else if (raceGame.phase === 'run') updateV7RunDom(raceGame.run?.point || null);
     });
   }
@@ -3646,7 +3646,7 @@
   // Exhaust flames are only drawn for simulated combustion events (C.exhaustFlameEvent).
   function emitExhaustFlame(host, fe) {
     if (!host || !fe?.visible) return false;
-    if (host.id === 'v7-run-car' && raceGame?.r3d) raceGame.r3d.flame(fe);
+    if ((host.id === 'v7-run-car' || host.id === 'ea-stage-flames') && raceGame?.r3d) raceGame.r3d.flame(fe);
     if (host.id === 'v7-run-car' && raceGame?.phase === 'run' && raceGame.run) (raceGame.run.replayFlames = raceGame.run.replayFlames || []).push({ t: raceGame.run.t, fe });
     const flames = $$('.v7-flame', host);
     flames.forEach((f, i) => {
@@ -3672,7 +3672,7 @@
     if (!host) return;
     const k = snap?.alsActive ? clamp(Number(snap.flameSustain || 0), 0, 1) : 0;
     const color = snap?.flame?.color || 'orange';
-    if (host.id === 'v7-run-car' && raceGame?.r3d) raceGame.r3d.sustain(k, color);
+    if ((host.id === 'v7-run-car' || host.id === 'ea-stage-flames') && raceGame?.r3d) raceGame.r3d.sustain(k, color);
     $$('.ea-flame-sustain', host).forEach((n, i) => {
       n.style.setProperty('--sustain', k.toFixed(3));
       n.style.setProperty('--sustain-scale', (.5 + Number(snap?.flame?.sizeScale || 0) * .5 * (i % 2 ? 1.06 : .95)).toFixed(3));
@@ -3777,6 +3777,7 @@
       const dt = clamp((now - raceGameLastFrame) / 1000, 0, .05);
       raceGameLastFrame = now;
       if (raceGame.phase === 'burnout') updateV7BurnoutGame(dt, now);
+      else if (raceGame.phase === 'burnout-result') updatePreRace3D('burnout', dt); // the smoke clears
       else if (raceGame.phase === 'stage') updateV7StageGame(dt, now);
       else if (raceGame.phase === 'run') updateV7RunGame(dt, now);
       raceGameRaf = requestAnimationFrame(frame);
@@ -3825,6 +3826,7 @@
     burnoutRuntime.rpm = b.rpm; burnoutRuntime.tempC = b.tempC; burnoutRuntime.smoke = b.smoke; burnoutRuntime.active = throttle; burnoutRuntime.wheelSlip = throttle ? clamp((b.rpm-2200)/5000,0,1) : 0;
     updateEngineAudio(b.rpm, throttle ? .88 : .12, throttle ? .86 : 0);
     updateV7BurnoutDom();
+    updatePreRace3D('burnout', dt);
     if (b.started && b.timeLeft <= 0 && !b.done) finishV7Burnout();
   }
 
@@ -3963,6 +3965,7 @@
     }
     updateEngineAudio(s.rpm, twoStep ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, twoStep } : { twoStep });
     updateV7StageDom();
+    updatePreRace3D('stage', dt);
   }
 
   function updateV7StageDom() {
@@ -4405,6 +4408,57 @@
       return false;
     }
     return true;
+  }
+  let preRace3DOff = false; // test hook: timing-based smoke checks run the burnout/staging in 2D
+  // Burnout and staging in 3D: the same renderer as the run, drawing the burnout and staging state.
+  function startPreRace3D() {
+    disposeRace3D();
+    const canvas = $('#race3d-canvas');
+    if (!raceGame?.open || !canvas || !race3DEnabled() || preRace3DOff) return;
+    const rival = raceGame.rivalProfile;
+    try {
+      raceGame.r3d = window.EA888Race3D.create(canvas, {
+        headsUp: !!rival,
+        drivetrain: state.vehicle.drivetrain,
+        rivalColor: rival ? parseInt(String(rival.color || '#6b1a1a').replace('#', ''), 16) : undefined,
+        reducedMotion: !!state.settings?.reducedMotion
+      });
+    } catch (e) {
+      console.error('race3d', e);
+      raceGame.r3d = null;
+    }
+    raceGame.r3dLast = performance.now();
+    raceGame.burnWheelKmh = 0;
+    $('#race-game-root .v8-game')?.classList.toggle('has-3d', !!raceGame.r3d);
+  }
+  // Driven tyre surface speed with the clutch locked in first gear (the car is held on the brakes).
+  function firstGearTyreKmh(rpm) {
+    const t = C.getPart(state, 'transmission');
+    const overall = Number(t.gearRatios?.[0] || 3.36) * Number(t.finalDrive || 3.94);
+    return rpm / overall / 60 * 2 * Math.PI * .323 * 3.6;
+  }
+  function updatePreRace3D(mode, dt) {
+    const r3d = raceGame?.r3d;
+    if (!r3d) return;
+    const now = performance.now();
+    const frameDt = (now - (raceGame.r3dLast || now)) / 1000;
+    raceGame.r3dLast = now;
+    let frame;
+    if (mode === 'burnout') {
+      const b = raceGame.burn;
+      const target = burnoutRuntime?.active ? firstGearTyreKmh(b.rpm) : 0;
+      raceGame.burnWheelKmh += (target - raceGame.burnWheelKmh) * Math.min(1, (dt || frameDt) * 5);
+      frame = { scene: 'burnout', rpm: b.rpm, wheelSpeedKmh: raceGame.burnWheelKmh, smoke: b.smoke, tyreTempC: b.tempC, lights: [] };
+    } else {
+      const s = raceGame.stage;
+      frame = { scene: 'stage', rpm: s.rpm, stageProgress: s.progress, lights: $$('[data-v7-bulb].on', $('#race-game-root')).map(n => n.dataset.v7Bulb) };
+    }
+    try { r3d.update(frame, frameDt); }
+    catch (e) {
+      console.error('race3d', e);
+      disposeRace3D();
+      $('#race-game-root .v8-game')?.classList.remove('has-3d');
+    }
   }
   function disposeRace3D() {
     if (!raceGame?.r3d) return;
@@ -5780,7 +5834,8 @@
     ecu: () => cloneJson({ edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor }),
     career: () => ({ bank: state.bank, active: state.career?.active ? cloneJson(state.career.active) : null, rep: state.career?.rep || 0, historyCount: state.career?.history?.length || 0, inRound: !!raceGame?.careerRound }),
     replay: () => ({ open: !!raceGame?.replayOpen, active: !!raceGame?.replay3d, progress: raceGame?.replayProgress || 0, done: !!raceGame?.replayDone, frames: raceGame?.run?.replayFrames?.length || 0, lastDistanceM: raceGame?.run?.replayFrames?.at?.(-1)?.d || 0, flames: raceGame?.run?.replayFlames?.length || 0, info: raceGame?.replay3d?.info?.() || null }),
-    race3d: () => raceGame?.r3d ? { active: true, ...raceGame.r3d.info() } : { active: false, supported: !!window.EA888Race3D?.supported?.() },
+    setPreRace3dForTest: on => { preRace3DOff = !on; return true; },
+    race3d: () => raceGame?.r3d ? { active: true, ...raceGame.r3d.info(), ...(raceGame.r3d.scene?.() || {}) } : { active: false, supported: !!window.EA888Race3D?.supported?.() },
     ghost: () => state.ghost ? { drivetrain: state.ghost.drivetrain, quarter: state.ghost.quarter, samples: state.ghost.trace.length } : null,
     platform: () => ({ loaded: !!PLATFORM, native: !!NATIVE?.available }),
     audio: () => audioDiagnostics(),

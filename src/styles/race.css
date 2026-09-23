@@ -989,3 +989,9 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v13-replay-buttons { display:grid; grid-template-columns:1fr 1.4fr; gap:10px; }
 .v13-replay-buttons .v8-finish-button { margin-top:0; }
 @media (prefers-reduced-motion:reduce) { .v13-replay-tag::before { animation:none; } }
+
+/* Burnout and staging drawn in 3D: the photo plates and CSS smoke/flames give way to the renderer. */
+.v8-burnout-game.has-3d .v8-scene-plate, .v8-stage-game.has-3d .v8-scene-plate,
+.v8-burnout-game.has-3d .v8-burn-smoke, .v8-stage-game.has-3d .ea-flame-layer { display:none !important; }
+.v8-burnout-game.has-3d .v8-cinematic-shade, .v8-stage-game.has-3d .v8-cinematic-shade { z-index:4; opacity:.62; }
+.v8-stage-game.has-3d .v12-stage-rival img { display:none; }
