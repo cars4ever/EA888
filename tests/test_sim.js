@@ -14,10 +14,13 @@ function presetResult(id, mutate) {
 
 // Catalogue depth and explicit big-turbo support.
 assert.strictEqual(C.CATEGORIES.length, 19, 'expected 19 component categories');
-assert.strictEqual(C.CATEGORY_MAP.turbo.items.length, 18, 'expected 18 turbo choices');
-assert.strictEqual(Math.max(...C.CATEGORY_MAP.turbo.items.map(x => x.compressorMm || 0)), 127, '127-mm turbo missing');
-assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === '9894' && x.compressorMm === 98), '98-mm turbo missing');
-assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === '106mm' && x.compressorMm === 106), '106-mm turbo missing');
+assert.strictEqual(C.CATEGORY_MAP.turbo.items.length, 17, 'expected 17 turbo choices');
+assert.strictEqual(Math.max(...C.CATEGORY_MAP.turbo.items.map(x => x.compressorMm || 0)), 106, 'largest Precision (106 mm) missing');
+assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'pt9803' && x.compressorMm === 98), '98-mm turbo missing');
+assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'pt10603' && x.compressorMm === 106), '106-mm turbo missing');
+// Aftermarket turbos are the Precision catalogue, ordered small to large by compressor inducer.
+const ptSizes = C.CATEGORY_MAP.turbo.items.filter(x => /^pt/.test(x.id)).map(x => x.compressorMm);
+assert.deepStrictEqual(ptSizes, [...ptSizes].sort((a, b) => a - b), 'Precision turbos must be ordered small to large');
 
 // Plausible deterministic reference bands.
 const stock = presetResult('stock');
@@ -37,7 +40,7 @@ assert.strictEqual(hx52.result.failureRpm, 0, hx52.result.failureReason || 'HX52
 const bigRanges = {
   pro98: [1250, 1750, 98],
   outlaw106: [1250, 1750, 106],
-  unlimited127: [1750, 2350, 127]
+  unlimited: [1850, 2400, 106]
 };
 for (const [id, [minHp, maxHp, compressorMm]] of Object.entries(bigRanges)) {
   const entry = presetResult(id);
@@ -70,8 +73,8 @@ assistedState.selections.spool = 'n2o_150';
 const assisted = C.simulateEngine(assistedState, { noise: false });
 const sampleAt = (r, rpm) => r.samples.find(p => p.rpm === rpm);
 const boostAt = (r, rpm) => sampleAt(r, rpm)?.boostBar ?? 0;
-assert(/spool/.test(sampleAt(noAssist, 4500).boostLimitedBy), '98-mm turbo should be spool limited at 4500 rpm with this target');
-assert(boostAt(assisted, 4500) > boostAt(noAssist, 4500) * 1.2 + 0.3, 'nitrous spool assistance is too weak');
+assert(/spool/.test(sampleAt(noAssist, 5500).boostLimitedBy), '98-mm turbo should be spool limited at 5500 rpm with this target');
+assert(boostAt(assisted, 5500) > boostAt(noAssist, 5500) * 2 + 0.3, 'nitrous spool assistance is too weak');
 
 // Assembly and lubrication are actual constraints, not cosmetic fields.
 const healthyAssembly = C.assemblyHealth(C.blankState());
@@ -144,7 +147,9 @@ assert.strictEqual(red.valid, false, 'red-light pass should be invalid');
 // Normalization protects import/migration flows and preserves supported values.
 const migrated = C.normalizeState({ version: 2, selections: { turbo: '106mm' }, vehicle: { drivetrain: 'AWD', rimDiameterIn: 18 } });
 assert.strictEqual(migrated.version, 12, 'state schema was not upgraded');
-assert.strictEqual(migrated.selections.turbo, '106mm', 'valid imported turbo lost');
+assert.strictEqual(migrated.selections.turbo, 'pt10603', 'retired 106-mm turbo must migrate to the Precision PT10603');
+assert.strictEqual(C.normalizeState({ selections: { turbo: 'pt6466' } }).selections.turbo, 'pt6466', 'valid imported turbo lost');
+assert.strictEqual(C.normalizeState({ selections: { turbo: '127mm' } }).selections.turbo, 'pt10603', '127-mm (no longer offered) must migrate');
 assert.strictEqual(migrated.vehicle.drivetrain, 'AWD', 'valid imported drivetrain lost');
 assert(Array.isArray(migrated.buildSlots) && migrated.buildSlots.length === 3, 'build slots missing after normalization');
 assert.strictEqual(migrated.vehicle.raceMode, 'heads_up', 'race mode default missing');

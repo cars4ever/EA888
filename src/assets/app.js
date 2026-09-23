@@ -284,6 +284,9 @@
     for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) {
       if (slot[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(slot[key])) };
     }
+    // slots saved by older versions may name retired parts (e.g. the generic 98-mm turbo): migrate them
+    const migrated = C.normalizeState(state);
+    for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) state[key] = migrated[key];
     state.buildName = slot.buildName || `Buildslot ${index + 1}`;
     state.bench = { results: {} };
     pushHistory({ type: 'slot', label: `Build geladen uit slot ${index + 1}` });
@@ -1171,9 +1174,9 @@
         ${presetCard('k04', 'K04 straat', 'Snelle respons', 'Rods · FMIC · 3-inch')}
         ${presetCard('randy', 'Randy exact', 'Jouw motorbasis', 'JE83 · Cat Cams · Syvecs', true)}
         ${presetCard('hx52', 'Randy HX52', '67-mm twin-scroll', '11 cm² · dual 44 mm WG')}
-        ${presetCard('pro98', '98-mm Pro Mod', 'Drag-engineered', 'Dry-sump · methanol · 1.5k+')}
-        ${presetCard('outlaw106', '106-mm Outlaw', 'Smalle high-rpm band', 'Promod support · staged spool')}
-        ${presetCard('unlimited127', '127-mm Unlimited', 'Extreme workbench', 'Full Promod support · 2k+')}
+        ${presetCard('pro98', 'Precision 9803', 'Pro Mod drag', 'Dry-sump · methanol · 1.4k+')}
+        ${presetCard('outlaw106', 'Precision 10603', 'Outlaw · smalle band', 'Promod support · staged spool')}
+        ${presetCard('unlimited', 'PT10603 Unlimited', 'Extreme workbench', 'Full Promod support · 2k+')}
       </div>
 
       <div class="card build-summary-card">

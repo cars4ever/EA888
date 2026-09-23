@@ -87,6 +87,45 @@ function modeledEntry(id, m, template, method, inertia) {
   };
 }
 
+// Precision Turbo & Engine: vendor CM map where published, else the base CM map
+// scaled by inducer area (flow) and inducer diameter (shaft speed at equal tip speed).
+function precisionEntry(id, t, maps, turbineRule, inertia) {
+  const m = maps[t.baseMap];
+  if (!m) throw new Error(`${id}: unknown base map ${t.baseMap}`);
+  const vendor = !!t.vendor;
+  const fScale = vendor ? 1 : Math.pow(t.compressorInducerMm / m.compressorInducerMm, 2);
+  const nScale = vendor ? 1 : m.compressorInducerMm / t.compressorInducerMm;
+  const sc = list => list.map(([w, pr]) => [r3(w * fScale), r3(pr)]);
+  const g25 = read('garrett-g25-660.json').turbine.flowCurves['0.72'];
+  const g25Max = Math.max(...g25.map(p => p[1]));
+  const turbChoke = g25Max * Math.pow(t.turbineMm / 49, 2);
+  return {
+    id,
+    name: t.name,
+    mapType: vendor ? 'vendor' : 'modeled',
+    mapSource: vendor
+      ? `Precision Turbo & Engine compressor map ${t.baseMap} (${m.imageUrl}), published on https://www.precisionturbo.com/precision-turbo-compressor-map; product: ${t.url}`
+      : `Modeled approximation: Precision ${t.baseMap} map scaled to a ${t.compressorInducerMm} mm inducer (flow x${fScale.toFixed(3)}, shaft speed x${nScale.toFixed(3)}); Precision publishes no map for this model. Product: ${t.url}`,
+    digitization: vendor ? 'Speed lines traced on the published map pixels after gridline calibration (about +/-0.3 lb/min, +/-0.01 PR); efficiency islands read by hand on CM-60 and scaled (about +/-1.5 lb/min, +/-0.08 PR).' : 'n/a (modeled)',
+    notes: `${t.series}, Precision rating ${t.ratedHp} hp.${t.note ? ' ' + t.note : ''} Turbine: ${turbineRule}`,
+    ratedHp: t.ratedHp,
+    priceUsd: t.priceUsd,
+    compressorInducerMm: t.compressorInducerMm,
+    compressorExducerMm: r3(m.compressorExducerMm * (t.compressorInducerMm / m.compressorInducerMm)),
+    turbineInducerMm: r3(t.turbineMm / 0.907),
+    turbineExducerMm: t.turbineMm,
+    maxShaftRpm: Math.round(m.maxShaftRpm * nScale),
+    peakEfficiency: m.peakEfficiency,
+    surgeLine: sc(m.surgeLine),
+    chokeLine: sc(m.chokeLine),
+    speedLines: m.speedLines.map(l => ({ rpm: Math.round(l.rpm * nScale), points: sc(l.points) })),
+    efficiencyIslands: m.efficiencyIslands.map(i => ({ efficiency: i.efficiency, polygon: sc(i.polygon) })),
+    boundaryEfficiency: { surge: m.boundaryEfficiency.surge, choke: m.boundaryEfficiency.choke },
+    turbine: { ar: null, twinScroll: false, maxEfficiency: 0.74, flowCurve: g25.map(([er, w]) => [er, r3((w * turbChoke) / g25Max)]) },
+    rotorInertiaKgM2: inertia(t.turbineMm / 0.907)
+  };
+}
+
 function buildTurboData() {
   const charge = read('charge-system.json');
   const modeled = read('modeled-turbos.json');
@@ -99,6 +138,9 @@ function buildTurboData() {
   }
   const template = turbos[modeled.templateMap];
   if (!template) throw new Error(`template map ${modeled.templateMap} missing`);
+  const precision = read('precision-turbos.json');
+  const pmaps = read('precision-cm-maps.json').maps;
+  for (const [id, t] of Object.entries(precision.turbos)) turbos[id] = precisionEntry(id, t, pmaps, precision.turbineRule, inertia);
   for (const [id, m] of Object.entries(modeled.turbos)) {
     if (turbos[id]) throw new Error(`${id} is both vendor and modeled`);
     turbos[id] = modeledEntry(id, m, template, modeled.method, inertia);

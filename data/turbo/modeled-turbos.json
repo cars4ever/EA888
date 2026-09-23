@@ -1,24 +1,60 @@
 {
-  "description": "Turbos without a trustworthy public vendor map. Each map is MODELED: the digitized Garrett G25-660 map shape is rescaled to the flow capacity, pressure ratio and shaft speed below. This is not a manufacturer map.",
+  "description": "Reference turbos without a trustworthy public vendor map (OEM K03/K04, the user's K04 hybrid and HX52). Each map is MODELED: the digitized Garrett G25-660 map shape is rescaled to the flow capacity, pressure ratio and shaft speed below. This is not a manufacturer map. Aftermarket choices use the Precision catalogue (precision-turbos.json).",
   "templateMap": "g25",
   "method": "Corrected flow scales with chokeFlowLbMin / 59.9. Pressure ratio is scaled in isentropic-work space (PR^0.2857 - 1) to prTop. Shaft speed scales to maxShaftRpm. Efficiency is offset so the peak equals peakEfficiency. Turbine flow scales the G25 0.72 A/R curve to turbineChokeFlowLbMin.",
   "shaftSpeedRule": "When the catalogue gives no limit, maxShaftRpm follows from a 560 m/s compressor tip speed with exducer = inducer / 0.806 (trim 65).",
   "turbos": {
-    "k03": {"name": "OEM K03", "compressorInducerMm": 41, "turbineMm": 45, "chokeFlowLbMin": 26, "prTop": 2.40, "maxShaftRpm": 210000, "peakEfficiency": 0.70, "turbineChokeFlowLbMin": 12.6, "turbineEfficiency": 0.68, "twinScroll": false, "basis": "OEM CAWB K03 is commonly quoted at about 25 lb/min / 250 hp; small journal-bearing wheel."},
-    "k04": {"name": "K04-064", "compressorInducerMm": 46, "turbineMm": 50, "chokeFlowLbMin": 38, "prTop": 3.05, "maxShaftRpm": 187000, "peakEfficiency": 0.72, "turbineChokeFlowLbMin": 17.2, "turbineEfficiency": 0.70, "twinScroll": true, "basis": "K04-064 is commonly quoted around 36-38 lb/min. No official map is used."},
-    "k04_hybrid": {"name": "Randy K04-064 hybrid 500", "compressorInducerMm": 52, "turbineMm": 52, "chokeFlowLbMin": 57, "prTop": 3.75, "maxShaftRpm": 166000, "peakEfficiency": 0.72, "turbineChokeFlowLbMin": 18.6, "turbineEfficiency": 0.70, "twinScroll": true, "basis": "User's hybrid rated about 500 hp. Billet 52 mm wheel in a K04 frame; flow sized to the rating."},
-    "6466": {"name": "6466 drag turbo", "compressorInducerMm": 64, "turbineMm": 66, "chokeFlowLbMin": 84, "prTop": 4.50, "maxShaftRpm": 135000, "peakEfficiency": 0.77, "turbineChokeFlowLbMin": 30.0, "turbineEfficiency": 0.73, "twinScroll": false, "basis": "Generic 64 mm inducer class (about 800 hp)."},
-    "hx52": {"name": "Randy HX52 67-mm twin-scroll", "compressorInducerMm": 67, "turbineMm": 70, "chokeFlowLbMin": 86, "prTop": 4.40, "maxShaftRpm": 129000, "peakEfficiency": 0.73, "turbineChokeFlowLbMin": 33.8, "turbineEfficiency": 0.72, "twinScroll": true, "basis": "Holset HX52 reference; no official Cummins map is published, so it is modeled."},
-    "6870": {"name": "6870 drag turbo", "compressorInducerMm": 68, "turbineMm": 70, "chokeFlowLbMin": 98, "prTop": 4.65, "maxShaftRpm": 127000, "peakEfficiency": 0.77, "turbineChokeFlowLbMin": 33.8, "turbineEfficiency": 0.73, "twinScroll": false, "basis": "Generic 68 mm inducer class (about 1000 hp)."},
-    "7275": {"name": "7275 Pro Race", "compressorInducerMm": 72, "turbineMm": 75, "chokeFlowLbMin": 112, "prTop": 4.80, "maxShaftRpm": 120000, "peakEfficiency": 0.78, "turbineChokeFlowLbMin": 38.8, "turbineEfficiency": 0.74, "twinScroll": false, "basis": "Generic 72 mm inducer class."},
-    "7685": {"name": "7685 Pro Race", "compressorInducerMm": 76, "turbineMm": 85, "chokeFlowLbMin": 128, "prTop": 4.95, "maxShaftRpm": 113000, "peakEfficiency": 0.78, "turbineChokeFlowLbMin": 49.8, "turbineEfficiency": 0.74, "twinScroll": false, "basis": "Generic 76 mm inducer class."},
-    "8285": {"name": "8285 Outlaw", "compressorInducerMm": 82, "turbineMm": 85, "chokeFlowLbMin": 145, "prTop": 5.05, "maxShaftRpm": 105000, "peakEfficiency": 0.78, "turbineChokeFlowLbMin": 49.8, "turbineEfficiency": 0.74, "twinScroll": false, "basis": "Generic 82 mm inducer class."},
-    "8685": {"name": "8685 Outlaw", "compressorInducerMm": 86, "turbineMm": 85, "chokeFlowLbMin": 158, "prTop": 5.15, "maxShaftRpm": 100000, "peakEfficiency": 0.77, "turbineChokeFlowLbMin": 49.8, "turbineEfficiency": 0.74, "twinScroll": false, "basis": "Generic 86 mm inducer class."},
-    "8891": {"name": "8891 Xtreme", "compressorInducerMm": 88, "turbineMm": 91, "chokeFlowLbMin": 170, "prTop": 5.25, "maxShaftRpm": 98000, "peakEfficiency": 0.77, "turbineChokeFlowLbMin": 57.0, "turbineEfficiency": 0.74, "twinScroll": false, "basis": "Generic 88 mm inducer class."},
-    "9488": {"name": "9488 Pro Mod", "compressorInducerMm": 94, "turbineMm": 88, "chokeFlowLbMin": 188, "prTop": 5.35, "maxShaftRpm": 92000, "peakEfficiency": 0.76, "turbineChokeFlowLbMin": 53.4, "turbineEfficiency": 0.73, "twinScroll": false, "basis": "Generic 94 mm inducer class."},
-    "9894": {"name": "98-mm Pro Mod", "compressorInducerMm": 98, "turbineMm": 94, "chokeFlowLbMin": 205, "prTop": 5.45, "maxShaftRpm": 88000, "peakEfficiency": 0.76, "turbineChokeFlowLbMin": 60.9, "turbineEfficiency": 0.73, "twinScroll": false, "basis": "Generic 98 mm inducer class."},
-    "106mm": {"name": "106-mm Outlaw", "compressorInducerMm": 106, "turbineMm": 102, "chokeFlowLbMin": 235, "prTop": 5.60, "maxShaftRpm": 81000, "peakEfficiency": 0.75, "turbineChokeFlowLbMin": 71.7, "turbineEfficiency": 0.73, "twinScroll": false, "basis": "Generic 106 mm inducer class."},
-    "118mm": {"name": "118-mm Extreme", "compressorInducerMm": 118, "turbineMm": 108, "chokeFlowLbMin": 275, "prTop": 5.75, "maxShaftRpm": 73000, "peakEfficiency": 0.74, "turbineChokeFlowLbMin": 80.4, "turbineEfficiency": 0.72, "twinScroll": false, "basis": "Generic 118 mm inducer class."},
-    "127mm": {"name": "127-mm Unlimited turbo", "compressorInducerMm": 127, "turbineMm": 118, "chokeFlowLbMin": 290, "prTop": 6.85, "maxShaftRpm": 104000, "peakEfficiency": 0.72, "turbineChokeFlowLbMin": 96.0, "turbineEfficiency": 0.71, "twinScroll": false, "basis": "Game catalogue part with an explicit 104k rpm shaft limit; generic 127 mm class."}
+    "k03": {
+      "name": "OEM K03",
+      "compressorInducerMm": 41,
+      "turbineMm": 45,
+      "chokeFlowLbMin": 26,
+      "prTop": 2.4,
+      "maxShaftRpm": 210000,
+      "peakEfficiency": 0.7,
+      "turbineChokeFlowLbMin": 12.6,
+      "turbineEfficiency": 0.68,
+      "twinScroll": false,
+      "basis": "OEM CAWB K03 is commonly quoted at about 25 lb/min / 250 hp; small journal-bearing wheel."
+    },
+    "k04": {
+      "name": "K04-064",
+      "compressorInducerMm": 46,
+      "turbineMm": 50,
+      "chokeFlowLbMin": 38,
+      "prTop": 3.05,
+      "maxShaftRpm": 187000,
+      "peakEfficiency": 0.72,
+      "turbineChokeFlowLbMin": 17.2,
+      "turbineEfficiency": 0.7,
+      "twinScroll": true,
+      "basis": "K04-064 is commonly quoted around 36-38 lb/min. No official map is used."
+    },
+    "k04_hybrid": {
+      "name": "Randy K04-064 hybrid 500",
+      "compressorInducerMm": 52,
+      "turbineMm": 52,
+      "chokeFlowLbMin": 57,
+      "prTop": 3.75,
+      "maxShaftRpm": 166000,
+      "peakEfficiency": 0.72,
+      "turbineChokeFlowLbMin": 18.6,
+      "turbineEfficiency": 0.7,
+      "twinScroll": true,
+      "basis": "User's hybrid rated about 500 hp. Billet 52 mm wheel in a K04 frame; flow sized to the rating."
+    },
+    "hx52": {
+      "name": "Randy HX52 67-mm twin-scroll",
+      "compressorInducerMm": 67,
+      "turbineMm": 70,
+      "chokeFlowLbMin": 86,
+      "prTop": 4.4,
+      "maxShaftRpm": 129000,
+      "peakEfficiency": 0.73,
+      "turbineChokeFlowLbMin": 33.8,
+      "turbineEfficiency": 0.72,
+      "twinScroll": true,
+      "basis": "Holset HX52 reference; no official Cummins map is published, so it is modeled."
+    }
   }
 }

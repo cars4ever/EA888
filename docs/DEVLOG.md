@@ -60,7 +60,7 @@ Replaced the logistic spool curve and scalar `turboMaxHp` cap with turbo matchin
 - **Data** (`data/turbo/`, provenance kept separate from UI):
   - `garrett-g25-660.json`, `garrett-g30-770.json`: **vendor** maps, manually digitized from Garrett's published
     compressor and turbine flow map images (URLs inside). Speed lines/surge/choke ±0.5 lb/min, ±0.02 PR.
-  - `modeled-turbos.json`: the other 16 catalogue turbos. No trustworthy public map exists for them, so they are
+  - `modeled-turbos.json`: the catalogue turbos without a public map (since v1.3.1 only K03, K04, the K04 hybrid and HX52). No trustworthy public map exists for them, so they are
     **modeled** (G25 map shape rescaled to the stated flow, PR, shaft speed and efficiency) and tagged as such
     in the data and in the UI ("GEMODELLEERDE KAART").
   - `charge-system.json`: intercooler/filter pressure loss, exhaust back pressure, wastegate capacity, fuel
@@ -85,6 +85,8 @@ Replaced the logistic spool curve and scalar `turboMaxHp` cap with turbo matchin
   up to ≈6 %pt in the far choke/max-speed corner.
 - Garrett's corrected-flow reference conditions (545 R/13.95 psia compressor, 519 R/14.696 psia turbine) are
   taken as commonly quoted; verify before relying on absolute turbine numbers.
+- Precision 7675: the published CM-76 map fits the 1250 hp Sport-series wheel; the Next Gen 7675 (1480 hp) flows
+  ~10 % more than modeled. Pro Mod 91–106 mm maps are extrapolated from CM-76 and are the least certain.
 - Modeled maps reuse the G25 shape; real K03/K04/Holset/big-frame maps differ in width and surge slope.
 - The engine breathing multipliers of the catalogue imply volumetric efficiencies up to ~1.7–2.3 on the big
   pro-mod builds (real engines ≈1.1–1.25). The map model uses the airflow those power levels require, so the
@@ -111,13 +113,35 @@ Replaced the logistic spool curve and scalar `turboMaxHp` cap with turbo matchin
   one-shot layers; rev limiter, DSG burp and manual shift samples unchanged; audio lifecycle still hard-stops
   after every race (smoke test covers 5 races/sessions).
 
+## 4. Precision Turbo catalogue (v1.3.1)
+
+The generic modeled aftermarket turbos (64–127 mm) were replaced by the Precision Turbo & Engine range, small to
+large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod 9103/9803/10603.
+
+- `data/turbo/precision-cm-maps.json`: the four compressor maps Precision publishes (CM-60-0001, CM-64-0001,
+  CM-68-0001, CM-76-0001; image URLs inside). Speed lines were traced on the map pixels after gridline calibration
+  (±0.3 lb/min, ±0.01 PR); the surge line is the start of each speed line, choke the end. Precision prints only
+  one efficiency contour set clearly (CM-60); the 76/74/72/66 % islands of the others are the CM-60 islands scaled
+  by flow ratio — marked as such in `digitization`.
+- `data/turbo/precision-turbos.json`: model, Precision's own hp rating, inducer/turbine size, list price
+  (2026-09-23), product URL. PT6062/6466/6870/7675 use their own map (`vendor`). Models without a published map are
+  `modeled`: nearest CM map scaled by inducer area (flow) and inducer diameter (shaft speed at equal tip speed).
+- Turbine side: Precision publishes no turbine maps, so turbine flow is modeled (G25 0.72 A/R curve scaled by
+  turbine wheel area) for every Precision entry.
+- Ratings check: map choke flow × 10 hp/(lb/min) agrees with Precision's rating within ±20 % for every model (test).
+- Old saves/build slots are migrated to the nearest Precision model (`LEGACY_TURBO_IDS`; 118/127 mm → PT10603).
+- Turbo mass relative to the K03 is now set per unit (0–17 kg); previously 0 for all but the 127 mm.
+- selfTest: the low-oil and tight-ring-gap checks compared `null < 72` when the pull aborted; they now test the
+  status explicitly.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
 - `153c845` compressor-map turbo model (vendor + modeled data, physics, UI, tests)
 - `6397d99` anti-lag core, realtime turbo runtime, flame events (tests)
 - `c333da2` anti-lag tune panel, HOLD ANTILAG, live flames, audio layers, wear persistence
-- next: two-step pops/stutter, timeslip turbo line, version 1.3.0-debug (code 130)
+- `a805378` two-step pops/stutter, timeslip turbo line, version 1.3.0-debug (code 130)
+- next: Precision catalogue, auto tree, flame layer, continuous ALS flame + crackle audio, rival on track
 
 ## Remaining known inaccuracies
 

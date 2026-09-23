@@ -21,15 +21,24 @@ for (const part of C.CATEGORY_MAP.turbo.items) {
   else assert(/https?:\/\//.test(d.mapSource) && d.digitization, `${part.id}: vendor map needs a source URL and digitization note`);
   assert(d.speedLines.length >= 5 && d.surgeLine.length >= 5 && d.chokeLine.length >= 5, `${part.id}: map too sparse`);
 }
-assert.deepStrictEqual(Object.values(T.DATA.turbos).filter(d => d.mapType === 'vendor').map(d => d.id).sort(), ['g25', 'g30']);
+const VENDOR = ['g25', 'g30', 'pt6062', 'pt6466', 'pt6870', 'pt7675'];
+assert.deepStrictEqual(Object.values(T.DATA.turbos).filter(d => d.mapType === 'vendor').map(d => d.id).sort(), VENDOR);
+// Precision ratings (their own hp numbers) must agree with the map flow at ~10 hp per lb/min (gasoline rule of
+// thumb), for the digitized vendor maps and the scaled (modeled) ones alike.
+for (const d of Object.values(T.DATA.turbos).filter(x => x.ratedHp)) {
+  const maxFlow = Math.max(...d.chokeLine.map(p => p[0]));
+  assert(Math.abs((maxFlow * 10) / d.ratedHp - 1) < 0.2, `${d.id}: ${maxFlow} lb/min map vs ${d.ratedHp} hp rating`);
+  if (d.mapType === 'vendor') assert(/precisionturbo\.com/.test(d.mapSource), `${d.id}: Precision map URL missing`);
+}
 
 // 2. Fidelity: the interpolated map reproduces the digitized vendor speed lines.
-for (const id of ['g25', 'g30']) {
+for (const id of VENDOR) {
   const m = T.getMap(id);
   for (const line of T.DATA.turbos[id].speedLines)
     for (const [w, pr] of line.points) {
       const n = m.shaftRpm(w, pr);
-      assert(Math.abs(n - line.rpm) / line.rpm < 0.04, `${id}: ${Math.round(n)} rpm at (${w}, ${pr}) vs speed line ${line.rpm}`);
+      // lowest lines are nearly flat in PR, so rpm-from-PR is ill-conditioned there
+      assert(Math.abs(n - line.rpm) / line.rpm < (pr < 1.3 ? 0.05 : 0.04), `${id}: ${Math.round(n)} rpm at (${w}, ${pr}) vs speed line ${line.rpm}`);
     }
   const src = T.DATA.turbos[id];
   const inner = src.efficiencyIslands.slice().sort((a, b) => b.efficiency - a.efficiency)[0];
@@ -97,7 +106,7 @@ assert(altitude.peakHp < randy.peakHp - 15, 'thin air must cost power on a compr
 // Exhaust manifold pressure follows turbine size: a small hybrid needs far more drive pressure.
 assert(at(randy, 6000).empBar > at(bigger, 6000).empBar, 'smaller turbine should raise EMP');
 
-module.exports = { vendorMaps: 2, modeledMaps: Object.values(T.DATA.turbos).filter(d => d.mapType === 'modeled').length };
+module.exports = { vendorMaps: VENDOR.length, modeledMaps: Object.values(T.DATA.turbos).filter(d => d.mapType === 'modeled').length };
 
 // 4. A pull measured with the previous physics model must not be presented as current.
 const legacyState = C.createInitialState();
