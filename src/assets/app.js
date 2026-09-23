@@ -75,11 +75,13 @@
   let raceGameLastFrame = 0;
   let raceGameAuto = false;
   const v10TrackVisual = { canvas:null, ctx:null, width:0, height:0, dpr:1, horizonImage:null, horizonReady:false, lastDistance:0 };
+  // Rivals are real builds: a preset with their own hardware, tyres and gearbox, run on the same vehicle
+  // model as the player (sim.js createRaceRuntime) with a driver model of their skill.
   const RIVALS = Object.freeze({
-    club: { id:'club', name:'Clubman Mk5', tag:'CLUB', powerScale:.78, torqueScale:.82, massKg:1390, reactionMin:.18, reactionMax:.28, prep:false, tire:'uhp', reward:250, color:'#f4c66d', description:'Vergevingsgezinde instaprivaal met straatbanden en rustige launches.' },
-    street: { id:'street', name:'Night Shift R', tag:'STREET', powerScale:.95, torqueScale:.96, massKg:1340, reactionMin:.11, reactionMax:.19, prep:true, tire:'semislick', reward:500, color:'#ff7c55', description:'Sterke straat-Scirocco met semi-slicks en een nette reactie.' },
-    pro: { id:'pro', name:'Redline Works', tag:'PRO', powerScale:1.08, torqueScale:1.06, massKg:1290, reactionMin:.055, reactionMax:.115, prep:true, tire:'drag_radial', reward:900, color:'#ff4f69', description:'Snelle heads-up tegenstander met drag radial en harde 60-foot.' },
-    outlaw: { id:'outlaw', name:'Outlaw 2.0T', tag:'OUTLAW', powerScale:1.22, torqueScale:1.18, massKg:1240, reactionMin:.025, reactionMax:.075, prep:true, tire:'pro_radial', reward:1500, color:'#d15cff', description:'Maximale druk: licht, veel vermogen en bijna foutloze tree-reacties.' }
+    club: { id:'club', name:'Clubman Scirocco', tag:'CLUB', preset:'stock', mods:{ tune:{ boostLowBar:1.1, boostMidBar:1.1, boostHighBar:.85 }, selections:{ transmission:'dq250' } }, massKg:1370, reactionMin:.18, reactionMax:.28, skill:.6, prep:false, tire:'uhp', reward:250, color:'#f4c66d', description:'Stage-1 CAWB op DSG en straatbanden: een rustige instaprivaal.' },
+    street: { id:'street', name:'Night Shift R', tag:'STREET', preset:'k04', mods:{ selections:{ transmission:'dq250' } }, massKg:1340, reactionMin:.11, reactionMax:.19, skill:.8, prep:true, tire:'semislick', reward:500, color:'#ff7c55', description:'K04-064 op DSG met semi-slicks: sterk en consistent.' },
+    pro: { id:'pro', name:'Redline Works', tag:'PRO', preset:'randy', mods:{ selections:{ fuel:'e85', transmission:'sequential' }, rebaseMap:true }, massKg:1290, reactionMin:.055, reactionMax:.115, skill:.9, prep:true, tire:'drag_radial', reward:900, color:'#ff4f69', description:'K04-hybrid op E85 met sequentiële bak en drag radials.' },
+    outlaw: { id:'outlaw', name:'Outlaw 2.0T', tag:'OUTLAW', preset:'hx52', mods:{ vehicle:{ drivetrain:'AWD' } }, massKg:1240, reactionMin:.025, reactionMax:.075, skill:.97, prep:true, tire:'pro_radial', reward:1500, color:'#d15cff', description:'HX52 op E85, vierwielaandrijving, licht en bijna foutloos.' }
   });
   const TELEMETRY_COLORS = Object.freeze({ speed:'#ffad20', rpm:'#f4f6f8', boost:'#4cc9ff', wheelspin:'#ff526b', lane:'#bd77ff' });
 
@@ -118,39 +120,70 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  // The rival's pass does not depend on its reaction time (added on top), so it is simulated once per rival,
+  // track and model version and cached (memory + storage): the race start never waits for it twice.
+  const rivalCache = new Map();
+  const RIVAL_CACHE_KEY = 'ea888.rivalCache.v1';
+  function rivalConditions() {
+    const v = state.vehicle || {};
+    return { ambientTempC: v.ambientTempC, trackTempC: v.trackTempC, altitudeM: v.altitudeM, humidityPct: v.humidityPct, headwindKmh: v.headwindKmh };
+  }
+  function rivalState(profile) {
+    let rs = C.applyPreset(C.blankState(), profile.preset);
+    const m = profile.mods || {};
+    rs.selections = { ...rs.selections, ...(m.selections || {}) };
+    rs.tune = { ...rs.tune, ...(m.tune || {}) };
+    rs.vehicle = { ...rs.vehicle, ...rivalConditions(), ...(m.vehicle || {}), raceMode:'solo', massKg:profile.massKg, tireCompound:profile.tire, preparedTrack:profile.prep, burnoutLevel:92,
+      pressureBar: profile.tire === 'pro_radial' ? 1.05 : profile.tire === 'drag_radial' ? 1.25 : profile.tire === 'semislick' ? 1.75 : 2.05 };
+    rs = m.rebaseMap ? C.regenerateBaseMap(rs) : C.normalizeState(rs);
+    return rs;
+  }
+  function rivalPass(profile) {
+    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, c: rivalConditions() });
+    if (rivalCache.has(key)) return rivalCache.get(key);
+    try {
+      const stored = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}');
+      if (stored[key]) { rivalCache.set(key, stored[key]); return stored[key]; }
+    } catch (e) { /* storage unavailable */ }
+    const rs = rivalState(profile);
+    const dyno = C.simulateEngine(rs, { noise: false });
+    const pass = C.simulateRaceRun(rs, { reactionTime: 0, driverSkill: profile.skill, tyreTempC: 70 });
+    const entry = { quarter: pass.quarter, trapKmh: pass.trapKmh, sixtyFt: pass.sixtyFt, eighth: pass.eighth, trace: pass.trace, peakHp: dyno.peakHp, peakTorqueNm: dyno.peakTorqueNm, massKg: pass.totalMassKg };
+    rivalCache.set(key, entry);
+    try {
+      const stored = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}');
+      const keys = Object.keys(stored);
+      if (keys.length > 12) delete stored[keys[0]];
+      stored[key] = entry;
+      localStorage.setItem(RIVAL_CACHE_KEY, JSON.stringify(stored));
+    } catch (e) { /* storage full or unavailable */ }
+    return entry;
+  }
+  // Warm the caches while the player is on the race page (engine map of the build, the selected rival's pass).
+  function warmRaceCaches() {
+    const idle = window.requestIdleCallback || (fn => setTimeout(fn, 60));
+    idle(() => { try { if (currentCompletedDyno()) C.buildEngineMap(state); if (raceIsHeadsUp()) rivalPass(selectedRival()); } catch (e) { console.error('warm race caches', e); } });
+  }
+  // What is known about a rival: its build, and its measured numbers once its pass has been simulated.
+  function rivalSpec(profile) {
+    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, c: rivalConditions() });
+    let e = rivalCache.get(key);
+    if (!e) { try { e = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}')[key]; } catch (err) { e = null; } }
+    return e ? `${Math.round(e.peakHp)} pk · ${e.quarter.toFixed(2)} s @ ${Math.round(e.trapKmh)} km/u` : profile.description;
+  }
   function buildRivalSimulation() {
     if (!raceIsHeadsUp() || !currentCompletedDyno()) return null;
     const profile = selectedRival();
-    const rivalState = C.normalizeState(cloneJson(state));
-    rivalState.vehicle = {
-      ...rivalState.vehicle,
-      raceMode:'solo',
-      massKg:profile.massKg,
-      tireCompound:profile.tire,
-      preparedTrack:profile.prep,
-      burnoutLevel:92,
-      pressureBar: profile.tire === 'pro_radial' ? 1.05 : profile.tire === 'drag_radial' ? 1.25 : profile.tire === 'semislick' ? 1.75 : 2.05,
-      shiftRpm:Math.min(Number(state.tune.revLimitRpm || 8000) - 100, Number(state.vehicle.shiftRpm || 7600) + (profile.id === 'outlaw' ? 180 : 0))
-    };
-    if (C.CATEGORY_MAP.transmission.items.some(item => item.id === 'dq250')) rivalState.selections.transmission = 'dq250';
-    const dyno = cloneJson(state.lastDyno);
-    dyno.peakHp = Number(dyno.peakHp || 0) * profile.powerScale;
-    dyno.peakTorqueNm = Number(dyno.peakTorqueNm || 0) * profile.torqueScale;
-    dyno.samples = (dyno.samples || []).map(point => ({
-      ...point,
-      hp:Number(point.hp || 0) * profile.powerScale,
-      torqueNm:Number(point.torqueNm || 0) * profile.torqueScale,
-      boostBar:Number(point.boostBar || 0) * Math.min(1.18, .76 + profile.powerScale * .25)
-    }));
+    const pass = rivalPass(profile);
     const runNumber = (state.dragRuns?.length || 0) + 1;
     const u = deterministicUnit(`${profile.id}|${runNumber}|${Math.round(state.lastDyno.peakHp || 0)}|${state.vehicle.drivetrain}`);
     const reactionTime = profile.reactionMin + (profile.reactionMax - profile.reactionMin) * u;
-    const result = C.simulateDrag(rivalState, dyno, { reactionTime });
+    const result = { ...pass, reactionTime, finishTotalTime: pass.quarter + reactionTime };
     return {
       profile,
       reactionTime,
       result,
-      trace:result.trace || [],
+      trace:pass.trace || [],
       current:{time:0,distanceM:0,speedKmh:0,rpm:900,gear:1},
       finished:false
     };
@@ -934,6 +967,7 @@
       else if (state.lastDyno) drawDynoChart(canvas, state.lastDyno, 1, !currentDyno(), dynoChannel, compareRun());
     }
     if (activeTab === 'drag') {
+      warmRaceCaches();
       updateWheelReadout();
       setRacePhase(racePhase);
       if (racePanel === 'tree') {
@@ -1898,6 +1932,7 @@
           ${switchRow('methFailsafe', 'WMI-failsafe', 'Alleen zinvol met echte flow- of druksensorbewaking.')}
           ${switchRow('oilPressureProtection', 'Oliedrukbeveiliging', 'RPM-afhankelijke minimumdruk met koppelreductie of motorcut.')}
           ${switchRow('overboostCut', 'Overboostcut', 'Beschermt turbo en motor wanneer wastegate of regeling de vraag niet beheerst.')}
+          ${switchRow('tractionControl', 'Tractiecontrole (ASR/TC)', 'Neemt koppel terug zodra de aangedreven banden voorbij hun piekslip gaan. Uit: jij en de banden, niets ertussen.')}
         </div>
         <div class="card safety-readout">
           <span class="eyebrow">Controleketen</span><h2>${esc(ecu.name)}</h2>
@@ -2529,7 +2564,7 @@
           <div class="v12-mode-toggle"><button class="${!headsUp?'active':''}" data-race-mode="solo">SOLO</button><button class="${headsUp?'active':''}" data-race-mode="heads_up">HEADS-UP</button></div>
         </div>
         <div class="v12-rival-picker ${headsUp?'':'disabled'}">
-          ${Object.values(RIVALS).map(r=>`<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${Math.round(r.powerScale*100)}% power · RT ${r.reactionMin.toFixed(3)}–${r.reactionMax.toFixed(3)} · winst ${euro(r.reward)}</small></button>`).join('')}
+          ${Object.values(RIVALS).map(r=>`<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${esc(rivalSpec(r))} · RT ${r.reactionMin.toFixed(3)}–${r.reactionMax.toFixed(3)} · winst ${euro(r.reward)}</small></button>`).join('')}
         </div>
         <div class="vehicle-grid v4-vehicle-grid">
           <div class="card">
@@ -2587,7 +2622,7 @@
           <img class="v7-overview-car" src="images/randy-scirocco-rear.svg" alt="Randy's blauwe Scirocco van achteren op de dragstrip">
           <div class="v7-overview-tree">${v7TreeMarkup('preview')}</div>
           <div class="v7-overview-copy"><span>${headsUp?'HEADS-UP RACEWEEKEND':'SOLO TESTPASS'}</span><h2>Burnout → staging → tree → run</h2><p>${headsUp?`Je rijdt naast ${esc(rival.name)}. Beide auto’s krijgen een eigen reactie, acceleratiecurve en finishmoment.`:'Focus op de perfecte pass zonder rivaal; alle physics en telemetrie blijven actief.'}</p></div>
-          ${headsUp?`<div class="v12-overview-rival"><img src="images/rival-scirocco.svg" alt="Graphite Scirocco-rivaal"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>${Math.round(rival.powerScale*100)}% van jouw actuele curve · ${euro(rival.reward)} winstpremie</small></div>`:''}
+          ${headsUp?`<div class="v12-overview-rival"><img src="images/rival-scirocco.svg" alt="Graphite Scirocco-rivaal"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>${esc(rivalSpec(rival))} · ${euro(rival.reward)} winstpremie</small></div>`:''}
           <div class="v7-overview-best"><span>${record ? `${v.drivetrain} RECORD` : 'LAATSTE RUN'}</span><b>${record ? `${record.quarter.toFixed(3)} s` : lastSummary}</b><small>${record ? `${record.trapKmh.toFixed(1)} km/u` : `${v.drivetrain} · ${esc(tire.name)}`}</small></div>
         </div>
         <div class="v7-overview-actions">
@@ -3674,11 +3709,19 @@
     const burnout = burnoutAssessment(raceGame.burn.tempC);
     const actualTempFactor = clamp(.80 + (raceGame.burn.score || burnout.score) / 100 * .24, .76, 1.04);
     const opponent = buildRivalSimulation();
+    // One vehicle model for the whole race (sim.js): engine map from the combustion model, the staging turbo
+    // runtime (shaft speed built on the two-step carries over), clutch, tyres and load transfer.
+    const engineMap = C.buildEngineMap(state);
+    const launchFromRpm = Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200);
+    const vehicleRt = C.createRaceRuntime(state, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
+    vehicleRt.state.we = launchFromRpm * Math.PI / 30;
+    vehicleRt.launch();
     const run = {
       reactionTime: Number(reactionTime || 0), redLight: Number(reactionTime || 0) < 0,
       valid: Number(reactionTime || 0) >= 0, auto: !!auto,
       transInfo, autoShift: transInfo.isDsg, driverAssist: !!auto,
-      shiftTargets: buildRealtimeShiftTargets(transInfo),
+      shiftTargets: C.optimalShiftRpms(state, engineMap),
+      rt: vehicleRt,
       shiftHistory: [], perfect: 0, good: 0, early: 0, late: 0, missed: 0,
       limiterFlags: new Set(), shifting: null,
       t: 0, x: 0, v: 0, a: 0, rpm: Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200), gearIndex: 0,
@@ -3702,7 +3745,7 @@
       burnoutTempC: raceGame.burn.tempC, burnoutScore: raceGame.burn.score || burnout.score,
       raceMode:opponent ? 'heads_up' : 'solo', opponent, opponentGapM:0, opponentFinishShown:false,
       // The staging turbo runtime carries on: shaft speed built on ALS/two-step is kept at launch.
-      turbo: raceGame?.turbo || makeRaceTurbo(), turboSnap:null, pendingFlames:[], limiterFlameClock:0,
+      turbo: vehicleRt.turbo, turboSnap:null, pendingFlames:[], limiterFlameClock:0,
       alsRolling: (() => { const a = raceGame?.alsInfo || C.resolveAntiLag(state); return !!(a.enabled && (a.mode === 'rally' || a.mode === 'drag' || (a.mode === 'custom' && a.params.aggressiveness >= 50))); })(),
       flatShift: C.antiLagCapability(state).flatShift
     };
@@ -3737,11 +3780,6 @@
   function completeRealtimeShift(run) {
     if (!run.shifting) return;
     const shift = run.shifting;
-    run.gearIndex = Math.min(shift.to, run.transInfo.gears.length - 1);
-    const ratio = run.transInfo.gears[run.gearIndex] * run.transInfo.finalDrive;
-    const coupledRpm = run.v / (2 * Math.PI * run.radius) * 60 * ratio;
-    run.rpm = clamp(Math.max(900, coupledRpm), 850, Number(state.tune.revLimitRpm || 8000));
-    run.clutchTempC += run.autoShift ? 2.4 : shift.grade === 'perfect' ? 4.5 : shift.grade === 'late' ? 8.5 : 6.5;
     run.gearboxTempC += run.autoShift ? 1.4 : 2.2;
     run.drivelineStress += shift.grade === 'perfect' ? .8 : shift.grade === 'good' ? 1.3 : 2.4;
     run.shifting = null;
@@ -3772,7 +3810,10 @@
     const duration = run.transInfo.shiftSeconds * (grade === 'late' ? 1.05 : grade === 'early' ? 1.08 : 1);
     run.gearboxTempC += grade === 'late' ? 2.2 : grade === 'early' ? 1.6 : .8;
     run.drivelineStress += grade === 'late' ? 1.8 : grade === 'early' ? 1.2 : .4;
-    run.shifting = { from: run.gearIndex, to: run.gearIndex + 1, remaining: duration, duration, grade, source, rpm: run.rpm, target };
+    // The vehicle runtime performs the shift (clutch, synchro / DSG handover / dog engagement) and its duration.
+    if (run.rt && !run.rt.requestShift()) return false;
+    const rtShift = run.rt?.state.shift;
+    run.shifting = { from: run.gearIndex, to: run.gearIndex + 1, remaining: rtShift?.dur ?? duration, duration: rtShift?.dur ?? duration, grade, source, rpm: run.rpm, target };
     // Shift flame: DSG ignition-cut burp or flat-shift spark cut sends unburnt fuel into the
     // exhaust; a late shift near the limiter carries more fuel and heat. A throttle lift on an
     // ECU without flat-shift cuts fuel instead, so there is little to ignite.
@@ -3804,63 +3845,30 @@
 
   function stepRealtimePhysics(run, dt) {
     const g = 9.80665;
-    const revLimit = Number(state.tune.revLimitRpm || 8000);
-    const launchRpm = clamp(Number(state.tune.launchRpm || 4200), 2200, revLimit - 400);
     const maxStep = .006;
-    // Turbo runtime once per frame: throttle closes during a shift (rolling ALS may fire then).
-    const firstGearPct = Number(state.tune.firstGearBoostPct || 100) / 100, secondGearPct = Number(state.tune.secondGearBoostPct || 100) / 100;
-    const frameGearBoost = run.gearIndex === 0 ? firstGearPct : run.gearIndex === 1 ? secondGearPct : 1;
-    const framePoint = C.interpolateCurve(state.lastDyno.samples, run.rpm);
-    if (run.turbo) run.turboSnap = run.turbo.step(dt, { rpm: run.rpm, throttle: run.shifting ? 0 : 1, alsRequest: run.alsRolling && !!run.shifting, targetBoostBar: Number(framePoint?.boostBar || 0) * frameGearBoost });
-    const snap = run.turboSnap;
     let remaining = dt;
     while (remaining > 1e-7 && !run.finished) {
       const h = Math.min(maxStep, remaining);
       remaining -= h;
-      run.t += h;
+      // Longitudinal physics: the shared vehicle model (engine, turbo, clutch, tyres, shifts).
+      const p = run.rt.step(h, { flatShift: !!run.flatShift, rollingAls: !!run.alsRolling });
+      run.t = p.t;
+      run.x = p.distanceM; run.v = p.v; run.a = p.a; run.rpm = p.rpm; run.gearIndex = p.gearIndex;
+      run.wheelspin = clamp(p.slipRatio, 0, .95);
+      run.peakWheelspin = Math.max(run.peakWheelspin, run.wheelspin);
+      run.clutchTempC = p.clutchTempC;
+      run.turboSnap = run.rt.state.turboSnap;
+      const snap = run.turboSnap;
+      const boostBar = Math.max(0, p.boostBar), turboLoad = p.shaftPct;
+      if (run.shifting && !p.shifting) completeRealtimeShift(run);
 
-      if (run.shifting) {
-        run.shifting.remaining -= h;
-        if (run.shifting.remaining <= 0) completeRealtimeShift(run);
-      }
-
-      const gearRatio = run.transInfo.gears[run.gearIndex] * run.transInfo.finalDrive;
-      const wheelCoupledRpm = run.v / (2 * Math.PI * run.radius) * 60 * gearRatio;
-      const launchSlip = run.gearIndex === 0 ? clamp(1 - wheelCoupledRpm / Math.max(1, launchRpm), 0, 1) : 0;
-      const desiredRpm = launchSlip > .01 ? Math.max(wheelCoupledRpm, launchRpm + launchSlip * 210) : Math.max(900, wheelCoupledRpm);
-      run.rpm += (desiredRpm - run.rpm) * clamp(h * (run.shifting ? 24 : 17), 0, 1);
-      run.rpm = clamp(run.rpm, 850, revLimit + 180);
-
-      const targetShift = Number(run.shiftTargets[run.gearIndex] || revLimit - 90);
+      const targetShift = Number(run.shiftTargets[run.gearIndex] || Number(state.tune.revLimitRpm || 8000) - 90);
       if (!run.shifting && run.gearIndex < run.transInfo.gears.length - 1) {
         if (run.autoShift && run.rpm >= targetShift) requestRealtimeShift('dsg');
         else if (run.driverAssist && run.rpm >= targetShift) requestRealtimeShift('ai');
       }
-
-      const enginePoint = C.interpolateCurve(state.lastDyno.samples, run.rpm);
-      const head = C.getPart(state, 'head');
-      const naBase = 174 * (run.geometry.displacementL / 2) * Number(head.headFlow || 1) * (1 + Math.min(8, Number(state.tune.intakeCamAdvanceDeg || 0)) * .004);
-      const gearBoost = run.gearIndex === 0 ? Number(state.tune.firstGearBoostPct || 100) / 100 : run.gearIndex === 1 ? Number(state.tune.secondGearBoostPct || 100) / 100 : 1;
-      // Torque follows the boost the turbo runtime actually delivers relative to the
-      // steady dyno boost at this rpm (boost-by-gear is applied through its target).
-      const steadyTorque = Number(enginePoint?.torqueNm || 0);
-      const steadyBoost = Number(enginePoint?.boostBar || 0);
-      let boostBar, boostShare;
-      if (snap) {
-        boostBar = Math.max(0, snap.boostBar);
-        boostShare = steadyBoost > .05 ? clamp(boostBar / steadyBoost, 0, 1.25) : 1;
-      } else {
-        run.boostFactor += (1 - run.boostFactor) * clamp(h * clamp(2.0 + run.rpm / 3000, 2.2, 6.2), 0, 1);
-        boostShare = gearBoost * run.boostFactor;
-        boostBar = Math.max(0, steadyBoost * boostShare);
-      }
-      let torqueEngine = (naBase + (steadyTorque - naBase) * boostShare) * run.airPowerFactor;
-      const turboLoad = snap ? snap.shaftPct : Number(enginePoint?.turboLoadPct || 0);
-
-      let limiterCut = 1;
-      if (run.rpm >= revLimit - 20) {
-        limiterCut = Math.sin(run.t * 78) > -.05 ? .16 : .46;
-        run.limiterTime += h;
+      if (p.limiter) {
+        run.limiterTime = p.limiterS;
         // Spark-cut limiter (tuned ECUs) dumps unburnt fuel into a hot exhaust: bangs and flames.
         run.limiterFlameClock += h * 11;
         if (run.limiterFlameClock >= 1 && snap) {
@@ -3875,39 +3883,11 @@
           haptic([10,8,10]);
         }
       }
-      let shiftTorqueFactor = 1;
-      if (run.shifting) shiftTorqueFactor = run.autoShift ? .42 : .035;
-      torqueEngine *= limiterCut * shiftTorqueFactor;
-
-      let clutchTransfer = .58 + (1 - launchSlip) * .42;
-      const clutchHeatRate = launchSlip * Math.abs(torqueEngine) * (.012 + run.wheelspin * .006);
-      run.clutchTempC += clutchHeatRate * h;
-      run.clutchTempC += (58 - run.clutchTempC) * h * .018;
-      run.gearboxTempC += Math.abs(torqueEngine) / 900 * h * (run.shifting ? 1.6 : .34);
+      run.gearboxTempC += Math.abs(p.torqueNm) / 900 * h * (run.shifting ? 1.6 : .34);
       run.gearboxTempC += (66 - run.gearboxTempC) * h * .010;
-      const clutchFade = clamp(1 - Math.max(0, run.clutchTempC - 205) / 260, .54, 1);
-      clutchTransfer *= clutchFade;
-      const demandForce = Math.max(0, torqueEngine * gearRatio * run.transEff / run.radius * clutchTransfer);
-      const previousA = run.a;
-      const transfer = run.mass * Math.max(-.4 * g, previousA) * run.cgHeight / run.wheelbase * run.transferScale;
-      const frontNormal = clamp(run.mass * g * Number(run.drive.frontStatic || .6) - transfer, run.mass * g * .15, run.mass * g * .86);
-      const rearNormal = run.mass * g - frontNormal;
-      let drivenNormal = state.vehicle.drivetrain === 'FWD' ? frontNormal : state.vehicle.drivetrain === 'RWD' ? rearNormal : (frontNormal + rearNormal) * Number(run.drive.tractionUse || .92);
-      const speedGrip = clamp(1.035 - run.v * .00135, .78, 1.04);
-      const tireForce = Math.max(0, run.grip.mu * run.actualTempFactor * drivenNormal * speedGrip);
-      const driveForce = Math.min(demandForce, tireForce);
-      run.wheelspin = demandForce > 1 ? clamp((demandForce - tireForce) / demandForce, 0, .95) : 0;
-      run.peakWheelspin = Math.max(run.peakWheelspin, run.wheelspin);
-
-      const relativeAir = Math.max(0, run.v + run.headwind);
-      const aero = .5 * run.rho * run.cdA * relativeAir * relativeAir;
-      const rolling = Number(run.grip.tire.rolling || .013) * run.mass * g * (1 + run.v * .006);
-      run.a = clamp((driveForce - aero - rolling) / run.mass, -.8 * g, 1.55 * g);
-      run.v = Math.max(0, run.v + run.a * h);
-      run.x += run.v * h;
       run.maxClutchTempC = Math.max(run.maxClutchTempC, run.clutchTempC);
       run.maxGearboxTempC = Math.max(run.maxGearboxTempC, run.gearboxTempC);
-      run.drivelineStress += (Math.max(0, demandForce - tireForce) / Math.max(1, tireForce) * 1.7 + Math.max(0, run.a / g - .75) * .22) * h;
+      run.drivelineStress += (Math.max(0, run.wheelspin - .15) * 1.2 + Math.max(0, run.a / g - .75) * .22) * h;
 
       if (run.opponent) {
         const greenElapsed = run.t + run.reactionTime;
@@ -3940,7 +3920,7 @@
       if (Math.abs(run.lateralM) > 1.22) {
         run.lateralM = Math.sign(run.lateralM) * 1.22;
         run.lateralVelocity *= -.18;
-        run.v *= .982;
+        run.rt.state.v *= .982; // scrubbing the wall costs speed in the vehicle model itself
       }
 
       recordRealtimeMilestones(run);
@@ -4372,7 +4352,7 @@
 
     const cue = $('#v7-shift-cue'); const button = $('#v7-shift-button');
     if (run.autoShift) {
-      if (cue) cue.textContent = run.shifting ? `NAAR ${run.gearIndex + 2}` : `DSG · G${run.gearIndex + 1}`;
+      if (cue) cue.textContent = run.shifting ? `NAAR ${run.shifting.to + 1}` : `DSG · G${run.gearIndex + 1}`;
       const dsg = $('#v7-dsg-status'); if (dsg) dsg.classList.toggle('shifting', !!run.shifting);
     } else if (run.gearIndex >= run.transInfo.gears.length - 1) {
       if (cue) cue.textContent = 'HOOGSTE VERSNELLING';
@@ -4381,7 +4361,7 @@
       const target = Number(run.shiftTargets[run.gearIndex] || state.tune.revLimitRpm - 100);
       const delta = target - run.rpm;
       let text = 'WACHT', cls = '';
-      if (run.shifting) { text = `NAAR G${run.gearIndex + 2}`; cls = 'armed'; }
+      if (run.shifting) { text = `NAAR G${run.shifting.to + 1}`; cls = 'armed'; }
       else if (delta <= 170 && delta >= -260) { text = 'SHIFT!'; cls = 'ready'; }
       else if (delta < -260) { text = 'TE LAAT'; cls = 'late'; }
       else if (delta < 620) { text = 'KLAAR'; cls = 'armed'; }

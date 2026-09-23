@@ -109,7 +109,7 @@
   // prettier-ignore
   const DRIVETRAINS = {"FWD":{"name":"FWD","frontStatic":0.63,"loss":0.1,"mass":0,"tractionUse":1},"RWD":{"name":"RWD swap","frontStatic":0.51,"loss":0.13,"mass":35,"tractionUse":1},"AWD":{"name":"AWD","frontStatic":0.56,"loss":0.17,"mass":95,"tractionUse":0.92}};
   // prettier-ignore
-  const PRESETS = {"stock":{"name":"OEM CAWB 200","selections":{"block":"oem_block","crank":"oem_crank","oiling":"wet_sump","head":"oem_head","valvetrain":"oem_valves","turbo":"k03","air":"oem_air","fuelSystem":"oem_fuel","fuel":"ron98","exhaust":"oem_exhaust","ecu":"med17","ignition":"oem_ignition","sealing":"oem_bolts","transmission":"oem_6mt","spool":"none","crankcase":"oem_pcv","boostControl":"oem_internal","manifold":"oem_manifold","sensors":"oem_sensors"},"tune":{"boostLowBar":1.0,"boostMidBar":1.0,"boostHighBar":0.74,"lambda":0.82,"ignitionTrimDeg":0,"revLimitRpm":6500,"railTargetBar":150,"intakeCamAdvanceDeg":18,"launchRpm":3000,"firstGearBoostPct":76,"secondGearBoostPct":90}},"k04":{"name":"K04 straat","selections":{"block":"rods","crank":"fluidampr","oiling":"baffled","head":"mild_cams","valvetrain":"springs","turbo":"k04","air":"fmic","fuelSystem":"nostrum","fuel":"ron98","exhaust":"catted_3","ecu":"custom_med17","ignition":"fresh_coils","sealing":"studs","transmission":"built_6mt","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"street_sensor_pack"},"tune":{"boostLowBar":1.15,"boostMidBar":1.7,"boostHighBar":1.25,"lambda":0.8,"ignitionTrimDeg":-0.5,"revLimitRpm":7200,"railTargetBar":170,"intakeCamAdvanceDeg":12,"launchRpm":3800,"firstGearBoostPct":62,"secondGearBoostPct":82}},"randy":{"name":"Randy CAWB JE83 K04","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"k04_hybrid","air":"wmi","fuelSystem":"randy_nostrum_rsx","fuel":"blend_wmi","exhaust":"race_3","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"randy_cometic_arp","transmission":"randy_o2q","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.95,"boostMidBar":1.88,"boostHighBar":1.72,"lambda":0.79,"ignitionTrimDeg":-0.5,"revLimitRpm":8000,"railTargetBar":175,"intakeCamAdvanceDeg":8,"exhaustTdcLiftMm":0.85,"intakeTdcLiftMm":0.25,"vvtEnabled":true,"launchRpm":4200,"firstGearBoostPct":55,"secondGearBoostPct":78,"knockControl":true,"railPressureCut":true,"lambdaProtection":true,"methFailsafe":true,"oilPressureProtection":true,"overboostCut":true}},"hx52":{"name":"HX52 high-rpm","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"hx52","air":"wmi","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vented_can","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.3,"boostMidBar":1.1,"boostHighBar":2.2,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8400,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5000,"firstGearBoostPct":48,"secondGearBoostPct":72}},"pro98":{"name":"Pro Mod 2.0 · PT8685 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8685","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.6,"boostMidBar":1.6,"boostHighBar":3.6,"lambda":0.74,"ignitionTrimDeg":-2,"revLimitRpm":9500,"railTargetBar":225,"intakeCamAdvanceDeg":0,"launchRpm":6800,"firstGearBoostPct":45,"secondGearBoostPct":68},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.56,"secondRingGapMm":0.62,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.52,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"outlaw106":{"name":"Outlaw 2.0 · PT8085 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8085","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.7,"boostMidBar":1.9,"boostHighBar":3.3,"lambda":0.74,"ignitionTrimDeg":-2.5,"revLimitRpm":9200,"railTargetBar":225,"intakeCamAdvanceDeg":-1,"launchRpm":7200,"firstGearBoostPct":42,"secondGearBoostPct":65},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.57,"secondRingGapMm":0.63,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.5,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"unlimited":{"name":"Unlimited 2.0 · PT8685 + promod head","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","crankcase":"vacuum_pump","head":"promod_head","valvetrain":"promod_valvetrain","turbo":"pt8685","boostControl":"dual_60_co2","air":"promod_ice_system","manifold":"billet_120","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","sensors":"pro_instrumentation","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_250"},"tune":{"boostLowBar":0.6,"boostMidBar":1.8,"boostHighBar":4.2,"lambda":0.72,"ignitionTrimDeg":-3.0,"revLimitRpm":10000,"railTargetBar":225,"intakeCamAdvanceDeg":-2,"launchRpm":7800,"firstGearBoostPct":34,"secondGearBoostPct":54},"assembly":{"topRingGapMm":0.58,"secondRingGapMm":0.64,"rodClearanceMm":0.062,"mainClearanceMm":0.06,"sparkGapMm":0.49,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0}}};
+  const PRESETS = {"stock":{"name":"OEM CAWB 200","selections":{"block":"oem_block","crank":"oem_crank","oiling":"wet_sump","head":"oem_head","valvetrain":"oem_valves","turbo":"k03","air":"oem_air","fuelSystem":"oem_fuel","fuel":"ron98","exhaust":"oem_exhaust","ecu":"med17","ignition":"oem_ignition","sealing":"oem_bolts","transmission":"oem_6mt","spool":"none","crankcase":"oem_pcv","boostControl":"oem_internal","manifold":"oem_manifold","sensors":"oem_sensors"},"tune":{"boostLowBar":1.0,"boostMidBar":1.0,"boostHighBar":0.74,"lambda":0.82,"ignitionTrimDeg":0,"revLimitRpm":6500,"railTargetBar":150,"intakeCamAdvanceDeg":18,"launchRpm":3000,"firstGearBoostPct":76,"secondGearBoostPct":90}},"k04":{"name":"K04 straat","selections":{"block":"rods","crank":"fluidampr","oiling":"baffled","head":"mild_cams","valvetrain":"springs","turbo":"k04","air":"fmic","fuelSystem":"nostrum","fuel":"ron98","exhaust":"catted_3","ecu":"custom_med17","ignition":"fresh_coils","sealing":"studs","transmission":"built_6mt","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"street_sensor_pack"},"tune":{"boostLowBar":1.15,"boostMidBar":1.7,"boostHighBar":1.25,"lambda":0.8,"ignitionTrimDeg":-0.5,"revLimitRpm":7200,"railTargetBar":170,"intakeCamAdvanceDeg":12,"launchRpm":3800,"firstGearBoostPct":62,"secondGearBoostPct":82}},"randy":{"name":"Randy CAWB JE83 K04","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"k04_hybrid","air":"wmi","fuelSystem":"randy_nostrum_rsx","fuel":"blend_wmi","exhaust":"race_3","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"randy_cometic_arp","transmission":"randy_o2q","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.95,"boostMidBar":1.88,"boostHighBar":1.72,"lambda":0.79,"ignitionTrimDeg":-0.5,"revLimitRpm":8000,"railTargetBar":175,"intakeCamAdvanceDeg":8,"exhaustTdcLiftMm":0.85,"intakeTdcLiftMm":0.25,"vvtEnabled":true,"launchRpm":4200,"firstGearBoostPct":55,"secondGearBoostPct":78,"knockControl":true,"railPressureCut":true,"lambdaProtection":true,"methFailsafe":true,"oilPressureProtection":true,"overboostCut":true}},"hx52":{"name":"HX52 high-rpm","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"hx52","air":"wmi","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vented_can","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.3,"boostMidBar":1.1,"boostHighBar":2.2,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8400,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5000,"firstGearBoostPct":48,"secondGearBoostPct":72}},"pro98":{"name":"Pro Mod 2.0 · PT8685 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8685","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.6,"boostMidBar":1.6,"boostHighBar":3.6,"lambda":0.74,"ignitionTrimDeg":-2,"revLimitRpm":9500,"railTargetBar":225,"intakeCamAdvanceDeg":0,"launchRpm":6800,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.56,"secondRingGapMm":0.62,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.52,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"outlaw106":{"name":"Outlaw 2.0 · PT8085 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8085","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.7,"boostMidBar":1.9,"boostHighBar":3.3,"lambda":0.74,"ignitionTrimDeg":-2.5,"revLimitRpm":9200,"railTargetBar":225,"intakeCamAdvanceDeg":-1,"launchRpm":7200,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.57,"secondRingGapMm":0.63,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.5,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"unlimited":{"name":"Unlimited 2.0 · PT8685 + promod head","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","crankcase":"vacuum_pump","head":"promod_head","valvetrain":"promod_valvetrain","turbo":"pt8685","boostControl":"dual_60_co2","air":"promod_ice_system","manifold":"billet_120","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","sensors":"pro_instrumentation","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_250"},"tune":{"boostLowBar":0.6,"boostMidBar":1.8,"boostHighBar":4.2,"lambda":0.72,"ignitionTrimDeg":-3.0,"revLimitRpm":10000,"railTargetBar":225,"intakeCamAdvanceDeg":-2,"launchRpm":7800,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"assembly":{"topRingGapMm":0.58,"secondRingGapMm":0.64,"rodClearanceMm":0.062,"mainClearanceMm":0.06,"sparkGapMm":0.49,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0}}};
 
   const BENCH_TESTS = [
     { id: 'oilPrime', name: 'Oliedruk primen', detail: 'Controleert de gemodelleerde druk bij starttoerental vóór de eerste pull.' },
@@ -187,6 +187,7 @@
       methFailsafe: true,
       oilPressureProtection: true,
       overboostCut: true,
+      tractionControl: true,
       ethanolPct: 85,
       als: defaultAntiLag()
     };
@@ -341,7 +342,8 @@
       model: ENGINE_MODEL_VERSION,
       selections: s.selections,
       // Anti-lag only acts off-throttle / on the two-step, never in a WOT dyno pull.
-      tune: { ...compactObject({ ...t, als: undefined }, 3), revLimitRpm: Math.round(t.revLimitRpm) },
+      // Anti-lag and traction control act only in the race, never in a WOT dyno pull.
+      tune: { ...compactObject({ ...t, als: undefined, tractionControl: undefined }, 3), revLimitRpm: Math.round(t.revLimitRpm) },
       assembly: compactObject(s.assembly, 3),
       oil: { id: s.service.oilId, liters: round(s.service.liters, 2), filter: s.service.filterId },
       dyno: compactObject(s.dynoConfig, 2)
@@ -1843,6 +1845,8 @@
     };
   }
 
+  // Quarter mile on the realtime vehicle model with the automatic driver (quick pass, legacy callers).
+  // The game rule stays: a completed pull for the current build is required.
   function simulateDrag(inputState, dynoResult, config = {}) {
     const state = normalizeState(inputState),
       dyno = dynoResult || state.lastDyno;
@@ -1853,135 +1857,22 @@
           ? 'De dynorun eindigde met motorschade; eerst herstellen en opnieuw meten.'
           : 'De dynorun is niet voltooid; voer eerst een volledige pull uit.'
       );
-    const vehicle = state.vehicle,
-      drive = DRIVETRAINS[vehicle.drivetrain],
-      trans = getPart(state, 'transmission'),
-      grip = gripFactor(vehicle),
-      mass = buildMassKg(state),
-      radius = grip.geometry.radiusM,
-      gears = trans.gearRatios,
-      finalDrive = trans.finalDrive,
-      launchRpm = clamp(state.tune.launchRpm, 2200, state.tune.revLimitRpm - 500),
-      revLimit = state.tune.revLimitRpm,
-      shiftRpm = clamp(Number(vehicle.shiftRpm || revLimit), Math.max(4500, launchRpm + 500), revLimit),
-      dt = 0.006,
-      target = 402.336,
-      rho = airDensity(vehicle),
-      dynoRho = dyno.airDensityKgM3 || 1.204,
-      airPowerFactor = clamp(Math.pow(rho / dynoRho, 0.35), 0.86, 1.05),
-      cdA = vehicle.cdA || 0.68,
-      g = 9.80665,
-      wheelbase = vehicle.wheelbaseM || 2.58,
-      cg = vehicle.cgHeightM || 0.51,
-      transEff = trans.transEfficiency * (1 - drive.loss * 0.34),
-      headwind = Math.max(-20, Number(vehicle.headwindKmh || 0)) / 3.6,
-      transferScale = clamp(0.55 + (Number(vehicle.suspensionTransferPct || 60) / 100) * 0.85, 0.55, 1.4);
-    let t = 0,
-      x = 0,
-      v = 0,
-      aPrev = 0,
-      gear = 0,
-      shiftRemaining = 0,
-      wheelspinIntegral = 0,
-      tractionIntegral = 0,
-      shifts = 0,
-      rpm = launchRpm;
-    const milestones = { m18: null, m100: null, m201: null, m305: null, m402: null, zero100: null },
-      trace = [];
-    let traceClock = 0;
-    const gearBoost = gi => (gi === 0 ? state.tune.firstGearBoostPct / 100 : gi === 1 ? state.tune.secondGearBoostPct / 100 : 1);
-    while (t < 25 && x < target) {
-      const ratio = gears[Math.min(gear, gears.length - 1)] * finalDrive,
-        wheelRpmEngine = (v / Math.max(0.05, 2 * Math.PI * radius)) * 60 * ratio,
-        clutchSlip = gear === 0 && wheelRpmEngine < launchRpm;
-      rpm = clutchSlip ? launchRpm : Math.max(1500, wheelRpmEngine);
-      if (rpm >= shiftRpm && gear < gears.length - 1 && shiftRemaining <= 0) {
-        gear++;
-        shifts++;
-        shiftRemaining = trans.shiftSeconds;
-        rpm = Math.max(1800, (v / (2 * Math.PI * radius)) * 60 * gears[gear] * finalDrive);
-      }
-      let driveForce = 0,
-        demandForce = 0;
-      if (shiftRemaining > 0) shiftRemaining -= dt;
-      else {
-        const point = interpolateCurve(dyno.samples, rpm),
-          naBase = clamp(178 - Math.max(0, rpm - 5000) * 0.006, 120, 180),
-          boostScale = gearBoost(gear),
-          torqueEngine = Math.max(0, (naBase + (point.torqueNm - naBase) * boostScale) * airPowerFactor);
-        demandForce = (torqueEngine * gears[gear] * finalDrive * transEff) / Math.max(0.2, radius);
-        const transfer = ((mass * Math.max(-2, aPrev) * cg) / wheelbase) * transferScale;
-        let drivenNormal;
-        if (vehicle.drivetrain === 'FWD') drivenNormal = drive.frontStatic * mass * g - transfer;
-        else if (vehicle.drivetrain === 'RWD') drivenNormal = (1 - drive.frontStatic) * mass * g + transfer;
-        else drivenNormal = mass * g * drive.tractionUse;
-        drivenNormal = clamp(drivenNormal, mass * g * 0.18, mass * g);
-        const speedGrip = v < 8 ? 1 : clamp(1 - (v - 8) * 0.0016, 0.9, 1),
-          tireForce = grip.mu * drivenNormal * speedGrip;
-        driveForce = Math.min(demandForce, tireForce);
-        const spin = demandForce > tireForce ? (demandForce - tireForce) / Math.max(1, demandForce) : 0;
-        wheelspinIntegral += spin * dt;
-        tractionIntegral += dt;
-      }
-      const relativeAir = Math.max(0, v + headwind),
-        aero = 0.5 * rho * cdA * relativeAir * relativeAir,
-        rolling = grip.tire.rolling * mass * g * (1 + v * 0.006),
-        net = driveForce - aero - rolling,
-        a = Math.max(-1.5, net / mass);
-      v = Math.max(0, v + a * dt);
-      x += v * dt;
-      t += dt;
-      aPrev = a;
-      const mark = (key, dist) => {
-        if (milestones[key] == null && x >= dist) milestones[key] = { time: t, speedKmh: v * 3.6 };
-      };
-      mark('m18', 18.288);
-      mark('m100', 100.584);
-      mark('m201', 201.168);
-      mark('m305', 304.8);
-      mark('m402', 402.336);
-      if (milestones.zero100 == null && v * 3.6 >= 100) milestones.zero100 = t;
-      traceClock += dt;
-      if (traceClock >= 0.04) {
-        traceClock = 0;
-        trace.push({ time: t, distanceM: x, speedKmh: v * 3.6, gear: gear + 1, rpm, accelerationG: a / g });
-      }
-    }
-    if (!milestones.m402) throw new Error('De combinatie bereikte de finish niet binnen 25 seconden.');
-    const wheelspinPct = clamp((wheelspinIntegral / Math.max(0.001, tractionIntegral)) * 100, 0, 99),
-      rt = Number.isFinite(config.reactionTime) ? config.reactionTime : 0.09,
-      redLight = rt < 0;
+    const vehicle = state.vehicle, grip = gripFactor(vehicle);
+    const r = simulateRaceRun(state, { reactionTime: Number.isFinite(config.reactionTime) ? config.reactionTime : 0.09, tractionControl: state.tune.tractionControl !== false, driverSkill: config.driverSkill ?? 0.9 });
     return {
-      valid: !redLight,
-      redLight,
-      reactionTime: rt,
-      sixtyFt: milestones.m18?.time || null,
-      threeThirty: milestones.m100?.time || null,
-      eighth: milestones.m201?.time || null,
-      eighthKmh: milestones.m201?.speedKmh || null,
-      thousandFt: milestones.m305?.time || null,
-      quarter: milestones.m402.time,
-      trapKmh: milestones.m402.speedKmh,
-      zeroTo100: milestones.zero100,
-      wheelspinPct,
-      shifts,
-      drivetrain: drive.name,
-      tireName: grip.tire.name,
+      ...r,
       tireSize: `${vehicle.tireWidthMm}/${vehicle.aspectRatio} R${vehicle.rimDiameterIn}`,
       wheelSpec: `${vehicle.rimDiameterIn}×${Number(vehicle.rimWidthIn).toFixed(1)} in`,
       tireDiameterMm: grip.geometry.diameterMm,
-      totalMassKg: mass,
-      finishTotalTime: milestones.m402.time + Math.max(0, rt),
-      trace,
       setup: {
-        mu: grip.mu,
+        mu: (TYRE[vehicle.tireCompound] || TYRE.uhp)[vehicle.preparedTrack ? 'muPrep' : 'mu'],
         pressurePenalty: grip.pressurePenalty,
-        driveLoss: drive.loss,
+        driveLoss: (DRIVETRAINS[vehicle.drivetrain] || DRIVETRAINS.FWD).loss,
         tireTempC: grip.tireTempC,
-        airDensityKgM3: rho,
+        airDensityKgM3: airDensity(vehicle),
         densityAltitudeM: densityAltitude(vehicle),
         headwindKmh: vehicle.headwindKmh,
-        shiftRpm
+        shiftRpm: r.shiftRpms?.[0]
       }
     };
   }
@@ -2070,10 +1961,76 @@
   // Realtime turbo state for staging and the drag run. It keeps shaft speed,
   // boost, EGT and ALS state between frames and uses the same compressor/turbine
   // maps as the dyno; engine airflow comes from the completed dyno samples.
+  // ---- Engine map for realtime use (race, staging, rival) --------------------------------------
+  // The combustion model evaluated once per build over rpm x MAP with the ECU's spark (incl. knock control),
+  // lambda and cam tables, at a reference charge temperature and exhaust pressure equal to MAP. At runtime
+  // the torque is corrected for the actual charge density and for the pumping work of the actual exhaust
+  // pressure (both exact in the mean-value sense), so the race runs on the same physics as the dyno.
+  const ENGINE_MAP_REF_K = 318.15;
+  const engineMapCache = new Map();
+  function buildEngineMap(inputState) {
+    const state = normalizeState(inputState);
+    const key = engineSignature(state);
+    if (engineMapCache.has(key)) return engineMapCache.get(key);
+    const hw = engineHardware(state), ecuCal = state.tune.ecu, ecuPart = getPart(state, 'ecu'), sensors = getPart(state, 'sensors');
+    const revLimit = clamp(Math.round(state.tune.revLimitRpm / 100) * 100, 5000, 10500);
+    const rpmAxis = [700, 1000];
+    for (let r = 1500; r <= revLimit + 500; r += 500) rpmAxis.push(r);
+    const maxMap = Math.max(1.6, ...ecuCal.boost.flat()) + 1.013 + 0.6;
+    const mapAxis = [0.3, 0.5, 0.7, 0.9, 1.0];
+    for (let m = 1.25; m <= maxMap + 1e-9; m += 0.25) mapAxis.push(round(m, 2));
+    const kc = knockControlFor(state, ecuPart, sensors);
+    const grid = mapAxis.map(mapAbs => rpmAxis.map(rpm => {
+      const lambda = ecuCell(ecuCal, 'lambda', Math.max(1, mapAbs), rpm);
+      const cam = state.tune.vvtEnabled === false ? 0 : ecuCell(ecuCal, 'cam', Math.max(1, mapAbs), rpm);
+      const spark = ecuCell(ecuCal, 'spark', Math.max(1, mapAbs), rpm) + Number(ecuCal.sparkTrimDeg || 0) + Number(state.tune.ignitionTrimDeg || 0);
+      const water = hw.wmi && mapAbs > 1.8 ? (hw.wmi.ratio * 0.5) / (hw.fuel.afrSt * lambda) : 0;
+      const op = Engine.operatingPoint({
+        geo: hw.geo, head: hw.head, rpm, mapBarAbs: mapAbs, manifoldK: ENGINE_MAP_REF_K, empBarAbs: mapAbs, lambda, fuel: hw.fuel, sparkCmdDeg: spark,
+        camAdvanceDeg: cam, twinScroll: hw.twinScroll, exhaustK: 1100, waterPerAir: water, veScale: hw.veScale, viscosityFactor: hw.viscosityFactor,
+        extraFmepBar: hw.extraFmepBar, knockControl: kc, stepDeg: 3, mbtDeg: 50
+      });
+      const vd = hw.geo.vd * hw.geo.cyl;
+      return {
+        torqueNm: op.torqueNm,
+        frictionNm: ((op.fmepBar + (op.pmepBar - (mapAbs - mapAbs))) * 1e5 * vd) / (4 * Math.PI),
+        exhaustK: op.exhaustK,
+        knockIndex: op.knockIndex,
+        sparkDeg: op.sparkDeg,
+        knockRetardDeg: op.knockRetardDeg,
+        lambda,
+        airKgS: op.airKgS,
+        fuelKgS: op.fuelKgS
+      };
+    }));
+    const em = { key, rpmAxis, mapAxis, grid, vdM3: hw.geo.vd * hw.geo.cyl, revLimit, hw, maxMap };
+    engineMapCache.set(key, em);
+    if (engineMapCache.size > 12) engineMapCache.delete(engineMapCache.keys().next().value);
+    return em;
+  }
+  function engineMapLookup(em, rpm, mapAbs, manifoldK = ENGINE_MAP_REF_K, empAbs = mapAbs) {
+    const [r0, r1, fr] = axisPos(em.mapAxis, mapAbs), [c0, c1, fc] = axisPos(em.rpmAxis, rpm);
+    const g = em.grid, mix = k => (g[r0][c0][k] * (1 - fc) + g[r0][c1][k] * fc) * (1 - fr) + (g[r1][c0][k] * (1 - fc) + g[r1][c1][k] * fc) * fr;
+    const base = mix('torqueNm'), fric = mix('frictionNm');
+    // Charge density scales the indicated torque; exhaust pressure above MAP costs pumping work.
+    const indicated = (base + fric) * (ENGINE_MAP_REF_K / Math.max(250, manifoldK));
+    const pumpingNm = ((empAbs - mapAbs) * 1e5 * em.vdM3) / (4 * Math.PI);
+    return {
+      torqueNm: indicated - fric - pumpingNm,
+      frictionNm: fric,
+      exhaustK: mix('exhaustK'),
+      knockIndex: mix('knockIndex'),
+      sparkDeg: mix('sparkDeg'),
+      knockRetardDeg: mix('knockRetardDeg'),
+      lambda: mix('lambda'),
+      airKgS: mix('airKgS') * (ENGINE_MAP_REF_K / Math.max(250, manifoldK)),
+      fuelKgS: mix('fuelKgS') * (ENGINE_MAP_REF_K / Math.max(250, manifoldK))
+    };
+  }
+
   function createTurboRuntime(inputState, options = {}) {
-    const state = normalizeState(inputState),
-      dyno = options.dyno || state.lastDyno;
-    if (!isCompletedDyno(dyno)) throw new Error('Een volledige dynometing is vereist.');
+    const state = normalizeState(inputState);
+    const em = options.engineMap || buildEngineMap(state), hw = em.hw;
     const turbo = getPart(state, 'turbo'),
       air = getPart(state, 'air'),
       exhaust = getPart(state, 'exhaust'),
@@ -2083,13 +2040,13 @@
       chargeAir = Turbo.DATA.chargeAir[air.id] || Turbo.DATA.chargeAir.oem_air,
       exhaustSystem = Turbo.DATA.exhaust[exhaust.id] || Turbo.DATA.exhaust.oem_exhaust,
       wastegate = Turbo.DATA.wastegate[boostControl.id] || Turbo.DATA.wastegate.oem_internal,
-      stoichAfr = Turbo.DATA.fuelStoichAfr[fuel.id] || 14.7,
+      stoichAfr = hw.fuel.afrSt,
       vehicle = state.vehicle,
       baroBar = 1.01325 * Math.exp(-Math.max(-200, Number(vehicle.altitudeM || 0)) / 8434.5),
       ambientK = Number(vehicle.ambientTempC ?? 20) + 273.15,
       als = resolveAntiLag(state),
       p = als.params,
-      samples = dyno.samples,
+      ecuCal = state.tune.ecu,
       lambdaBase = Number(state.tune.lambda) || 0.8;
     const rt = {
       t: 0,
@@ -2103,6 +2060,8 @@
       alsLockoutS: 0,
       alsLimitedBy: '',
       alsSeconds: 0,
+      empRatio: 1.2,
+      manifoldK: ambientK + 10,
       wear: { turbo: 0, manifold: 0, valves: 0, engine: 0 },
       damage: { turbo: 0, engine: 0 },
       fuelUsedG: 0,
@@ -2114,13 +2073,15 @@
     function step(dt, input = {}) {
       dt = clamp(Number(dt) || 0, 0, 0.1);
       rt.t += dt;
-      const rpm = clamp(Number(input.rpm) || 900, 700, samples[samples.length - 1].rpm + 400),
+      const rpm = clamp(Number(input.rpm) || 900, 700, em.revLimit + 400),
         throttle = clamp(Number(input.throttle ?? 1), 0, 1),
         twoStep = !!input.twoStep,
-        s = interpolateCurve(samples, clamp(rpm, samples[0].rpm, samples[samples.length - 1].rpm)),
-        idleScale = rpm < samples[0].rpm ? rpm / samples[0].rpm : 1,
-        bSteady = Number(s.boostBar) || 0,
-        manSteadyK = (Number(s.iatC) || 30) + 273.15;
+        gearIndex = clamp(Math.round(Number(input.gearIndex) || 0), 0, 5),
+        // Boost the ECU asks for in this gear at this rpm (the table the dyno also uses).
+        bSteady = ecuBoostTarget(ecuCal, gearIndex, rpm),
+        cell = engineMapLookup(em, rpm, baroBar + rt.boostBar),
+        idleScale = 1,
+        manSteadyK = rt.manifoldK;
       // ALS gate: requested, enabled, above its minimum rpm and not timed out.
       if (rt.alsLockoutS > 0) rt.alsLockoutS = Math.max(0, rt.alsLockoutS - dt);
       const wantAls = als.enabled && !!input.alsRequest && rt.alsLockoutS <= 0 && rpm >= p.targetRpm * 0.6;
@@ -2144,13 +2105,15 @@
       if (rt.alsActive) airFactor = Math.max(airFactor, (0.3 + (p.bypassPct / 100) * 1.6 * k) * idleScale);
       const lambdaAls = lambdaBase * (1 - (p.extraFuelPct / 100) * k),
         lambda = rt.alsActive ? lambdaAls : lambdaBase;
+      // Engine airflow from the breathing model (VE, manifold state, exhaust pressure), scaled by throttle.
       const airflowAt = (B, tK) =>
-        ((Number(s.airflowLbMin) || 1) / Turbo.LBMIN_PER_KGS) * airFactor * ((baroBar + B) / (baroBar + bSteady)) * (manSteadyK / tK);
+        Engine.airflowKgS({ geo: hw.geo, head: hw.head, rpm, mapBarAbs: baroBar + B, manifoldK: tK, empBarAbs: (baroBar + B) * rt.empRatio, exhaustK: cell.exhaustK,
+          camAdvanceDeg: state.tune.vvtEnabled === false ? 0 : ecuCell(ecuCal, 'cam', Math.max(1, baroBar + B), rpm), twinScroll: hw.twinScroll, veScale: hw.veScale }) * airFactor;
       const load = Math.max(throttle, twoStep ? 0.7 : 0);
-      const exhaustTempK = B => 273.15 + 600 + ((Number(s.egtC) || 850) - 600) * (0.3 + 0.7 * load) + (B - bSteady) * 40 * load;
+      const exhaustTempK = B => 273.15 + 600 + (engineMapLookup(em, rpm, baroBar + B).exhaustK - 273.15 - 600) * (0.3 + 0.7 * load);
       const chargeCooling = (t2K, flowLb) => {
         const eps = (0.55 + 0.45 * air.cooling) * clamp(1 - 0.35 * Math.max(0, flowLb / chargeAir.refFlowLbMin - 1), 0.4, 1);
-        return ambientK + 2 + (t2K - ambientK) * (1 - eps) * (1 - fuel.fuelCooling);
+        return ambientK + 2 + (t2K - ambientK) * (1 - eps);
       };
       // Exhaust energy: ALS burns a retarded/rich charge in the manifold; the two-step
       // alone releases a smaller amount through its ignition cut.
@@ -2162,7 +2125,7 @@
         exhaustKgS = airKgS + fuelKgS,
         // The ALS controller caps its energy so turbine-inlet temperature stays at maxEgtC.
         alsKwCap = rt.alsActive ? Math.max(0, ((p.maxEgtC + 273.15 - exhaustTempK(rt.boostBar)) * exhaustKgS * 1150) / 1000) : Infinity,
-        extraExhaustKw = Math.min(fuelKgS * 43000 * burnable * alsFraction, alsKwCap) + fuelKgS * 43000 * burnable * twoStepFraction;
+        extraExhaustKw = Math.min(fuelKgS * 43000 * burnable * alsFraction, alsKwCap) + fuelKgS * 43000 * burnable * twoStepFraction + Math.max(0, Number(input.extraExhaustKw) || 0);
       if (rt.alsActive && fuelKgS * 43000 * burnable * alsFraction > alsKwCap + 1e-9) limitedBy = 'EGT-limiet';
       const target = rt.alsActive ? p.targetBoostBar : Number.isFinite(input.targetBoostBar) ? input.targetBoostBar : bSteady * (twoStep ? 0.8 : 1) * throttle;
       const tp = Turbo.matchEngine(
@@ -2179,7 +2142,8 @@
           exhaust: exhaustSystem,
           wastegate,
           protectShaftSpeed: !!(state.tune.overboostCut || wastegate.shaftSpeedSensor),
-          extraExhaustKw
+          extraExhaustKw,
+          extraExhaustKgS: Math.max(0, Number(input.extraExhaustKgS) || 0)
         },
         { targetBoostBar: Math.max(0, target), prevShaftRpm: rt.shaftRpm, dtS: dt }
       );
@@ -2192,6 +2156,8 @@
       rt.boostBar += (tp.boostBar - rt.boostBar) * (tp.boostBar < rt.boostBar ? 1 - Math.exp(-dt / 0.12) : 1);
       rt.egtC += (tp.t3C - rt.egtC) * (1 - Math.exp(-dt / 0.35));
       rt.empBar = tp.empBarAbs - baroBar;
+      rt.empRatio = clamp(tp.empBarAbs / Math.max(0.3, baroBar + tp.boostBar), 0.6, 4);
+      rt.manifoldK += (tp.manifoldC + 273.15 - rt.manifoldK) * (1 - Math.exp(-dt / 0.6));
       const shaftPct = (rt.shaftRpm / map.maxShaftRpm) * 100;
       // Wear (percent of component life) and damage from what this step actually did.
       const hot = Math.max(0, (rt.egtC - 950) / 100),
@@ -2244,11 +2210,330 @@
         flame,
         popRateHz,
         flameSustain,
-        steadyBoostBar: bSteady
+        steadyBoostBar: bSteady,
+        manifoldK: rt.manifoldK,
+        mapBarAbs: baroBar + rt.boostBar,
+        empBarAbs: baroBar + rt.empBar,
+        baroBar
       };
       return rt.last;
     }
-    return { state: rt, als, map, step };
+    return { state: rt, als, map, engineMap: em, baroBar, step };
+  }
+
+  // ---- Vehicle / drivetrain model for the race (player and rival alike) ----------------------------
+  // 1 ms integration of engine speed, clutch, driven-wheel speed, tyre slip and vehicle speed:
+  //   engine:  I_e dw_e/dt = T_engine - T_clutch
+  //   clutch:  slips with T = capacity x engagement (x fade) while w_e != R w_w, locks otherwise
+  //   wheels:  I_w dw_w/dt = T_clutch R eta - Fx r
+  //   tyre:    Fx = mu Fz MF(kappa), kappa from a relaxation-length slip model (valid from standstill)
+  //   body:    m dv/dt = Fx - aero - rolling; load transfer m a h / L follows with a suspension lag.
+  // Shift phases per gearbox type: H-pattern (clutch, synchro), DSG (clutch-to-clutch handover),
+  // sequential and dog boxes (ignition cut, dog engagement). Drivetrain data are modeled values.
+  const DRIVELINE = Object.freeze({
+    oem_6mt: { type: 'manual', clutchNm: 430, clutchKg: 5.5, engageS: 0.14, launchDumpS: 0.2 },
+    randy_o2q: { type: 'manual', clutchNm: 780, clutchKg: 6.0, engageS: 0.12, launchDumpS: 0.16 },
+    built_6mt: { type: 'manual', clutchNm: 900, clutchKg: 6.5, engageS: 0.1, launchDumpS: 0.14 },
+    dq250: { type: 'dsg', clutchNm: 820, clutchKg: 7.0, engageS: 0.08, launchDumpS: 0.35 },
+    sequential: { type: 'sequential', clutchNm: 1150, clutchKg: 5.0, engageS: 0.05, launchDumpS: 0.12 },
+    liberty: { type: 'dog', clutchNm: 1700, clutchKg: 6.5, engageS: 0.04, launchDumpS: 0.1 },
+    promod_5speed: { type: 'dog', clutchNm: 2500, clutchKg: 7.5, engageS: 0.035, launchDumpS: 0.1 }
+  });
+  // Peak friction coefficient (dry asphalt / prepared drag strip), slip ratio at the peak and
+  // optimum tread temperature per compound. Modeled from typical published tyre behaviour.
+  const TYRE = Object.freeze({
+    street: { mu: 1.0, muPrep: 1.12, peakSlip: 0.1, optC: 45, windowC: 60, relaxM: 0.35 },
+    uhp: { mu: 1.1, muPrep: 1.28, peakSlip: 0.09, optC: 60, windowC: 60, relaxM: 0.32 },
+    semislick: { mu: 1.22, muPrep: 1.52, peakSlip: 0.1, optC: 75, windowC: 55, relaxM: 0.3 },
+    drag_radial: { mu: 1.25, muPrep: 1.95, peakSlip: 0.12, optC: 70, windowC: 50, relaxM: 0.3 },
+    slick: { mu: 1.2, muPrep: 2.25, peakSlip: 0.15, optC: 80, windowC: 45, relaxM: 0.35 },
+    pro_radial: { mu: 1.3, muPrep: 2.1, peakSlip: 0.12, optC: 75, windowC: 45, relaxM: 0.3 }
+  });
+  const ENGINE_INERTIA = 0.19; // kg m^2, crank + flywheel + clutch
+  function magicFormula(kappa, peakSlip) {
+    // Shape factor 1.45: a spinning tyre keeps ~75 % of its peak force (sin(C pi/2)), as measured tyres do.
+    const C = 1.45, E = -0.2, B = 1.45 / peakSlip;
+    const bk = B * kappa;
+    return Math.sin(C * Math.atan(bk - E * (bk - Math.atan(bk))));
+  }
+  function tyreFor(state, startTempC) {
+    const v = state.vehicle, t = TYRE[v.tireCompound] || TYRE.uhp, g = gripFactor(v);
+    const base = v.preparedTrack ? t.muPrep : t.mu;
+    // pressure, width, sidewall and fitment from the existing tyre setup model (not its base mu)
+    const setup = g.pressurePenalty * g.widthFactor * g.sidewallFactor * g.fitmentScore;
+    return { ...t, base, setup, tempC: Number.isFinite(startTempC) ? startTempC : g.tireTempC, rolling: g.tire.rolling, geometry: g.geometry };
+  }
+  function tyreMu(ty, tempC, fzRatio) {
+    const temp = clamp(1 - Math.pow((tempC - ty.optC) / ty.windowC, 2) * 0.35, 0.62, 1);
+    const load = clamp(1 - 0.1 * (fzRatio - 1), 0.8, 1.1); // load sensitivity
+    return ty.base * ty.setup * temp * load;
+  }
+  // opts: { launchRpm, reactionTime, engineMap, turbo (runtime), driver: 'auto'|'player', shiftRpm[] }
+  function createRaceRuntime(inputState, opts = {}) {
+    const state = normalizeState(inputState);
+    const em = opts.engineMap || buildEngineMap(state);
+    const turbo = opts.turbo || createTurboRuntime(state, { engineMap: em });
+    const trans = getPart(state, 'transmission'), dl = DRIVELINE[trans.id] || DRIVELINE.oem_6mt;
+    const drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
+    const ty = tyreFor(state, opts.tyreTempC);
+    const r = ty.geometry.radiusM, mass = buildMassKg(state), g = 9.80665;
+    const wheelbase = Number(state.vehicle.wheelbaseM || 2.58), cgh = Number(state.vehicle.cgHeightM || 0.51);
+    // Steady load transfer is exactly m a h / L; the suspension setting decides how fast it builds up (pitch).
+    const transferLagS = clamp(0.2 - (Number(state.vehicle.suspensionTransferPct || 60) / 100) * 0.14, 0.05, 0.2);
+    const eta = trans.transEfficiency * (1 - drive.loss * 0.34);
+    const wheelKg = Number(state.vehicle.wheelMassKg || 12.4) + 10; // rim + tyre
+    const wheelI = wheelKg * r * r * 0.75;
+    const drivenI = (state.vehicle.drivetrain === 'AWD' ? 4 : 2) * wheelI + 0.25;
+    const freeI = (state.vehicle.drivetrain === 'AWD' ? 0 : 2) * wheelI;
+    const rho = airDensity(state.vehicle), cdA = Number(state.vehicle.cdA || 0.68), headwind = Math.max(-20, Number(state.vehicle.headwindKmh || 0)) / 3.6;
+    const gears = trans.gearRatios, fd = trans.finalDrive, revLimit = em.revLimit;
+    const launchRpm = clamp(Number(opts.launchRpm ?? state.tune.launchRpm ?? 4200), 1500, revLimit - 300);
+    const tcTarget = opts.tractionControl ? ty.peakSlip * 1.25 : 0;
+    const spoolPart = getPart(state, 'spool'), nitrousHp = Number(spoolPart.nitrousHp || 0);
+    // Nitrous spool shot, same rule as on the dyno: armed from 3000 rpm, fading out as boost reaches target.
+    const nitrousTaper = () => {
+      if (!nitrousHp || !s.launched || s.shift) return 0;
+      const snap = s.turboSnap || {}, target = Math.max(0.05, Number(snap.targetBoostBar || 0.05));
+      return clamp((0.93 - Number(snap.boostBar || 0) / target) / 0.58, 0, 1) * clamp((rpm() - 3000) / 400, 0, 1) * clamp((revLimit - rpm() + 800) / 2200, 0, 1);
+    };
+    const staticDriven = state.vehicle.drivetrain === 'FWD' ? drive.frontStatic : state.vehicle.drivetrain === 'RWD' ? 1 - drive.frontStatic : 1;
+    const s = {
+      t: 0, x: 0, v: 0, a: 0, gear: 0, we: (launchRpm * Math.PI) / 30, ww: 0, kappa: 0, engage: 0, launched: false, launchT: 0,
+      transfer: 0, tyreC: ty.tempC, clutchC: Number(opts.clutchTempC ?? 60), clutchJ: 0, shift: null, cut: false, limiterS: 0,
+      fx: 0, wheelspin: 0, maxWheelspin: 0, torqueNm: 0, clutchNm: 0, slipRpm: 0, turboSnap: null, turboClock: 1, knockMax: 0, fuelG: 0, shiftLog: []
+    };
+    const ratio = () => gears[s.gear] * fd;
+    const rpm = () => (s.we * 30) / Math.PI;
+    function engineTorque(throttleOpen) {
+      const snap = s.turboSnap;
+      const mapAbs = snap ? snap.mapBarAbs : 1.0, tK = snap ? snap.manifoldK : ENGINE_MAP_REF_K, emp = snap ? snap.empBarAbs : mapAbs;
+      const cell = engineMapLookup(em, rpm(), throttleOpen ? mapAbs : Math.min(mapAbs, 0.35), tK, throttleOpen ? emp : Math.min(emp, 1.1));
+      s.knockMax = Math.max(s.knockMax, throttleOpen ? cell.knockIndex : 0);
+      s.fuelG += throttleOpen ? cell.fuelKgS * 1000 * 0.001 : 0;
+      return cell;
+    }
+    // Start the launch (tree green + reaction): the driver dumps the clutch / releases the launch control.
+    function launch() { if (!s.launched) { s.launched = true; s.launchT = s.t; } }
+    function requestShift() {
+      if (s.shift || s.gear >= gears.length - 1 || !s.launched) return false;
+      const typ = dl.type;
+      const dur = typ === 'manual' ? Math.max(0.12, trans.shiftSeconds) : typ === 'dsg' ? Math.max(0.08, trans.shiftSeconds) : Math.max(0.03, trans.shiftSeconds);
+      s.shift = { from: s.gear, to: s.gear + 1, t: 0, dur, type: typ, fromRpm: rpm() };
+      s.shiftLog.push({ at: s.t, from: s.gear + 1, to: s.gear + 2, rpm: rpm() });
+      return true;
+    }
+    function substep(h, input) {
+      s.t += h;
+      const typ = dl.type;
+      // --- control state: clutch engagement, ignition cut, throttle
+      let throttleOpen = input.throttle !== false, cut = false, clutchCmd = 1, flat = !!input.flatShift;
+      if (!s.launched) {
+        // staged: clutch open, two-step holds launch rpm with an ignition cut
+        clutchCmd = 0;
+        cut = rpm() >= launchRpm;
+      } else {
+        const since = s.t - s.launchT;
+        clutchCmd = typ === 'dsg' ? clamp(since / dl.launchDumpS, 0, 1) : clamp(since / (input.clutchDumpS ?? dl.launchDumpS), 0, 1);
+      }
+      if (s.shift) {
+        const sh = s.shift;
+        sh.t += h;
+        const f = sh.t / sh.dur;
+        if (sh.type === 'manual') {
+          // clutch out (20 %), gate + synchro (60 %), clutch in (20 %); throttle lifted unless flat-shifting
+          clutchCmd = f < 0.2 ? 1 - f / 0.2 : f < 0.8 ? 0 : (f - 0.8) / 0.2;
+          if (f >= 0.2 && s.gear === sh.from) s.gear = sh.to;
+          if (f < 0.8) { if (flat) cut = true; else throttleOpen = false; }
+        } else if (sh.type === 'dsg') {
+          // clutch-to-clutch: the other clutch takes the torque, ignition retard pulls the engine down
+          if (s.gear === sh.from) s.gear = sh.to;
+          clutchCmd = 1;
+          if (f < 0.7) cut = 'half';
+        } else {
+          // sequential / dog: short ignition cut, the dogs engage and force the engine speed
+          cut = true;
+          if (f >= 0.5 && s.gear === sh.from) {
+            s.gear = sh.to;
+            const iTot = ENGINE_INERTIA + drivenI / (ratio() * ratio());
+            // dog engagement: engine and wheels meet at the momentum-conserving speed
+            const wwNew = (ENGINE_INERTIA * s.we * ratio() + drivenI * s.ww) / (ENGINE_INERTIA * ratio() * ratio() + drivenI);
+            s.clutchJ += 0.5 * ENGINE_INERTIA * (s.we * s.we - Math.pow(wwNew * ratio(), 2)) * 0.2;
+            s.ww = wwNew; s.we = wwNew * ratio();
+            void iTot;
+          }
+        }
+        if (sh.t >= sh.dur) s.shift = null;
+      }
+      // rev limiter (fuel cut) with 150 rpm hysteresis
+      if (rpm() >= revLimit) s.cut = true; else if (rpm() < revLimit - 150) s.cut = false;
+      if (s.cut) { cut = true; s.limiterS += h; }
+      s.engage += (clutchCmd - s.engage) * clamp(h / 0.015, 0, 1);
+      // --- engine torque
+      const cell = engineTorque(throttleOpen);
+      // Pedal (driver) and traction control (ECU): both scale the positive engine torque.
+      let pedal = clamp(input.pedal ?? 1, 0, 1);
+      // While the clutch slips off the line the driver (or launch control) holds the engine near launch rpm.
+      if (s.launched && !s.lockedOnce && s.gear === 0) pedal = Math.min(pedal, clamp(1 - (rpm() - launchRpm - 250) / 900, 0.25, 1));
+      if (tcTarget && s.launched && s.v > 0.5) {
+        const over = s.kappa - tcTarget;
+        s.tc = clamp((s.tc ?? 1) - (over > 0 ? over * 40 * h : -2.5 * h), 0.25, 1);
+        pedal = Math.min(pedal, s.tc);
+      }
+      let tEng = cell.torqueNm > 0 ? cell.torqueNm * pedal - cell.frictionNm * (1 - pedal) * 0.3 : cell.torqueNm;
+      const n2o = throttleOpen ? nitrousTaper() * pedal : 0;
+      if (n2o > 0) { tEng += ((nitrousHp * 7023) / Math.max(2600, rpm())) * n2o; s.n2oS = (s.n2oS || 0) + h; }
+      if (cut === true) tEng = -cell.frictionNm * 0.6;
+      else if (cut === 'half') tEng = tEng * 0.45;
+      if (!throttleOpen) tEng = Math.min(tEng, -cell.frictionNm * 0.8);
+      s.torqueNm = tEng;
+      // --- tyre force
+      const fzStatic = mass * g * staticDriven;
+      const targetTransfer = (mass * s.a * cgh) / wheelbase;
+      s.transfer += (targetTransfer - s.transfer) * clamp(h / transferLagS, 0, 1);
+      const fz = clamp(state.vehicle.drivetrain === 'FWD' ? fzStatic - s.transfer : state.vehicle.drivetrain === 'RWD' ? fzStatic + s.transfer : fzStatic, mass * g * 0.15, mass * g);
+      const slipV = s.ww * r - s.v;
+      s.kappa += ((slipV - Math.abs(s.v) * s.kappa) / ty.relaxM) * h;
+      s.kappa = clamp(s.kappa, -1, 3);
+      const mu = tyreMu(ty, s.tyreC, fz / fzStatic);
+      const fx = mu * fz * magicFormula(s.kappa, ty.peakSlip);
+      s.fx = fx;
+      // --- clutch / driveline
+      const R = ratio();
+      let cap = dl.clutchNm * s.engage * clamp(1 - Math.max(0, s.clutchC - 250) / 220, 0.5, 1);
+      const slip = s.we - R * s.ww;
+      // Launch: the driver (or launch control) slips the clutch to hold the engine near launch rpm until the
+      // wheels catch up; after the first lock-up the clutch is simply engaged.
+      if (s.launched && !s.lockedOnce && s.gear === 0) {
+        const wTarget = (launchRpm * Math.PI) / 30;
+        // never more clutch torque than the tyres can put down at their peak slip (plus the wheels' spin-up)
+        const overSlip = Math.max(0, s.kappa - ty.peakSlip) / ty.peakSlip;
+        const traction = ((mu * fz * r) / (R * eta)) * (input.launchClutchFactor ?? 0.98) * clamp(1 - 0.8 * overSlip, 0.5, 1);
+        cap = Math.min(cap, Math.max(0, tEng + (ENGINE_INERTIA * (s.we - wTarget)) / 0.04), traction);
+        if (Math.abs(slip) < 3 && s.v > 0.5 && s.kappa < ty.peakSlip * 1.5) s.lockedOnce = true;
+      }
+      const wheelLoadTorque = fx * r + ty.rolling * fz * r;
+      let tClutch;
+      const lockedAccel = (tEng * R * eta - wheelLoadTorque) / (drivenI + ENGINE_INERTIA * R * R);
+      const lockedClutch = tEng - ENGINE_INERTIA * R * lockedAccel;
+      if (Math.abs(slip) < 2 && Math.abs(lockedClutch) <= cap) {
+        // locked: engine and wheels turn together
+        s.ww = Math.max(0, s.ww + lockedAccel * h);
+        s.we = s.ww * R;
+        tClutch = lockedClutch;
+      } else {
+        tClutch = Math.sign(slip || 1) * cap;
+        const we2 = s.we + ((tEng - tClutch) / ENGINE_INERTIA) * h;
+        const ww2 = Math.max(0, s.ww + ((tClutch * R * eta - wheelLoadTorque) / drivenI) * h);
+        // slip heat into the clutch
+        s.clutchJ += Math.abs(tClutch * slip) * h;
+        if (Math.sign(we2 - R * ww2) !== Math.sign(slip) && s.engage > 0.5) { s.ww = ww2; s.we = ww2 * R; }
+        else { s.we = Math.max((650 * Math.PI) / 30, we2); s.ww = ww2; }
+      }
+      s.clutchNm = tClutch;
+      s.slipRpm = ((s.we - R * s.ww) * 30) / Math.PI;
+      if (!s.launched) { s.ww = 0; s.v = 0; s.kappa = 0; }
+      // clutch temperature: slip energy into the pressure/friction plates, slow cooling
+      const heatCap = dl.clutchKg * 460;
+      s.clutchC += (Math.abs(tClutch * (s.we - R * s.ww)) * h * 0.85) / heatCap - (s.clutchC - 60) * 0.004 * h;
+      // tyre tread temperature from slip power
+      s.tyreC += (Math.abs(fx * slipV) * h) / (40 * 1200) - (s.tyreC - Number(state.vehicle.trackTempC || 28)) * 0.01 * h;
+      // --- body
+      const air = Math.max(0, s.v + headwind);
+      const aero = 0.5 * rho * cdA * air * air, roll = ty.rolling * mass * g * (1 + s.v * 0.006);
+      const acc = s.launched ? (fx - aero - roll) / (mass + freeI / (r * r)) : 0;
+      s.a = clamp(acc, -2 * g, 3 * g);
+      s.v = Math.max(0, s.v + s.a * h);
+      s.x += s.v * h;
+      // wheelspin = tyre slip ratio (0.1 = 10 %), from the relaxation model so it is defined from standstill
+      s.wheelspin = s.launched ? clamp(s.kappa, 0, 5) : 0;
+      s.maxWheelspin = Math.max(s.maxWheelspin, Math.min(1, s.wheelspin));
+    }
+    // One frame: the turbo runtime at its own rate, the mechanics in 1 ms steps.
+    function step(dt, input = {}) {
+      dt = clamp(Number(dt) || 0, 0, 0.2);
+      let left = dt;
+      while (left > 1e-9) {
+        const h = Math.min(0.001, left);
+        left -= h;
+        s.turboClock += h;
+        if (s.turboClock >= 0.008 || !s.turboSnap) {
+          const flatShift = !!input.flatShift;
+          const shifting = !!s.shift;
+          s.turboSnap = turbo.step(s.turboClock, {
+            // on the two-step the pedal is floored: the rev limiter's ignition cut holds the rpm and builds boost
+            rpm: rpm(), throttle: s.launched ? (shifting && !flatShift && dl.type === 'manual' ? 0 : 1) : 1, twoStep: !s.launched,
+            gearIndex: s.gear, alsRequest: !!input.alsRequest || (!s.launched && !!input.launchAls) || (shifting && !!input.rollingAls),
+            targetBoostBar: !s.launched ? undefined : ecuBoostTarget(state.tune.ecu, s.gear, rpm()),
+            extraExhaustKw: nitrousHp * 0.7457 * 0.9 * nitrousTaper(),
+            extraExhaustKgS: (nitrousHp * 0.06 * nitrousTaper()) / Turbo.LBMIN_PER_KGS
+          });
+          s.turboClock = 0;
+        }
+        substep(h, input);
+      }
+      return point();
+    }
+    function point() {
+      const snap = s.turboSnap || {};
+      return {
+        t: s.t, distanceM: s.x, speedKmh: s.v * 3.6, v: s.v, a: s.a, accelerationG: s.a / g, rpm: rpm(), gear: s.gear + 1, gearIndex: s.gear,
+        wheelspinPct: Math.min(1, s.wheelspin) * 100, slipRatio: s.kappa, boostBar: Number(snap.boostBar || 0), shaftPct: Number(snap.shaftPct || 0),
+        egtC: Number(snap.egtC || 0), torqueNm: s.torqueNm, clutchNm: s.clutchNm, clutchSlipRpm: s.slipRpm, clutchTempC: s.clutchC, tyreTempC: s.tyreC,
+        engage: s.engage, shifting: !!s.shift, limiter: s.cut, limiterS: s.limiterS, knockIndexMax: s.knockMax, fuelG: s.fuelG, launched: s.launched
+      };
+    }
+    return { state: s, step, launch, requestShift, point, turbo, engineMap: em, driveline: dl, tyre: ty, massKg: mass, launchRpm, revLimit, gears, finalDrive: fd, radiusM: r };
+  }
+  // Optimal upshift points from the engine map: shift where the next gear gives more wheel torque.
+  function optimalShiftRpms(state, em) {
+    const trans = getPart(state, 'transmission'), out = [];
+    for (let gi = 0; gi < trans.gearRatios.length - 1; gi++) {
+      const a = trans.gearRatios[gi], b = trans.gearRatios[gi + 1];
+      let best = em.revLimit - 100;
+      for (let rpm = 4000; rpm <= em.revLimit - 100; rpm += 50) {
+        const mapAt = x => 1.013 + ecuBoostTarget(state.tune.ecu, gi, x);
+        if (engineMapLookup(em, rpm * b / a, mapAt(rpm * b / a)).torqueNm * b >= engineMapLookup(em, rpm, mapAt(rpm)).torqueNm * a) { best = rpm; break; }
+      }
+      out.push(best);
+    }
+    return out;
+  }
+  // Headless quarter mile with a driver model (rival, tests, auto run): same runtime as the player.
+  function simulateRaceRun(inputState, cfg = {}) {
+    const state = normalizeState(inputState);
+    const em = buildEngineMap(state);
+    const rt = createRaceRuntime(state, { engineMap: em, tyreTempC: cfg.tyreTempC, launchRpm: cfg.launchRpm, tractionControl: cfg.tractionControl ?? state.tune.tractionControl !== false });
+    const shiftRpm = cfg.shiftRpms || optimalShiftRpms(state, em);
+    const reaction = Number.isFinite(cfg.reactionTime) ? cfg.reactionTime : 0.1;
+    const milestones = {}, trace = [];
+    // pre-stage: build boost on the two-step for 1.5 s
+    const launchAls = cfg.launchAls ?? resolveAntiLag(state).enabled;
+    for (let i = 0; i < 75; i++) rt.step(0.02, { launchAls });
+    rt.state.t = 0;
+    rt.launch();
+    const dist = [['sixtyFt', 18.288], ['threeThirty', 100.584], ['eighth', 201.168], ['thousandFt', 304.8], ['quarter', 402.336]];
+    let traceClock = 0, zero100 = null, pedal = 1;
+    const skill = clamp(Number(cfg.driverSkill ?? 0.85), 0, 1);
+    while (rt.state.t < 30 && rt.state.x < 402.336) {
+      // Driver: feathers the throttle when the tyres go past their peak slip (a skilled driver reacts faster).
+      const k = rt.state.kappa, target = rt.tyre.peakSlip * (1.6 - 0.4 * skill);
+      pedal = clamp(pedal + (k > target ? -Math.min(0.5, k - target) * (2 + 4 * skill) : 0.8 + 1.5 * skill) * 0.01, 0.45, 1);
+      const p = rt.step(0.01, { flatShift: !!cfg.flatShift, clutchDumpS: cfg.clutchDumpS, pedal });
+      if (!rt.state.shift && p.gearIndex < rt.gears.length - 1 && p.rpm >= shiftRpm[p.gearIndex]) rt.requestShift();
+      for (const [k, d] of dist) if (milestones[k] == null && p.distanceM >= d) { milestones[k] = p.t; if (k === 'eighth') milestones.eighthKmh = p.speedKmh; if (k === 'quarter') milestones.trapKmh = p.speedKmh; }
+      if (zero100 == null && p.speedKmh >= 100) zero100 = p.t;
+      traceClock += 0.01;
+      if (traceClock >= 0.04 - 1e-9) { traceClock = 0; trace.push({ time: p.t, distanceM: p.distanceM, speedKmh: p.speedKmh, gear: p.gear, rpm: p.rpm, accelerationG: p.accelerationG, boostBar: p.boostBar, wheelspinPct: p.wheelspinPct }); }
+    }
+    if (milestones.quarter == null) throw new Error('De combinatie bereikte de finish niet binnen 30 seconden.');
+    return {
+      valid: reaction >= 0, redLight: reaction < 0, reactionTime: reaction,
+      sixtyFt: milestones.sixtyFt, threeThirty: milestones.threeThirty, eighth: milestones.eighth, eighthKmh: milestones.eighthKmh,
+      thousandFt: milestones.thousandFt, quarter: milestones.quarter, trapKmh: milestones.trapKmh, zeroTo100: zero100,
+      finishTotalTime: milestones.quarter + Math.max(0, reaction), wheelspinPct: rt.state.maxWheelspin * 100, shifts: rt.state.shiftLog.length,
+      totalMassKg: rt.massKg, trace, shiftRpms: shiftRpm, maxClutchTempC: rt.state.clutchC, limiterTimeS: rt.state.limiterS,
+      drivetrain: (DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD).name, tireName: (TIRE_MAP[state.vehicle.tireCompound] || {}).name
+    };
   }
 
   // Stationary ALS hold at the ALS target rpm (tune-page test), sampled every 0.1 s.
@@ -2509,6 +2794,13 @@
     ENGINE_MODEL_VERSION,
     Engine,
     DYNO_CORRECTIONS,
+    buildEngineMap,
+    engineMapLookup,
+    createRaceRuntime,
+    simulateRaceRun,
+    optimalShiftRpms,
+    DRIVELINE,
+    TYRE,
     correctionFactor,
     dynoLossKw,
     dynoSoakAt,

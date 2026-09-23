@@ -181,6 +181,8 @@ const turboSuite = require('./test_turbo_map.js');
 const antiLagSuite = require('./test_antilag.js');
 // Physical engine model: combustion, breathing, knock, fuel system, ECU tables.
 const engineSuite = require('./test_engine.js');
+// Vehicle model: tyres, clutch, load transfer, gearboxes, shared by player and rivals.
+const vehicleSuite = require('./test_vehicle.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -199,7 +201,8 @@ const report = {
   dynoAbortSweepCases: dynoResultSuite.abortedSweepCount,
   turboMaps: turboSuite,
   antiLag: antiLagSuite,
-  engine: engineSuite
+  engine: engineSuite,
+  vehicle: vehicleSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));
