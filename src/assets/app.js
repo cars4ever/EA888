@@ -172,6 +172,18 @@
     return e ? `${Math.round(e.peakHp)} pk · ${e.quarter.toFixed(2)} s @ ${Math.round(e.trapKmh)} km/u` : profile.description;
   }
   function buildRivalSimulation() {
+    const round = raceGame?.careerRound;
+    if (round && currentCompletedDyno()) {
+      // Career round: the planned rival with its own reaction and consistency; in a bracket the lanes start
+      // apart by the dial difference (the slower dial goes first).
+      const profile = RIVALS[round.plan.rivalId] || RIVALS.street;
+      const pass = rivalPass(profile), k = round.plan.etScale || 1;
+      const trace = (pass.trace || []).map(p => ({ ...p, time: p.time * k }));
+      const quarter = pass.quarter * k, reactionTime = round.plan.reactionTime;
+      const startOffset = round.format === 'bracket' ? round.dialIn - round.plan.dialIn : 0;
+      return { profile, reactionTime, startOffset, result: { ...pass, quarter, trace, reactionTime, finishTotalTime: startOffset + reactionTime + quarter }, trace,
+        current: { time: 0, distanceM: 0, speedKmh: 0, rpm: 900, gear: 1 }, finished: false };
+    }
     if (!raceIsHeadsUp() || !currentCompletedDyno()) return null;
     const profile = selectedRival();
     const pass = rivalPass(profile);
@@ -2672,6 +2684,77 @@
     ctx.fillStyle='#9aa8ba';ctx.font='10px system-ui';ctx.textAlign='left';ctx.fillText(`${Math.round(maxSpeed)} km/u`,5,pad.t+5);ctx.fillText('0',18,height-pad.b+3);
   }
 
+  // ---- Career ---------------------------------------------------------------------------------------
+  function careerSuggestedDial() {
+    const valid = (state.dragRuns || []).filter(r => r.valid && !r.redLight && Number.isFinite(r.quarter)).slice(0, 5).map(r => r.quarter);
+    if (!valid.length) return null;
+    const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
+    return Math.round((mean + 0.04) * 100) / 100;
+  }
+  function renderCareerPanel() {
+    const c = state.career || C.defaultCareer(), a = c.active, ready = currentCompletedDyno();
+    const bank = euro(state.bank);
+    let activeCard = '';
+    if (a) {
+      const ev = C.CAREER_EVENT_MAP[a.eventId], plan = careerPlan();
+      const rival = RIVALS[plan.rivalId];
+      const dial = a.dialIn ?? careerSuggestedDial() ?? 13;
+      activeCard = `<div class="card career-active">
+        <div class="section-head small"><div><span class="eyebrow">${esc(ev.name)} · ronde ${a.round + 1}/${ev.rounds}</span><h3>${ev.format === 'bracket' ? 'Bracket: dial-in' : 'Heads-up'} tegen ${esc(rival.name)}</h3></div><span class="setup-badge"><span>WINNAAR</span><b>${euro(ev.prize)}</b></span></div>
+        <p class="muted">${esc(rival.description)} ${esc(rivalSpec(rival))}.${ev.format === 'bracket' ? ` Rivaal dial-in <b>${plan.dialIn?.toFixed(2)} s</b>.` : ''} Strip ${ev.prep ? 'geprept' : 'niet geprept'}.</p>
+        ${a.results.length ? `<div class="career-results">${a.results.map(r => `<span class="${r.won ? 'win' : 'loss'}">R${r.round} ${r.won ? 'W' : 'L'} · ${esc(r.reason)}</span>`).join('')}</div>` : ''}
+        ${ev.format === 'bracket' ? `<div class="control"><div class="control-head"><div><b>Jouw dial-in</b><small>Voorspel je ET. Langzamer dan je dial wint niet; sneller is een break-out en verliest. Laatste geldige passes gemiddeld +0,04 s: ${careerSuggestedDial()?.toFixed(2) ?? '—'} s.</small></div><output class="value-edit" tabindex="0" role="button" data-value-for="career.dialIn">${dial.toFixed(2)} s</output></div><div class="range-row"><button type="button" class="step-btn" data-step="-1" aria-label="Lager">−</button><input type="range" min="6" max="20" step="0.01" value="${dial}" data-career-dial data-unit=" s" data-decimals="2"><button type="button" class="step-btn" data-step="1" aria-label="Hoger">+</button></div></div>` : ''}
+        <div class="career-actions"><button class="btn ghost" data-action="career-forfeit">Opgeven</button><button class="btn" data-action="career-race" ${ready ? '' : 'disabled'}>${ready ? `Start ronde ${a.round + 1}` : 'Eerst een geldige dynopull'}</button></div>
+      </div>`;
+    }
+    const events = C.CAREER_EVENTS.map(ev => {
+      const why = C.careerEligibility(state, ev.id);
+      return `<article class="career-event ${why.length ? 'locked' : ''}">
+        <div><span class="eyebrow">${ev.format === 'bracket' ? 'BRACKET · DIAL-IN' : 'HEADS-UP'} · ${ev.rounds} rondes</span><h3>${esc(ev.name)}</h3><p>${esc(ev.detail)}</p>
+        <small>Inschrijven ${euro(ev.entry)} · winnaar ${euro(ev.prize)} · +${ev.rep} reputatie${ev.repRequired ? ` · vanaf ${ev.repRequired} rep` : ''}</small>
+        ${why.length ? `<small class="why">${esc(why.join(' '))}</small>` : ''}</div>
+        <button class="btn ${why.length || a ? 'ghost' : ''}" data-career-enter="${ev.id}" ${why.length || a ? 'disabled' : ''}>${a ? 'Evenement bezig' : why.length ? 'Niet toegestaan' : 'Inschrijven'}</button>
+      </article>`;
+    }).join('');
+    return `<div class="career-panel">
+      <div class="career-stats"><div><span>Reputatie</span><b>${c.rep}</b></div><div><span>Evenementen gewonnen</span><b>${c.eventWins}/${c.events}</b></div><div><span>Rondes gewonnen</span><b>${c.roundWins}</b></div><div><span>Prijzengeld</span><b>${euro(c.earnings)}</b></div></div>
+      ${activeCard}
+      <div class="section-head small"><div><span class="eyebrow">Kalender · budget ${bank}</span><h3>Evenementen</h3></div></div>
+      <div class="career-events">${events}</div>
+      ${(c.history || []).length ? `<div class="card history-card"><div class="section-head small"><div><span class="eyebrow">Carrière</span><h3>Uitslagen</h3></div></div><div class="run-table">${c.history.slice(0, 8).map(h => `<div class="run-row ${h.champion ? '' : 'partial'}"><span>${h.champion ? '🏆' : '—'}</span><div><b>${esc(h.name)}</b><small>${new Date(h.at).toLocaleDateString('nl-NL')} · ${h.rounds} ronde${h.rounds === 1 ? '' : 's'}</small></div><strong>${h.champion ? 'KAMPIOEN' : `ronde ${h.rounds}`}</strong></div>`).join('')}</div></div>` : ''}
+    </div>`;
+  }
+  function careerPlan() {
+    const a = state.career?.active;
+    if (!a) return null;
+    const ev = C.CAREER_EVENT_MAP[a.eventId], rivalId = ev.rivals[Math.min(a.round, ev.rivals.length - 1)];
+    return C.planCareerRound(a.eventId, a.round, a.seed, { [rivalId]: rivalPass(RIVALS[rivalId]) });
+  }
+  function careerEnter(eventId) {
+    try {
+      const ev = C.CAREER_EVENT_MAP[eventId];
+      state = C.startCareerEvent(state, eventId);
+      state.career.active.dialIn = careerSuggestedDial();
+      saveState(); haptic([12, 20, 12]); render();
+      showToast(`Ingeschreven voor ${ev.name} (−${euro(ev.entry)}).`);
+    } catch (e) { showToast(e.message); }
+  }
+  function careerRace() {
+    const a = state.career?.active;
+    if (!a) return;
+    const ev = C.CAREER_EVENT_MAP[a.eventId];
+    const plan = careerPlan();
+    const dialIn = ev.format === 'bracket' ? Number(a.dialIn ?? careerSuggestedDial() ?? 13) : null;
+    startDragGame(false);
+    if (raceGame) { raceGame.careerRound = { eventId: a.eventId, round: a.round, format: ev.format, plan, dialIn }; raceGame.rivalProfile = RIVALS[plan.rivalId]; }
+  }
+  function careerForfeit() {
+    const a = state.career?.active;
+    if (!a) return;
+    state = C.applyCareerRound(state, { won: false, reason: 'opgegeven', marginS: 0 }, {});
+    saveState(); render(); showToast('Evenement opgegeven.');
+  }
+
   function renderDrag() {
     const ready = currentCompletedDyno();
     const v = state.vehicle;
@@ -2735,6 +2818,8 @@
       </div>`;
     } else if (racePanel === 'telemetry') {
       panel = renderDragTelemetryPanel();
+    } else if (racePanel === 'career') {
+      panel = renderCareerPanel();
     } else if (racePanel === 'history') {
       panel = `<div class="race-history-panel v7-history-panel">
         <div class="record-grid">${['FWD','RWD','AWD'].map(key => { const rec=state.records?.[key]; return `<article class="record-card ${key===v.drivetrain?'active':''}"><span>${key} RECORD</span><b>${rec ? `${rec.quarter.toFixed(3)} s` : '—'}</b><small>${rec ? `${rec.trapKmh.toFixed(1)} km/u · ${new Date(rec.at || Date.now()).toLocaleDateString('nl-NL')}` : 'nog geen geldige pass'}</small></article>`; }).join('')}</div>
@@ -2774,7 +2859,7 @@
     return `<section class="page drag-page v7-drag-page">
       <div class="page-title-row v7-drag-title"><div><span class="eyebrow">EA888 LAB DRAG MODE</span><h1>Van burnoutbox naar finish</h1><p>Een losse spelmodus met verschillende fullscreen scènes. De overzichtspagina blijft alleen voor setup, records en de laatste timeslip.</p></div></div>
       ${ready ? `<div class="notice success"><strong>Auto vrijgegeven.</strong> ${Math.round(state.lastDyno.peakHp)} pk / ${Math.round(state.lastDyno.peakTorqueNm)} Nm is de actieve meetcurve.</div>` : `<div class="notice danger"><strong>Race geblokkeerd.</strong> ${!currentDyno() || !state.lastDyno ? 'Meet de gewijzigde build eerst opnieuw op de dyno.' : state.lastDyno.failureRpm ? `De laatste pull brak af @ ${state.lastDyno.failureRpm} rpm. Herstel de schade en voer een volledige dynopull uit.` : 'De laatste pull is niet voltooid. Voer een volledige dynopull uit.'}</div>`}
-      <div class="segment-control race-segments v7-race-segments v12-race-segments"><button class="${racePanel==='tree'?'active':''}" data-race-panel="tree">Race</button><button class="${racePanel==='setup'?'active':''}" data-race-panel="setup">Setup</button><button class="${racePanel==='telemetry'?'active':''}" data-race-panel="telemetry">Telemetrie</button><button class="${racePanel==='history'?'active':''}" data-race-panel="history">Records</button></div>
+      <div class="segment-control race-segments v7-race-segments v12-race-segments"><button class="${racePanel==='tree'?'active':''}" data-race-panel="tree">Race</button><button class="${racePanel==='setup'?'active':''}" data-race-panel="setup">Setup</button><button class="${racePanel==='telemetry'?'active':''}" data-race-panel="telemetry">Telemetrie</button><button class="${racePanel==='career'?'active':''}" data-race-panel="career">Carrière</button><button class="${racePanel==='history'?'active':''}" data-race-panel="history">Records</button></div>
       ${panel}
     </section>`;
   }
@@ -3297,6 +3382,7 @@
           <span>${esc(status)}</span>
           <h1>${r ? r.quarter.toFixed(3) : '—'} <small>s</small></h1>
           <h2>${r ? r.trapKmh.toFixed(1) : '—'} km/u</h2>
+          ${r?.career ? `<div class="career-round-line ${r.career.won ? 'win' : 'loss'}"><b>Ronde ${r.career.round} · ${r.career.won ? 'door' : 'uitgeschakeld'}</b><span>${esc(r.career.reason)}${r.career.format === 'bracket' ? ` · dial ${r.career.dialIn.toFixed(2)} / ET ${r.quarter.toFixed(3)}` : ''}</span></div>` : ''}
           ${headsUp ? `<div class="v12-duel-result"><section><small>JIJ</small><b>${r.finishTotalTime.toFixed(3)} s</b><span>RT ${r.reactionTime.toFixed(3)} · ET ${r.quarter.toFixed(3)}</span></section><em>VS</em><section><small>${esc(r.opponentName)}</small><b>${r.opponentFinishTotalTime.toFixed(3)} s</b><span>RT ${r.opponentReactionTime.toFixed(3)} · ET ${r.opponentQuarter.toFixed(3)}</span></section></div>` : ''}
           <div class="v12-finish-data"><b>Reactietijd</b><span>${r ? `${r.reactionTime >= 0 ? '+' : ''}${r.reactionTime.toFixed(3)} s` : '—'}</span><b>60 ft</b><span>${r ? `${r.sixtyFt.toFixed(3)} s` : '—'}</span><b>1/8 mijl</b><span>${r ? `${r.eighth.toFixed(3)} s` : '—'}</span><b>Schakelen</b><span>${esc(shiftText)}</span><b>Rijlijn</b><span>${r ? `${Number(r.maxLaneOffsetM || 0).toFixed(2)} m max · ${r.lineTouches || 0} correcties` : '—'}</span><b>Aandrijflijn</b><span>${r ? `${Number(r.maxClutchTempC||0).toFixed(0)}°C koppeling · ${Number(r.maxGearboxTempC||0).toFixed(0)}°C bak` : '—'}</span>${r?.reward ? `<b>Winstpremie</b><span class="reward">+${euro(r.reward)}</span>` : ''}</div>
           <div class="v13-finish-actions">
@@ -3842,7 +3928,8 @@
     // runtime (shaft speed built on the two-step carries over), clutch, tyres and load transfer.
     const engineMap = C.buildEngineMap(state);
     const launchFromRpm = Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200);
-    const vehicleRt = C.createRaceRuntime(state, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
+    const eventTrack = raceGame?.careerRound ? { ...state, vehicle: { ...state.vehicle, preparedTrack: !!C.CAREER_EVENT_MAP[raceGame.careerRound.eventId]?.prep } } : state;
+    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
     vehicleRt.state.we = launchFromRpm * Math.PI / 30;
     vehicleRt.launch();
     const run = {
@@ -4024,7 +4111,7 @@
 
       if (run.opponent) {
         const greenElapsed = run.t + run.reactionTime;
-        const opponentDriveTime = greenElapsed - run.opponent.reactionTime;
+        const opponentDriveTime = greenElapsed - run.opponent.reactionTime - (run.opponent.startOffset || 0);
         run.opponent.current = tracePointAtTime(run.opponent.trace, opponentDriveTime);
         run.opponentGapM = Number(run.opponent.current.distanceM || 0) - run.x;
         run.opponent.finished = greenElapsed >= run.opponent.result.finishTotalTime;
@@ -4566,7 +4653,7 @@
       opponentFinishTotalTime:opponentFinishTotal,
       raceDeltaS:run.opponent ? opponentFinishTotal - playerFinishTotal : null,
       won,
-      reward:run.opponent && won && !run.auto ? Number(run.opponent.profile.reward || 0) : 0,
+      reward:run.opponent && won && !run.auto && !raceGame?.careerRound ? Number(run.opponent.profile.reward || 0) : 0,
       autoPass:!!run.auto,
       turbo: run.turbo ? {
         maxEgtC: Math.round(run.turbo.state.maxEgtC), maxShaftPct: Math.round(run.turbo.state.maxShaftPct),
@@ -4612,7 +4699,20 @@
     const result = buildRealtimeResult(run);
     run.finalResult = result;
     raceGame.finishResult = result;
+    const round = raceGame.careerRound;
+    if (round && run.opponent && !run.auto) {
+      const o = run.opponent;
+      const outcome = C.raceOutcome(round.format,
+        { reactionTime: result.reactionTime, et: result.quarter, dialIn: round.dialIn, valid: !!result.valid || (result.redLight && !result.laneDnf) },
+        { reactionTime: o.reactionTime, et: o.result.quarter, dialIn: round.plan.dialIn, valid: true });
+      result.won = outcome.won;
+      result.career = { eventId: round.eventId, round: round.round + 1, format: round.format, dialIn: round.dialIn, rivalDialIn: round.plan.dialIn, ...outcome };
+    }
     commitV7DragResult(result);
+    if (result.career) {
+      state = C.applyCareerRound(state, result.career, { et: result.quarter, rt: result.reactionTime, dialIn: round.dialIn, rivalId: round.plan.rivalId });
+      saveState();
+    }
     raceGame.phase = 'finish';
     stopEngineAudio({ hard: true });
     haptic(result.redLight || result.laneDnf ? [70,40,70] : [18,18,45]);
@@ -4627,7 +4727,9 @@
     closeDragGame({silent:true,noRender:true});
     render();window.scrollTo({top:0,behavior:'auto'});
     if(result){
-      const message = result.redLight ? `Rood licht · ${result.quarter.toFixed(3)} s gemeten`
+      if (result.career) racePanel = 'career';
+      const message = result.career ? `Ronde ${result.career.round}: ${result.career.won ? 'GEWONNEN' : 'VERLOREN'} · ${result.career.reason}`
+        : result.redLight ? `Rood licht · ${result.quarter.toFixed(3)} s gemeten`
         : result.laneDnf ? 'Run ongeldig · buiten de baan'
         : result.raceMode === 'heads_up' ? `${result.won?'GEWONNEN':'VERLOREN'} van ${result.opponentName} · ${Math.abs(result.raceDeltaS).toFixed(3)} s`
         : `${result.quarter.toFixed(3)} s @ ${result.trapKmh.toFixed(1)} km/u`;
@@ -5162,6 +5264,7 @@
     if (btn.dataset.motorPanel) { motorPanel = btn.dataset.motorPanel; haptic(6); return render(); }
     if (btn.dataset.engineView) { engineView = btn.dataset.engineView; haptic(6); return render(); }
     if (btn.dataset.tunePanel) { tunePanel = btn.dataset.tunePanel; haptic(6); return render(); }
+    if (btn.dataset.careerEnter) return careerEnter(btn.dataset.careerEnter);
     if (btn.dataset.dynoCorrection) {
       const announce = offerUndo([['dynoConfig', 'correction']], `Correctienorm → ${C.DYNO_CORRECTIONS[btn.dataset.dynoCorrection]?.label || ''}`);
       state.dynoConfig.correction = btn.dataset.dynoCorrection; saveState(); haptic(6); render(); return announce();
@@ -5232,6 +5335,8 @@
 
     switch (btn.dataset.action) {
       case 'open-drag-game': startDragGame(false); break;
+      case 'career-race': careerRace(); break;
+      case 'career-forfeit': careerForfeit(); break;
       case 'auto-drag-game': startDragGame(true); break;
       case 'close-drag-game': closeDragGame(); break;
       case 'v7-reset-stage': resetV7Stage(); break;
@@ -5344,6 +5449,12 @@
       if (out) out.textContent = `${Number(el.value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`;
       saveState(); renderHeader(); clearTimeout(el._rerenderTimer); el._rerenderTimer = setTimeout(render, 190); return;
     }
+    if (el.matches?.('[data-career-dial]') && state.career?.active) {
+      state.career.active.dialIn = Math.round(Number(el.value) * 100) / 100;
+      const out = $('[data-value-for="career.dialIn"]'); if (out) out.textContent = `${state.career.active.dialIn.toFixed(2)} s`;
+      saveState();
+      return;
+    }
     if (el.dataset.dynoConfig) {
       state.dynoConfig[el.dataset.dynoConfig] = Number(el.value);
       const out = $(`[data-value-for="dyno-config.${el.dataset.dynoConfig}"]`);
@@ -5422,6 +5533,7 @@
     holdFinishForTest: on => { holdFinishForTest = !!on; return holdFinishForTest; },
     setGraphics3dForTest: on => { state.settings.graphics3d = !!on; saveState(); return state.settings.graphics3d; },
     ecu: () => cloneJson({ edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor }),
+    career: () => ({ bank: state.bank, active: state.career?.active ? cloneJson(state.career.active) : null, rep: state.career?.rep || 0, historyCount: state.career?.history?.length || 0, inRound: !!raceGame?.careerRound }),
     replay: () => ({ open: !!raceGame?.replayOpen, active: !!raceGame?.replay3d, progress: raceGame?.replayProgress || 0, done: !!raceGame?.replayDone, frames: raceGame?.run?.replayFrames?.length || 0, lastDistanceM: raceGame?.run?.replayFrames?.at?.(-1)?.d || 0, flames: raceGame?.run?.replayFlames?.length || 0, info: raceGame?.replay3d?.info?.() || null }),
     race3d: () => raceGame?.r3d ? { active: true, ...raceGame.r3d.info() } : { active: false, supported: !!window.EA888Race3D?.supported?.() },
     ghost: () => state.ghost ? { drivetrain: state.ghost.drivetrain, quarter: state.ghost.quarter, samples: state.ghost.trace.length } : null,

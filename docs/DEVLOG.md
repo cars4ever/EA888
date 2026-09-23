@@ -261,6 +261,20 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - **Validation**: stock Scirocco 0-100 7.2 s (VW 7.2 s), 15.1 s @ 155 km/h; trap speeds within 3 % of the Hale
   formula for stock, K04 hybrid and HX52 builds. Tests: tests/test_engine.js, tests/test_vehicle.js.
 
+## 12. Phase 5: career and bracket racing (v1.8.0)
+
+- Events (sim.js CAREER_EVENTS): street night, Bracket Friday, FWD Challenge, Pro Bracket, Outlaw 2.0, each
+  with class rules (tyres, pump fuel, drivetrain, displacement), entry fee, prize, reputation and a reputation
+  gate; knock-out rounds against rival builds (same vehicle model, cached passes, per-round consistency and
+  reaction from a seeded plan).
+- Bracket rules (raceOutcome): the slower dial starts first by the dial difference, first to the finish wins,
+  a breakout (ET quicker than dial) loses, both out: the smaller breakout wins, a red light always loses; with
+  no breakouts this equals "better package wins" (tested over random cases).
+- Race integration: the career round sets the rival, its reaction and handicap start (startOffset), the event's
+  track prep; the outcome is applied after the run (next round, elimination, or prize + reputation).
+- ECU table editor: hold-and-drag block selection, row/column/all headers.
+- Tests: tests/test_career.js; smoke checks for the drag selection and the career flow.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

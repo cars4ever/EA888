@@ -183,6 +183,8 @@ const antiLagSuite = require('./test_antilag.js');
 const engineSuite = require('./test_engine.js');
 // Vehicle model: tyres, clutch, load transfer, gearboxes, shared by player and rivals.
 const vehicleSuite = require('./test_vehicle.js');
+// Career events and bracket (dial-in) racing rules.
+const careerSuite = require('./test_career.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -202,7 +204,8 @@ const report = {
   turboMaps: turboSuite,
   antiLag: antiLagSuite,
   engine: engineSuite,
-  vehicle: vehicleSuite
+  vehicle: vehicleSuite,
+  career: careerSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

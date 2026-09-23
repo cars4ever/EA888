@@ -261,6 +261,7 @@
       dragRuns: [],
       records: { FWD: null, RWD: null, AWD: null },
       achievements: {},
+      career: defaultCareer(),
       buildSlots: [null, null, null],
       settings: { sound: true, haptics: true, reducedMotion: false, graphics3d: true },
       history: []
@@ -288,7 +289,8 @@
       'dynoConfig',
       'dynoThermal',
       'records',
-      'achievements'
+      'achievements',
+      'career'
     ])
       s[k] = { ...base[k], ...(input[k] || {}) };
     s.tune.als = { ...defaultAntiLag(), ...((input.tune && input.tune.als) || {}) };
@@ -2670,6 +2672,108 @@
   function totalPartsPrice(state) {
     return CATEGORIES.reduce((sum, cat) => sum + getPart(state, cat.id).price, 0);
   }
+  // ---- Career: events, class rules and bracket racing -----------------------------------------------
+  // Events are knock-out ladders. Heads-up: first to the finish wins. Bracket (dial-in): each driver
+  // declares an ET; the slower dial starts earlier by the difference, first to the finish wins, but running
+  // quicker than your dial is a breakout and loses (both break out: the smaller breakout wins). A red
+  // light always loses. These are the standard NHRA/ET bracket rules.
+  const STREET_TYRES = ['street', 'uhp', 'semislick'];
+  const PUMP_FUELS = ['ron95', 'ron98', 'blend_wmi', 'e30', 'e85', 'flex'];
+  const CAREER_EVENTS = Object.freeze([
+    { id: 'street_night', name: 'Straatavond', format: 'heads_up', rounds: 2, entry: 150, prize: 700, rep: 10, repRequired: 0, prep: false, rivals: ['club', 'club'],
+      rules: { tyres: STREET_TYRES, fuels: PUMP_FUELS }, detail: 'Pompbrandstof en straatbanden op een ongeprepte strip.' },
+    { id: 'bracket_friday', name: 'Bracket Friday', format: 'bracket', rounds: 3, entry: 200, prize: 1600, rep: 20, repRequired: 0, prep: true, rivals: ['club', 'street', 'street'],
+      rules: { tyres: STREET_TYRES }, detail: 'Dial-in racen: consistentie wint, niet vermogen. Straatbanden verplicht.' },
+    { id: 'fwd_challenge', name: 'FWD Challenge', format: 'heads_up', rounds: 3, entry: 450, prize: 3500, rep: 30, repRequired: 30, prep: true, rivals: ['street', 'street', 'pro'],
+      rules: { drivetrain: ['FWD'] }, detail: 'Alleen voorwielaandrijving. Tractie is het hele verhaal.' },
+    { id: 'pro_bracket', name: 'Pro Bracket', format: 'bracket', rounds: 4, entry: 800, prize: 6500, rep: 45, repRequired: 60, prep: true, rivals: ['street', 'pro', 'pro', 'outlaw'],
+      rules: {}, detail: 'Open klasse met dial-in. Vier rondes, geen fouten toegestaan.' },
+    { id: 'outlaw_20', name: 'Outlaw 2.0', format: 'heads_up', rounds: 3, entry: 1500, prize: 14000, rep: 80, repRequired: 110, prep: true, rivals: ['pro', 'outlaw', 'outlaw'],
+      rules: { maxDisplacementCc: 2100 }, detail: 'Heads-up tegen de snelste 2.0-liters. Alles mag.' }
+  ]);
+  const CAREER_EVENT_MAP = Object.fromEntries(CAREER_EVENTS.map(e => [e.id, e]));
+  function defaultCareer() {
+    return { rep: 0, events: 0, eventWins: 0, roundWins: 0, earnings: 0, active: null, history: [] };
+  }
+  // Why a build may not enter an event (empty = eligible).
+  function careerEligibility(inputState, eventId) {
+    const s = normalizeState(inputState, { noEcu: true }), ev = CAREER_EVENT_MAP[eventId], out = [];
+    if (!ev) return ['Onbekend evenement.'];
+    const r = ev.rules || {}, c = s.career || defaultCareer();
+    if ((c.rep || 0) < ev.repRequired) out.push(`Reputatie ${ev.repRequired} nodig (nu ${c.rep || 0}).`);
+    if (r.tyres && !r.tyres.includes(s.vehicle.tireCompound)) out.push(`Banden: alleen ${r.tyres.map(t => TIRE_MAP[t]?.name || t).join(', ')}.`);
+    if (r.fuels && !r.fuels.includes(s.selections.fuel)) out.push('Brandstof: alleen pompbrandstof (geen race-brandstof of methanol).');
+    if (r.drivetrain && !r.drivetrain.includes(s.vehicle.drivetrain)) out.push(`Aandrijving: alleen ${r.drivetrain.join('/')}.`);
+    if (r.maxDisplacementCc && engineGeometry(s).displacementCc > r.maxDisplacementCc) out.push(`Cilinderinhoud max ${r.maxDisplacementCc} cc.`);
+    if ((s.bank || 0) < ev.entry) out.push(`Inschrijfgeld € ${ev.entry} (budget te laag).`);
+    return out;
+  }
+  // Round opponent: a rival build with its own consistency. dial = what it declares in a bracket.
+  function planCareerRound(eventId, roundIdx, seed, rivalPasses) {
+    const ev = CAREER_EVENT_MAP[eventId], rivalId = ev.rivals[Math.min(roundIdx, ev.rivals.length - 1)];
+    const rand = mulberry32(fnv1a(`${eventId}|${roundIdx}|${seed}`));
+    const base = rivalPasses?.[rivalId];
+    const skill = { club: 0.6, street: 0.8, pro: 0.9, outlaw: 0.97 }[rivalId] ?? 0.8;
+    const spread = 0.02 + (1 - skill) * 0.12;
+    const etScale = base ? 1 + ((rand() - 0.5) * 2 * spread) / base.quarter : 1;
+    const reactionTime = clamp(0.02 + (1 - skill) * 0.25 + (rand() - 0.3) * 0.08, -0.02, 0.45);
+    const dialIn = base ? round(base.quarter + 0.02 + rand() * 0.06, 2) : null;
+    return { eventId, round: roundIdx, rivalId, etScale, reactionTime, dialIn };
+  }
+  // Outcome of one round from both drivers' reaction time and elapsed time (and dial-ins in a bracket).
+  // Times are from each driver's own green; in a bracket the lanes' greens differ by the dial difference.
+  function raceOutcome(fmt, p, o) {
+    const pRed = p.reactionTime < 0, oRed = o.reactionTime < 0;
+    const pInvalid = pRed || !p.valid, oInvalid = oRed || !o.valid;
+    if (fmt !== 'bracket') {
+      const pT = p.reactionTime + p.et, oT = o.reactionTime + o.et;
+      if (pInvalid !== oInvalid) return { won: !pInvalid, reason: pRed ? 'rode lamp' : pInvalid ? 'ongeldige run' : oRed ? 'rivaal rode lamp' : 'rivaal ongeldig', marginS: oT - pT };
+      if (pInvalid && oInvalid) return { won: pRed ? false : !oRed ? pT < oT : true, reason: 'beiden ongeldig', marginS: oT - pT };
+      return { won: pT < oT, reason: pT < oT ? 'eerst over de finish' : 'rivaal eerst over de finish', marginS: oT - pT };
+    }
+    // bracket: the slower dial starts first by the difference
+    const maxDial = Math.max(p.dialIn, o.dialIn);
+    const pFinish = (maxDial - p.dialIn) + p.reactionTime + p.et, oFinish = (maxDial - o.dialIn) + o.reactionTime + o.et;
+    const pBreak = p.et < p.dialIn, oBreak = o.et < o.dialIn;
+    const pPackage = p.reactionTime + (p.et - p.dialIn), oPackage = o.reactionTime + (o.et - o.dialIn);
+    const base = { marginS: oFinish - pFinish, pPackage, oPackage, pBreakout: pBreak, oBreakout: oBreak };
+    if (pRed !== oRed) return { ...base, won: !pRed, reason: pRed ? 'rode lamp' : 'rivaal rode lamp' };
+    if (pRed && oRed) return { ...base, won: p.reactionTime > o.reactionTime, reason: 'beiden rode lamp: de kleinste wint' };
+    if (pInvalid !== oInvalid) return { ...base, won: !pInvalid, reason: pInvalid ? 'ongeldige run' : 'rivaal ongeldig' };
+    if (pBreak && oBreak) {
+      const won = p.dialIn - p.et < o.dialIn - o.et;
+      return { ...base, won, reason: `beiden break-out: ${won ? 'jouw' : 'zijn'} break-out was kleiner` };
+    }
+    if (pBreak !== oBreak) return { ...base, won: !pBreak, reason: pBreak ? `break-out: ${(p.dialIn - p.et).toFixed(3)} s sneller dan je dial-in` : 'rivaal break-out' };
+    return { ...base, won: pFinish < oFinish, reason: pFinish < oFinish ? 'eerst over de finish op je dial-in' : 'rivaal eerst over de finish' };
+  }
+  function startCareerEvent(inputState, eventId, nowIso = new Date().toISOString()) {
+    const s = normalizeState(inputState), ev = CAREER_EVENT_MAP[eventId];
+    const why = careerEligibility(s, eventId);
+    if (why.length) throw new Error(why[0]);
+    s.bank -= ev.entry;
+    s.career = { ...defaultCareer(), ...(s.career || {}) };
+    s.career.events += 1;
+    s.career.active = { eventId, round: 0, seed: s.career.events, dialIn: null, results: [], startedAt: nowIso };
+    return s;
+  }
+  // Applies a finished round. Win: next round or event win (prize + reputation). Loss: eliminated.
+  function applyCareerRound(inputState, outcome, info = {}) {
+    const s = normalizeState(inputState), c = s.career, a = c?.active;
+    if (!a) return s;
+    const ev = CAREER_EVENT_MAP[a.eventId];
+    a.results.push({ round: a.round + 1, won: !!outcome.won, reason: outcome.reason, marginS: round(outcome.marginS || 0, 3), et: info.et, rt: info.rt, dialIn: info.dialIn, rival: info.rivalId, pPackage: outcome.pPackage });
+    if (outcome.won) { c.roundWins += 1; c.rep += Math.round(ev.rep / ev.rounds); }
+    const finished = !outcome.won || a.round + 1 >= ev.rounds;
+    if (!finished) { a.round += 1; return s; }
+    const champion = !!outcome.won;
+    if (champion) { c.eventWins += 1; c.rep += ev.rep; s.bank += ev.prize; c.earnings += ev.prize; }
+    c.history = [{ eventId: a.eventId, name: ev.name, champion, rounds: a.results.length, at: a.startedAt, results: a.results }, ...(c.history || [])].slice(0, 20);
+    c.active = null;
+    s.history = [{ type: 'career', at: new Date().toISOString(), label: champion ? `${ev.name} gewonnen (+€${ev.prize})` : `${ev.name}: uitgeschakeld in ronde ${a.results.length}` }, ...(s.history || [])].slice(0, 40);
+    return s;
+  }
+
   function evaluateChallenges(inputState) {
     const s = normalizeState(inputState, { noEcu: true }),
       r = s.lastDyno,
@@ -2794,6 +2898,14 @@
     ENGINE_MODEL_VERSION,
     Engine,
     DYNO_CORRECTIONS,
+    CAREER_EVENTS,
+    CAREER_EVENT_MAP,
+    defaultCareer,
+    careerEligibility,
+    planCareerRound,
+    raceOutcome,
+    startCareerEvent,
+    applyCareerRound,
     buildEngineMap,
     engineMapLookup,
     createRaceRuntime,

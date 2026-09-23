@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.7.0 (branch `claude-dev`) — phase 4: one physical simulation
+## v1.8.0 (branch `claude-dev`) — phase 5: career and bracket racing
+
+- Career events with class rules, entry fees, prize money, reputation and knock-out rounds against real rival builds.
+- Bracket racing with dial-in: handicap start, breakout rule, red light, package.
+- ECU tables: hold and drag to select a block; tap a row/column header for the whole row/column.
+
+## v1.7.0 — phase 4: one physical simulation
 
 - Combustion-cycle engine model: power, spark, knock, EGT and fuel follow from physics (stock CAWB 194 pk / 273 Nm vs VW 200 PS / 280 Nm).
 - ECU tables with a table editor, base maps, knock control; real fuel hardware (HPFP, DI window, MPI), flex fuel.

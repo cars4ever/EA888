@@ -485,6 +485,29 @@ def main() -> None:
         audio_after_third = page.evaluate("window.__EA888_DEBUG__.audio()")
         report['checks']['audio_stops_after_third_race'] = audio_after_third.get('exists') is False and audio_after_third.get('contextState') == 'none'
         report['audio_generations']['after_third'] = audio_after_third
+        # Career: enter an eligible event (entry fee paid), start the round (race game opens with the career
+        # rival), close it, forfeit (history row).
+        click(page, '[data-race-panel="career"]')
+        page.wait_for_selector('.career-panel', timeout=5000)
+        bank0 = page.evaluate("window.__EA888_DEBUG__.career().bank")
+        enter = page.locator('[data-career-enter]:not([disabled])').first
+        entered = enter.count() == 1
+        if entered:
+            enter.click()
+            page.wait_for_selector('.career-active', timeout=15000)
+            c1 = page.evaluate("window.__EA888_DEBUG__.career()")
+            click(page, '[data-action="career-race"]')
+            page.wait_for_selector('#race-game-root .v8-game', timeout=12000)
+            in_round = page.evaluate("window.__EA888_DEBUG__.career().inRound")
+            click(page, '[data-action="close-drag-game"]')
+            page.wait_for_selector('#race-game-root .v8-game', state='detached', timeout=8000)
+            click(page, '[data-race-panel="career"]')
+            click(page, '[data-action="career-forfeit"]')
+            c2 = page.evaluate("window.__EA888_DEBUG__.career()")
+            report['checks']['career_event_flow'] = c1['active'] is not None and c1['bank'] < bank0 and in_round and c2['active'] is None and c2['historyCount'] >= 1
+        else:
+            report['checks']['career_event_flow'] = False
+        click(page, '[data-race-panel="tree"]')
 
         # HOLD ANTILAG in staging on the reference build (Randy K04 hybrid, Syvecs):
         # boost, shaft speed, EGT, flames and wear respond live to the held button.
