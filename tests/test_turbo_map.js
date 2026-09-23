@@ -111,7 +111,10 @@ assert(!stockGate.samples.some(p => p.boostLimitedBy === 'wastegate-creep'), '44
 
 // Altitude: lower inlet pressure raises PR and corrected flow for the same boost, costing power on a choked compressor.
 const altitude = run('randy', s => { s.dynoConfig.baroKpa = 85; });
-assert(altitude.peakHp < randy.peakHp - 15, 'thin air must cost power on a compressor at its limit');
+const observedPeak = r => Math.max(...r.samples.map(p => p.hpObserved));
+assert(observedPeak(altitude) < observedPeak(randy) - 15, 'thin air must cost (observed, uncorrected) power');
+// A correction standard converts back to reference air: DIN 70020 raises the thin-air figure.
+assert(altitude.correction.factor > 1.1 && altitude.peakHp > observedPeak(altitude), 'DIN correction must scale thin-air power up');
 
 // Exhaust manifold pressure follows turbine size: a small hybrid needs far more drive pressure.
 assert(at(randy, 6000).empBar > at(bigger, 6000).empBar, 'smaller turbine should raise EMP');

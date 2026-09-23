@@ -132,5 +132,22 @@ const regen = C.regenerateBaseMap(onE85);
 const li = regen.tune.ecu.loadAxis.indexOf(3.0), ci = regen.tune.ecu.rpmAxis.indexOf(5000);
 assert(regen.tune.ecu.spark[li][ci] > onE85.tune.ecu.spark[li][ci] + 3, 'an E85 base map must carry more advance at 3 bar abs than the E20 map');
 
+// 11. Dyno measurement: correction standards, wheel vs engine power, heat soak between pulls.
+between(C.correctionFactor('din70020', 20, 101.3, 50), 0.999, 1.001, 'DIN 70020 at its reference (20 C, 1013 mbar)');
+between(C.correctionFactor('sae_j1349', 25, 101.3, 30), 0.98, 1.0, 'SAE J1349 near reference');
+assert(C.correctionFactor('din70020', 35, 97, 50) > 1.05, 'hot, low-pressure air must correct upward');
+const ref = C.simulateEngine(C.applyPreset(C.blankState(), 'randy'), { noise: false });
+between(1 - ref.peakWheelHp / ref.peakHp, 0.1, 0.2, 'FWD chassis-dyno loss share');
+for (const p of ref.samples) assert(p.wheelHp < p.hp, 'wheel power must be below engine power');
+let th = C.applyPreset(C.blankState(), 'randy');
+const r0 = C.simulateEngine(th, { soakK: C.dynoSoakAt(th, 1e6) });
+th = C.commitDynoResult(th, r0, { nowMs: 1e6 });
+const soak1 = C.dynoSoakAt(th, 1e6 + 60e3);
+const r1 = C.simulateEngine(th, { soakK: soak1, noise: false }), r1cold = C.simulateEngine(th, { soakK: 0, noise: false });
+assert(soak1 > 1 && r1.maxIatC > r1cold.maxIatC && r1.peakHp < r1cold.peakHp, 'a back-to-back pull must be heat soaked');
+assert(C.dynoSoakAt(th, 1e6 + 30 * 60e3) < 0.2 * soak1, 'heat soak must decay with fan time');
+const repA = C.simulateEngine(C.applyPreset(C.blankState(), 'randy'), { pullIndex: 1 }), repB = C.simulateEngine(C.applyPreset(C.blankState(), 'randy'), { pullIndex: 2 });
+assert(repA.peakHp !== repB.peakHp && Math.abs(repA.peakHp / repB.peakHp - 1) < 0.02, 'repeat pulls scatter within ~2 %');
+
 module.exports = { knockPoints: KNOCK_POINTS.length };
 console.log('PASS engine model tests');

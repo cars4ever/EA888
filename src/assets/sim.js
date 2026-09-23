@@ -212,7 +212,8 @@
       tune: defaultTune(),
       assembly: defaultAssembly(),
       bench: { results: {} },
-      dynoConfig: { rampRpmPerSec: 550, fanSpeedPct: 85, ambientTempC: 20, baroKpa: 101.3, humidityPct: 50, gear: 4 },
+      dynoConfig: { rampRpmPerSec: 550, fanSpeedPct: 85, ambientTempC: 20, baroKpa: 101.3, humidityPct: 50, gear: 4, correction: 'din70020' },
+      dynoThermal: { soakK: 0, at: 0 },
       service: {
         oilId: '5w40_ester',
         liters: 4.6,
@@ -284,6 +285,7 @@
       'damage',
       'settings',
       'dynoConfig',
+      'dynoThermal',
       'records',
       'achievements'
     ])
@@ -1016,6 +1018,38 @@
     return { enabled: state.tune.knockControl !== false, marginDeg: 0.4 + (1 - q) * 2.6, maxRetardDeg: clamp(Number(state.tune.ecu?.knock?.maxRetardDeg ?? 10), 2, 20), boostProtection: state.tune.knockControl !== false };
   }
 
+  // ---- Dyno correction standards --------------------------------------------------------------
+  // Power measured in the cell's air is converted to reference conditions. The formulas are the published
+  // ones; they were written for naturally aspirated engines, so on a turbo engine (whose boost control
+  // already compensates part of the air density) they tend to over-correct in hot or thin air, as real
+  // dyno reports do.
+  const DYNO_CORRECTIONS = Object.freeze({
+    none: { label: 'Ongecorrigeerd', short: 'ruw' },
+    din70020: { label: 'DIN 70020', short: 'DIN' },
+    iso1585: { label: 'ISO 1585 / EWG 80/1269', short: 'ISO' },
+    sae_j1349: { label: 'SAE J1349', short: 'SAE' }
+  });
+  function correctionFactor(standard, tempC, baroKpa, humidityPct) {
+    const T = tempC + 273.15, pTot = baroKpa, pDry = Engine.dryAirBar(baroKpa / 100, tempC, humidityPct) * 100;
+    if (standard === 'din70020') return (101.3 / pTot) * Math.sqrt(T / 293.15);
+    if (standard === 'iso1585') return Math.pow(99 / pDry, 1.2) * Math.pow(T / 298.15, 0.6);
+    if (standard === 'sae_j1349') return 1.18 * ((99 / pDry) * Math.sqrt(T / 298.15)) - 0.18;
+    return 1;
+  }
+  // Chassis-dyno losses between crank and roller in the pull gear: gearbox/differential (proportional),
+  // tyre rolling on the rollers and bearing/spin losses (with roller speed). Maha-style measurement adds
+  // the coast-down drag power back to the wheel power to state engine power.
+  function dynoLossKw(state, rpm, engineKw, gearIndex) {
+    const trans = getPart(state, 'transmission'), drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
+    const r = tireGeometry(state.vehicle).radiusM;
+    const ratio = (trans.gearRatios[clamp(gearIndex, 0, trans.gearRatios.length - 1)] || 1) * trans.finalDrive;
+    const v = (rpm / 60) * 2 * Math.PI * r / ratio;
+    const eta = trans.transEfficiency * (1 - drive.loss * 0.34);
+    const axleN = buildMassKg(state) * 9.80665 * (state.vehicle.drivetrain === 'RWD' ? 1 - drive.frontStatic : state.vehicle.drivetrain === 'AWD' ? 1 : drive.frontStatic);
+    const rollerKw = (0.015 * axleN * v) / 1000;
+    const spinKw = 0.0022 * v * v;
+    return { lossKw: Math.max(0, engineKw) * (1 - eta) + rollerKw + spinKw, speedKmh: v * 3.6 };
+  }
   function simulateEngine(inputState, options = {}) {
     const state = normalizeState(inputState),
       block = getPart(state, 'block'),
@@ -1076,7 +1110,7 @@
           }
         : null;
     const stopAtRpm = Number.isFinite(options.stopAtRpm) ? options.stopAtRpm : Infinity;
-    const rand = mulberry32(fnv1a(engineSignature(state))),
+    const rand = mulberry32(fnv1a(engineSignature(state) + '|' + (Number(options.pullIndex) || 0))),
       measurementNoise = options.noise === false ? 0 : sensors.measurementNoise,
       baseDynoFactor = options.noise === false ? 1 : 1 + (rand() - 0.5) * measurementNoise;
     const ambient = Number(state.dynoConfig.ambientTempC || 20),
@@ -1099,6 +1133,10 @@
       ambientK = ambient + 273.15,
       dtSample = DYNO_STEP_RPM / ramp,
       dynoGear = clamp(Math.round(Number(state.dynoConfig.gear || 4)), 1, 6) - 1,
+      // Heat soak from previous pulls: the intercooler core and intake still hold heat (from the app's thermal state).
+      soakK = clamp(Number(options.soakK) || 0, 0, 60),
+      correction = DYNO_CORRECTIONS[state.dynoConfig.correction] ? state.dynoConfig.correction : 'din70020',
+      corrFactor = correctionFactor(correction, ambient, baro, humidity),
       knockCtl = knockControlFor(state, ecu, sensors),
       // Blow-by and worn rings lose trapped charge; assembly quality and plug gap decide combustion quality.
       ringSeal = (0.94 + assembly.ringScore * 0.06 - assembly.ringWideRisk * 0.025) * wearFactor,
@@ -1124,7 +1162,7 @@
       // Intercooler: effectiveness falls once flow exceeds the core rating; fan and ramp decide heat soak.
       const chargeCooling = (t2K, flowLb) => {
         const eps = (0.55 + 0.45 * air.cooling) * clamp(1 - 0.35 * Math.max(0, flowLb / chargeAir.refFlowLbMin - 1), 0.4, 1);
-        return ambientK + 2 + (t2K - ambientK) * (1 - eps) * (1.18 - 0.48 * fan) * heatSoak + spoolAssist.spoolHeat * 22;
+        return ambientK + 2 + (t2K - ambientK) * (1 - eps) * (1.18 - 0.48 * fan) * heatSoak + spoolAssist.spoolHeat * 22 + soakK;
       };
       // Spool shot: armed in its rpm window (from 3000 rpm), fading out as the turbo comes up.
       const nitrousTaper =
@@ -1193,6 +1231,8 @@
       // Measurement repeatability of the dyno (load cell / roller), then pk (PS) from torque.
       torque *= baseDynoFactor;
       const rawHp = (torque * rpm) / 7023;
+      const loss = dynoLossKw(state, rpm, rawHp / 1.359622, dynoGear);
+      const wheelHp = Math.max(0, rawHp - loss.lossKw * 1.359622);
       const fuelDutyPct = Math.max(fd.dutyPct, fd.diDutyPct, fd.hpfpDutyPct, fd.mpiDutyPct);
       const railBar = fd.railBar ?? (hw.fuelSys.mpiPressureBar || 4);
       const turboLoadPct = Math.max(tp.shaftSpeedPct, 100 - tp.chokeMarginPct),
@@ -1223,9 +1263,15 @@
         oilFilmRisk = loadFilmNeed / Math.max(0.25, oilFilm * (0.8 + oilPressureBar / 12));
       const point = {
         rpm,
-        hp: rawHp,
-        kw: rawHp / 1.359622,
-        torqueNm: torque,
+        // Reported (corrected) engine power and torque; observed values and wheel power are logged too.
+        hp: rawHp * corrFactor,
+        kw: (rawHp / 1.359622) * corrFactor,
+        torqueNm: torque * corrFactor,
+        hpObserved: rawHp,
+        torqueObservedNm: torque,
+        wheelHp: wheelHp * corrFactor,
+        lossHp: loss.lossKw * 1.359622,
+        rollerKmh: loss.speedKmh,
         boostBar: actualBoost,
         mapBarAbs: mapAbs,
         lambda: actualLambda,
@@ -1292,7 +1338,8 @@
       // Logged channels are stored at 3 decimals (well beyond a real dyno's resolution) to keep saves small.
       for (const k of Object.keys(point)) if (typeof point[k] === 'number') point[k] = round(point[k], 3);
       curve.push(point);
-      const event = criticalFailure(point, {
+      // Mechanical limits see what the engine really produced, not the corrected figure.
+      const event = criticalFailure({ ...point, hp: rawHp, torqueNm: torque }, {
         tune,
         mechanicalHpLimit,
         componentTorqueLimit,
@@ -1659,6 +1706,10 @@
       benchConfidence: benchConfidence(state),
       airDensityKgM3,
       dynoConfig: deepClone(state.dynoConfig),
+      correction: { standard: correction, label: DYNO_CORRECTIONS[correction].label, factor: round(corrFactor, 4) },
+      peakWheelHp: quotePeak && curve.length ? Math.max(...curve.map(p => p.wheelHp)) : null,
+      soakK,
+      pullIndex: Number(options.pullIndex) || 0,
       measuredAt: new Date().toISOString()
     };
   }
@@ -1666,6 +1717,21 @@
   // Applies a finished (completed or aborted) pull to the canonical state:
   // it becomes the active measurement, and its sample-derived wear/damage is
   // added. Returns a new normalized state.
+  // Heat soak between pulls: each pull leaves heat in the intercooler core and intake (more with little fan
+  // air); it decays with a time constant of a few minutes of fan running.
+  function dynoSoakAt(inputState, nowMs = Date.now()) {
+    const th = inputState.dynoThermal || { soakK: 0, at: 0 };
+    const fan = clamp(Number(inputState.dynoConfig?.fanSpeedPct || 85) / 100, 0.25, 1);
+    const dtS = Math.max(0, (nowMs - (th.at || 0)) / 1000);
+    return (th.soakK || 0) * Math.exp(-dtS / (150 + 250 * fan));
+  }
+  function advanceDynoThermal(inputState, result, nowMs = Date.now()) {
+    const fan = clamp(Number(inputState.dynoConfig?.fanSpeedPct || 85) / 100, 0.25, 1);
+    const durationS = Number(result?.wear?.durationS) || (result?.samples?.length || 0) * (100 / (inputState.dynoConfig?.rampRpmPerSec || 550));
+    const peakKw = Number(result?.peakHp || 0) / 1.36;
+    const add = durationS * (0.12 + peakKw / 1600) * (1.3 - 0.8 * fan);
+    return { soakK: round(clamp(dynoSoakAt(inputState, nowMs) + add, 0, 45), 2), at: nowMs };
+  }
   function commitDynoResult(inputState, result, options = {}) {
     const state = normalizeState(inputState);
     if (!result || result.dynoResultVersion !== DYNO_RESULT_VERSION) throw new Error('Ongeldig dynoresultaat.');
@@ -1679,6 +1745,7 @@
           : `Afgebroken @ ${result.abortRpm} rpm`);
     state.lastDyno = result;
     state.lastDynoSignature = engineSignature(state);
+    if (result.sampleCount > 0) state.dynoThermal = advanceDynoThermal(state, result, options.nowMs ?? Date.now());
     state.dynoRuns = [{ ...result, label }, ...(state.dynoRuns || [])].slice(0, 20);
     const w = result.wear || {},
       d = result.damage || {};
@@ -2441,6 +2508,11 @@
     ECU_GEARS,
     ENGINE_MODEL_VERSION,
     Engine,
+    DYNO_CORRECTIONS,
+    correctionFactor,
+    dynoLossKw,
+    dynoSoakAt,
+    advanceDynoThermal,
     commitDynoResult,
     isCompletedDyno,
     summarizeDynoSamples,

@@ -221,3 +221,7 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .fuel-props span { display:block; color:var(--muted); font-size:12px; }
 .fuel-props b { font:700 16px/1.3 var(--font-mono, ui-monospace, monospace); }
 @media (min-width:720px) { .fuel-props { grid-template-columns:repeat(4,1fr); } }
+.dyno-correction { display:grid; gap:6px; margin-top:12px; }
+.dyno-correction > span { font-weight:700; font-size:14px; }
+.dyno-correction .segment-control { margin-bottom:0; }
+.dyno-correction small { color:var(--muted); font-size:12px; line-height:1.4; }

@@ -1963,7 +1963,11 @@
           ${dynoConfigRange('fanSpeedPct','Testcelfan',25,100,1,cfg.fanSpeedPct,'%',0,'Beïnvloedt intercooler- en radiatorluchtstroom.')}
           ${dynoConfigRange('ambientTempC','Omgevingstemperatuur',0,45,1,cfg.ambientTempC,'°C',0,'Werkelijke inlaatlucht start bij deze conditie.')}
           ${dynoConfigRange('baroKpa','Barometrische druk',82,104,.1,cfg.baroKpa,' kPa',1,'Luchtdichtheid en compressorbelasting reageren op hoogte en weer.')}
+          ${dynoConfigRange('humidityPct','Luchtvochtigheid',0,100,1,cfg.humidityPct ?? 50,'%',0,'Waterdamp verdringt zuurstof: alleen droge lucht verbrandt brandstof.')}
+          ${dynoConfigRange('gear','Dynoversnelling',1,6,1,cfg.gear ?? 4,'e',0,'Chassisdyno in deze versnelling; de boosttabel van deze versnelling geldt.')}
         </div>
+        <div class="dyno-correction"><span>Correctienorm</span><div class="segment-control">${Object.entries(C.DYNO_CORRECTIONS).map(([k, c]) => `<button class="${(cfg.correction || 'din70020') === k ? 'active' : ''}" data-dyno-correction="${k}">${esc(c.short)}</button>`).join('')}</div>
+          <small>${esc(C.DYNO_CORRECTIONS[cfg.correction || 'din70020'].label)} · factor ${num(C.correctionFactor(cfg.correction || 'din70020', cfg.ambientTempC, cfg.baroKpa, cfg.humidityPct ?? 50), 3)} bij deze condities${C.dynoSoakAt(state) > 0.5 ? ` · heat soak +${num(C.dynoSoakAt(state), 1)} °C inlaat (laat de fan draaien)` : ''}</small></div>
       </div>
 
       <div class="dyno-console ${active ? 'running' : ''}">
@@ -2018,7 +2022,8 @@
       <div class="result-metrics v4-result-metrics">
         <div><span>${peakLabel} vermogen</span><b>${dynoMetricText(r, 'peakHp', ' pk')}</b><small>${at(r.peakHpRpm)}</small></div>
         <div><span>${peakLabel} koppel</span><b>${dynoMetricText(r, 'peakTorqueNm', ' Nm')}</b><small>${at(r.peakTorqueRpm)}</small></div>
-        <div><span>Airflow</span><b>${mnum(r.estimatedAirflowLbMin,1)} lb/min</b><small>${num(r.airDensityKgM3,3)} kg/m³</small></div>
+        <div><span>Wielvermogen</span><b>${Number.isFinite(r.peakWheelHp) ? `${Math.round(r.peakWheelHp)} pk` : '—'}</b><small>${r.correction ? `${esc(r.correction.label)} · CF ${num(r.correction.factor, 3)}` : 'ongecorrigeerd'}</small></div>
+        <div><span>Airflow</span><b>${r.samples?.length ? num(Math.max(...r.samples.map(p => p.airflowLbMin || 0)), 1) : '—'} lb/min</b><small>${num(r.airDensityKgM3,3)} kg/m³${r.soakK > 0.5 ? ` · soak +${num(r.soakK, 1)} °C` : ''}</small></div>
         <div><span>Turbo-as</span><b>${Number.isFinite(r.maxTurboShaftRpm) ? `${Math.round(r.maxTurboShaftRpm/1000)}k` : '—'} rpm</b><small>${mnum(r.maxEmpBar,2)} bar max EMP</small></div>
         <div><span>Fuel duty</span><b>${mnum(r.maxFuelDuty,0)}%</b><small>${mnum(r.maxIatC,0)}°C max IAT</small></div>
         <div><span>Bench confidence</span><b>${bench.score || 0}/100</b><small>${bench.current}/${bench.total} test(s) vóór de pull</small></div>
@@ -2300,7 +2305,7 @@
     if (dynoRunning) return;
     activeTab = 'dyno';
     haptic([18, 40, 18]);
-    const result = C.simulateEngine(state);
+    const result = C.simulateEngine(state, { soakK: C.dynoSoakAt(state), pullIndex: state.dynoRuns?.length || 0 });
     const planned = Math.max(2, result.plannedSampleCount || result.samples.length);
     const fullDuration = state.settings?.reducedMotion ? 1450 : 5600;
     dynoRunning = { result, start: performance.now(), msPerSample: fullDuration / (planned - 1), shown: 0 };
@@ -2339,7 +2344,7 @@
     if (!dynoRunning) return;
     if (dynoRunning.raf) cancelAnimationFrame(dynoRunning.raf);
     const reached = dynoRunning.result.samples[dynoRunning.shown || 0];
-    const partial = reached ? C.simulateEngine(state, { stopAtRpm: reached.rpm }) : null;
+    const partial = reached ? C.simulateEngine(state, { stopAtRpm: reached.rpm, soakK: C.dynoSoakAt(state), pullIndex: state.dynoRuns?.length || 0 }) : null;
     haptic([40,30,40]);
     if (partial && partial.status !== C.DYNO_STATUS.COMPLETED) finishDyno(partial);
     else if (partial) finishDyno(dynoRunning.result);
@@ -5044,6 +5049,10 @@
     if (btn.dataset.motorPanel) { motorPanel = btn.dataset.motorPanel; haptic(6); return render(); }
     if (btn.dataset.engineView) { engineView = btn.dataset.engineView; haptic(6); return render(); }
     if (btn.dataset.tunePanel) { tunePanel = btn.dataset.tunePanel; haptic(6); return render(); }
+    if (btn.dataset.dynoCorrection) {
+      const announce = offerUndo([['dynoConfig', 'correction']], `Correctienorm → ${C.DYNO_CORRECTIONS[btn.dataset.dynoCorrection]?.label || ''}`);
+      state.dynoConfig.correction = btn.dataset.dynoCorrection; saveState(); haptic(6); render(); return announce();
+    }
     if (btn.dataset.alsMode) {
       const m = btn.dataset.alsMode;
       state.tune.als = m === 'custom' ? { ...C.resolveAntiLag(state).params, mode: 'custom' } : { ...state.tune.als, mode: m };
