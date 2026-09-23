@@ -658,6 +658,21 @@ export function create(canvas, opts = {}) {
     }
     smoke.update(dt);
     flames.update(dt, time);
+    // Replay cameras cut between fixed trackside positions; live play always uses the chase camera.
+    const mode = frame.camera || 'chase';
+    if (mode !== 'chase') {
+      const px = player.root.position.x;
+      if (mode === 'side') { camera.position.set(-LANE / 2 - 2.4, 0.9, -62); tmp.set(px, 0.7, z); }
+      else if (mode === 'launch') { camera.position.set(LANE / 2 + 0.2, 0.55, -14); tmp.set(px, 0.6, z); }
+      else if (mode === 'high') { camera.position.set(px + 7, 10, z + 16); tmp.set(px + 2, 0, z - 14); }
+      else if (mode === 'finish') { camera.position.set(LANE * 1.5 + 2.2, 1.5, -FINISH - 10); tmp.set(px + LANE / 2, 0.8, z); }
+      camera.lookAt(tmp);
+      const want = mode === 'high' ? 50 : mode === 'finish' ? 34 : 42;
+      if (Math.abs(camera.fov - want) > .05) { camera.fov = want; camera.updateProjectionMatrix(); }
+      renderer.render(scene, camera);
+      last = { distanceM: d, opponentDistanceM: Number(frame.opponentDistanceM) || 0, oppV: frame.oppV || 0 };
+      return;
+    }
     // Chase camera: a spring behind the car, so hard launches pull the car away from the lens.
     const targetLag = Math.min(2.2, Math.max(0, accG) * 1.35);
     cam.lagZ += (targetLag - cam.lagZ) * Math.min(1, dt * 2.2);
@@ -674,6 +689,7 @@ export function create(canvas, opts = {}) {
 
   function dispose() {
     if (disposed) return;
+    stopReplay();
     disposed = true;
     smoke.dispose(); flames.dispose(); rivalFlames?.dispose();
     scene.traverse(o => {
@@ -687,8 +703,39 @@ export function create(canvas, opts = {}) {
     renderer.forceContextLoss();
   }
 
+  // Replay of a recorded run: frames [{t, d, lat, latV, v, g, ws, od}], flame events [{t, fe}].
+  let replayRaf = 0;
+  function replay(frames, events = [], { onProgress, onEnd } = {}) {
+    stopReplay();
+    if (!frames?.length) return;
+    const end = frames[frames.length - 1].t;
+    let clock = frames[0].t, idx = 0, ev = 0, prev = performance.now();
+    last = null; wheelAngle = 0;
+    const cut = d => d < 14 ? 'chase' : d < 45 ? 'launch' : d < 120 ? 'side' : d < 300 ? 'high' : d < 372 ? 'chase' : 'finish';
+    const step = now => {
+      const real = Math.min(.05, (now - prev) / 1000);
+      prev = now;
+      const f0 = frames[Math.min(idx, frames.length - 1)];
+      const speed = f0.d < 20 ? .45 : 1;            // slow motion off the line
+      clock = Math.min(end, clock + real * speed);
+      while (idx < frames.length - 1 && frames[idx + 1].t <= clock) idx++;
+      const a = frames[idx], b = frames[Math.min(idx + 1, frames.length - 1)];
+      const u = b.t > a.t ? (clock - a.t) / (b.t - a.t) : 0, L = (x, y) => x + (y - x) * u;
+      while (ev < events.length && events[ev].t <= clock) flames.pop(events[ev++].fe);
+      const dNow = L(a.d, b.d);
+      update({ t: clock, distanceM: dNow, lateralM: L(a.lat, b.lat), lateralVelocity: L(a.latV, b.latV), speedKmh: L(a.v, b.v), accelerationG: L(a.g, b.g), wheelspinPct: L(a.ws, b.ws), opponentDistanceM: L(a.od, b.od), camera: cut(dNow) }, real * speed);
+      onProgress?.(clock / end);
+      if (clock >= end) { replayRaf = 0; onEnd?.(); return; }
+      replayRaf = requestAnimationFrame(step);
+    };
+    replayRaf = requestAnimationFrame(step);
+  }
+  function stopReplay() { if (replayRaf) cancelAnimationFrame(replayRaf); replayRaf = 0; }
+
   return {
     update,
+    replay,
+    stopReplay,
     flame: fe => flames.pop(fe),
     rivalFlame: fe => rivalFlames?.pop(fe),
     sustain: (k, color) => flames.setSustain(k, color),

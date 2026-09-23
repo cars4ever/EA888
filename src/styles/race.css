@@ -959,3 +959,33 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .has-3d .race3d-canvas { display: block; }
 .has-3d #v10-track-canvas, .has-3d .v10-track-horizon, .has-3d #v7-run-car, .has-3d #v12-rival-car, .has-3d .v7-speed-lines { display: none !important; }
 .has-3d .v10-track-vignette { z-index: 4; opacity: .55; }
+
+/* ---- Phase 3b: compact HUD over the 3D view (the road and the car need the space) ---- */
+.has-3d .v10-run-hud { transform:scale(.84); transform-origin:left top; }
+.has-3d .v10-split-board { transform:scale(.84); transform-origin:right top; }
+/* the split board keeps the top right; the rival card moves to the free corner above the controls */
+.has-3d .v12-rival-hud { top:auto; right:12px; bottom:calc(150px + var(--safe-bottom)); transform:scale(.9); transform-origin:right bottom; }
+.has-3d .v10-run-telemetry { opacity:.86; }
+.has-3d .v12-driveline-hud { display:none; }
+.has-3d .v10-shift-feedback { top:36%; }
+@media (max-height:760px) {
+  .has-3d .v10-run-hud { transform:scale(.76); }
+  .has-3d .v10-split-board { transform:scale(.76); }
+}
+
+/* ---- Replay (finish screen) ---- */
+.v13-finish-actions { display:grid; gap:10px; margin-top:15px; }
+.v13-finish-actions .v8-finish-button { margin-top:0; }
+.v8-finish-button.secondary { background:rgba(8,13,20,.86); color:#ffc329; }
+.v13-replay { position:absolute; inset:0; z-index:120; background:#05080c; }
+.v13-replay-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.v13-replay-top { position:absolute; left:0; right:0; top:calc(14px + var(--safe-top)); display:flex; justify-content:center; pointer-events:none; }
+.v13-replay-tag { padding:7px 14px; border:1px solid rgba(255,62,62,.7); border-radius:999px; background:rgba(5,9,14,.78); color:#ff5b5b; font:900 12px var(--font-display, sans-serif); letter-spacing:1.6px; }
+.v13-replay-tag::before { content:''; display:inline-block; width:8px; height:8px; margin-right:8px; border-radius:50%; background:#ff3b3b; vertical-align:1px; animation:v13-rec 1s steps(2) infinite; }
+@keyframes v13-rec { 50% { opacity:.2; } }
+.v13-replay-bottom { position:absolute; left:16px; right:16px; bottom:calc(18px + var(--safe-bottom)); display:grid; gap:12px; }
+.v13-replay-track { height:6px; border-radius:3px; overflow:hidden; background:rgba(255,255,255,.14); }
+.v13-replay-track i { display:block; height:100%; background:linear-gradient(90deg,#30bcff,#ffad16); transform:scaleX(0); transform-origin:left; }
+.v13-replay-buttons { display:grid; grid-template-columns:1fr 1.4fr; gap:10px; }
+.v13-replay-buttons .v8-finish-button { margin-top:0; }
+@media (prefers-reduced-motion:reduce) { .v13-replay-tag::before { animation:none; } }

@@ -2940,10 +2940,24 @@
           <h2>${r ? r.trapKmh.toFixed(1) : '—'} km/u</h2>
           ${headsUp ? `<div class="v12-duel-result"><section><small>JIJ</small><b>${r.finishTotalTime.toFixed(3)} s</b><span>RT ${r.reactionTime.toFixed(3)} · ET ${r.quarter.toFixed(3)}</span></section><em>VS</em><section><small>${esc(r.opponentName)}</small><b>${r.opponentFinishTotalTime.toFixed(3)} s</b><span>RT ${r.opponentReactionTime.toFixed(3)} · ET ${r.opponentQuarter.toFixed(3)}</span></section></div>` : ''}
           <div class="v12-finish-data"><b>Reactietijd</b><span>${r ? `${r.reactionTime >= 0 ? '+' : ''}${r.reactionTime.toFixed(3)} s` : '—'}</span><b>60 ft</b><span>${r ? `${r.sixtyFt.toFixed(3)} s` : '—'}</span><b>1/8 mijl</b><span>${r ? `${r.eighth.toFixed(3)} s` : '—'}</span><b>Schakelen</b><span>${esc(shiftText)}</span><b>Rijlijn</b><span>${r ? `${Number(r.maxLaneOffsetM || 0).toFixed(2)} m max · ${r.lineTouches || 0} correcties` : '—'}</span><b>Aandrijflijn</b><span>${r ? `${Number(r.maxClutchTempC||0).toFixed(0)}°C koppeling · ${Number(r.maxGearboxTempC||0).toFixed(0)}°C bak` : '—'}</span>${r?.reward ? `<b>Winstpremie</b><span class="reward">+${euro(r.reward)}</span>` : ''}</div>
-          <button class="v8-finish-button" data-action="finish-to-overview">NAAR RACEOVERZICHT</button>
+          <div class="v13-finish-actions">
+            ${replayAvailable() ? '<button class="v8-finish-button secondary" data-action="finish-replay">BEKIJK REPLAY</button>' : ''}
+            <button class="v8-finish-button" data-action="finish-to-overview">NAAR RACEOVERZICHT</button>
+          </div>
         </div>
       </main>
-      ${v7GameProgress(3)}
+      ${raceGame?.replayOpen ? '' : v7GameProgress(3)}
+      ${raceGame?.replayOpen ? `<div class="v13-replay" role="dialog" aria-label="Replay">
+        <canvas id="race3d-replay" class="v13-replay-canvas"></canvas>
+        <div class="v13-replay-top"><span class="v13-replay-tag" id="replay-state">REPLAY · ${r ? r.quarter.toFixed(3) + ' s' : ''}</span></div>
+        <div class="v13-replay-bottom">
+          <div class="v13-replay-track"><i id="replay-progress"></i></div>
+          <div class="v13-replay-buttons">
+            <button class="v8-finish-button secondary" data-action="replay-restart">OPNIEUW</button>
+            <button class="v8-finish-button" data-action="replay-close">SLUIT REPLAY</button>
+          </div>
+        </div>
+      </div>` : ''}
     </div>`;
   }
 
@@ -2973,6 +2987,7 @@
   function emitExhaustFlame(host, fe) {
     if (!host || !fe?.visible) return false;
     if (host.id === 'v7-run-car' && raceGame?.r3d) raceGame.r3d.flame(fe);
+    if (host.id === 'v7-run-car' && raceGame?.phase === 'run' && raceGame.run) (raceGame.run.replayFlames = raceGame.run.replayFlames || []).push({ t: raceGame.run.t, fe });
     const flames = $$('.v7-flame', host);
     flames.forEach((f, i) => {
       f.style.setProperty('--flame-scale', (fe.sizeScale * (i % 2 ? 1.08 : .94)).toFixed(3));
@@ -3081,6 +3096,7 @@
     if (raceGameRaf) cancelAnimationFrame(raceGameRaf);
     raceGameRaf = null;
     disposeRace3D();
+    disposeReplay();
     clearRaceGameTimers();
     raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
     raceGamePointerMap.clear();
@@ -3786,10 +3802,61 @@
     raceGame.r3d = null;
   }
   // Ghost: the trace of the fastest valid run per drivetrain, sampled at 20 Hz ([t, distance, lateral]).
-  function recordGhostSample(run) {
+  function recordGhostSample(run, force = false) {
     run.trace = run.trace || [];
     const lastT = run.trace.length ? run.trace[run.trace.length - 1][0] : -1;
     if (run.t - lastT >= .05) run.trace.push([+run.t.toFixed(3), +run.x.toFixed(2), +run.lateralM.toFixed(3)]);
+    // Replay: the full simulated state at ~30 Hz; the replay only plays back these samples.
+    run.replayFrames = run.replayFrames || [];
+    const lastR = run.replayFrames.length ? run.replayFrames[run.replayFrames.length - 1].t : -1;
+    const p = run.point;
+    if (p && (force || run.t - lastR >= 1 / 30)) run.replayFrames.push({ t: run.t, d: run.x, lat: run.lateralM, latV: run.lateralVelocity || 0, v: p.speedKmh, g: p.accelerationG, ws: p.wheelspinPct, od: p.opponentDistanceM || 0 });
+  }
+
+  // ---- Replay of the last run (finish screen). Plays back the recorded samples and flame events in a fresh
+  // renderer with director cameras; nothing is re-simulated.
+  function replayAvailable() { return !!(raceGame?.run?.replayFrames?.length > 10 && race3DEnabled()); }
+  function startReplay() {
+    const run = raceGame?.run;
+    if (!replayAvailable()) { showToast('Replay niet beschikbaar (3D-racebeeld uit of geen opname).'); return; }
+    clearRaceGameTimers();
+    raceGame.replayOpen = true;
+    raceGame.replayProgress = 0;
+    raceGame.replayDone = false;
+    renderRaceGame();
+    const canvas = $('#race3d-replay');
+    if (!canvas) return;
+    disposeReplay();
+    try {
+      raceGame.replay3d = window.EA888Race3D.create(canvas, {
+        headsUp: !!run.opponent,
+        drivetrain: state.vehicle.drivetrain,
+        rivalColor: run.opponent ? parseInt(String(run.opponent.profile.color || '#6b1a1a').replace('#', ''), 16) : undefined,
+        reducedMotion: !!state.settings?.reducedMotion
+      });
+    } catch (e) {
+      console.error('race3d replay', e);
+      raceGame.replay3d = null;
+      closeReplay();
+      showToast('Replay kon niet starten (WebGL).');
+      return;
+    }
+    const bar = () => $('#replay-progress');
+    raceGame.replay3d.replay(run.replayFrames, run.replayFlames || [], {
+      onProgress: k => { if (raceGame) raceGame.replayProgress = k; const b = bar(); if (b) b.style.transform = `scaleX(${k.toFixed(4)})`; },
+      onEnd: () => { if (!raceGame) return; raceGame.replayDone = true; $('#replay-state')?.replaceChildren(document.createTextNode('EINDE REPLAY')); }
+    });
+  }
+  function disposeReplay() {
+    if (!raceGame?.replay3d) return;
+    try { raceGame.replay3d.dispose(); } catch (e) { /* context already gone */ }
+    raceGame.replay3d = null;
+  }
+  function closeReplay() {
+    disposeReplay();
+    if (!raceGame) return;
+    raceGame.replayOpen = false;
+    renderRaceGame();
   }
 
   function startV7Run(reactionTime, auto = false) {
@@ -4227,10 +4294,12 @@
     saveState();syncAchievements();
   }
 
+  let holdFinishForTest = false;   // smoke test: keep the finish screen up (slow software WebGL)
   function finishV7Run(){
     const run = raceGame?.run;
     if (!run || run.finished) return;
     run.finished = true;
+    recordGhostSample(run, true);   // the replay must end on the finish sample itself
     disposeRace3D();
     const result = buildRealtimeResult(run);
     run.finalResult = result;
@@ -4241,7 +4310,7 @@
     haptic(result.redLight || result.laneDnf ? [70,40,70] : [18,18,45]);
     renderRaceGame();
     const delay = state.settings?.reducedMotion ? 220 : 3000;
-    raceGameTimers.push(setTimeout(() => finishV7ToOverview(true), delay));
+    if (!holdFinishForTest) raceGameTimers.push(setTimeout(() => finishV7ToOverview(true), delay));
   }
 
   function finishV7ToOverview(auto=false){
@@ -4859,6 +4928,8 @@
       case 'v7-shift': handleV7Shift(false); break;
       case 'toggle-v7-audio': toggleV7Audio(); break;
       case 'finish-to-overview': finishV7ToOverview(false); break;
+      case 'finish-replay': case 'replay-restart': startReplay(); break;
+      case 'replay-close': closeReplay(); break;
       case 'start-dyno': startDyno(); break;
       case 'als-test': runAlsTest(); break;
       case 'abort-dyno': abortDyno(); break;
@@ -5011,6 +5082,7 @@
   // Android back button (MainActivity asks before leaving the app): close the top layer first.
   window.__ea888HandleBack = () => {
     if ($('#modal-root .modal')) { closeModal(); return true; }
+    if (raceGame?.replayOpen) { closeReplay(); return true; }
     if (raceGame?.open) { closeDragGame(); render(); return true; }
     if (activeTab !== 'bank') { go('bank'); return true; }
     return false;
@@ -5030,7 +5102,9 @@
 
   window.__EA888_DEBUG__ = {
     rerender: () => { render(); return true; },
+    holdFinishForTest: on => { holdFinishForTest = !!on; return holdFinishForTest; },
     setGraphics3dForTest: on => { state.settings.graphics3d = !!on; saveState(); return state.settings.graphics3d; },
+    replay: () => ({ open: !!raceGame?.replayOpen, active: !!raceGame?.replay3d, progress: raceGame?.replayProgress || 0, done: !!raceGame?.replayDone, frames: raceGame?.run?.replayFrames?.length || 0, lastDistanceM: raceGame?.run?.replayFrames?.at?.(-1)?.d || 0, flames: raceGame?.run?.replayFlames?.length || 0, info: raceGame?.replay3d?.info?.() || null }),
     race3d: () => raceGame?.r3d ? { active: true, ...raceGame.r3d.info() } : { active: false, supported: !!window.EA888Race3D?.supported?.() },
     ghost: () => state.ghost ? { drivetrain: state.ghost.drivetrain, quarter: state.ghost.quarter, samples: state.ghost.trace.length } : null,
     platform: () => ({ loaded: !!PLATFORM, native: !!NATIVE?.available }),

@@ -340,6 +340,7 @@ def main() -> None:
             page.screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-stage-tree.png'), full_page=False, animations='disabled', timeout=12000)
 
         page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=12000)
+        page.evaluate("window.__EA888_DEBUG__.holdFinishForTest(true)")   # the replay check below needs the finish screen
         report['checks']['separate_race_screen'] = page.locator('#race-game-root .v8-run-game').count() == 1
         report['checks']['rear_chase_car'] = page.locator('.v10-live-car img').count() == 1 and page.eval_on_selector('.v10-live-car img', 'img => img.complete && img.naturalWidth > 500 && img.naturalHeight > 300')
         report['checks']['race_hud'] = all(page.locator(sel).count() == 1 for sel in ('#v7-run-tach','#v7-run-speed','#v7-run-boost','#v7-shift-button','#v10-track-canvas','.v10-live-car','[data-v7-control="steerLeft"]','[data-v7-control="steerRight"]'))
@@ -376,6 +377,23 @@ def main() -> None:
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-rear-chase-race.png'), full_page=False, animations='disabled', timeout=12000)
 
+        # Finish screen -> replay: plays back the recorded samples (no re-simulation) and cancels the auto overview.
+        page.wait_for_selector('#race-game-root .v8-finish-game [data-action="finish-replay"]', state='attached', timeout=60000)
+        page.evaluate("document.querySelector('[data-action=\"finish-replay\"]').click()")
+        page.wait_for_selector('#race3d-replay', state='visible', timeout=8000)
+        replay_a = page.evaluate("window.__EA888_DEBUG__.replay()")
+        page.wait_for_timeout(1500)
+        replay_b = page.evaluate("window.__EA888_DEBUG__.replay()")
+        report['replay'] = {'start': replay_a, 'later': replay_b}
+        report['checks']['replay_recorded'] = replay_a['frames'] > 30 and replay_a['lastDistanceM'] >= 402
+        report['checks']['replay_plays_back'] = replay_b['active'] and replay_b['progress'] > replay_a['progress'] and (replay_b.get('info') or {}).get('calls', 0) > 20
+        report['checks']['replay_holds_finish_screen'] = page.locator('#race-game-root .v8-finish-game').count() == 1
+        if screenshots:
+            page.screenshot(path=str(screenshots / 'EA888-Lab-replay.png'), full_page=False, animations='disabled', timeout=12000)
+        click(page, '[data-action="replay-close"]')
+        report['checks']['replay_disposed_on_close'] = page.evaluate("window.__EA888_DEBUG__.replay()")['active'] is False and page.locator('#race3d-replay').count() == 0
+        click(page, '[data-action="finish-to-overview"]')
+        page.evaluate("window.__EA888_DEBUG__.holdFinishForTest(false)")
         page.wait_for_selector('#race-game-root .v8-game', state='detached', timeout=30000)
         page.wait_for_selector('.v7-race-overview', state='visible')
         overview_text = page.locator('.v7-timeslip-overview').inner_text()

@@ -210,6 +210,25 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
   challenges by default, foldable hardware table (Data 3.6k -> 2.3k px).
 - Not yet: app.js module split and the race-scene CSS (phase 3 rebuilds the race scenes).
 
+## 10. Phase 3: 3D race, replay, ghost (v1.6.0)
+
+- `src/web/race3d.js` (three.js, bundled by esbuild): WebGL drag strip (asphalt/rubber/lane textures, walls,
+  stands, lights, markers 60 ft -> finish, tree), procedural Scirocco (extruded, sculpted body, plate
+  KK-895-H), rival car, PMREM reflections. It only **draws** the simulation: every frame gets the realtime
+  point (distance, lateral position, speed, g, wheelspin, rival distance) from app.js; it never integrates.
+- Smoke from simulated wheelspin, flames and flame light from the same `exhaustFlameEvent`/ALS sustain values
+  as the 2D view. Chase camera on springs: lags under acceleration, FOV opens with speed, yaw follows steering.
+- Ghost: the fastest valid run per drivetrain is stored as a 20 Hz trace (`state.ghost`) and drawn as a
+  translucent car in solo runs.
+- Replay (finish screen, "Bekijk replay"): the run records its samples at ~30 Hz plus every flame event; the
+  replay plays exactly those back (interpolated, nothing re-simulated) in a new renderer with director cameras
+  (chase, launch, side, high, finish) and slow motion off the line. Opening it cancels the automatic return to
+  the overview; closing, back button or leaving the race disposes the WebGL context.
+- Compact HUD over the 3D view (smaller gauges, rival card moved to the free corner, driveline detail on the
+  timeslip instead). Setting "3D-racebeeld" switches back to the 2D canvas; WebGL errors fall back automatically.
+- Smoke checks: 3D draw calls/triangles, disposal after finish, ghost stored with a record, 2D fallback draws,
+  replay recorded to the finish line, replay plays back, replay disposed on close.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
@@ -230,11 +249,13 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
   per-cylinder or crank-angle model, and catalyst damage is not modeled.
 - The realtime race uses the dyno's WOT samples for engine airflow at part load/two-step (scaled), not a
   separate part-load model.
-- Flame visuals are CSS sprites; timing/intensity are simulation-driven, the look is stylised.
+- Flame visuals (CSS sprites in 2D, additive sprites in 3D) are stylised; timing/intensity are simulation-driven.
 - The ALS sound is synthesized to match the physics qualitatively (bang rate, crack/boom balance); it is not
   a recording of a real car.
-- The track perspective is stylised: the player's car art is drawn larger than its lane; the rival is sized
-  to its lane instead.
+- 2D fallback: the track perspective is stylised (car art larger than its lane). The 3D view is to scale, but
+  the car is a low-poly procedural model, not a scanned Scirocco; there is no suspension or body roll yet.
+- Replay samples are taken per rendered frame (at most 30 Hz); on a very slow device the replay is coarser
+  (interpolated between samples).
 - The analytic `simulateDrag` (used for the rival) still uses the steady dyno curve (no transient turbo).
 
 ## APK signing

@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.5.0 (branch `claude-dev`) — phase 2: design system and controls
+## v1.6.0 (branch `claude-dev`) — phase 3: race 2.0
+
+- WebGL drag strip with a 3D Scirocco and rival, smoke and flames from the simulation, chase camera that feels the g-forces.
+- Ghost of your fastest run, replay with director cameras on the finish screen, compact race HUD.
+- 2D view stays available (setting "3D-racebeeld") and is the automatic fallback without WebGL.
+
+## v1.5.0 — phase 2: design system and controls
 
 - Design tokens, bundled fonts, one component library, docked navigation, readable type everywhere.
 - Steppers, tap-to-type values, confirmation above hardware limits and undo after every change.
