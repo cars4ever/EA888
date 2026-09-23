@@ -53,9 +53,11 @@ def build_styles() -> None:
 def bundle_platform() -> None:
     if not ESBUILD.exists():
         sys.exit('esbuild missing: run `npm install` first')
-    subprocess.run([str(ESBUILD), str(ROOT / 'src' / 'web' / 'platform.js'), '--bundle', '--format=iife',
-                    '--target=chrome90', '--minify', '--legal-comments=none', f'--outfile={OUT / "platform.js"}'],
-                   check=True)
+    # platform.js: morphdom + native bridge; race3d.js: the WebGL race renderer (three.js).
+    for name in ('platform.js', 'race3d.js'):
+        subprocess.run([str(ESBUILD), str(ROOT / 'src' / 'web' / name), '--bundle', '--format=iife',
+                        '--target=chrome90', '--minify', '--legal-comments=none', f'--outfile={OUT / name}'],
+                       check=True)
 
 
 def stamp_version() -> str:

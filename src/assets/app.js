@@ -2891,6 +2891,7 @@
       <div class="v10-track-stage" id="v10-track-stage" aria-label="Realtime dragstrip">
         <div class="v10-track-horizon"></div>
         <canvas id="v10-track-canvas" class="v10-track-canvas"></canvas>
+        <canvas id="race3d-canvas" class="race3d-canvas" aria-hidden="true"></canvas>
         <div class="v10-track-vignette"></div>
       </div>
       ${v7GameHeader(opponent ? 'HEADS-UP QUARTER MILE' : 'REAL-TIME QUARTER MILE', 3, raceSubtitle)}
@@ -2971,6 +2972,7 @@
   // Exhaust flames are only drawn for simulated combustion events (C.exhaustFlameEvent).
   function emitExhaustFlame(host, fe) {
     if (!host || !fe?.visible) return false;
+    if (host.id === 'v7-run-car' && raceGame?.r3d) raceGame.r3d.flame(fe);
     const flames = $$('.v7-flame', host);
     flames.forEach((f, i) => {
       f.style.setProperty('--flame-scale', (fe.sizeScale * (i % 2 ? 1.08 : .94)).toFixed(3));
@@ -2995,6 +2997,7 @@
     if (!host) return;
     const k = snap?.alsActive ? clamp(Number(snap.flameSustain || 0), 0, 1) : 0;
     const color = snap?.flame?.color || 'orange';
+    if (host.id === 'v7-run-car' && raceGame?.r3d) raceGame.r3d.sustain(k, color);
     $$('.ea-flame-sustain', host).forEach((n, i) => {
       n.style.setProperty('--sustain', k.toFixed(3));
       n.style.setProperty('--sustain-scale', (.5 + Number(snap?.flame?.sizeScale || 0) * .5 * (i % 2 ? 1.06 : .95)).toFixed(3));
@@ -3077,6 +3080,7 @@
     if (raceGame?.turbo && !raceGame.turboWearApplied) { applyRaceTurboWear(); saveState(); }
     if (raceGameRaf) cancelAnimationFrame(raceGameRaf);
     raceGameRaf = null;
+    disposeRace3D();
     clearRaceGameTimers();
     raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
     raceGamePointerMap.clear();
@@ -3736,6 +3740,58 @@
     }
   }
 
+  // ---- 3D race view (build/web/race3d.js). The simulation stays in this file; the renderer only draws it.
+  // Falls back to the 2D canvas when WebGL is missing, the renderer fails, or 3D is switched off.
+  function race3DEnabled() { return state.settings?.graphics3d !== false && !!window.EA888Race3D?.supported?.(); }
+  function startRace3D() {
+    disposeRace3D();
+    const run = raceGame?.run;
+    const canvas = $('#race3d-canvas');
+    if (!run || !canvas || !race3DEnabled()) return;
+    const ghostData = !run.opponent && state.ghost?.drivetrain === state.vehicle.drivetrain && Array.isArray(state.ghost.trace) ? state.ghost.trace : null;
+    try {
+      raceGame.r3d = window.EA888Race3D.create(canvas, {
+        headsUp: !!run.opponent,
+        drivetrain: state.vehicle.drivetrain,
+        rivalColor: run.opponent ? parseInt(String(run.opponent.profile.color || '#6b1a1a').replace('#', ''), 16) : undefined,
+        ghost: ghostData,
+        reducedMotion: !!state.settings?.reducedMotion
+      });
+    } catch (e) {
+      console.error('race3d', e);
+      raceGame.r3d = null;
+    }
+    raceGame.r3dLast = performance.now();
+    $('.v8-run-game')?.classList.toggle('has-3d', !!raceGame.r3d);
+  }
+  function updateRace3D(run, point) {
+    const r3d = raceGame?.r3d;
+    if (!r3d) return false;
+    const now = performance.now();
+    const dt = (now - (raceGame.r3dLast || now)) / 1000;
+    raceGame.r3dLast = now;
+    try {
+      r3d.update({ ...point, t: run.t, lateralVelocity: run.lateralVelocity }, dt);
+    } catch (e) {
+      console.error('race3d', e);
+      disposeRace3D();
+      $('.v8-run-game')?.classList.remove('has-3d');
+      return false;
+    }
+    return true;
+  }
+  function disposeRace3D() {
+    if (!raceGame?.r3d) return;
+    try { raceGame.r3d.dispose(); } catch (e) { /* context already gone */ }
+    raceGame.r3d = null;
+  }
+  // Ghost: the trace of the fastest valid run per drivetrain, sampled at 20 Hz ([t, distance, lateral]).
+  function recordGhostSample(run) {
+    run.trace = run.trace || [];
+    const lastT = run.trace.length ? run.trace[run.trace.length - 1][0] : -1;
+    if (run.t - lastT >= .05) run.trace.push([+run.t.toFixed(3), +run.x.toFixed(2), +run.lateralM.toFixed(3)]);
+  }
+
   function startV7Run(reactionTime, auto = false) {
     clearRaceGameTimers();
     try {
@@ -3743,6 +3799,7 @@
       raceGame.phase = 'run';
       raceGame.run = createRealtimeRun(reactionTime, auto);
       renderRaceGame();
+      startRace3D();
       startEngineAudio('race');
       updateEngineAudio(raceGame.run.rpm, .92, .25);
       playLaunchCrackle(.95);
@@ -3770,6 +3827,7 @@
     if (!run || run.finished) return;
     const scaledDt = clamp(dt * run.timeScale, 0, .18);
     stepRealtimePhysics(run, scaledDt);
+    recordGhostSample(run);
     updateV7RunDom(run.point);
     const carHost = $('#v7-run-car');
     while (run.pendingFlames.length) emitExhaustFlame(carHost, run.pendingFlames.shift());
@@ -3971,7 +4029,7 @@
     if (!point || !raceGame?.run) return;
     const run = raceGame.run;
     const frac = clamp(point.distanceM / 402.336, 0, 1);
-    drawV10Track(point);
+    if (!updateRace3D(run, point)) drawV10Track(point);
     updateV7Tach('v7-run', point.rpm, point.gear);
 
     const speed = $('#v7-run-speed'); if (speed) speed.textContent = Math.round(point.speedKmh);
@@ -4153,6 +4211,8 @@
     const key=state.vehicle.drivetrain;
     if(result.valid&&(!state.records?.[key]||result.quarter<state.records[key].quarter)){
       state.records=state.records||{FWD:null,RWD:null,AWD:null};state.records[key]={...result,at:result.measuredAt};
+      const trace=raceGame?.run?.trace;
+      if(Array.isArray(trace)&&trace.length>20)state.ghost={drivetrain:key,quarter:result.quarter,at:result.measuredAt,trace:trace.slice(0,900)};
       pushHistory({type:'record',label:`Nieuw ${key}-record: ${result.quarter.toFixed(3)} s`,et:result.quarter,trap:result.trapKmh});
     }
     state.wear.engine=clamp(state.wear.engine+.05+Math.max(0,result.quarter < 10 ? .08 : 0)+Number(result.limiterTimeS||0)*.025,0,100);
@@ -4171,6 +4231,7 @@
     const run = raceGame?.run;
     if (!run || run.finished) return;
     run.finished = true;
+    disposeRace3D();
     const result = buildRealtimeResult(run);
     run.finalResult = result;
     raceGame.finishResult = result;
@@ -4274,6 +4335,7 @@
         ${switchRow('sound', 'Motorgeluid', 'Synthesiseert toerental- en loadfeedback tijdens dyno en drag.', 'settings')}
         ${switchRow('haptics', 'Trillingsfeedback', 'Trilling bij schakelen, tree-lampen, fouten en dynostart.', 'settings')}
         ${switchRow('reducedMotion', 'Minder animatie', 'Versnelt dyno- en raceanimaties en beperkt beweging.', 'settings')}
+        ${switchRow('graphics3d', '3D-racebeeld', window.EA888Race3D?.supported?.() ? 'Realtime 3D-baan met je Scirocco, rook en vlammen. Uit = de lichtere 2D-weergave.' : 'Niet beschikbaar: dit toestel ondersteunt geen WebGL.', 'settings')}
       </div>
     </section>`;
   }
@@ -4968,6 +5030,9 @@
 
   window.__EA888_DEBUG__ = {
     rerender: () => { render(); return true; },
+    setGraphics3dForTest: on => { state.settings.graphics3d = !!on; saveState(); return state.settings.graphics3d; },
+    race3d: () => raceGame?.r3d ? { active: true, ...raceGame.r3d.info() } : { active: false, supported: !!window.EA888Race3D?.supported?.() },
+    ghost: () => state.ghost ? { drivetrain: state.ghost.drivetrain, quarter: state.ghost.quarter, samples: state.ghost.trace.length } : null,
     platform: () => ({ loaded: !!PLATFORM, native: !!NATIVE?.available }),
     audio: () => audioDiagnostics(),
     turbo: () => raceGame ? { phase: raceGame.phase, snap: raceGame.run?.turboSnap || raceGame.turboSnap || null, als: raceGame.alsInfo ? { enabled: raceGame.alsInfo.enabled, mode: raceGame.alsInfo.mode } : null, flames: (raceGame.flameLog || []).slice(-30), wear: raceGame.turbo ? cloneJson(raceGame.turbo.state.wear) : null, alsSeconds: raceGame.turbo?.state.alsSeconds || 0 } : null,

@@ -258,7 +258,7 @@
       records: { FWD: null, RWD: null, AWD: null },
       achievements: {},
       buildSlots: [null, null, null],
-      settings: { sound: true, haptics: true, reducedMotion: false },
+      settings: { sound: true, haptics: true, reducedMotion: false, graphics3d: true },
       history: []
     };
   }

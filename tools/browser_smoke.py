@@ -346,7 +346,13 @@ def main() -> None:
         report['checks']['heads_up_rival_car_visible'] = page.locator('#v12-rival-car img').count() == 1 and page.eval_on_selector('#v12-rival-car img', 'img => img.complete && img.naturalWidth > 100')
         report['checks']['heads_up_gap_hud'] = page.locator('#v12-rival-gap').count() == 1
         report['checks']['driveline_live_hud'] = all(page.locator(sel).count() == 1 for sel in ('#v12-clutch-temp','#v12-gearbox-temp','#v12-stress'))
-        report['checks']['realtime_canvas_track'] = page.eval_on_selector('#v10-track-canvas', "c => c.width > 500 && c.height > 900 && c.getContext('2d').getImageData(Math.floor(c.width/2), Math.floor(c.height*.65), 1, 1).data[3] > 0")
+        r3d = page.evaluate("window.__EA888_DEBUG__.race3d()")
+        report['race3d'] = r3d
+        if r3d.get('active'):
+            # WebGL view: the renderer draws the strip, both cars and the effects every frame.
+            report['checks']['realtime_canvas_track'] = r3d['calls'] > 50 and r3d['triangles'] > 2000 and page.locator('.v8-run-game.has-3d #race3d-canvas').is_visible()
+        else:
+            report['checks']['realtime_canvas_track'] = page.eval_on_selector('#v10-track-canvas', "c => c.width > 500 && c.height > 900 && c.getContext('2d').getImageData(Math.floor(c.width/2), Math.floor(c.height*.65), 1, 1).data[3] > 0")
         race_a = page.evaluate("window.__EA888_DEBUG__.race()")
         page.wait_for_timeout(420)
         race_b = page.evaluate("window.__EA888_DEBUG__.race()")
@@ -374,6 +380,10 @@ def main() -> None:
         page.wait_for_selector('.v7-race-overview', state='visible')
         overview_text = page.locator('.v7-timeslip-overview').inner_text()
         report['checks']['returns_to_overview'] = page.locator('.v7-race-overview').count() == 1
+        report['checks']['race3d_disposed_after_finish'] = page.evaluate("window.__EA888_DEBUG__.race3d().active") is False
+        ghost = page.evaluate("window.__EA888_DEBUG__.ghost()")
+        record = page.evaluate("window.__EA888_DEBUG__.lastDrag()")
+        report['checks']['ghost_saved_with_record'] = (not record.get('valid')) or (ghost is not None and ghost['samples'] > 20)
         report['checks']['drag_completed'] = ('HEADS-UP WIN' in overview_text or 'HEADS-UP LOSS' in overview_text)
         last_drag = page.evaluate("window.__EA888_DEBUG__.lastDrag()")
         report['checks']['heads_up_result_persisted'] = last_drag.get('raceMode') == 'heads_up' and bool(last_drag.get('opponentName')) and isinstance(last_drag.get('won'), bool) and isinstance(last_drag.get('raceDeltaS'), (int, float))
@@ -402,8 +412,12 @@ def main() -> None:
         # Only the DQ250 is allowed to shift by itself. The debug setter keeps the
         # already measured engine curve current and changes only the gearbox for this check.
         assert page.evaluate("window.__EA888_DEBUG__.setTransmissionForTest('dq250')")
+        page.evaluate("window.__EA888_DEBUG__.setGraphics3dForTest(false)")
         click(page, '[data-action="auto-drag-game"]')
         page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=12000)
+        page.wait_for_timeout(300)
+        report['checks']['race_2d_fallback_draws'] = page.evaluate("window.__EA888_DEBUG__.race3d().active") is False and page.eval_on_selector('#v10-track-canvas', "c => c.width > 500 && c.getContext('2d').getImageData(Math.floor(c.width/2), Math.floor(c.height*.65), 1, 1).data[3] > 0")
+        page.evaluate("window.__EA888_DEBUG__.setGraphics3dForTest(true)")
         dsg_race = page.evaluate("window.__EA888_DEBUG__.race()")
         audio_third = page.evaluate("window.__EA888_DEBUG__.audio()")
         report['checks']['dq250_only_auto_shift'] = dsg_race.get('transmissionId') == 'dq250' and dsg_race.get('autoShift') is True and page.locator('#v7-dsg-status').count() == 1 and page.locator('#v7-shift-button').count() == 0
