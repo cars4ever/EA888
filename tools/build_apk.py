@@ -60,9 +60,24 @@ PRODUCTION_ASSETS = [
 ALIGNED_STORED = {'AndroidManifest.xml', 'classes.dex', 'resources.arsc', 'res/mipmap/app_icon.png'}
 
 
+SECRET_FLAGS = {'-storepass', '-keypass', '--ks-pass', '--key-pass'}
+
+
+def redacted(cmd: list[str]) -> str:
+    """Command line for the build log with signing passwords masked (logs may end up in CI output)."""
+    out = []
+    for i, part in enumerate(map(str, cmd)):
+        out.append('***' if i and str(cmd[i - 1]) in SECRET_FLAGS else part)
+    return ' '.join(out)
+
+
 def run(cmd: list[str], **kwargs) -> None:
-    print('+', ' '.join(map(str, cmd)))
-    subprocess.run(cmd, check=True, **kwargs)
+    print('+', redacted(cmd))
+    try:
+        subprocess.run(cmd, check=True, **kwargs)
+    except subprocess.CalledProcessError as exc:
+        # The default message repeats the full command line, passwords included.
+        raise RuntimeError(f'command failed ({exc.returncode}): {redacted(cmd)}') from None
 
 
 def aligned_extra(current_offset: int, filename: str) -> bytes:
