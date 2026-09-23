@@ -749,7 +749,10 @@ export function create(canvas, opts = {}) {
     // Squat under acceleration (nose up), roll with lateral velocity.
     player.body.rotation.x = THREE.MathUtils.lerp(player.body.rotation.x, -Math.min(accG, 1.4) * .026, Math.min(1, dt * 6));
     player.body.rotation.z = THREE.MathUtils.lerp(player.body.rotation.z, (Number(frame.lateralVelocity) || 0) * .012, Math.min(1, dt * 5));
-    player.body.position.y = Math.sin(time * 23) * .002 * Math.min(1, v / 40);
+    // wheel hop from the vehicle model: the body bounces and pitches with the driveline mode
+    const hop = Number(frame.hopOsc) || 0;
+    player.body.position.y = Math.sin(time * 23) * .002 * Math.min(1, v / 40) + hop * .018;
+    player.body.rotation.x += hop * .012;
     wheelAngle -= (last ? (d - last.distanceM) : 0) / WHEEL_R;
     const spin = (Number(frame.wheelspinPct) || 0) / 100;
     player.wheels.forEach((w, i) => { w.rotation.x = wheelAngle - (driven.includes(i) ? spin * time * 40 : 0); });

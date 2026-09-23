@@ -758,7 +758,9 @@
     } else audio.nextAlsBangMs = 0;
     if (audio.tyreSource) {
       audio.tyreSource.playbackRate.setTargetAtTime(.72 + slip * .86 + boundedRpm / 26000, t, .025);
-      audio.tyreGain.gain.setTargetAtTime(activeGain * Math.pow(slip, .72) * (.12 + boundedLoad * .19) + .0001, t, .03);
+      // a hopping tyre chatters: its noise comes in bursts at the hop frequency
+      const chatter = 1 + 1.4 * Math.abs(Number(extras?.hopOsc) || 0);
+      audio.tyreGain.gain.setTargetAtTime(activeGain * Math.pow(slip, .72) * (.12 + boundedLoad * .19) * chatter + .0001, t, .012);
     }
 
     // Samples: loudness follows load by gain; the synthesized voice is loud or quiet by its own physics.
@@ -1788,6 +1790,8 @@
   function partCard(cat, part, selected) {
     const randy = isRandyPart(part);
     const key = `${cat.id}:${part.id}`;
+    const hop = cat.id === 'mounts' ? C.hopMode(state, part.id) : null;
+    const hopMeta = hop ? `<div class="part-meter"><span>Hop-mode aandrijflijn</span><b>${hop.hz.toFixed(1)} Hz · demping ${Math.round(hop.zeta * 100)}%</b><i style="--fill:${clamp(hop.zeta / .4 * 100, 8, 100)}%"></i></div>` : '';
     const turboMeta = cat.id === 'turbo' ? `<div class="part-meter"><span>Compressor</span><b>${part.compressorMm || 'OEM'} mm</b><i style="--fill:${clamp(((part.compressorMm || 45)-40)/80*100,8,100)}%"></i></div>` : '';
     return `<article class="part-card part-row ${selected ? 'selected' : ''}" data-part-row="${key}">
       <details ${openPartRows.has(key) ? 'open' : ''} data-part-details="${key}">
@@ -1796,7 +1800,7 @@
           <span class="part-row-main"><b>${esc(part.name)}${randy ? ' <em class="randy-badge">RANDY SPEC</em>' : ''}</b><small>${esc(part.specs)}</small></span>
           <span class="part-row-price">${part.price ? euro(part.price) : 'OEM'}</span>
         </summary>
-        <div class="part-row-body"><p>${esc(part.detail)}</p>${turboMeta}</div>
+        <div class="part-row-body"><p>${esc(part.detail)}</p>${turboMeta}${hopMeta}</div>
       </details>
       ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`}
     </article>`;
@@ -2924,6 +2928,7 @@
         ${outcome}
         <div class="v12-analysis-card"><span>PIEKWAARDEN</span><b>${Math.round(maxSpeed)} km/u</b><small>${Math.round(maxRpm)} rpm · ${maxBoost.toFixed(2)} bar</small></div>
         <div class="v12-analysis-card"><span>TRACTIE</span><b>${maxSpin.toFixed(0)}% spin</b><small>${Number(run.burnoutTempC || 0).toFixed(0)}°C band bij launch · ${Number(run.sixtyFt || 0).toFixed(3)} s 60 ft</small></div>
+        ${Number.isFinite(run.hopS) ? `<div class="v12-analysis-card ${run.hopS > .2 ? 'loss' : ''}"><span>WHEEL HOP</span><b>${run.hopS > .05 ? `${run.hopS.toFixed(1)} s` : 'geen'}</b><small>${run.hopS > .2 ? 'steunen/bussen (Bouw → Steunen) of TC dempen het' : `${esc(C.getPart(state, 'mounts').name)}`}</small></div>` : ''}
         ${Number.isFinite(run.knockEvents) ? `<div class="v12-analysis-card ${run.knockDamagePct > 0 ? 'loss' : ''}"><span>KLOP</span><b>${run.knockEvents} cycli</b><small>${run.knockDamagePct > 0 ? `zonder knock control · schade +${run.knockDamagePct.toFixed(2)}%` : run.kcMaxRetardDeg > .05 ? `knock control max −${run.kcMaxRetardDeg.toFixed(1)}°` : 'geen klop'}</small></div>` : ''}
         <div class="v12-analysis-card"><span>RIJLIJN</span><b>${Number(maxLane || 0).toFixed(2)} m</b><small>${run.lineTouches || 0} correcties · ${run.laneDnf ? 'run ongeldig' : 'binnen de strip'}</small></div>
         <div class="v12-analysis-card"><span>AANDRIJFLIJN</span><b>${Number(run.maxClutchTempC || 0).toFixed(0)}°C koppeling</b><small>${Number(run.maxGearboxTempC || 0).toFixed(0)}°C bak · stress ${Number(run.drivelineStress || 0).toFixed(0)}%</small></div>
@@ -4391,6 +4396,12 @@
           haptic([10,8,10]);
         }
       }
+      if (p.hop > .35 && run.t - (run.hopWarnAt ?? -9) > 1.2) {
+        run.hopWarnAt = run.t;
+        showV7ShiftFeedback('WHEEL HOP!', 'bad');
+        haptic([14,40,14,40,14]);
+      }
+      run.drivelineStress += p.hop * p.hop * h * 3;
       run.gearboxTempC += Math.abs(p.torqueNm) / 900 * h * (run.shifting ? 1.6 : .34);
       run.gearboxTempC += (66 - run.gearboxTempC) * h * .010;
       run.maxClutchTempC = Math.max(run.maxClutchTempC, run.clutchTempC);
@@ -4643,7 +4654,7 @@
     const cutFraction = pt.limiter ? 1 : shiftCut ? 1 : 0;
     const cutKind = pt.limiter ? limiterCutKind() : 'spark';
     const knock = Number(pt.knockNow || 0);
-    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind, knock } : { cutFraction, cutKind, knock });
+    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind, knock, hopOsc: pt.hopOsc || 0 } : { cutFraction, cutKind, knock, hopOsc: pt.hopOsc || 0 });
     try { updateRivalAudio(run); } catch (e) { audioFault(e); }
     if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
   }
@@ -4989,6 +5000,8 @@
       maxClutchTempC:Number(run.maxClutchTempC || run.clutchTempC || 0),
       maxGearboxTempC:Number(run.maxGearboxTempC || run.gearboxTempC || 0),
       limiterTimeS:Number(run.limiterTime || 0),
+      hopS:Number(run.rt?.state.hopS || 0), hopMax:Number(run.rt?.state.hopMaxI || 0),
+      hopWearPct: run.rt ? C.hopWearPct(run.rt.state, C.getPart(state, 'mounts')) : 0,
       knockEvents:Number(run.rt?.state.knockEvents || 0), kcMaxRetardDeg:Number(run.rt?.state.kcMaxDeg || 0), knockDamagePct:Number(run.rt?.state.knockDamage || 0),
       launchTyreC:Number(run.burnoutTempC || 0),
       drivelineStress:Math.round(clamp(Number(run.drivelineStress || 0),0,1000)*10)/10,
@@ -5016,6 +5029,11 @@
 
   function commitV7DragResult(result){
     applyRaceTurboWear();
+    // wheel hop and hard mounts: driveline wear from what this pass actually did
+    if (result.hopWearPct > 0) {
+      state.wear.transmission = clamp(Number(state.wear.transmission || 0) + result.hopWearPct, 0, 100);
+      if (result.hopS > .2) pushHistory({ type: 'hop', label: `Wheel hop ${result.hopS.toFixed(1)} s · aandrijflijn +${result.hopWearPct.toFixed(2)}% slijtage` });
+    }
     // knocking cycles without knock control: engine damage from what this pass actually did
     if (result.knockDamagePct > 0) {
       state.damage.engine = clamp(Number(state.damage.engine || 0) + result.knockDamagePct, 0, 100);

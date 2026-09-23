@@ -100,3 +100,31 @@ function burnout(preset, seconds, mutate) {
 
 module.exports = { compounds: Object.keys(C.TYRE).length };
 console.log('PASS tyre, burnout and knock tests');
+
+// 7. Wheel hop: the driveline's torsional mode against a tyre past its peak. OEM mounts let a clutch dump on
+//    a stock ECU hop; stiffer, better damped mounts raise the mode and stop it, step by step.
+{
+  const oem = C.hopMode(build('stock'), 'oem_mounts'), solid = C.hopMode(build('stock'), 'solid_race');
+  assert(oem.hz > 5 && oem.hz < 12, `OEM hop mode ${oem.hz} Hz`);
+  assert(solid.hz > oem.hz && solid.zeta > oem.zeta, 'stiffer mounts: higher and better damped mode');
+  const hopFor = (preset, mutate, mounts, cfg = {}) => C.simulateRaceRun(build(preset, s => { mutate(s); s.selections.mounts = mounts; }), { reactionTime: 0, tyreTempC: C.TYRE[build(preset, mutate).vehicle.tireCompound].optC, ...cfg });
+  const order = ['oem_mounts', 'dogbone_insert', 'poly_mounts', 'solid_race'];
+  const cases = [
+    ['stock', s => { s.vehicle.tireCompound = 'uhp'; }, {}],
+    ['randy', s => { s.vehicle.tireCompound = 'uhp'; }, { tractionControl: false }],
+    ['randy', s => { s.vehicle.tireCompound = 'semislick'; }, { tractionControl: false }]
+  ];
+  for (const [preset, mutate, cfg] of cases) {
+    const runs = order.map(m => hopFor(preset, mutate, m, cfg));
+    assert(runs[0].hopS > 0.3, `${preset}: OEM mounts must hop (${runs[0].hopS} s)`);
+    for (let i = 1; i < runs.length; i++) assert(runs[i].hopS <= runs[i - 1].hopS + 0.02, `${preset}: ${order[i]} must not hop more than ${order[i - 1]}`);
+    assert(runs[2].hopS < 0.05, `${preset}: poly mounts stop the hop (${runs[2].hopS} s)`);
+    assert(runs[0].hopWearPct > runs[2].hopWearPct, 'hopping wears the driveline');
+  }
+  // traction control keeps the tyre at its peak: less hop than without
+  const tcOn = hopFor('randy', s => { s.vehicle.tireCompound = 'uhp'; }, 'oem_mounts', { tractionControl: true });
+  const tcOff = hopFor('randy', s => { s.vehicle.tireCompound = 'uhp'; }, 'oem_mounts', { tractionControl: false });
+  assert(tcOn.hopS <= tcOff.hopS, `TC must not add hop (${tcOn.hopS} vs ${tcOff.hopS})`);
+  // a solid mount passes vibration into the driveline on every pass
+  assert(C.hopWearPct({ hopS: 0, hopMaxI: 0 }, C.CATEGORY_MAP.mounts.items.find(m => m.id === 'solid_race')) > 0, 'solid mounts: NVH wear');
+}

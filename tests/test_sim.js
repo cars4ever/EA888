@@ -13,7 +13,7 @@ function presetResult(id, mutate) {
 }
 
 // Catalogue depth and explicit big-turbo support.
-assert.strictEqual(C.CATEGORIES.length, 19, 'expected 19 component categories');
+assert.strictEqual(C.CATEGORIES.length, 20, 'expected 20 component categories');
 assert.strictEqual(C.CATEGORY_MAP.turbo.items.length, 17, 'expected 17 turbo choices');
 assert.strictEqual(Math.max(...C.CATEGORY_MAP.turbo.items.map(x => x.compressorMm || 0)), 106, 'largest Precision (106 mm) missing');
 assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'pt9803' && x.compressorMm === 98), '98-mm turbo missing');
