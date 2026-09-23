@@ -186,10 +186,54 @@ def main() -> None:
         }"""
         after_vertical = page.evaluate(gesture, [slider['sel'], 3, 120])
         after_horizontal = page.evaluate(gesture, [slider['sel'], 90, 4])
+        if page.locator('[data-action="limit-revert"]').count():
+            click(page, '[data-action="limit-revert"]')
+            after_horizontal_reverted = page.evaluate("sel => document.querySelector(sel).value", slider['sel'])
+        else:
+            after_horizontal_reverted = None
         report['checks']['slider_ignores_vertical_swipe'] = after_vertical == slider['value']
         report['checks']['slider_follows_horizontal_drag'] = after_horizontal != slider['value']
+        report['checks']['slider_limit_revert_restores'] = after_horizontal_reverted in (None, slider['value'])
         page.evaluate("""([sel, v]) => { const el = document.querySelector(sel); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }""", [slider['sel'], slider['value']])
         report['checks']['slider_restored'] = page.evaluate("sel => document.querySelector(sel).value", slider['sel']) == slider['value']
+
+        # Stepper, undo, tap-to-type and the safe-limit confirmation on the boost target.
+        sel = slider['sel']
+        val = lambda: float(page.evaluate("sel => document.querySelector(sel).value", sel))
+        step = float(page.evaluate("sel => document.querySelector(sel).step", sel))
+        v0 = val()
+        plus = page.locator(sel).locator('xpath=..').locator('.step-btn[data-step="1"]')
+        plus.dispatch_event('pointerdown', {'pointerId': 61, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_timeout(60)
+        plus.dispatch_event('pointerup', {'pointerId': 61, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_timeout(80)
+        v1 = val()
+        toast = page.locator('#toast.show .toast-action')
+        report['checks']['stepper_steps_once'] = abs(v1 - v0 - step) < 1e-6
+        report['checks']['undo_offered_after_edit'] = toast.count() == 1 and 'Ongedaan' in toast.inner_text()
+        if toast.count():
+            toast.click()
+            page.wait_for_timeout(120)
+        report['checks']['undo_restores_value'] = abs(val() - v0) < 1e-6
+        page.locator(sel).locator('xpath=ancestor::div[contains(@class,"control")][1]').locator('.value-edit').click()
+        page.wait_for_selector('#value-editor-field')
+        page.fill('#value-editor-field', str(round(v0 + 2 * step, 3)))
+        click(page, '[data-action="value-editor-apply"]')
+        page.wait_for_timeout(120)
+        report['checks']['tap_to_type_sets_value'] = abs(val() - (v0 + 2 * step)) < 1e-6
+        page.locator(sel).locator('xpath=ancestor::div[contains(@class,"control")][1]').locator('.value-edit').click()
+        page.wait_for_selector('#value-editor-field')
+        page.fill('#value-editor-field', '4.0')
+        click(page, '[data-action="value-editor-apply"]')
+        page.wait_for_timeout(150)
+        limit_modal = page.locator('[data-action="limit-revert"]').count() == 1
+        click(page, '[data-action="limit-revert"]') if limit_modal else None
+        page.wait_for_timeout(150)
+        report['checks']['limit_confirmation_and_revert'] = limit_modal and abs(val() - (v0 + 2 * step)) < 1e-6
+        page.evaluate("""([sel, v]) => { const el = document.querySelector(sel); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }""", [sel, slider['value']])
+        page.wait_for_timeout(100)
+        if page.locator('#toast.show').count():
+            page.evaluate("document.querySelector('#toast').classList.remove('show')")
 
         print('CHECKPOINT tune done', flush=True)
         # Enable the faster animation path through the real settings UI.

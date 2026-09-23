@@ -851,13 +851,23 @@
     return { label: 'RISICOVOL', detail: `${Math.round(r.peakHp)} pk · score ${r.reliabilityScore}/100`, cls: 'danger' };
   }
 
-  function showToast(message) {
+  // Toast with an optional action (e.g. { label: 'Ongedaan', run: fn }): stays longer when it carries one.
+  function showToast(message, action = null) {
     const node = $('#toast');
     if (!node) return;
-    node.textContent = message;
+    node.textContent = '';
+    const text = document.createElement('span');
+    text.textContent = message;
+    node.append(text);
+    if (action) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'toast-action'; btn.textContent = action.label;
+      btn.addEventListener('click', ev => { ev.stopPropagation(); node.classList.remove('show'); action.run(); });
+      node.append(btn);
+    }
     node.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => node.classList.remove('show'), 2800);
+    toastTimer = setTimeout(() => node.classList.remove('show'), action ? 5200 : 2800);
   }
 
   function go(tab) {
@@ -1373,8 +1383,8 @@
     const delta = Number(value) - Number(target);
     const match = Math.abs(delta) <= step * 2;
     return `<div class="control assembly-control ${match ? 'matched' : ''}">
-      <div class="control-head"><div><b>${esc(label)}</b><small>${esc(hint || '')}</small></div><output data-value-for="assembly.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
-      <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-assembly="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}">
+      <div class="control-head"><div><b>${esc(label)}</b><small>${esc(hint || '')}</small></div><output class="value-edit" tabindex="0" role="button" aria-label="Waarde intypen" data-value-for="assembly.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
+      <div class="range-row"><button type="button" class="step-btn" data-step="-1" aria-label="Lager">−</button><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-assembly="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}"><button type="button" class="step-btn" data-step="1" aria-label="Hoger">+</button></div>
       <div class="target-marker"><span>Modeldoel ${Number(target).toFixed(decimals)}${esc(unit)}</span><i style="--target:${clamp((target-min)/(max-min)*100,0,100)}%"></i></div>
     </div>`;
   }
@@ -1461,8 +1471,8 @@
 
   function slider(name, label, min, max, step, value, unit, decimals = 1, hint = '', group = 'tune') {
     return `<div class="control">
-      <div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output data-value-for="${group}.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
-      <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-${group}="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}">
+      <div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output class="value-edit" tabindex="0" role="button" aria-label="Waarde intypen" data-value-for="${group}.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
+      <div class="range-row"><button type="button" class="step-btn" data-step="-1" aria-label="Lager">−</button><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-${group}="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}"><button type="button" class="step-btn" data-step="1" aria-label="Hoger">+</button></div>
       <div class="range-scale"><span>${min}</span><span>${max}${esc(unit)}</span></div>
     </div>`;
   }
@@ -1487,8 +1497,8 @@
   let alsTestResult = null;
   function alsSlider(key, label, min, max, step, value, unit, decimals, hint) {
     return `<div class="control">
-      <div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output data-value-for="als.${key}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
-      <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-als="${key}" data-unit="${esc(unit)}" data-decimals="${decimals}">
+      <div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output class="value-edit" tabindex="0" role="button" aria-label="Waarde intypen" data-value-for="als.${key}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div>
+      <div class="range-row"><button type="button" class="step-btn" data-step="-1" aria-label="Lager">−</button><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-als="${key}" data-unit="${esc(unit)}" data-decimals="${decimals}"><button type="button" class="step-btn" data-step="1" aria-label="Hoger">+</button></div>
       <div class="range-scale"><span>${min}</span><span>${max}${esc(unit)}</span></div>
     </div>`;
   }
@@ -2070,7 +2080,7 @@
   }
 
   function vehicleRange(name, label, min, max, step, value, unit, decimals = 0, hint = '') {
-    return `<div class="control compact-control"><div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output data-value-for="vehicle.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-vehicle="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}"></div>`;
+    return `<div class="control compact-control"><div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output class="value-edit" tabindex="0" role="button" aria-label="Waarde intypen" data-value-for="vehicle.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div><div class="range-row"><button type="button" class="step-btn" data-step="-1" aria-label="Lager">−</button><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-vehicle="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}"><button type="button" class="step-btn" data-step="1" aria-label="Hoger">+</button></div></div>`;
   }
 
   function burnoutProfile() {
@@ -4335,11 +4345,163 @@
     showToast('EA888 Lab teruggezet naar de Randy JE83 K04-referentie.'); render();
   }
 
+  // ---- Controls: steppers, tap-to-type, safe-limit confirmation and undo --------------------------------
+  // Every range control edits one state path (data-tune / data-assembly / data-als / data-dyno-config /
+  // data-vehicle / data-service). An edit records the old value of just that path, so "Ongedaan" restores
+  // exactly what was changed and never rolls back anything else (a dyno pull done since, money, wear).
+  const RANGE_PATHS = [['tune', 'tune'], ['assembly', 'assembly'], ['dynoConfig', 'dynoConfig'], ['vehicle', 'vehicle'], ['service', 'service']];
+  function rangePath(el) {
+    if (el.dataset.als) return ['tune', 'als'];
+    for (const [attr, group] of RANGE_PATHS) if (el.dataset[attr]) return [group, el.dataset[attr]];
+    return null;
+  }
+  const readPath = ([g, k]) => cloneJson(g === '__root' ? state[k] : state[g]?.[k]);
+  function writePath([g, k], value) { if (g === '__root') state[k] = cloneJson(value); else if (state[g]) state[g][k] = cloneJson(value); }
+  function rangeText(el, value = el.value) { return `${Number(value).toFixed(Number(el.dataset.decimals || 0))}${el.dataset.unit || ''}`; }
+  function rangeLabel(el) { return el.closest('.control')?.querySelector('.control-head b')?.textContent?.trim() || 'Waarde'; }
+
+  let rangeEdit = null; // { el, path, before, fromValue }
+  function beginRangeEdit(el) {
+    const path = rangePath(el);
+    if (!path || rangeEdit?.el === el) return;
+    rangeEdit = { el, path, before: readPath(path), fromValue: el.dataset.committed ?? el.getAttribute('value') ?? el.value };
+  }
+  document.addEventListener('input', ev => { if (ev.target.matches?.('input[type="range"]')) beginRangeEdit(ev.target); }, true);
+
+  // Hardware limits that deserve a confirmation when a value is pushed past them.
+  function safeLimit(path) {
+    const [g, k] = path;
+    if (g === 'tune' && /^boost(Low|Mid|High)Bar$/.test(k)) {
+      const bc = C.getPart(state, 'boostControl');
+      return { value: Number(bc.boostHardwareMaxBar), text: `${num(bc.boostHardwareMaxBar, 2)} bar`, why: `de limiet van ${bc.name}` };
+    }
+    if (g === 'tune' && k === 'revLimitRpm') {
+      const lim = Math.min(...['block', 'crank', 'oiling', 'head', 'valvetrain', 'ecu'].map(id => Number(C.getPart(state, id)?.rpmLimit) || Infinity));
+      return Number.isFinite(lim) ? { value: lim, text: `${Math.round(lim)} rpm`, why: 'de toerengrens van de zwakste gemonteerde component' } : null;
+    }
+    if (g === 'tune' && k === 'ignitionTrimDeg') return { value: 3, text: '+3,0°', why: 'de knockmarge van de basiskaart' };
+    return null;
+  }
+  function alsLimit(key, value) {
+    if (key === 'maxEgtC' && value > 1100) return { text: '1100 °C', why: 'de temperatuurgrens van spruitstuk en turbinehuis' };
+    if (key === 'maxShaftPct' && value > 100) return { text: '100 %', why: 'het maximum toerental van de turbo-as' };
+    return null;
+  }
+
+  function commitRangeEdit(el) {
+    const edit = rangeEdit?.el === el ? rangeEdit : null;
+    rangeEdit = null;
+    if (!edit) return;
+    const from = edit.fromValue, to = el.value;
+    el.dataset.committed = to;
+    if (Number(from) === Number(to)) return;
+    const label = rangeLabel(el);
+    const undo = () => { writePath(edit.path, edit.before); saveState(); render(); showToast(`${label} teruggezet naar ${rangeText(el, from)}.`); };
+    const lim = el.dataset.als ? alsLimit(el.dataset.als, Number(to)) : safeLimit(edit.path);
+    const crossed = lim && (el.dataset.als ? true : Number(to) > lim.value && Number(from) <= lim.value);
+    if (crossed && (!el.dataset.als || !alsLimit(el.dataset.als, Number(from)))) {
+      showModal('Boven de veilige grens',
+        `<p class="modal-copy"><b>${esc(label)}</b> staat nu op <b>${esc(rangeText(el, to))}</b>, boven ${esc(lim.why)} (${esc(lim.text)}). Dat vergroot de kans op schade tijdens de pull en op de strip.</p>`,
+        '<button class="btn" data-action="limit-revert" autofocus>Terugzetten</button><button class="btn ghost" data-action="limit-accept">Toch doorgaan</button>');
+      pendingLimit = { undo, label, text: `${label} ${rangeText(el, from)} → ${rangeText(el, to)}` };
+      haptic([20, 30, 20]);
+      return;
+    }
+    showToast(`${label} ${rangeText(el, from)} → ${rangeText(el, to)}`, { label: 'Ongedaan', run: undo });
+  }
+  let pendingLimit = null;
+  document.addEventListener('change', ev => { if (ev.target.matches?.('input[type="range"]')) commitRangeEdit(ev.target); });
+
+  // Stepper buttons: one step per tap; hold to repeat, speeding up after a dozen steps.
+  let stepHold = null;
+  function stepRange(input, dir, mult = 1) {
+    const min = Number(input.min), max = Number(input.max), step = Number(input.step) || 1;
+    const v = clamp(Math.round((Number(input.value) + dir * step * mult) / step) * step, min, max);
+    const text = String(Number(v.toFixed(6)));
+    if (input.value === text) return false;
+    input.value = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+  function endStepHold() {
+    if (!stepHold) return;
+    clearTimeout(stepHold.timer);
+    const { input } = stepHold;
+    stepHold = null;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  document.addEventListener('pointerdown', ev => {
+    const btn = ev.target.closest?.('.step-btn');
+    if (!btn || btn.disabled || raceGame?.open) return;
+    const input = btn.closest('.range-row')?.querySelector('input[type="range"]');
+    if (!input) return;
+    ev.preventDefault();
+    endStepHold();
+    const dir = Number(btn.dataset.step) || 1;
+    if (stepRange(input, dir)) haptic(4);
+    const repeat = () => {
+      if (!stepHold) return;
+      stepHold.count += 1;
+      stepRange(input, dir, stepHold.count > 12 ? 5 : 1);
+      stepHold.timer = setTimeout(repeat, stepHold.count > 6 ? 45 : 90);
+    };
+    stepHold = { input, count: 0, timer: setTimeout(repeat, 420) };
+  }, { passive: false });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => document.addEventListener(type, ev => { if (stepHold && (type !== 'pointerleave' || ev.target.closest?.('.step-btn'))) endStepHold(); }, true));
+  document.addEventListener('keydown', ev => {
+    const btn = ev.target.closest?.('.step-btn');
+    if (btn && (ev.key === 'Enter' || ev.key === ' ')) {
+      ev.preventDefault();
+      const input = btn.closest('.range-row')?.querySelector('input[type="range"]');
+      if (input && stepRange(input, Number(btn.dataset.step) || 1)) input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const out = ev.target.closest?.('.value-edit');
+    if (out && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); openValueEditor(out); }
+  });
+
+  // Tap the value to type it exactly.
+  let valueEditorInput = null;
+  function openValueEditor(output) {
+    const input = output.closest('.control')?.querySelector('input[type="range"]');
+    if (!input || input.disabled) return;
+    valueEditorInput = input;
+    const unit = (input.dataset.unit || '').trim();
+    showModal(esc(rangeLabel(input)),
+      `<label class="value-editor"><span>Nieuwe waarde${unit ? ` (${esc(unit)})` : ''}</span><input id="value-editor-field" type="number" inputmode="decimal" min="${input.min}" max="${input.max}" step="${input.step}" value="${input.value}"></label><p class="modal-copy">Bereik ${esc(rangeText(input, input.min))} – ${esc(rangeText(input, input.max))}, stap ${esc(String(Number(input.step)))}.</p>`,
+      '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-action="value-editor-apply">Toepassen</button>');
+    setTimeout(() => { const f = $('#value-editor-field'); f?.focus(); f?.select(); }, 60);
+  }
+  function applyValueEditor() {
+    const input = valueEditorInput;
+    const field = $('#value-editor-field');
+    valueEditorInput = null;
+    if (!input || !field) return closeModal();
+    const raw = Number(String(field.value).replace(',', '.'));
+    closeModal();
+    if (!Number.isFinite(raw)) return showToast('Geen geldig getal.');
+    const step = Number(input.step) || 1;
+    const v = clamp(Math.round(raw / step) * step, Number(input.min), Number(input.max));
+    input.value = String(Number(v.toFixed(6)));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  document.addEventListener('click', ev => {
+    const out = ev.target.closest?.('.value-edit');
+    if (out && !raceGame?.open) openValueEditor(out);
+  });
+
+  // Undo for tapped changes (parts, presets, switches): the old value of the touched paths only.
+  function offerUndo(paths, label) {
+    const before = paths.map(p => [p, readPath(p)]);
+    return () => showToast(label, { label: 'Ongedaan', run: () => { before.forEach(([p, v]) => writePath(p, v)); pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId; saveState(); render(); showToast('Ongedaan gemaakt.'); } });
+  }
+
   // Scroll-safe sliders. Native range inputs grab a vertical swipe and change their value while the user only
   // wanted to scroll. Range inputs ignore the pointer (CSS) and this handler moves them only after a clearly
   // horizontal drag; a vertical swipe scrolls the page and a plain tap changes nothing.
   let sliderDrag = null;
   function rangeUnder(event) {
+    if (event.target.closest?.('.step-btn, .value-edit')) return null;
     const host = event.target.closest?.('.control, .compact-control, .als-control, [data-range-host]');
     const input = host?.querySelector('input[type="range"]');
     if (!input || input.disabled) return null;
@@ -4489,22 +4651,29 @@
       saveState(); haptic(10); return render();
     }
     if (btn.dataset.preset) {
+      const announce = offerUndo(['selections', 'tune', 'assembly', 'service', 'vehicle', 'dynoConfig', 'buildName'].map(k => ['__root', k]), 'Build geladen. Het resultaat blijft verborgen tot de dyno.');
       state = C.applyPreset(state, btn.dataset.preset);
       pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
       saveState(); haptic([12,25,12]);
-      showToast('Build geladen. Het resultaat blijft verborgen tot de dyno.');
-      return render();
+      render();
+      return announce();
     }
     if (btn.dataset.partCat && btn.dataset.partId) {
       if (btn.disabled) return;
+      const cat = C.CATEGORY_MAP[btn.dataset.partCat];
+      const oldName = C.getPart(state, btn.dataset.partCat)?.name || '';
+      if (state.selections[btn.dataset.partCat] === btn.dataset.partId) return;
+      const announce = offerUndo([['selections', btn.dataset.partCat]], `${cat?.short || 'Onderdeel'}: ${oldName} → ${cat?.items.find(x => x.id === btn.dataset.partId)?.name || btn.dataset.partId}`);
       state.selections[btn.dataset.partCat] = btn.dataset.partId;
       saveState(); haptic(16);
-      showToast('Onderdeel gemonteerd — pas de dyno onthult het verschil.');
-      return render();
+      render();
+      return announce();
     }
     if (btn.dataset.switch) {
+      const announce = offerUndo([['tune', btn.dataset.switch]], `${btn.closest('.switch-row, .control, label')?.querySelector('b')?.textContent?.trim() || 'Schakelaar'} ${state.tune[btn.dataset.switch] ? 'uit' : 'aan'}`);
       state.tune[btn.dataset.switch] = !state.tune[btn.dataset.switch];
-      saveState(); haptic(10); return render();
+      saveState(); haptic(10); render();
+      return announce();
     }
     if (btn.dataset.vehicleSwitch) {
       state.vehicle[btn.dataset.vehicleSwitch] = !state.vehicle[btn.dataset.vehicleSwitch];
@@ -4567,6 +4736,9 @@
       case 'confirm-rebuild': doRebuild(); break;
       case 'export-build': showExportModal(); break;
       case 'backup-save': exportFullBackup(); break;
+      case 'value-editor-apply': applyValueEditor(); break;
+      case 'limit-revert': { const p = pendingLimit; pendingLimit = null; closeModal(); p?.undo(); break; }
+      case 'limit-accept': { const p = pendingLimit; pendingLimit = null; closeModal(); if (p) showToast(p.text, { label: 'Ongedaan', run: p.undo }); break; }
       case 'backup-open': importFullBackup(); break;
       case 'open-import': showImportModal(); break;
       case 'copy-build-code': copyBuildCode(); break;

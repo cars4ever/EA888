@@ -101,3 +101,19 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .engine-view-tabs button, .v12-race-segments button { min-height: 44px; padding: 8px 4px; border: 0; border-radius: var(--r-control); background: transparent; color: var(--c-text-3); font: 600 13px/1.1 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .engine-view-tabs button span { display: none; }
 .engine-view-tabs button.active, .v12-race-segments button.active { background: var(--c-surface-3); color: var(--c-text); box-shadow: inset 0 -2px 0 var(--c-accent), inset 0 0 0 1px var(--c-line-strong); }
+
+/* ---------- Range control: [−] slider [+], value tappable to type ---------- */
+.range-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: var(--s-2); }
+.range-row input[type="range"] { width: 100%; min-width: 0; }
+.step-btn { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--c-line-strong); border-radius: var(--r-control); background: var(--c-surface-3); color: var(--c-text); font: 600 22px/1 var(--font-body); touch-action: manipulation; -webkit-user-select: none; user-select: none; transition: background var(--t-fast), border-color var(--t-fast); }
+.step-btn:active { background: var(--c-accent-soft); border-color: var(--c-accent); color: var(--c-accent); }
+.value-edit { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 10px; border: 1px dashed rgba(255, 173, 23, .45); border-radius: var(--r-pill); color: var(--c-accent); font: 600 13.5px/1 var(--font-mono); cursor: text; white-space: nowrap; }
+.value-edit:active { background: var(--c-accent-soft); }
+.control-head { align-items: center; }
+.value-editor { display: grid; gap: var(--s-2); margin-bottom: var(--s-3); }
+.value-editor span { color: var(--c-text-3); font-size: var(--fs-small); }
+.value-editor input { min-height: 56px; padding: 10px 14px; border: 1px solid var(--c-line-strong); border-radius: var(--r-control); background: var(--c-surface-1); color: var(--c-text); font: 600 24px/1 var(--font-mono); }
+.value-editor input:focus { border-color: var(--c-accent); outline: none; }
+/* Scale labels and target markers sit under the track, between the step buttons. */
+.range-row + .range-scale, .range-row + .target-marker { margin-inline: calc(44px + var(--s-2)); }
+.range-scale { color: var(--c-text-3); font: 500 11px/1.2 var(--font-mono); }
