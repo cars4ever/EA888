@@ -2015,3 +2015,12 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v10-run-scene .v10-lane-status { top: calc(271px + var(--safe-top)); bottom: auto !important; width: min(56vw, 300px); padding: 5px 10px; }
 .v10-run-scene .v10-lane-status > b { margin: 1px 0 4px; }
 .v10-run-scene #v7-shift-feedback { top: calc(318px + var(--safe-top)); bottom: auto !important; transform: translateX(-50%); font-size: 9px; }
+
+/* Scroll-safe sliders (see app.js): the native input ignores the pointer; a horizontal drag on the control
+   moves it, a vertical swipe scrolls the page. Bigger thumb for touch. */
+.control { touch-action: pan-y; }
+.control input[type="range"] { pointer-events: none; -webkit-appearance: none; appearance: none; height: 30px; background: transparent; }
+.control input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 4px; background: linear-gradient(90deg, rgba(255,140,30,.85), rgba(255,140,30,.25)); }
+.control input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -10px; border-radius: 50%; background: #f4f6f8; border: 3px solid var(--orange); box-shadow: 0 2px 8px rgba(0,0,0,.5); transition: transform .12s ease; }
+.control.slider-active { border-color: rgba(255,140,30,.7); }
+.control.slider-active input[type="range"]::-webkit-slider-thumb { transform: scale(1.18); box-shadow: 0 0 0 6px rgba(255,140,30,.22), 0 2px 8px rgba(0,0,0,.5); }

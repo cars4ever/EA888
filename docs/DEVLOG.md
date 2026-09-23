@@ -157,6 +157,16 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 - **Build mass**: `buildMassKg()` adds every selected part's `massDeltaKg` (dry sump, ice tank, turbo, …);
   before, only the gearbox counted, in both the analytic and realtime drag models.
 
+## 6. Launch ALS, audible bangs, scroll-safe sliders (v1.3.2)
+
+- User report: no ALS bangs with drag ALS. Two causes: ALS fired only with the separate HOLD ANTILAG button,
+  not on the two-step; and the master compressor (-16 dB, 2 ms attack) squashed the bangs under the engine.
+  Now an armed ALS fires on the two-step (launch ALS, as on Syvecs-style launch strategies) and each bang
+  briefly ducks the engine bus; bang level raised. Browser checks: launch ALS on the two-step, bang events.
+- Sliders changed value when the user only swiped vertically to scroll. Range inputs now ignore the pointer;
+  a delegated handler moves them only after a clearly horizontal drag, a vertical swipe scrolls, a tap does
+  nothing. Bigger touch thumb. Browser checks for both gestures.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

@@ -4,7 +4,7 @@
   const C = window.EA888Core;
   const STORAGE_KEY = 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
-  const APP_VERSION = '1.3.1';
+  const APP_VERSION = '1.3.2';
 
   const NAV = [
     ['bank', 'garage', 'Garage'],
@@ -477,7 +477,15 @@
         if (v === audio.lastAlsVariant) v = 1 + (v % 4);
         audio.lastAlsVariant = v;
         const heavy = Math.random() < .14 + fi * .1;
-        playSampleOneShot(audio, `als_bang_${v}`, (.2 + fi * .5 + alsHarsh * .06) * (heavy ? 1.3 : 1), (heavy ? .86 : .93) + Math.random() * .15);
+        audio.alsBangs = (audio.alsBangs || 0) + 1;
+        playSampleOneShot(audio, `als_bang_${v}`, (.42 + fi * .55 + alsHarsh * .06) * (heavy ? 1.25 : 1), (heavy ? .86 : .93) + Math.random() * .15);
+        // Duck the engine for the bang: the master compressor would otherwise squash the transient under the
+        // steady engine drone. In a real car the bang dominates the note for a few tens of milliseconds.
+        const eg = audio.engineBusGain.gain;
+        eg.cancelScheduledValues(t);
+        eg.setValueAtTime(Math.max(.3, eg.value), t);
+        eg.setTargetAtTime(heavy ? .22 : .38, t + .002, .006);
+        eg.setTargetAtTime(1, t + .045, .03);
       }
     } else audio.nextAlsBangMs = 0;
     if (audio.tyreSource) {
@@ -740,6 +748,8 @@
       mode: engineAudio?.mode || 'none',
       oneShots: engineAudio?.oneShots?.size || 0,
       alsBed: !!engineAudio?.alsBedSource,
+      alsBangs: engineAudio?.alsBangs || 0,
+      masterGain: Number(engineAudio?.master?.gain?.value || 0),
       alsBedGain: Number(engineAudio?.alsBedGain?.gain?.value || 0),
       sceneMode: currentAudioSceneMode() || 'none',
       lastRpm: Math.round(engineAudio?.lastRpm || 0)
@@ -3076,7 +3086,10 @@
     }
     s.staged = s.progress >= 56 && s.progress <= 82 && !s.deep;
     const target = Number(state.tune.launchRpm || 4200);
-    const alsHeld = !!raceGamePointer.antilag && !!raceGame.alsInfo?.enabled;
+    // Launch ALS: with anti-lag armed (Tune -> Anti-lag not off) the two-step itself fires the ALS, as on a
+    // Syvecs-style launch strategy. HOLD ANTILAG additionally builds boost without the two-step.
+    const launchAls = !!raceGame.alsInfo?.enabled && throttle && s.staged;
+    const alsHeld = (!!raceGamePointer.antilag || launchAls) && !!raceGame.alsInfo?.enabled;
     // Held ALS raises revs itself (bypass/throttle kick); the two-step caps them at launch rpm.
     const targetRpm = throttle && s.staged ? target : alsHeld ? raceGame.alsInfo.params.targetRpm * .92 : 900;
     s.rpm += (targetRpm - s.rpm) * Math.min(1, dt * (throttle ? 4.25 : 5.2));
@@ -3121,7 +3134,7 @@
 
     let status = 'KRUIP NAAR PRE-STAGE';
     if (s.progress >= 25) status = 'PRE-STAGE · NOG IETS VOORUIT';
-    if (s.staged && !s.treeStarted) status = raceGamePointer.throttle ? 'GESTAGED · TWO-STEP · TREE START VANZELF' : 'GESTAGED · TREE START VANZELF';
+    if (s.staged && !s.treeStarted) status = raceGamePointer.throttle ? (raceGame.alsInfo?.enabled ? 'GESTAGED · TWO-STEP + ANTILAG · TREE START VANZELF' : 'GESTAGED · TWO-STEP · TREE START VANZELF') : 'GESTAGED · TREE START VANZELF';
     if (s.deep) status = 'TE DIEP · BEAM GEMIST';
     if (s.treeStarted) status = s.launchArmed ? (s.green ? 'GROEN · LAAT LOS!' : 'TREE LOOPT · HOUD TOERENTAL') : (s.green ? 'GROEN · DRUK LAUNCH!' : 'TREE LOOPT · DRUK OP GROEN');
     const st = $('#v7-stage-status');
@@ -4261,6 +4274,59 @@
     saveState(); closeModal(); haptic(35);
     showToast('EA888 Lab teruggezet naar de Randy JE83 K04-referentie.'); render();
   }
+
+  // Scroll-safe sliders. Native range inputs grab a vertical swipe and change their value while the user only
+  // wanted to scroll. Range inputs ignore the pointer (CSS) and this handler moves them only after a clearly
+  // horizontal drag; a vertical swipe scrolls the page and a plain tap changes nothing.
+  let sliderDrag = null;
+  function rangeUnder(event) {
+    const host = event.target.closest?.('.control, .compact-control, .als-control, [data-range-host]');
+    const input = host?.querySelector('input[type="range"]');
+    if (!input || input.disabled) return null;
+    const r = input.getBoundingClientRect();
+    return event.clientY >= r.top - 18 && event.clientY <= r.bottom + 18 && event.clientX >= r.left - 12 && event.clientX <= r.right + 12 ? input : null;
+  }
+  function setRangeFromX(input, clientX) {
+    const r = input.getBoundingClientRect();
+    const min = Number(input.min || 0), max = Number(input.max || 100), step = Number(input.step) || 1;
+    const thumb = 13; // half thumb width: the native track maps the value between thumb centres
+    const f = clamp((clientX - r.left - thumb) / Math.max(1, r.width - 2 * thumb), 0, 1);
+    const v = clamp(Math.round((min + f * (max - min)) / step) * step, min, max);
+    const text = String(Number(v.toFixed(6)));
+    if (input.value === text) return;
+    input.value = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  document.addEventListener('pointerdown', event => {
+    if (raceGame?.open) return;
+    const input = rangeUnder(event);
+    if (input) sliderDrag = { input, id: event.pointerId, x: event.clientX, y: event.clientY, mode: 'pending', moved: false };
+  }, true);
+  document.addEventListener('pointermove', event => {
+    const d = sliderDrag;
+    if (!d || d.id !== event.pointerId) return;
+    const dx = event.clientX - d.x, dy = event.clientY - d.y;
+    if (d.mode === 'pending') {
+      if (Math.abs(dy) > 9 && Math.abs(dy) > Math.abs(dx)) { sliderDrag = null; return; }
+      if (Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        d.mode = 'drag';
+        d.input.closest('.control, .compact-control, .als-control, [data-range-host]')?.classList.add('slider-active');
+        try { event.target.setPointerCapture?.(event.pointerId); } catch (e) {}
+      } else return;
+    }
+    event.preventDefault();
+    d.moved = true;
+    setRangeFromX(d.input, event.clientX);
+  }, { passive: false, capture: true });
+  function endSliderDrag(event) {
+    const d = sliderDrag;
+    if (!d || d.id !== event.pointerId) return;
+    sliderDrag = null;
+    d.input.closest('.slider-active')?.classList.remove('slider-active');
+    if (d.moved) { d.input.dispatchEvent(new Event('change', { bubbles: true })); haptic(4); }
+  }
+  document.addEventListener('pointerup', endSliderDrag, true);
+  document.addEventListener('pointercancel', endSliderDrag, true);
 
   document.addEventListener('pointerdown', event => {
     resumeAudioContextOnly();

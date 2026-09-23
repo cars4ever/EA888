@@ -154,6 +154,29 @@ def main() -> None:
             assert page.locator(f'[data-tune-panel="{panel_id}"].active').count() == 1
         report['checks']['all_tune_panels'] = True
 
+        # Scroll-safe sliders: a vertical swipe across a slider must not change it; a horizontal drag must.
+        click(page, '[data-tune-panel="boost"]')
+        slider = page.evaluate("""() => {
+          const el = document.querySelector('.control input[type="range"]');
+          const attr = el.getAttributeNames().find(a => a.startsWith('data-') && !['data-unit', 'data-decimals'].includes(a));
+          return { sel: `input[${attr}="${el.getAttribute(attr)}"]`, value: el.value };
+        }""")
+        gesture = """([sel, dx, dy]) => {
+          const el = document.querySelector(sel), r = el.getBoundingClientRect();
+          const x = r.left + r.width * .5, y = r.top + r.height / 2, o = { bubbles: true, cancelable: true, pointerId: 91, pointerType: 'touch', isPrimary: true };
+          const target = el.closest('.control');
+          target.dispatchEvent(new PointerEvent('pointerdown', { ...o, clientX: x, clientY: y }));
+          for (let i = 1; i <= 6; i++) target.dispatchEvent(new PointerEvent('pointermove', { ...o, clientX: x + dx * i / 6, clientY: y + dy * i / 6 }));
+          target.dispatchEvent(new PointerEvent('pointerup', { ...o, clientX: x + dx, clientY: y + dy }));
+          return document.querySelector(sel).value;
+        }"""
+        after_vertical = page.evaluate(gesture, [slider['sel'], 3, 120])
+        after_horizontal = page.evaluate(gesture, [slider['sel'], 90, 4])
+        report['checks']['slider_ignores_vertical_swipe'] = after_vertical == slider['value']
+        report['checks']['slider_follows_horizontal_drag'] = after_horizontal != slider['value']
+        page.evaluate("""([sel, v]) => { const el = document.querySelector(sel); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }""", [slider['sel'], slider['value']])
+        report['checks']['slider_restored'] = page.evaluate("sel => document.querySelector(sel).value", slider['sel']) == slider['value']
+
         print('CHECKPOINT tune done', flush=True)
         # Enable the faster animation path through the real settings UI.
         click(page, '[data-nav="service"]')
@@ -348,20 +371,25 @@ def main() -> None:
         launch_btn = page.locator('#v7-launch-button')
         als_btn = page.locator('#v13-als-button')
         launch_btn.dispatch_event('pointerdown', {'pointerId': 43, 'pointerType': 'touch', 'isPrimary': True})
+        # Launch ALS: with ALS armed the two-step alone fires the anti-lag (bangs, flames, boost).
+        page.wait_for_timeout(450)
+        launch_only = page.evaluate("window.__EA888_DEBUG__.turbo()")['snap']
+        report['checks']['launch_als_fires_on_two_step'] = launch_only['alsActive'] is True
         als_btn.dispatch_event('pointerdown', {'pointerId': 41, 'pointerType': 'touch', 'isPrimary': True})
         page.wait_for_timeout(1300)
         als_held = page.evaluate("window.__EA888_DEBUG__.turbo()")
         audio_als = page.evaluate("window.__EA888_DEBUG__.audio()")
+        report['checks']['als_bangs_audible_events'] = audio_als.get('alsBangs', 0) >= 8 and audio_als.get('masterGain', 0) > 0.2
         report['checks']['als_crackle_audio_follows_flame'] = audio_als.get('alsBed') is True and audio_als.get('alsBedGain', 0) > 0.1 and als_held['snap'].get('flameSustain', 0) > 0.3
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-stage-antilag.png'), full_page=False, animations='disabled', timeout=12000)
         report['checks']['als_button_shows_active'] = page.locator('#v13-als-button.active').count() == 1
         als_btn.dispatch_event('pointerup', {'pointerId': 41, 'pointerType': 'touch', 'isPrimary': True})
+        launch_btn.dispatch_event('pointerup', {'pointerId': 43, 'pointerType': 'touch', 'isPrimary': True})
         page.wait_for_timeout(150)
         als_released = page.evaluate("window.__EA888_DEBUG__.turbo()")
         page.wait_for_timeout(350)
         report['checks']['als_crackle_audio_stops_on_release'] = page.evaluate("window.__EA888_DEBUG__.audio().alsBedGain") < 0.05
-        launch_btn.dispatch_event('pointerup', {'pointerId': 43, 'pointerType': 'touch', 'isPrimary': True})
         i, h, r = als_idle['snap'], als_held['snap'], als_released['snap']
         report['antilag_stage'] = {'idle': {k: i[k] for k in ('boostBar', 'shaftPct', 'egtC')}, 'held': {k: h[k] for k in ('boostBar', 'shaftPct', 'egtC', 'alsActive', 'empBar')}, 'released': {k: r[k] for k in ('boostBar', 'shaftPct', 'alsActive')}, 'flames': len(als_held['flames']), 'wear': als_held['wear']}
         report['checks']['als_raises_boost_and_shaft'] = h['boostBar'] > i['boostBar'] + 0.5 and h['shaftPct'] > i['shaftPct'] + 20

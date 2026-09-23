@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Patch the binary AndroidManifest.xml for EA888 Lab v1.3.1.
+"""Patch the binary AndroidManifest.xml for EA888 Lab v1.3.2.
 
 Besides package/version updates, the script repurposes the unused
 android:fullBackupContent slot as android:icon and points it at resource
@@ -261,7 +261,7 @@ def main() -> None:
     pool = find_string_pool(data)
     replacements = [
         ('nl.randy.ea888lab.debug', 'nl.randy.ea888lab.stabl'),
-        ('0.1.1-debug', '1.3.1-debug'),
+        ('0.1.1-debug', '1.3.2-debug'),
         ('EA888 Lab', 'EA888 LAB'),
     ]
     for old, new in replacements:
@@ -276,7 +276,7 @@ def main() -> None:
     patch_icon(data, pool, icon_index)
 
     changes = patch_integer_attributes(data, pool, {
-        'versionCode': 131,
+        'versionCode': 132,
         'targetSdkVersion': 29,
     })
     for name, old, new in changes:

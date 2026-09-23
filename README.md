@@ -65,7 +65,7 @@ python3 tools/build_apk.py --output /tmp/EA888-Lab.apk
 
 - App label: `EA888 LAB`
 - Package: `nl.randy.ea888lab.stabl`
-- Version: `1.3.1-debug` (code `131`); baseline was `1.2.0-debug` (code `120`)
+- Version: `1.3.2-debug` (code `132`); baseline was `1.2.0-debug` (code `120`)
 
 ## Accuracy boundary
 
