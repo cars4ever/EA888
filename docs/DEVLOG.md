@@ -377,6 +377,26 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
   power and removes the notice; ranking; table vs quick-setup boost; no knock notice on a stock map);
   hop and burnout regressions in tests/test_tyres.js; smoke checks for buying and applying advice.
 
+## 16. Phase 8: nitrous, welded head, stroker/destroker, compound boost (v1.12.0)
+
+- Driver nitrous (category Lachgas): dry, wet, progressive and direct-port kits. Held N2O button in the
+  race; the shot ramps in over the kit's progressive time, uses ~0.85 g/s per hp from a bottle kept per
+  build (refill in the race setup), adds the torque of its oxygen, raises the knock index against the
+  ECU's nitrous retard (tune: deg per 50 hp, 1.2 % torque per deg), and a dry kit past the injectors'
+  capacity runs lean (knock and damage). The automatic spool shot in 'spool' is unchanged.
+- Head lift in the race from the cylinder pressure (BMEP) against the head gasket's clamp margin; a head
+  welded to the block has no gasket to lift (sealing option; the engine can no longer be split, a rebuild
+  costs EUR 6,500 more).
+- Stroker/destroker kits (crank category): the stroke sets the displacement, the rods keep the deck height,
+  the combustion chamber stays so the compression ratio follows the swept volume; the crank's rpm limit
+  follows the piston speed.
+- Compound boost (category Compound boost): a K04 or G25-550 high-pressure stage ahead of the main turbo
+  with a turbine bypass. Turbo.matchCompound matches both stages on their own maps: while the main turbo
+  is spool-limited the HP stage delivers (with both turbines' back pressure); once the main turbo holds
+  the target the bypass opens. Known simplification: the series pressure-ratio product and the interstage
+  state are not solved, so compound does not raise the peak pressure ratio beyond either turbo.
+- Tests: tests/test_phase8.js.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

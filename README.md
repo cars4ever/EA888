@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.11.0 (branch `claude-dev`) — wheel hop, mounts, tuner advice
+## v1.12.0 (branch `claude-dev`) — nitrous, welded head, stroker/destroker, compound boost
+
+- Nitrous kits (dry, wet, progressive, direct port) with an N2O button in the race and a bottle to refill.
+- Head lift under extreme cylinder pressure; a head welded to the block cannot lift.
+- Stroker and destroker kits; compound boost to spool big turbos on 2.0 litres.
+
+## v1.11.0 — wheel hop, mounts, tuner advice
 
 - Wheel hop from the driveline's torsional mode; mounts and bushings (dogbone insert to solid race mounts) stop it.
 - Tuner advice per dyno notice: exact parts and settings, each tested on the dyno simulation, applied with one tap.
