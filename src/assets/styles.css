@@ -1868,7 +1868,7 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v12-rival-hud.ahead { border-color:#ff4f64; box-shadow:0 0 20px rgba(255,55,82,.18); }
 .v12-rival-hud.player-ahead { border-color:#49e899; }
 .v12-rival-hud.player-ahead small { color:#55eea0; }
-.v12-rival-car { position:absolute; z-index:19; left:50%; bottom:calc(170px + var(--safe-bottom)); width:min(38vw,245px); aspect-ratio:1.61; transform-origin:50% 100%; pointer-events:none; filter:drop-shadow(0 16px 14px rgba(0,0,0,.8)) saturate(.95) contrast(1.1); will-change:transform,opacity; transition:opacity .15s linear; }
+.v12-rival-car { position:absolute; z-index:19; left:0; top:0; width:min(58vw,385px); aspect-ratio:1.61; transform-origin:50% 100%; pointer-events:none; filter:drop-shadow(0 16px 14px rgba(0,0,0,.8)) saturate(.95) contrast(1.1); will-change:transform,opacity; transition:opacity .15s linear; }
 .v12-rival-car img { width:100%; height:100%; object-fit:contain; }
 .v12-rival-car i { position:absolute; left:18%; right:18%; bottom:5%; height:9%; border-radius:50%; background:radial-gradient(ellipse,rgba(0,0,0,.72),transparent 72%); }
 .v12-rival-car.ahead img { filter:drop-shadow(0 0 10px rgba(255,45,60,.18)); }
@@ -1910,13 +1910,13 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
   .v12-event-opponent { top:28%; right:2%; transform:scale(.88); transform-origin:right top; }
   .v12-stage-rival { top:32%; right:2%; transform:scale(.86); transform-origin:right top; }
   .v12-rival-hud { top:15.5%; right:2%; min-width:112px; padding:7px 8px; }
-  .v12-rival-car { width:min(44vw,185px); bottom:calc(164px + var(--safe-bottom)); }
+
   .v12-driveline-hud { left:2%; bottom:calc(151px + var(--safe-bottom)); width:40%; }
   .v12-duel-result b { font-size:11px!important; }
 }
 @media (max-height:760px) {
   .v12-rival-hud { top:13.5%; }
-  .v12-rival-car { bottom:calc(148px + var(--safe-bottom)); }
+
   .v12-driveline-hud { bottom:calc(136px + var(--safe-bottom)); }
   .v12-finish-card { top:49%; padding:14px; }
   .v12-finish-card h1 { font-size:46px; }
@@ -1986,3 +1986,32 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v10-live-car .v7-flame { bottom: 5.4%; width: 11%; height: auto; aspect-ratio: 1; }
 .v10-live-car .v7-flame.left { left: 19%; }
 .v10-live-car .v7-flame.right { right: 18.5%; left: auto; }
+
+/* v1.3.1: exhaust flames above every panel. The stage layer mirrors the plate geometry and zoom,
+   so the flames stay on the tailpipes while the info panels no longer cover them. */
+.ea-flame-layer { position: absolute; z-index: 70; inset: -1.5%; pointer-events: none; transform-origin: 50% 50%; }
+.ea-flame-layer .ea-flame-host.stage { inset: 0; }
+/* Sustained ALS flame (rate x duration > 1: consecutive bangs overlap). Size and strength from the runtime. */
+.ea-flame-sustain { position: absolute; opacity: 0; pointer-events: none; border-radius: 50%; mix-blend-mode: screen; transform: scale(var(--sustain-scale, 1)); transform-origin: 50% 50%; transition: opacity .08s linear; }
+.ea-flame-sustain.on { opacity: calc(.3 + var(--sustain, 0) * .7); animation: ea-flame-flicker 97ms linear infinite alternate; }
+.ea-flame-sustain[data-color="blue-white"] { background: radial-gradient(circle at 50% 50%, #ffffff 0 10%, #cfe7ff 20%, #5aa8ff 34%, #ff9a2a 52%, rgba(255,70,10,.5) 63%, transparent 72%); }
+.ea-flame-sustain[data-color="orange"] { background: radial-gradient(circle at 50% 50%, #fffbe6 0 9%, #ffd46b 22%, #ff8a1c 43%, rgba(255,60,8,.5) 60%, transparent 70%); }
+.ea-flame-sustain[data-color="red"] { background: radial-gradient(circle at 50% 50%, #ffe2b8 0 7%, #ff7a2a 28%, #c8260c 50%, rgba(120,20,6,.42) 61%, transparent 69%); }
+@keyframes ea-flame-flicker {
+  0% { scale: .84; filter: blur(1.2px) brightness(.95); }
+  30% { scale: 1.1; filter: blur(1.9px) brightness(1.3); }
+  55% { scale: .93; filter: blur(1.4px) brightness(1.05); }
+  80% { scale: 1.16; filter: blur(2.1px) brightness(1.35); }
+  100% { scale: .97; filter: blur(1.5px) brightness(1.1); }
+}
+.ea-flame-host.stage .ea-flame-sustain { bottom: auto; right: auto; }
+.ea-flame-layer .v7-flame { z-index: 2; }
+.v10-live-car .ea-flame-sustain { bottom: 5.4%; width: 11%; aspect-ratio: 1; z-index: 3; }
+.v10-live-car .ea-flame-sustain.left { left: 19%; }
+.v10-live-car .ea-flame-sustain.right { right: 18.5%; }
+@media (prefers-reduced-motion: reduce) { .ea-flame-sustain.on { animation: none; } }
+
+/* Race HUD: lane position and shift feedback sit under the progress bar, off the car and its tailpipes. */
+.v10-run-scene .v10-lane-status { top: calc(271px + var(--safe-top)); bottom: auto !important; width: min(56vw, 300px); padding: 5px 10px; }
+.v10-run-scene .v10-lane-status > b { margin: 1px 0 4px; }
+.v10-run-scene #v7-shift-feedback { top: calc(318px + var(--safe-top)); bottom: auto !important; transform: translateX(-50%); font-size: 9px; }

@@ -134,6 +134,29 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 - selfTest: the low-oil and tight-ring-gap checks compared `null < 72` when the pull aborted; they now test the
   status explicitly.
 
+## 5. Staging, flames, ALS sound, rival (v1.3.1)
+
+- **Auto-start tree**: like a strip's auto-start system the tree activates a random 0.5–5 s after the car is
+  fully staged (not deep), independent of the launch button. Holding LAUNCH when the tree drops arms the
+  two-step: release launches (early release = red light). Without it, pressing LAUNCH is a pedal launch from
+  the current engine speed (≥ 2200 rpm, no two-step boost).
+- **Flames above the HUD**: the stage flame layer is a separate top layer with the plate's geometry and zoom;
+  the race's lane-position and shift-feedback panels moved under the progress bar, off the car.
+- **Continuous ALS flame**: the bang rate is firing frequency × ALS cut fraction
+  (`rpm/30 × (0.04 + 0.12·aggressiveness) × (0.6 + 0.4·k)`), no longer the boost-hold trim k alone, so it
+  keeps going once boost is on target. When rate × flame duration > 1 consecutive flames overlap: the runtime
+  reports `flameSustain` and the UI shows a sustained flickering flame (drag ≈ 14 bangs/s, sustain 0.8; mild
+  only pops). ALS time limits: street 4 s, rally 30 s, drag 15 s (EGT stays the main protection).
+- **ALS audio**: `tools/generate_audio_bank.py` synthesizes 4 bang variants (tailpipe jet-noise crack, shock
+  exciting short exhaust resonances, downpipe thump, pipe ring, after-burn ticks) and a seamless crackle bed.
+  Bangs play at the simulated rate with jittered spacing and changing variants; the bed follows
+  `flameSustain`. No third-party recordings. The generator seed is now stable (crc32 instead of the
+  per-process salted `hash()`).
+- **Rival on the track**: heads-up draws a two-lane strip; the rival is projected with the track's own
+  perspective at depth = the player's car depth + simulated gap in the right lane, sized to its lane.
+- **Build mass**: `buildMassKg()` adds every selected part's `massDeltaKg` (dry sump, ice tank, turbo, …);
+  before, only the gearbox counted, in both the analytic and realtime drag models.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
@@ -141,7 +164,8 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 - `6397d99` anti-lag core, realtime turbo runtime, flame events (tests)
 - `c333da2` anti-lag tune panel, HOLD ANTILAG, live flames, audio layers, wear persistence
 - `a805378` two-step pops/stutter, timeslip turbo line, version 1.3.0-debug (code 130)
-- next: Precision catalogue, auto tree, flame layer, continuous ALS flame + crackle audio, rival on track
+- `7590dc4` Precision turbo catalogue (vendor CM maps + scaled models, migration, turbo masses)
+- v1.3.1: build mass, continuous ALS bang rate/flame, auto tree, flame layer, ALS sound, rival on track
 
 ## Remaining known inaccuracies
 
@@ -154,6 +178,10 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 - The realtime race uses the dyno's WOT samples for engine airflow at part load/two-step (scaled), not a
   separate part-load model.
 - Flame visuals are CSS sprites; timing/intensity are simulation-driven, the look is stylised.
+- The ALS sound is synthesized to match the physics qualitatively (bang rate, crack/boom balance); it is not
+  a recording of a real car.
+- The track perspective is stylised: the player's car art is drawn larger than its lane; the rival is sized
+  to its lane instead.
 - The analytic `simulateDrag` (used for the rival) still uses the steady dyno curve (no transient turbo).
 
 ## APK signing

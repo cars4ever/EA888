@@ -13,6 +13,7 @@ import io
 import json
 import math
 import wave
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -191,7 +192,8 @@ def one_shot(kind: str) -> np.ndarray:
     }[kind]
     n = int(SR * duration)
     t = np.arange(n) / SR
-    noise = np.random.default_rng(hash(kind) & 0xFFFF).normal(0, 1, n)
+    # crc32, not hash(): str hashes are salted per process, which made the bank non-reproducible.
+    noise = np.random.default_rng(zlib.crc32(kind.encode()) & 0xFFFF).normal(0, 1, n)
     x = np.zeros(n)
     if kind == "shift_manual":
         env = np.exp(-t/0.075)
@@ -232,6 +234,76 @@ def one_shot(kind: str) -> np.ndarray:
     return (x/peak*0.92).astype(np.float32)
 
 
+def lin_filter(x: np.ndarray, low: float | None, high: float | None, order: int = 2) -> np.ndarray:
+    """Causal filter for one-shots (no periodic tiling: a transient must not wrap into its own start)."""
+    nyq = SR / 2
+    if low and high:
+        sos = signal.butter(order, [low / nyq, min(high, nyq * .97) / nyq], btype="bandpass", output="sos")
+    elif low:
+        sos = signal.butter(order, low / nyq, btype="highpass", output="sos")
+    else:
+        sos = signal.butter(order, min(high, nyq * .97) / nyq, btype="lowpass", output="sos")
+    return signal.sosfilt(sos, x)
+
+
+def als_bang(variant: int) -> np.ndarray:
+    """One anti-lag bang: fuel/air burning in the hot manifold/turbine housing sends a pressure shock
+    down the exhaust. Modelled as (1) turbulent jet noise of the shock leaving the tailpipe (the dominant,
+    gunshot-like crack), (2) a steep N-wave-like shock exciting short-lived exhaust resonances, (3) the low
+    thump of the downpipe/muffler volume, (4) a short metallic tailpipe ring and (5) a few after-burn ticks.
+    Original synthesis; the variants differ in shock rise time, resonance tuning and tail."""
+    rng = np.random.default_rng(71000 + variant)
+    n = int(SR * 0.24)
+    t = np.arange(n) / SR
+    unit = lambda y: y / (np.max(np.abs(y)) + 1e-12)
+    noise = rng.normal(0, 1, n)
+    crack = unit(lin_filter(noise, 700, 12500, 2) * np.exp(-t / (0.009 + 0.002 * variant)) * (1 - np.exp(-t / 0.0003)))
+    rise = 0.00035 + 0.00015 * variant
+    shock = np.where(t < rise, t / rise, np.exp(-(t - rise) / 0.0018))
+    shock -= 0.6 * np.exp(-(((t - 0.0042 - 0.0008 * variant) / 0.0022) ** 2))
+    modes = [(96 + 8 * variant, 0.3, 0.030), (182, 0.6, 0.024), (330 + 25 * variant, 0.75, 0.018), (620, 0.6, 0.012), (1150, 0.45, 0.008), (2300, 0.3, 0.005)]
+    ir = sum(g * np.exp(-t / tau) * np.sin(2 * np.pi * f * t) for f, g, tau in modes)
+    body = unit(np.convolve(shock, ir)[:n])
+    f0 = 64 + 10 * variant
+    thump = unit(np.sin(2 * np.pi * f0 * t * (1 - 1.2 * t)) * np.exp(-t / (0.028 + 0.005 * variant)) * (1 - np.exp(-t / 0.0012)))
+    ring = np.sin(2 * np.pi * (1780 + 160 * variant) * t) * np.exp(-t / 0.012)
+    ticks = np.zeros(n)
+    for _ in range(2 + variant % 3):
+        at = int(SR * rng.uniform(0.025, 0.14))
+        ln = int(SR * rng.uniform(0.0015, 0.004))
+        if at + ln < n:
+            ticks[at:at + ln] += rng.uniform(0.35, 0.7) * rng.normal(0, 1, ln) * np.exp(-np.arange(ln) / (ln / 3))
+    ticks = lin_filter(ticks, 1500, 12000, 2)
+    x = 1.7 * crack + 0.75 * body + 0.30 * thump + 0.18 * ring + 0.35 * unit(ticks)
+    x = lin_filter(x, 30, None, 2)
+    x = np.tanh(1.5 * x)
+    x *= np.minimum(1.0, (n - np.arange(n)) / (SR * 0.012))  # click-free end
+    return (unit(x) * 0.95).astype(np.float32)
+
+
+def als_crackle_loop(seconds: float = 2.0) -> np.ndarray:
+    """Seamless bed of irregular after-burn crackle between the main bangs (rich mixture still burning in
+    the downpipe). Poisson-timed short bursts laid on a circular timeline so the loop has no seam."""
+    rng = np.random.default_rng(72001)
+    n = int(SR * seconds)
+    x = np.zeros(n)
+    for _ in range(int(seconds * 34)):
+        at = int(rng.uniform(0, n))
+        ln = int(SR * rng.uniform(0.0012, 0.0045))
+        amp = rng.lognormal(-0.6, 0.55)
+        burst = amp * rng.normal(0, 1, ln) * np.exp(-np.arange(ln) / (ln / 2.5))
+        idx = (at + np.arange(ln)) % n
+        x[idx] += burst
+        if rng.random() < 0.22:  # occasional small pop with some low body
+            pl = int(SR * 0.03)
+            pidx = (at + np.arange(pl)) % n
+            tt = np.arange(pl) / SR
+            x[pidx] += 0.5 * amp * np.sin(2 * np.pi * rng.uniform(90, 160) * tt) * np.exp(-tt / 0.009)
+    x = band(x, 140, 10500, 2)
+    x = np.tanh(1.7 * x / (np.std(x) * 3 + 1e-12))
+    return (x / (np.max(np.abs(x)) + 1e-12) * 0.85).astype(np.float32)
+
+
 def wav_bytes(x: np.ndarray) -> bytes:
     x = np.clip(x, -1, 1)
     pcm = (x * 32767).astype('<i2').tobytes()
@@ -262,10 +334,15 @@ def main() -> None:
         "limiter": one_shot("limiter"),
         "blowoff": one_shot("blowoff"),
         "launch": one_shot("launch"),
+        "als_bang_1": als_bang(0),
+        "als_bang_2": als_bang(1),
+        "als_bang_3": als_bang(2),
+        "als_bang_4": als_bang(3),
+        "als_crackle": als_crackle_loop(),
     }.items():
         data = wav_bytes(array)
         (OUT / f"{name}.wav").write_bytes(data)
-        bank[name] = {"loop": name in {"turbo", "tyre"}, "data": base64.b64encode(data).decode('ascii')}
+        bank[name] = {"loop": name in {"turbo", "tyre", "als_crackle"}, "data": base64.b64encode(data).decode('ascii')}
         print(name, len(data))
 
     payload = json.dumps(bank, separators=(',', ':'))

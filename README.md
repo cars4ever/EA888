@@ -12,7 +12,22 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.3.0 (branch `claude-dev`)
+## v1.3.1 (branch `claude-dev`)
+
+- **Precision Turbo catalogue** (small to large, PT5558 … PT10603 Pro Mod) replaces the generic modeled
+  turbos. PT6062/6466/6870/7675 use Precision's published compressor maps (CM-60/64/68/76, digitized); the
+  others are scaled from the nearest CM map and marked *modeled*. Old saves migrate automatically.
+- **Auto-start tree**: once fully staged the tree starts by itself after a random 0.5–5 s. Holding LAUNCH
+  (two-step) before that arms a release launch; otherwise press LAUNCH on green for a pedal launch.
+- **Flames visible**: the flame layer sits above the info panels; aggressive ALS gives a continuous
+  flickering flame (bangs overlap) with pops on top.
+- **ALS sound**: original synthesized bang set (4 variants) and after-burn crackle bed, at the simulated
+  bang rate (firing frequency × ALS cut fraction).
+- **Heads-up rival on the track**: two-lane strip, the rival drives in the right lane in the same
+  perspective as the track instead of floating in the sky.
+- Part masses now count in the drag race.
+
+## v1.3.0
 
 - **Strict dyno results**: completed / aborted / failed-to-start. An aborted pull only contains and reports
   samples up to the abort rpm (highest *observed* values, marked partial), has no reliability score, and wear
@@ -50,7 +65,7 @@ python3 tools/build_apk.py --output /tmp/EA888-Lab.apk
 
 - App label: `EA888 LAB`
 - Package: `nl.randy.ea888lab.stabl`
-- Version: `1.3.0-debug` (code `130`); baseline was `1.2.0-debug` (code `120`)
+- Version: `1.3.1-debug` (code `131`); baseline was `1.2.0-debug` (code `120`)
 
 ## Accuracy boundary
 

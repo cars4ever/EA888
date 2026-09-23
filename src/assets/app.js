@@ -4,7 +4,7 @@
   const C = window.EA888Core;
   const STORAGE_KEY = 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.3.1';
 
   const NAV = [
     ['bank', 'garage', 'Garage'],
@@ -458,16 +458,28 @@
         playSampleOneShot(audio, 'limiter', .22 + boundedLoad * .1, .9 + boundedRpm / 20000);
       }
     }
-    // ALS pops/bangs: separate one-shot layer at the simulated pop rate.
-    if (extras?.alsActive && Number(extras.popRateHz) > 0) {
-      const nowPop = performance.now();
-      if (nowPop - (audio.lastAlsPopMs || 0) > 1000 / extras.popRateHz) {
-        audio.lastAlsPopMs = nowPop;
-        const fi = clamp(Number(extras.flameIntensity || 0), 0, 1);
-        playSampleOneShot(audio, 'launch', .12 + fi * .30 + alsHarsh * .08, .88 + Math.random() * .22);
-        if (fi > .45 && Math.random() < .35) playSampleOneShot(audio, 'limiter', .14 + fi * .16, 1.1 + Math.random() * .2);
-      }
+    // ALS bangs: their own one-shot layer at the simulated bang rate (firing frequency x cut fraction).
+    // The misfire/retard pattern is irregular, so the spacing is jittered and the variant changes per bang;
+    // an occasional heavier bang comes from a larger unburnt charge. The crackle bed carries the after-burn
+    // in between and follows the sustained-flame strength.
+    const alsOn = !!extras?.alsActive && Number(extras.popRateHz) > 0;
+    if (audio.alsBedGain) {
+      const sustain = alsOn ? clamp(Number(extras.flameSustain || 0), 0, 1) : 0;
+      audio.alsBedGain.gain.setTargetAtTime(activeGain * (alsOn ? .05 + sustain * .45 : 0) + .0001, t, alsOn ? .03 : .06);
+      audio.alsBedSource?.playbackRate.setTargetAtTime(.88 + boundedRpm / 22000, t, .08);
     }
+    if (alsOn) {
+      const nowPop = performance.now();
+      if (nowPop >= (audio.nextAlsBangMs || 0)) {
+        audio.nextAlsBangMs = nowPop + (1000 / extras.popRateHz) * (.55 + Math.random() * .9);
+        const fi = clamp(Number(extras.flameIntensity || 0), 0, 1);
+        let v = 1 + Math.floor(Math.random() * 4);
+        if (v === audio.lastAlsVariant) v = 1 + (v % 4);
+        audio.lastAlsVariant = v;
+        const heavy = Math.random() < .14 + fi * .1;
+        playSampleOneShot(audio, `als_bang_${v}`, (.2 + fi * .5 + alsHarsh * .06) * (heavy ? 1.3 : 1), (heavy ? .86 : .93) + Math.random() * .15);
+      }
+    } else audio.nextAlsBangMs = 0;
     if (audio.tyreSource) {
       audio.tyreSource.playbackRate.setTargetAtTime(.72 + slip * .86 + boundedRpm / 26000, t, .025);
       audio.tyreGain.gain.setTargetAtTime(activeGain * Math.pow(slip, .72) * (.12 + boundedLoad * .19) + .0001, t, .03);
@@ -536,12 +548,15 @@
       const transientBus = ctx.createGain();
       transientBus.gain.value = .78;
       transientBus.connect(master);
+      // ALS after-burn crackle bed (loop); its level follows the simulated sustained flame.
+      const alsBedGain = ctx.createGain(); alsBedGain.gain.value = .0001;
+      alsBedGain.connect(transientBus);
 
       engineAudioGeneration += 1;
       const audio = engineAudio = {
         ctx, compressor, master, engineBusGain, engineLowpass, bodyEq, raspEq,
-        turboFilter, turboGain, tyreFilter, tyreGain, transientBus,
-        layers: [], turboSource: null, tyreSource: null, buffers: null, oneShots: new Set(),
+        turboFilter, turboGain, tyreFilter, tyreGain, transientBus, alsBedGain,
+        layers: [], turboSource: null, tyreSource: null, alsBedSource: null, buffers: null, oneShots: new Set(),
         mode, active: true, ready: false, loading: true,
         generation: engineAudioGeneration, lastRpm: 900, lastLoad: .12, lastSlip: 0,
         lastLimiterMs: 0, model: 'EA888 PCM multisample v11'
@@ -560,6 +575,7 @@
           });
         if (buffers.turbo?.buffer) audio.turboSource = startLoopSource(ctx, buffers.turbo.buffer, turboFilter, .8);
         if (buffers.tyre?.buffer) audio.tyreSource = startLoopSource(ctx, buffers.tyre.buffer, tyreFilter, 1);
+        if (buffers.als_crackle?.buffer) audio.alsBedSource = startLoopSource(ctx, buffers.als_crackle.buffer, alsBedGain, 1);
         audio.ready = true; audio.loading = false;
         applySampledAudio(audio, audio.lastRpm, audio.lastLoad, audio.lastSlip);
         return audio;
@@ -641,6 +657,7 @@
     mute(audio.engineBusGain?.gain);
     mute(audio.turboGain?.gain);
     mute(audio.tyreGain?.gain);
+    mute(audio.alsBedGain?.gain);
     for (const layer of audio.layers || []) mute(layer.gain?.gain);
   }
 
@@ -670,8 +687,8 @@
     if (decodedAudioBankPromise?.ctx === audio.ctx) decodedAudioBankPromise = null;
     try {
       for (const layer of audio.layers || []) { layer.source.onended = null; layer.source.stop(); layer.source.disconnect(); }
-      audio.turboSource?.stop(); audio.tyreSource?.stop();
-      audio.turboSource?.disconnect(); audio.tyreSource?.disconnect();
+      audio.turboSource?.stop(); audio.tyreSource?.stop(); audio.alsBedSource?.stop();
+      audio.turboSource?.disconnect(); audio.tyreSource?.disconnect(); audio.alsBedSource?.disconnect();
     } catch (e) {}
     try { audio.ctx.close(); } catch (e) {}
   }
@@ -722,6 +739,8 @@
       error: engineAudio?.error || '',
       mode: engineAudio?.mode || 'none',
       oneShots: engineAudio?.oneShots?.size || 0,
+      alsBed: !!engineAudio?.alsBedSource,
+      alsBedGain: Number(engineAudio?.alsBedGain?.gain?.value || 0),
       sceneMode: currentAudioSceneMode() || 'none',
       lastRpm: Math.round(engineAudio?.lastRpm || 0)
     };
@@ -2149,7 +2168,7 @@
             <span class="eyebrow">Aandrijflijn</span><h3>Platform & massa</h3>
             <label class="field-label">Aandrijving<select data-vehicle-select="drivetrain">${Object.keys(C.DRIVETRAINS).map(k => `<option value="${k}" ${v.drivetrain === k ? 'selected' : ''}>${esc(C.DRIVETRAINS[k].name)}</option>`).join('')}</select></label>
             <label class="field-label">Bandcompound<select data-vehicle-select="tireCompound">${C.TIRE_COMPOUNDS.map(t => `<option value="${t.id}" ${v.tireCompound === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
-            ${vehicleRange('massKg', 'Rijklaar gewicht', 900, 1900, 10, v.massKg, ' kg', 0, 'Inclusief bestuurder, vloeistoffen en gekozen aandrijflijn.')}
+            ${vehicleRange('massKg', 'Rijklaar gewicht', 900, 1900, 10, v.massKg, ' kg', 0, 'Basisauto met OEM-onderdelen, incl. bestuurder en vloeistoffen. Gekozen onderdelen tellen hun gewichtsverschil hierbij op.')}
             ${vehicleRange('pressureBar', 'Bandenspanning', .65, 3.2, .05, v.pressureBar, ' bar', 2, `Compoundoptimum rond ${num(tire.optimumBar,2)} bar.`)}
             ${switchRow('preparedTrack', 'Geprepareerde baan', 'Meer bruikbare grip, vooral met drag radial, slick of pro radial.', 'vehicle')}
           </div>
@@ -2215,7 +2234,7 @@
         </div>
         <div class="v7-timeslip-overview">
           <div><span class="eyebrow">Laatste timeslip</span><pre>${last ? esc(timeslipText(last)) : 'NOG GEEN RUN\nStart de drag experience om een volledige timeslip te zetten.'}</pre></div>
-          <div class="v7-race-specs"><span><b>${v.drivetrain}</b>${Math.round(v.massKg)} kg</span><span><b>${v.tireWidthMm}/${v.aspectRatio} R${v.rimDiameterIn}</b>${esc(tire.name)}</span><span><b>${state.tune.launchRpm} rpm</b>launch target</span><span><b>${Math.round(v.trackTempC)}°C</b>baantemperatuur</span></div>
+          <div class="v7-race-specs"><span><b>${v.drivetrain}</b>${Math.round(C.buildMassKg(state))} kg</span><span><b>${v.tireWidthMm}/${v.aspectRatio} R${v.rimDiameterIn}</b>${esc(tire.name)}</span><span><b>${state.tune.launchRpm} rpm</b>launch target</span><span><b>${Math.round(v.trackTempC)}°C</b>baantemperatuur</span></div>
         </div>
       </div>`;
     }
@@ -2655,7 +2674,7 @@
     const ready = s.staged && !s.deep;
     const launchLabel = s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : ready ? 'HOUD VOOR LAUNCH' : 'LAUNCH VERGRENDELD';
     return `<div class="v8-game v8-stage-game ${ready ? 'is-staged' : ''} ${rival?'has-rival':''}">
-      <div class="v8-scene-plate v8-stage-plate"><div class="ea-flame-host stage" id="ea-stage-flames"><span class="v7-flame left"></span><span class="v7-flame right"></span></div></div><div class="v8-cinematic-shade"></div>
+      <div class="v8-scene-plate v8-stage-plate"></div><div class="v8-cinematic-shade"></div>
       ${v7GameHeader('STAGE & TREE', 2, treeMode === 'pro' ? 'Pro tree · release op groen' : 'Sportsman tree · release op groen')}
       <main class="v8-stage-scene">
         <section class="v8-stage-hud">
@@ -2680,6 +2699,7 @@
         </div>
         ${s.deep ? '<button class="v8-reset-stage" data-action="v7-reset-stage">TE DIEP GESTAGED · OPNIEUW</button>' : ''}
       </main>
+      <div class="ea-flame-layer" id="ea-stage-flame-layer" aria-hidden="true"><div class="ea-flame-host stage" id="ea-stage-flames"><span class="ea-flame-sustain left"></span><span class="ea-flame-sustain right"></span><span class="v7-flame left"></span><span class="v7-flame right"></span></div></div>
       ${v7GameProgress(1)}
     </div>`;
   }
@@ -2709,7 +2729,7 @@
         </section>
         <div class="v8-split-board v9-split-board v10-split-board"><span><i id="v8-split-60"></i>60 FT <b id="v8-time-60">—</b></span><span><i id="v8-split-330"></i>330 FT <b id="v8-time-330">—</b></span><span><i id="v8-split-8"></i>1/8 MIJL <b id="v8-time-8">—</b></span><span><i id="v8-split-4"></i>1/4 MIJL <b id="v8-time-4">—</b></span></div>
         ${opponent ? `<div class="v12-rival-hud" id="v12-rival-hud"><span>${opponent.profile.tag} RIVAAL</span><b>${esc(opponent.profile.name)}</b><small id="v12-rival-gap">TREE: ${opponent.reactionTime.toFixed(3)} s</small></div><div class="v12-rival-car" id="v12-rival-car"><img src="images/rival-scirocco.svg" alt="Graphite Scirocco-rivaal"><i></i></div>` : ''}
-        <div class="v9-live-car v10-live-car" id="v7-run-car"><img src="images/randy-scirocco-race-v10.png" alt="Randy's blauwe Scirocco van achteren"><span class="v7-flame left"></span><span class="v7-flame right"></span><b class="v9-car-smoke"></b></div>
+        <div class="v9-live-car v10-live-car" id="v7-run-car"><img src="images/randy-scirocco-race-v10.png" alt="Randy's blauwe Scirocco van achteren"><span class="ea-flame-sustain left"></span><span class="ea-flame-sustain right"></span><span class="v7-flame left"></span><span class="v7-flame right"></span><b class="v9-car-smoke"></b></div>
         <div class="v7-speed-lines v10-speed-lines" id="v7-speed-lines"></div>
         <div class="v8-run-progress v9-run-progress v10-run-progress"><i id="v7-run-progress"></i><span id="v7-run-distance">0 m</span><b id="v7-run-split">LAUNCH</b><em>402 m</em></div>
         <div class="v9-lane-status v10-lane-status" id="v9-lane-status"><span>LIJNPOSITIE</span><b>IN LIJN</b><div><i id="v9-lane-marker"></i></div></div>
@@ -2795,23 +2815,38 @@
     try { return C.createTurboRuntime(state); } catch (e) { return null; }
   }
   // Continuous ALS pops at the simulated pop rate while ALS fires.
+  // Sustained ALS flame: bangs that follow each other faster than a flame dies out overlap into one
+  // continuous flame (snap.flameSustain from the runtime); it flickers, the pops ride on top.
+  function setFlameSustain(host, snap) {
+    if (!host) return;
+    const k = snap?.alsActive ? clamp(Number(snap.flameSustain || 0), 0, 1) : 0;
+    const color = snap?.flame?.color || 'orange';
+    $$('.ea-flame-sustain', host).forEach((n, i) => {
+      n.style.setProperty('--sustain', k.toFixed(3));
+      n.style.setProperty('--sustain-scale', (.5 + Number(snap?.flame?.sizeScale || 0) * .5 * (i % 2 ? 1.06 : .95)).toFixed(3));
+      if (n.dataset.color !== color) n.dataset.color = color;
+      n.classList.toggle('on', k > .02);
+    });
+  }
   function tickAlsFlames(snap, dt, host) {
+    setFlameSustain(host, snap);
     if (!raceGame || !snap?.alsActive || !snap.flame?.visible) { if (raceGame) raceGame.popClock = 0; return; }
     raceGame.popClock = (raceGame.popClock || 0) + dt * snap.popRateHz;
     if (raceGame.popClock >= 1) { raceGame.popClock = 0; emitExhaustFlame(host, snap.flame); }
   }
   function positionStageFlames() {
-    const plate = $('.v8-stage-plate'), host = $('#ea-stage-flames');
+    const plate = $('#ea-stage-flame-layer') || $('.v8-stage-plate'), host = $('#ea-stage-flames');
     if (!plate || !host) return;
     const pw = plate.offsetWidth, ph = plate.offsetHeight, ar = 941 / 1672;
     const iw = pw / ph > ar ? pw : ph * ar, ih = pw / ph > ar ? pw / ar : ph;
     const ox = (pw - iw) / 2, oy = (ph - ih) / 2;
     [[.291, .612], [.708, .612]].forEach(([x, y], i) => {
-      const f = $$('.v7-flame', host)[i];
-      if (!f) return;
       const w = iw * .11;
-      f.style.width = `${w}px`; f.style.height = `${w}px`;
-      f.style.left = `${ox + x * iw - w / 2}px`; f.style.top = `${oy + y * ih - w / 2}px`;
+      for (const f of [$$('.v7-flame', host)[i], $$('.ea-flame-sustain', host)[i]]) {
+        if (!f) continue;
+        f.style.width = `${w}px`; f.style.height = `${w}px`;
+        f.style.left = `${ox + x * iw - w / 2}px`; f.style.top = `${oy + y * ih - w / 2}px`;
+      }
     });
   }
   function alsStatusText(snap) {
@@ -2846,7 +2881,7 @@
         duration:state.settings?.reducedMotion ? (auto ? .9 : 3.5) : 8.0, started:false, done:false,
         smoke:0, elapsed:0, qualityIntegral:0, qualityTime:0, score:0, label:'KOUD'
       },
-      stage:{ progress:0, rpm:900, staged:false, deep:false, treeStarted:false, plannedGreen:0, green:false, launched:false, readySince:0 },
+      stage:{ progress:0, rpm:900, staged:false, deep:false, treeStarted:false, plannedGreen:0, green:false, launched:false, stagedSince:0, launchArmed:false },
       run:null,
       finishResult:null,
       rivalProfile:raceIsHeadsUp() ? selectedRival() : null,
@@ -3014,7 +3049,7 @@
     if (!raceGame?.open) return;
     clearRaceGameTimers();
     raceGame.phase='stage';
-    raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,readySince:0};
+    raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,stagedSince:0,launchArmed:false};
     raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false,antilag:false};
     renderRaceGame();
     updateEngineAudio(900,.12,0);
@@ -3048,13 +3083,13 @@
     s.rpm += throttle && s.staged ? Math.sin(now * .017) * 42 : 0;
     s.rpm = clamp(s.rpm, 850, Number(state.tune.revLimitRpm || 8000));
 
-    const rpmReady = s.staged && throttle && Math.abs(s.rpm - target) < 360;
-    if (!s.treeStarted && rpmReady) {
-      if (!s.readySince) s.readySince = now;
-      const holdMs = state.settings?.reducedMotion ? 70 : 420;
-      if (now - s.readySince >= holdMs) startV7Tree();
+    // Auto-start system (as at the strip): once fully staged the tree activates after a random 0.5-5 s,
+    // whether or not the driver is on the two-step. Rolling out of stage or going deep resets it.
+    if (!s.treeStarted && s.staged) {
+      if (!s.stagedSince) { s.stagedSince = now; s.autoStartMs = state.settings?.reducedMotion ? 500 : 500 + Math.random() * 4500; }
+      if (now - s.stagedSince >= s.autoStartMs) startV7Tree();
     } else if (!s.treeStarted) {
-      s.readySince = 0;
+      s.stagedSince = 0;
     }
 
     const snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: 0, twoStep: throttle && s.staged, alsRequest: alsHeld }) : null;
@@ -3069,7 +3104,7 @@
         emitExhaustFlame($('#ea-stage-flames'), C.exhaustFlameEvent({ kind: '2step', egtC: snap.egtC, fuelGps: snap.fuelGps, cutS: .06, unburntFraction: C.antiLagCapability(state).flatShift ? .6 : .05, severity: .45 }));
       }
     }
-    updateEngineAudio(s.rpm, twoStep ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, popRateHz: snap.popRateHz, twoStep } : null);
+    updateEngineAudio(s.rpm, twoStep ? .82 : alsHeld ? .6 : .12, 0, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, twoStep } : null);
     updateV7StageDom();
   }
 
@@ -3086,9 +3121,9 @@
 
     let status = 'KRUIP NAAR PRE-STAGE';
     if (s.progress >= 25) status = 'PRE-STAGE · NOG IETS VOORUIT';
-    if (s.staged && !s.treeStarted) status = 'VOLLEDIG GESTAGED · HOUD LAUNCH IN';
+    if (s.staged && !s.treeStarted) status = raceGamePointer.throttle ? 'GESTAGED · TWO-STEP · TREE START VANZELF' : 'GESTAGED · TREE START VANZELF';
     if (s.deep) status = 'TE DIEP · BEAM GEMIST';
-    if (s.treeStarted) status = s.green ? 'GROEN · LAAT LOS!' : 'TREE LOOPT · HOUD TOERENTAL';
+    if (s.treeStarted) status = s.launchArmed ? (s.green ? 'GROEN · LAAT LOS!' : 'TREE LOOPT · HOUD TOERENTAL') : (s.green ? 'GROEN · DRUK LAUNCH!' : 'TREE LOOPT · DRUK OP GROEN');
     const st = $('#v7-stage-status');
     if (st) { st.textContent = status; st.className = s.deep ? 'bad' : s.green ? 'go' : s.staged ? 'good' : ''; }
 
@@ -3104,8 +3139,9 @@
       launch.classList.toggle('go', ready && s.green);
       const label = $('b', launch);
       const hint = $('small', launch);
-      if (label) label.textContent = !ready ? 'LAUNCH VERGRENDELD' : s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : 'HOUD VOOR LAUNCH';
-      if (hint) hint.textContent = !ready ? 'rij eerst volledig in stage' : s.treeStarted ? 'release bepaalt je reactietijd' : 'bouw rpm op; de tree start automatisch';
+      const pedal = s.treeStarted && !s.launchArmed;
+      if (label) label.textContent = !ready ? 'LAUNCH VERGRENDELD' : pedal ? (s.green ? 'DRUK!' : 'DRUK OP GROEN') : s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : 'HOUD VOOR LAUNCH';
+      if (hint) hint.textContent = !ready ? 'rij eerst volledig in stage' : pedal ? 'geen two-step: launch vanaf huidig toerental' : s.treeStarted ? 'release bepaalt je reactietijd' : 'tree start vanzelf (0,5–5 s) · vasthouden = two-step';
     }
 
     const rpmNumber = $('#v8-stage-rpm-number');
@@ -3141,6 +3177,9 @@
     if (plate) {
       const scale = 1.015 + clamp(s.progress/100,0,1) * .025;
       plate.style.transform = `scale(${scale}) translateY(${clamp(s.progress/100,0,1) * -5}px)`;
+      // The flame layer sits above the panels but must track the tailpipes in the zooming plate.
+      const layer = $('#ea-stage-flame-layer');
+      if (layer) layer.style.transform = plate.style.transform;
     }
   }
 
@@ -3150,7 +3189,7 @@
   function resetV7Stage() {
     if(!raceGame?.open)return;
     clearRaceGameTimers();
-    raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,readySince:0};
+    raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,stagedSince:0,launchArmed:false};
     raceGamePointer.creep=false;raceGamePointer.throttle=false;
     renderRaceGame();
     showToast('Staging opnieuw begonnen.');
@@ -3161,6 +3200,8 @@
     const s=raceGame.stage;
     if(!s.staged||s.deep)return showToast('Zet de auto eerst correct in stage.');
     s.treeStarted=true;s.green=false;s.launched=false;
+    // On the two-step when the tree drops: release launches. Otherwise a press launches from the current rpm.
+    s.launchArmed=!!raceGamePointer.throttle||raceGameAuto;
     playLaunchCrackle(.48);
     clearRaceGameTimers();v7ResetBulbs();v7SetBulbs(['preL','preR','stageL','stageR'],true);
     const base=state.settings?.reducedMotion?90:650+Math.random()*620;
@@ -3184,6 +3225,9 @@
   function launchV7Race(auto=false) {
     if(!raceGame?.stage||!raceGame.stage.treeStarted||raceGame.stage.launched)return showToast('Start eerst de tree.');
     const s=raceGame.stage;s.launched=true;
+    // Two-step launch leaves at the launch-control rpm; a pedal launch leaves from what the engine was doing.
+    const launchTarget=Number(state.tune.launchRpm||4200);
+    s.launchFromRpm=s.launchArmed?launchTarget:clamp(Math.max(s.rpm,2200),2200,launchTarget);
     const reactionTime=(performance.now()-s.plannedGreen)/1000;
     if(reactionTime<0){clearRaceGameTimers();v7SetBulbs(['a1L','a1R','a2L','a2R','a3L','a3R','gL','gR'],false);v7SetBulbs(['rL','rR'],true);haptic([70,40,70]);raceGameTone(180,.22,.06);}else haptic(30);
     startV7Run(reactionTime,auto);
@@ -3232,8 +3276,7 @@
     const drive = C.DRIVETRAINS[state.vehicle.drivetrain];
     const grip = C.gripFactor(state.vehicle);
     const geometry = C.engineGeometry(state);
-    const wheelMassPenalty = Math.max(0, Number(state.vehicle.wheelMassKg || 0) - 7.5) * 4 * 1.35;
-    const mass = Math.max(750, Number(state.vehicle.massKg || 1350) + Number(drive.mass || 0) + Number(transInfo.part.massDeltaKg || 0) + wheelMassPenalty);
+    const mass = C.buildMassKg(state);
     const rho = C.airDensity(state.vehicle);
     const dynoRho = Number(state.lastDyno?.airDensityKgM3 || 1.204);
     const burnout = burnoutAssessment(raceGame.burn.tempC);
@@ -3246,7 +3289,8 @@
       shiftTargets: buildRealtimeShiftTargets(transInfo),
       shiftHistory: [], perfect: 0, good: 0, early: 0, late: 0, missed: 0,
       limiterFlags: new Set(), shifting: null,
-      t: 0, x: 0, v: 0, a: 0, rpm: Number(state.tune.launchRpm || 4200), gearIndex: 0,
+      t: 0, x: 0, v: 0, a: 0, rpm: Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200), gearIndex: 0,
+      startRpm: Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200),
       boostFactor: .80, wheelspin: 0, peakWheelspin: 0, zeroTo100: null,
       clutchTempC:58, gearboxTempC:66, maxClutchTempC:58, maxGearboxTempC:66, limiterTime:0, drivelineStress:0,
       lateralM: 0, lateralVelocity: 0, laneWarning: false, laneDnf: false, offTrackTime: 0, lineTouches: 0,
@@ -3557,7 +3601,7 @@
     const egtNode = $('#v13-run-egt'); if (egtNode && snap) egtNode.textContent = `${Math.round(snap.egtC)}°C`;
     const shaftNode = $('#v13-run-shaft'); if (shaftNode && snap) shaftNode.textContent = `${Math.round(snap.shaftPct)}%${snap.alsActive ? ' ALS' : ''}`;
     const load = run.shifting ? .15 : 1;
-    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, popRateHz: snap.popRateHz } : null);
+    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz } : null);
     if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
   }
 
@@ -3611,6 +3655,14 @@
     const speed = clamp(Number(point.speedKmh || 0) / 310, 0, 1);
     const distance = Number(point.distanceM || 0);
     const laneCamera = clamp(Number(point.lateralM || 0) / 1.22, -1, 1) * w * .028;
+    // Heads-up: a two-lane strip. The camera follows the player's lane; the strip centre line (between the
+    // lanes) lies at the player's right lane line and the rival's lane is to the right. Ratios are in units of
+    // the projected half-width; `off` is the strip centre relative to the player's lane centre.
+    const headsUp = !!run.opponent;
+    const off = headsUp ? .48 : 0, half = headsUp ? 1.06 : 1;
+    const laneRatios = headsUp ? [-.96, 0, .96] : [-.48, 0, .48];
+    const farP = v10Projection(205, w, h), nearP = v10Projection(0, w, h);
+    const X = (p, ratio) => w * .5 + laneCamera + p.roadHalf * (off + ratio);
     ctx.clearRect(0,0,w,h);
 
     // Night sky and distant flood-light haze.
@@ -3630,7 +3682,7 @@
     // Perspective asphalt.
     const asphalt=ctx.createLinearGradient(0,horizonY,0,bottomY);
     asphalt.addColorStop(0,'rgba(27,33,43,.88)'); asphalt.addColorStop(.38,'rgba(18,23,31,.96)'); asphalt.addColorStop(1,'rgba(5,8,12,1)');
-    ctx.fillStyle=asphalt; ctx.beginPath(); ctx.moveTo(w*.448+laneCamera,horizonY); ctx.lineTo(w*.552+laneCamera,horizonY); ctx.lineTo(w*1.10+laneCamera,bottomY); ctx.lineTo(-w*.10+laneCamera,bottomY); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=asphalt; ctx.beginPath(); ctx.moveTo(X(farP,-half),horizonY); ctx.lineTo(X(farP,half),horizonY); ctx.lineTo(X(nearP,half),bottomY); ctx.lineTo(X(nearP,-half),bottomY); ctx.closePath(); ctx.fill();
 
     // Wet reflective centre and rubbered-in grooves.
     const wet=ctx.createLinearGradient(0,horizonY,0,bottomY);
@@ -3639,6 +3691,7 @@
     ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=Math.max(2,w*.012);
     ctx.beginPath();ctx.moveTo(w*.485+laneCamera,horizonY);ctx.lineTo(w*.38+laneCamera,bottomY);ctx.stroke();
     ctx.beginPath();ctx.moveTo(w*.515+laneCamera,horizonY);ctx.lineTo(w*.62+laneCamera,bottomY);ctx.stroke();
+    if(headsUp)for(const g of [-.2,.2]){ctx.beginPath();ctx.moveTo(X(farP,.48+g),horizonY);ctx.lineTo(X(nearP,.48+g),bottomY);ctx.stroke();}
 
     const section=18;
     const phase=((distance%section)+section)%section;
@@ -3646,17 +3699,16 @@
       const ahead=i*section-phase+4;
       if(ahead<1||ahead>205)continue;
       const p=v10Projection(ahead,w,h), p2=v10Projection(Math.min(205,ahead+5.4),w,h);
-      const center=w*.5+laneCamera;
       const lineW=Math.max(1.2,p.near*9);
       // Central divider and lane edge strips visibly rush underneath the car.
       ctx.fillStyle=`rgba(241,246,251,${.23+p.near*.54})`;
-      for(const ratio of [-.48,0,.48]){
-        const x1=center+p.roadHalf*ratio, x2=center+p2.roadHalf*ratio;
+      for(const ratio of laneRatios){
+        const x1=X(p,ratio), x2=X(p2,ratio);
         ctx.beginPath();ctx.moveTo(x1-lineW*.5,p.y);ctx.lineTo(x1+lineW*.5,p.y);ctx.lineTo(x2+lineW*.26,p2.y);ctx.lineTo(x2-lineW*.26,p2.y);ctx.closePath();ctx.fill();
       }
       // Lane light reflections.
       for(const side of [-1,1]){
-        const bx=center+side*p.roadHalf*1.02;
+        const bx=X(p,side*half*1.02);
         const alpha=.18+p.near*.75;
         ctx.fillStyle=`rgba(255,184,65,${alpha})`;ctx.beginPath();ctx.arc(bx,p.y,Math.max(1.2,p.near*4.5),0,Math.PI*2);ctx.fill();
         const rg=ctx.createLinearGradient(bx,p.y,bx,p.y+55*p.near);
@@ -3667,10 +3719,10 @@
     // Solid barriers and repeating posts.
     for(const side of [-1,1]){
       ctx.strokeStyle='rgba(205,216,227,.64)';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(w*.5+laneCamera+side*w*.06,horizonY);ctx.lineTo(w*.5+laneCamera+side*w*.66,bottomY);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(X(farP,side*half*1.15),horizonY);ctx.lineTo(X(nearP,side*half*1.08),bottomY);ctx.stroke();
       for(let i=0;i<18;i++){
         const ahead=i*14-((distance*1.02)%14)+2;if(ahead<1||ahead>205)continue;
-        const p=v10Projection(ahead,w,h);const x=w*.5+laneCamera+side*p.roadHalf*1.055;
+        const p=v10Projection(ahead,w,h);const x=X(p,side*half*1.055);
         const postH=5+p.near*40;
         ctx.fillStyle=`rgba(191,202,214,${.22+p.near*.62})`;ctx.fillRect(x-side*Math.max(1,p.near*2),p.y-postH,Math.max(1.3,p.near*3),postH);
         if(i%3===0){
@@ -3685,13 +3737,13 @@
     const markers=[[18.288,'60 FT'],[100.584,'330 FT'],[201.168,'1/8'],[304.8,'1000 FT'],[402.336,'FINISH']];
     for(const [at,label] of markers){
       const ahead=at-distance;if(ahead<2||ahead>205)continue;
-      const p=v10Projection(ahead,w,h);const center=w*.5+laneCamera;
+      const p=v10Projection(ahead,w,h);const bx=X(p,half*1.08);
       const bw=34+p.near*62,bh=12+p.near*20;
       ctx.fillStyle=label==='FINISH'?'rgba(238,132,15,.92)':'rgba(7,12,18,.9)';ctx.strokeStyle='rgba(255,188,62,.8)';ctx.lineWidth=Math.max(1,p.near*2);
-      ctx.fillRect(center+p.roadHalf*1.08-bw*.5,p.y-bh,bw,bh);ctx.strokeRect(center+p.roadHalf*1.08-bw*.5,p.y-bh,bw,bh);
-      ctx.fillStyle='#f8fbff';ctx.font=`900 ${Math.max(6,7+p.near*10)}px system-ui`;ctx.textAlign='center';ctx.fillText(label,center+p.roadHalf*1.08,p.y-bh*.31);
+      ctx.fillRect(bx-bw*.5,p.y-bh,bw,bh);ctx.strokeRect(bx-bw*.5,p.y-bh,bw,bh);
+      ctx.fillStyle='#f8fbff';ctx.font=`900 ${Math.max(6,7+p.near*10)}px system-ui`;ctx.textAlign='center';ctx.fillText(label,bx,p.y-bh*.31);
       if(label==='FINISH'){
-        const gy=p.y-bh-8*p.near;ctx.strokeStyle='rgba(235,241,247,.9)';ctx.lineWidth=Math.max(1.2,p.near*4);ctx.beginPath();ctx.moveTo(center-p.roadHalf,gy);ctx.lineTo(center+p.roadHalf,gy);ctx.stroke();
+        const gy=p.y-bh-8*p.near;ctx.strokeStyle='rgba(235,241,247,.9)';ctx.lineWidth=Math.max(1.2,p.near*4);ctx.beginPath();ctx.moveTo(X(p,-half),gy);ctx.lineTo(X(p,half),gy);ctx.stroke();
       }
     }
 
@@ -3705,6 +3757,37 @@
       ctx.restore();
     }
     v10TrackVisual.lastDistance=distance;
+  }
+
+  // The rival drives in the lane to the right. It is placed with the same perspective as the track canvas:
+  // depth = the player's car depth on the canvas + the simulated gap, so it sits on the asphalt, shrinks with
+  // distance and leaves the frame when it falls far enough behind the camera.
+  function v10DepthAtY(y, h) {
+    const horizonY = h * .355, bottomY = h * .925;
+    const near = clamp((y - horizonY) / (bottomY - horizonY), 0, 1);
+    return 205 * (1 - Math.pow(near, 1 / 1.72));
+  }
+  function placeV10Rival(node, gapM, point) {
+    const canvas = $('#v10-track-canvas'), car = $('#v7-run-car'), parent = node.offsetParent;
+    const w = v10TrackVisual.width, h = v10TrackVisual.height;
+    if (!canvas || !car || !parent || !w || !h) return;
+    const cr = canvas.getBoundingClientRect(), pr = parent.getBoundingClientRect();
+    // Tyre contact line of the player's car (the image has ~6 % shadow margin below the tyres).
+    const carTop = car.offsetTop, carH = car.offsetHeight;
+    const contactY = carTop + carH * .94 + pr.top - cr.top;
+    const carDepth = v10DepthAtY(contactY, h);
+    const depth = carDepth + gapM;
+    if (depth < .6) { node.style.opacity = '0'; return; }
+    const pCar = v10Projection(carDepth, w, h), p = v10Projection(Math.min(depth, 205), w, h);
+    const laneCamera = clamp(Number(point.lateralM || 0) / 1.22, -1, 1) * w * .028;
+    const x = w * .5 + laneCamera + p.roadHalf * .96 + cr.left - pr.left;
+    const y = p.y + cr.top - pr.top;
+    // Sized to its own lane (the player's car art is drawn larger than its lane): 92 % of the lane width.
+    const width = pCar.roadHalf * .96 * .92, height = width / 1.61;
+    if (node.style.width !== `${width}px`) node.style.width = `${width}px`;
+    const scale = clamp(p.roadHalf / pCar.roadHalf, .05, 1.6);
+    node.style.transform = `translate3d(${x - width / 2}px,${y - height * .96}px,0) scale(${scale.toFixed(4)})`;
+    node.style.opacity = depth > 205 ? '.35' : '1';
   }
 
   function updateV7RunDom(point) {
@@ -3731,13 +3814,7 @@
     const rivalHud = $('#v12-rival-hud');
     if (run.opponent && rivalCar) {
       const gapM = Number(run.opponentGapM || 0);
-      const visualGap = clamp(gapM, -24, 125);
-      const rise = clamp(180 + visualGap * 5.2, 60, 430);
-      const scale = clamp(.60 - Math.max(0, visualGap) * .0045 + Math.max(0,-visualGap) * .006, .18, .80);
-      const laneCameraPx = clamp(point.lateralM / 1.22,-1,1) * Math.min(window.innerWidth*.04,20);
-      const x = Math.min(window.innerWidth * .82, window.innerWidth - 46) - laneCameraPx;
-      rivalCar.style.transform = `translate3d(calc(-50% + ${x - window.innerWidth*.5}px),${-rise}px,0) scale(${scale})`;
-      rivalCar.style.opacity = gapM > 165 ? '.28' : '1';
+      placeV10Rival(rivalCar, gapM, point);
       rivalCar.classList.toggle('ahead',gapM>.8);
       rivalCar.classList.toggle('behind',gapM<-.8);
       rivalCar.classList.toggle('finished',!!run.opponent.finished);
@@ -4196,7 +4273,11 @@
       try { gameControl.setPointerCapture(event.pointerId); } catch (e) {}
       if (name === 'burnout') { startEngineAudio('burnout'); haptic(7); }
       else if (name === 'creep') haptic(5);
-      else if (name === 'throttle') { startEngineAudio('staged'); haptic(6); }
+      else if (name === 'throttle') {
+        const st = raceGame.phase === 'stage' ? raceGame.stage : null;
+        if (st?.treeStarted && !st.launched && !st.launchArmed) { launchV7Race(false); return; }
+        startEngineAudio('staged'); haptic(6);
+      }
       return;
     }
     const btn = event.target.closest?.('[data-action="burnout-hold"]');
@@ -4217,7 +4298,7 @@
   document.addEventListener('pointerup', event => {
     const released = releaseRaceGamePointer(event);
     if (released) {
-      if (released === 'throttle' && raceGame?.phase === 'stage' && raceGame.stage?.treeStarted && !raceGame.stage.launched) {
+      if (released === 'throttle' && raceGame?.phase === 'stage' && raceGame.stage?.treeStarted && raceGame.stage.launchArmed && !raceGame.stage.launched) {
         launchV7Race(false);
       } else if (released === 'burnout' && raceGame?.phase === 'burnout' && raceGame.burn?.started && !raceGame.burn.done) {
         const profile = burnoutProfile();
@@ -4468,7 +4549,8 @@
     turbo: () => raceGame ? { phase: raceGame.phase, snap: raceGame.run?.turboSnap || raceGame.turboSnap || null, als: raceGame.alsInfo ? { enabled: raceGame.alsInfo.enabled, mode: raceGame.alsInfo.mode } : null, flames: (raceGame.flameLog || []).slice(-30), wear: raceGame.turbo ? cloneJson(raceGame.turbo.state.wear) : null, alsSeconds: raceGame.turbo?.state.alsSeconds || 0 } : null,
     stateWear: () => ({ wear: cloneJson(state.wear), damage: cloneJson(state.damage) }),
     enterStageForTest: () => { if (!raceGame?.open) return false; enterV7Stage(); return true; },
-    stageState: () => raceGame?.stage ? { progress: raceGame.stage.progress, staged: raceGame.stage.staged, rpm: raceGame.stage.rpm, treeStarted: raceGame.stage.treeStarted } : null,
+    stageState: () => raceGame?.stage ? { progress: raceGame.stage.progress, staged: raceGame.stage.staged, rpm: raceGame.stage.rpm, treeStarted: raceGame.stage.treeStarted, green: !!raceGame.stage.green, launchArmed: !!raceGame.stage.launchArmed, launched: !!raceGame.stage.launched, launchFromRpm: raceGame.stage.launchFromRpm || 0 } : null,
+    raceReaction: () => raceGame?.run ? { reactionTime: raceGame.run.reactionTime, redLight: raceGame.run.redLight, startRpm: raceGame.run.startRpm, launchTargetRpm: Number(state.tune.launchRpm || 4200) } : null,
     setAntiLagForTest: mode => { state.tune.als = { ...state.tune.als, mode }; saveState(); return C.resolveAntiLag(state).enabled; },
     dyno: () => state.lastDyno ? {
       status: state.lastDyno.status, abortRpm: state.lastDyno.abortRpm, abortReason: state.lastDyno.abortReason,

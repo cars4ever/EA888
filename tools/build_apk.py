@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and v1-sign the offline EA888 Lab v1.3.0 Android APK.
+"""Build and v1-sign the offline EA888 Lab v1.3.1 Android APK.
 
 No Android SDK is required. The builder patches the binary manifest/resource
 table, installs a real Scirocco launcher icon, generates a tiny WebView DEX,
@@ -241,10 +241,10 @@ def verify_apk(path: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument('--output', type=Path, default=DIST / 'EA888-Lab-v1.3.0-AntiLag-debug.apk')
+    ap.add_argument('--output', type=Path, default=DIST / 'EA888-Lab-v1.3.1-Precision-ALS-debug.apk')
     args = ap.parse_args()
     DIST.mkdir(parents=True, exist_ok=True)
-    unsigned = DIST / 'EA888-Lab-v1.3.0-unsigned.apk'
+    unsigned = DIST / 'EA888-Lab-v1.3.1-unsigned.apk'
     build_unsigned(unsigned)
     sign_apk(unsigned, args.output)
     verify_apk(args.output)

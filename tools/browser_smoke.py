@@ -351,12 +351,16 @@ def main() -> None:
         als_btn.dispatch_event('pointerdown', {'pointerId': 41, 'pointerType': 'touch', 'isPrimary': True})
         page.wait_for_timeout(1300)
         als_held = page.evaluate("window.__EA888_DEBUG__.turbo()")
+        audio_als = page.evaluate("window.__EA888_DEBUG__.audio()")
+        report['checks']['als_crackle_audio_follows_flame'] = audio_als.get('alsBed') is True and audio_als.get('alsBedGain', 0) > 0.1 and als_held['snap'].get('flameSustain', 0) > 0.3
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-stage-antilag.png'), full_page=False, animations='disabled', timeout=12000)
         report['checks']['als_button_shows_active'] = page.locator('#v13-als-button.active').count() == 1
         als_btn.dispatch_event('pointerup', {'pointerId': 41, 'pointerType': 'touch', 'isPrimary': True})
         page.wait_for_timeout(150)
         als_released = page.evaluate("window.__EA888_DEBUG__.turbo()")
+        page.wait_for_timeout(350)
+        report['checks']['als_crackle_audio_stops_on_release'] = page.evaluate("window.__EA888_DEBUG__.audio().alsBedGain") < 0.05
         launch_btn.dispatch_event('pointerup', {'pointerId': 43, 'pointerType': 'touch', 'isPrimary': True})
         i, h, r = als_idle['snap'], als_held['snap'], als_released['snap']
         report['antilag_stage'] = {'idle': {k: i[k] for k in ('boostBar', 'shaftPct', 'egtC')}, 'held': {k: h[k] for k in ('boostBar', 'shaftPct', 'egtC', 'alsActive', 'empBar')}, 'released': {k: r[k] for k in ('boostBar', 'shaftPct', 'alsActive')}, 'flames': len(als_held['flames']), 'wear': als_held['wear']}
@@ -370,6 +374,27 @@ def main() -> None:
         page.wait_for_selector('.v7-race-overview', state='visible')
         wear_after_als = page.evaluate("window.__EA888_DEBUG__.stateWear()")
         report['checks']['als_wear_persisted'] = wear_after_als['wear']['turbo'] > wear_before_als['wear']['turbo'] and wear_after_als['wear']['valves'] > wear_before_als['wear']['valves']
+
+        # Auto-start tree: once staged the tree starts by itself (0.5-5 s; 0.5 s with reduced motion) without
+        # holding LAUNCH. A press after the tree started is a pedal launch from the current rpm (no two-step).
+        click(page, '[data-action="open-drag-game"]')
+        page.wait_for_selector('#race-game-root .v8-burnout-game', state='visible')
+        assert page.evaluate("window.__EA888_DEBUG__.enterStageForTest()")
+        creep = page.locator('[data-v7-control="creep"]')
+        creep.dispatch_event('pointerdown', {'pointerId': 52, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_function("window.__EA888_DEBUG__.stageState().progress >= 62", timeout=5000)
+        creep.dispatch_event('pointerup', {'pointerId': 52, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_function("window.__EA888_DEBUG__.stageState().treeStarted", timeout=6000)
+        auto_tree = page.evaluate("window.__EA888_DEBUG__.stageState()")
+        report['checks']['tree_starts_automatically_when_staged'] = auto_tree['treeStarted'] is True and auto_tree['launchArmed'] is False
+        page.wait_for_function("window.__EA888_DEBUG__.stageState().green", timeout=6000)
+        page.locator('#v7-launch-button').dispatch_event('pointerdown', {'pointerId': 53, 'pointerType': 'touch', 'isPrimary': True})
+        page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=5000)
+        pedal = page.evaluate("window.__EA888_DEBUG__.raceReaction()")
+        report['checks']['pedal_launch_on_press_after_green'] = pedal['reactionTime'] >= 0 and pedal['redLight'] is False and pedal['startRpm'] < pedal['launchTargetRpm']
+        report['pedal_launch'] = pedal
+        click(page, '[data-action="close-drag-game"]')
+        page.wait_for_selector('.v7-race-overview', state='visible')
 
         # Race with drag ALS: rolling ALS on shifts and event-driven shift/ALS flames.
         click(page, '[data-action="auto-drag-game"]')
