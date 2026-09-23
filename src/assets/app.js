@@ -51,6 +51,9 @@
   let pendingOilId = state.service.oilId;
   let pendingFilterId = state.service.filterId;
   let dynoRunning = null;
+  let showAllChallenges = false;
+  let dynoCompareIndex = 1; // run A for the A/B comparison (index in state.dynoRuns; run 0 is the active B)
+  let dynoComparePinned = false; // an explicitly chosen A stays the same run when new pulls are added
   let treeMode = 'sportsman';
   let treeSession = null;
   let dragAnimation = null;
@@ -302,6 +305,7 @@
       if (slot[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(slot[key])) };
     }
     // slots saved by older versions may name retired parts (e.g. the generic 98-mm turbo): migrate them
+    markOnboarding('built');
     const migrated = C.normalizeState(state);
     for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) state[key] = migrated[key];
     state.buildName = slot.buildName || `Buildslot ${index + 1}`;
@@ -927,7 +931,7 @@
     if (activeTab === 'dyno') {
       const canvas = $('#dyno-chart');
       if (dynoRunning) drawDynoChart(canvas, dynoRunning.result, 0, false, dynoChannel, null);
-      else if (state.lastDyno) drawDynoChart(canvas, state.lastDyno, 1, !currentDyno(), dynoChannel, state.dynoRuns?.[1] || null);
+      else if (state.lastDyno) drawDynoChart(canvas, state.lastDyno, 1, !currentDyno(), dynoChannel, compareRun());
     }
     if (activeTab === 'drag') {
       updateWheelReadout();
@@ -944,6 +948,41 @@
   function staleNotice() {
     if (!state.lastDyno) return `<div class="notice stale"><strong>Nog geen meting.</strong> Monteer onderdelen, stel de tune in en voer een volledige dynopull uit.</div>`;
     return `<div class="notice stale"><strong>Ongeteste wijzigingen.</strong> De oude curve blijft zichtbaar als referentie, maar nieuw vermogen en koppel worden pas na de dynopull onthuld.</div>`;
+  }
+
+  // Guided first build: the three steps of the core loop with real completion signals. Players who already
+  // raced (saves from before this version) never see it.
+  function onboarding() {
+    const o = state.settings.onboarding;
+    if (o && typeof o === 'object') return o;
+    const veteran = (state.dragRuns?.length || 0) > 0;
+    return (state.settings.onboarding = { built: veteran, measured: veteran, raced: veteran, dismissed: veteran });
+  }
+  function markOnboarding(step) {
+    const o = onboarding();
+    if (o[step]) return;
+    o[step] = true;
+    // A pull only counts once there is a build of your own; a race only after a measured build.
+    if (step === 'measured' && !o.built) o[step] = false;
+    if (step === 'raced' && !o.measured) o[step] = false;
+  }
+  function onboardingCard() {
+    const o = onboarding();
+    if (o.dismissed) return '';
+    const steps = [
+      { key: 'built', title: 'Kies je build', text: 'Laad een referentiebuild of monteer zelf onderdelen in Motor.', go: 'build', cta: 'Naar Motor' },
+      { key: 'measured', title: 'Meet op de dyno', text: 'Een volledige pull onthult vermogen en koppel en geeft de strip vrij.', go: 'dyno', cta: 'Naar Dyno' },
+      { key: 'raced', title: 'Rijd de quarter mile', text: 'Burnout, stagen, boom, schakelen: je timeslip komt uit dezelfde simulatie.', go: 'drag', cta: 'Naar Race' }
+    ];
+    const next = steps.findIndex(x => !o[x.key]);
+    if (next < 0) {
+      return `<div class="card coach-card done"><div><span class="eyebrow">Eerste build · klaar</span><h3>Je kent de hele loop</h3><p>Bouwen, meten, racen. Vanaf hier draait het om tunen: kijk in Tune, vergelijk pulls A/B op de dyno en verbeter je timeslip.</p></div><button class="btn secondary small" data-action="coach-dismiss">Sluiten</button></div>`;
+    }
+    return `<div class="card coach-card">
+      <div class="coach-head"><div><span class="eyebrow">Je eerste build · stap ${next + 1} van 3</span><h3>${esc(steps[next].title)}</h3></div><button class="text-button" data-action="coach-dismiss">Overslaan</button></div>
+      <ol class="coach-steps">${steps.map((x, i) => `<li class="${o[x.key] ? 'done' : i === next ? 'current' : ''}"><i aria-hidden="true">${o[x.key] ? '✓' : i + 1}</i><div><b>${esc(x.title)}</b>${i === next ? `<small>${esc(x.text)}</small>` : ''}</div></li>`).join('')}</ol>
+      <button class="btn" data-go="${steps[next].go}">${esc(steps[next].cta)}</button>
+    </div>`;
   }
 
   function workflow() {
@@ -1204,6 +1243,7 @@
         <div><span class="eyebrow">BOUW · MEET · OVERLEEF · RACE</span><h1>EA888 Lab</h1><p>Een complete virtuele CAWB-workshop. Monteer onderdelen, controleer de motor, meet op de dyno en zet daarna pas een geldige quarter-mile neer.</p></div>
         <div class="v5-wallet"><span>WORKSHOP</span><b>${euro(state.bank)}</b></div>
       </div>
+      ${onboardingCard()}
 
       <div class="v5-engine-dashboard">
         <div class="v5-engine-dashboard-head">
@@ -1264,7 +1304,8 @@
       <div class="build-slots">${[0,1,2].map(i => buildSlotCard(i, state.buildSlots?.[i])).join('')}</div>
 
       <div class="section-head"><div><span class="eyebrow">Challenges</span><h2>${unlocked}/${C.CHALLENGES.length} ontgrendeld</h2></div></div>
-      <div class="challenge-grid">${C.CHALLENGES.slice(0, 6).map(ch => challengeCard(ch, earned[ch.id])).join('')}</div>
+      <div class="challenge-grid">${C.CHALLENGES.slice(0, showAllChallenges ? 6 : 3).map(ch => challengeCard(ch, earned[ch.id])).join('')}</div>
+      <button class="btn ghost small show-more" data-action="toggle-challenges">${showAllChallenges ? 'Minder tonen' : `Alle ${Math.min(6, C.CHALLENGES.length)} challenges`}</button>
 
       <div class="section-head presets-head"><div><span class="eyebrow">Referentiebuilds</span><h2>Van OEM tot Unlimited</h2></div></div>
       <div class="preset-strip v4-preset-strip">
@@ -1448,26 +1489,30 @@
     </div>`;
   }
 
+  // Compact part row: name, key spec, price and the mount button always visible; the description and the
+  // compressor meter fold out. Open rows are remembered so a re-render never folds them away.
+  const openPartRows = new Set();
   function partCard(cat, part, selected) {
     const randy = isRandyPart(part);
+    const key = `${cat.id}:${part.id}`;
     const turboMeta = cat.id === 'turbo' ? `<div class="part-meter"><span>Compressor</span><b>${part.compressorMm || 'OEM'} mm</b><i style="--fill:${clamp(((part.compressorMm || 45)-40)/80*100,8,100)}%"></i></div>` : '';
-    return `<article class="part-card v5-part-card ${selected ? 'selected' : ''}">
-      <div class="part-visual"><img src="images/${partVisual(cat.id)}" alt=""><span>${selected ? 'GEMONTEERD' : esc(cat.short)}</span></div>
-      <div class="part-card-top">
-        <div class="part-state">${selected ? icon('check') : ''}</div>
-        <div class="part-copy">
-          <div class="part-title-line"><h3>${esc(part.name)}</h3>${randy ? '<span class="randy-badge">RANDY SPEC</span>' : ''}</div>
-          <p>${esc(part.detail)}</p>
-        </div>
-      </div>
-      <div class="part-specs">${esc(part.specs)}</div>
-      ${turboMeta}
-      <div class="part-card-bottom">
-        <b>${part.price ? euro(part.price) : 'OEM / inbegrepen'}</b>
-        <button class="btn ${selected ? 'ghost' : 'small'}" data-part-cat="${cat.id}" data-part-id="${part.id}" ${selected ? 'disabled' : ''}>${selected ? 'Gemonteerd' : 'Monteren'}</button>
-      </div>
+    return `<article class="part-card part-row ${selected ? 'selected' : ''}" data-part-row="${key}">
+      <details ${openPartRows.has(key) ? 'open' : ''} data-part-details="${key}">
+        <summary>
+          <span class="part-row-state" aria-hidden="true">${selected ? icon('check') : ''}</span>
+          <span class="part-row-main"><b>${esc(part.name)}${randy ? ' <em class="randy-badge">RANDY SPEC</em>' : ''}</b><small>${esc(part.specs)}</small></span>
+          <span class="part-row-price">${part.price ? euro(part.price) : 'OEM'}</span>
+        </summary>
+        <div class="part-row-body"><p>${esc(part.detail)}</p>${turboMeta}</div>
+      </details>
+      ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`}
     </article>`;
   }
+  document.addEventListener('toggle', ev => {
+    const key = ev.target?.dataset?.partDetails;
+    if (!key) return;
+    if (ev.target.open) openPartRows.add(key); else openPartRows.delete(key);
+  }, true);
 
   function slider(name, label, min, max, step, value, unit, decimals = 1, hint = '', group = 'tune') {
     return `<div class="control">
@@ -1754,6 +1799,7 @@
         ${active ? '<button class="btn danger" data-action="abort-dyno">PULL AFBREKEN</button>' : previous ? `<button class="btn ghost" data-action="toggle-compare">Vergelijking: ${state.settings?.dynoCompare === false ? 'uit' : 'aan'}</button>` : ''}
       </div>
 
+      ${renderDynoCompare()}
       ${r ? renderDynoResult(r, clean) : '<div class="card empty-card">Nog geen dynometing opgeslagen.</div>'}
       ${renderDynoHistory()}
     </section>`;
@@ -1802,14 +1848,60 @@
     </div>`;
   }
 
+  function compareOn() { return state.settings?.dynoCompare !== false; }
+  function compareRun() {
+    const runs = state.dynoRuns || [];
+    if (!compareOn() || runs.length < 2) return null;
+    if (!runs[dynoCompareIndex]) dynoCompareIndex = 1;
+    return runs[dynoCompareIndex] || null;
+  }
+  // A/B: differences only where BOTH runs actually measured (an aborted run has no data above its abort rpm).
+  function dynoDelta(a, b) {
+    if (!a?.samples?.length || !b?.samples?.length) return null;
+    const lo = Math.max(a.samples[0].rpm, b.samples[0].rpm), hi = Math.min(a.samples.at(-1).rpm, b.samples.at(-1).rpm);
+    if (hi - lo < 500) return null;
+    const rows = [];
+    const stepRpm = hi - lo > 4000 ? 1000 : 500;
+    for (let rpm = Math.ceil(lo / stepRpm) * stepRpm; rpm <= hi; rpm += stepRpm) {
+      const pa = C.interpolateCurve(a.samples, rpm), pb = C.interpolateCurve(b.samples, rpm);
+      rows.push({ rpm, hpA: pa.hp, hpB: pb.hp, nmA: pa.torqueNm, nmB: pb.torqueNm, boostA: pa.boostBar, boostB: pb.boostBar });
+    }
+    const peak = (r, key) => r.samples.reduce((m, p) => p.rpm >= lo && p.rpm <= hi ? Math.max(m, p[key]) : m, 0);
+    return { lo, hi, rows, hpA: peak(a, 'hp'), hpB: peak(b, 'hp'), nmA: peak(a, 'torqueNm'), nmB: peak(b, 'torqueNm') };
+  }
+  function renderDynoCompare() {
+    const a = compareRun(), b = state.lastDyno;
+    if (!a || !b || dynoRunning) return '';
+    const d = dynoDelta(a, b);
+    const idx = dynoCompareIndex + 1;
+    const sign = v => { const r = Math.round(v); return r === 0 ? '0' : `${r > 0 ? '+' : '−'}${Math.abs(r)}`; };
+    const signBar = v => { const r = Math.round(v * 100) / 100; return r === 0 ? '0.00' : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(2)}`; };
+    const cls = v => Math.abs(v) < .5 ? '' : v > 0 ? 'up' : 'down';
+    const cfgA = a.dynoConfig || {}, cfgB = b.dynoConfig || {};
+    const sameCell = Math.abs((cfgA.ambientTempC ?? 0) - (cfgB.ambientTempC ?? 0)) < .5 && Math.abs((cfgA.baroKpa ?? 0) - (cfgB.baroKpa ?? 0)) < .2 && Math.abs((cfgA.rampRpmPerSec ?? 0) - (cfgB.rampRpmPerSec ?? 0)) < 1;
+    if (!d) return `<div class="card ab-card"><div class="section-head small"><div><span class="eyebrow">A/B-vergelijking</span><h3>Run ${String(idx).padStart(2, '0')} → actuele run</h3></div></div><p class="why">Te weinig gemeenschappelijk gemeten toerenbereik om te vergelijken.</p></div>`;
+    return `<div class="card ab-card">
+      <div class="section-head small"><div><span class="eyebrow">A/B-vergelijking</span><h3>Run ${String(idx).padStart(2, '0')} (A) → actuele run (B)</h3></div><button class="text-button" data-action="toggle-compare">Uit</button></div>
+      <div class="ab-peaks">
+        <div><span>Piekvermogen</span><b class="${cls(d.hpB - d.hpA)}">${sign(d.hpB - d.hpA)} pk</b><small>${Math.round(d.hpA)} → ${Math.round(d.hpB)} pk</small></div>
+        <div><span>Piekkoppel</span><b class="${cls(d.nmB - d.nmA)}">${sign(d.nmB - d.nmA)} Nm</b><small>${Math.round(d.nmA)} → ${Math.round(d.nmB)} Nm</small></div>
+      </div>
+      <div class="ab-table" role="table" aria-label="Verschil per toerental">
+        <div class="ab-row head" role="row"><span>rpm</span><span>ΔPK</span><span>ΔNm</span><span>Δboost</span></div>
+        ${d.rows.map(r => `<div class="ab-row" role="row"><span>${r.rpm}</span><span class="${cls(r.hpB - r.hpA)}">${sign(r.hpB - r.hpA)}</span><span class="${cls(r.nmB - r.nmA)}">${sign(r.nmB - r.nmA)}</span><span>${signBar(r.boostB - r.boostA)}</span></div>`).join('')}
+      </div>
+      <p class="why">Vergeleken tussen ${d.lo} en ${d.hi} rpm: het bereik dat beide runs echt gemeten hebben.${sameCell ? '' : ' Let op: andere testcelcondities (temperatuur, luchtdruk of ramp rate) tussen A en B.'}</p>
+    </div>`;
+  }
+
   function renderDynoHistory() {
     const runs = Array.isArray(state.dynoRuns) ? state.dynoRuns.slice(0, 8) : [];
     if (!runs.length) return '';
     const summary = r => C.isCompletedDyno(r)
       ? `${Math.round(r.peakHp)} pk<br><small>${Math.round(r.peakTorqueNm)} Nm · ${r.reliabilityScore}/100</small>`
       : `${dynoMetricText(r, 'peakHp', ' pk')}<br><small>${r.status === C.DYNO_STATUS.FAILED_TO_START ? 'niet gestart' : `partieel t/m ${r.abortRpm} rpm`}</small>`;
-    return `<div class="card history-card"><div class="section-head small"><div><span class="eyebrow">Dynohistorie</span><h3>Laatste runs</h3></div><span class="history-hint">run 1 is de actieve referentie · * = partieel</span></div>
-      <div class="run-table">${runs.map((r, i) => `<div class="run-row ${i === 0 ? 'current' : ''} ${C.isCompletedDyno(r) ? '' : 'partial'}"><span>${String(i + 1).padStart(2,'0')}</span><div><b>${esc(r.label || 'Dynopull')}</b><small>${new Date(r.measuredAt || Date.now()).toLocaleString('nl-NL')} · ${r.dynoConfig ? `${Math.round(r.dynoConfig.rampRpmPerSec)} rpm/s · ${Math.round(r.dynoConfig.ambientTempC)}°C` : 'oude meting'}</small></div><strong>${summary(r)}</strong></div>`).join('')}</div>
+    return `<div class="card history-card"><div class="section-head small"><div><span class="eyebrow">Dynohistorie</span><h3>Laatste runs</h3></div><span class="history-hint">run 01 = B (actueel) · kies een run als A · * = partieel</span></div>
+      <div class="run-table">${runs.map((r, i) => `<div class="run-row ${i === 0 ? 'current' : ''} ${C.isCompletedDyno(r) ? '' : 'partial'}"><span>${String(i + 1).padStart(2,'0')}</span><div><b>${esc(r.label || 'Dynopull')}</b><small>${new Date(r.measuredAt || Date.now()).toLocaleString('nl-NL')} · ${r.dynoConfig ? `${Math.round(r.dynoConfig.rampRpmPerSec)} rpm/s · ${Math.round(r.dynoConfig.ambientTempC)}°C` : 'oude meting'}</small></div><strong>${summary(r)}</strong>${i === 0 ? '<em class="ab-tag b">B</em>' : `<button class="ab-pick ${i === dynoCompareIndex && compareOn() ? 'active' : ''}" data-compare-run="${i}" aria-pressed="${i === dynoCompareIndex && compareOn()}">${i === dynoCompareIndex && compareOn() ? 'A' : 'Vergelijk'}</button>`}</div>`).join('')}</div>
     </div>`;
   }
 
@@ -2067,6 +2159,8 @@
   function finishDyno(result) {
     stopEngineAudio({ hard: true });
     state = C.commitDynoResult(state, result);
+    if (C.isCompletedDyno(result)) markOnboarding('measured');
+    if (dynoComparePinned) dynoCompareIndex = Math.min(dynoCompareIndex + 1, (state.dynoRuns?.length || 2) - 1);
     saveState();
     dynoRunning = null;
     syncAchievements();
@@ -2586,6 +2680,7 @@
       result.burnoutScore = burn.score;
       result.measuredAt = new Date().toISOString();
       state.lastDrag = result;
+      markOnboarding('raced');
       state.dragRuns = Array.isArray(state.dragRuns) ? state.dragRuns : [];
       state.dragRuns.unshift({ ...result });
       state.dragRuns = state.dragRuns.slice(0, 30);
@@ -4053,7 +4148,7 @@
 
   function commitV7DragResult(result){
     applyRaceTurboWear();
-    state.lastDrag=result;
+    state.lastDrag=result; markOnboarding('raced');
     state.dragRuns=Array.isArray(state.dragRuns)?state.dragRuns:[];state.dragRuns.unshift({...result});state.dragRuns=state.dragRuns.slice(0,30);
     const key=state.vehicle.drivetrain;
     if(result.valid&&(!state.records?.[key]||result.quarter<state.records[key].quarter)){
@@ -4215,7 +4310,7 @@
 
       <div class="card assembly-data-card"><span class="eyebrow">Montageblad</span><h2>Actuele meetwaarden</h2><div class="technical-grid"><div><span>Top / tweede ring</span><b>${num(state.assembly.topRingGapMm,2)} / ${num(state.assembly.secondRingGapMm,2)} mm</b></div><div><span>Rod / main clearance</span><b>${num(state.assembly.rodClearanceMm,3)} / ${num(state.assembly.mainClearanceMm,3)} mm</b></div><div><span>Bougiegap</span><b>${num(state.assembly.sparkGapMm,2)} mm</b></div><div><span>Nokken-TDC</span><b>${num(state.tune.exhaustTdcLiftMm,2)} / ${num(state.tune.intakeTdcLiftMm,2)} mm</b></div><div><span>Balans / sealing</span><b>${state.assembly.balanceQualityPct}% / ${state.assembly.deckSealQualityPct}%</b></div><div><span>Geprimed</span><b>${state.assembly.oilPrimed ? 'ja' : 'nee'}</b></div></div></div>
 
-      <div class="card build-table-card"><span class="eyebrow">Gemonteerde hardware</span><h2>${esc(state.buildName)}</h2><table class="build-table">${buildRows}<tr class="total"><td>Totaal onderdelen</td><td>${euro(C.totalPartsPrice(state))}</td></tr></table></div>
+      <details class="card build-table-card fold-card"><summary><span><span class="eyebrow">Gemonteerde hardware</span><b>${C.CATEGORIES.length} onderdelen · ${euro(C.totalPartsPrice(state))}</b></span><i aria-hidden="true">${icon('chevron')}</i></summary><h2>${esc(state.buildName)}</h2><table class="build-table">${buildRows}<tr class="total"><td>Totaal onderdelen</td><td>${euro(C.totalPartsPrice(state))}</td></tr></table></details>
       <div class="card"><span class="eyebrow">Logboek</span><h2>Laatste gebeurtenissen</h2><div class="log-list">${history || '<p class="muted">Nog geen logboekitems.</p>'}</div></div>
       <div class="card model-card"><span class="eyebrow">Modelgrenzen</span><h2>Engineering-game, geen ECU-map</h2><p>Het model combineert airflow, spool, wastegatecontrole, EMP, brandstofcapaciteit, BMEP, knock, EGT, turbospeed, zuigersnelheid, oliedruk, aeratie, oliefilm, clearances en componentgrenzen. De dragintegratie gebruikt vervolgens de gemeten curve, gearing, wielradius, roterende massa, tractie, luchtweerstand en gewichtsverplaatsing.</p><p>Een veilige score in het spel is nooit een bouwgarantie. Een echte motor moet worden gevalideerd met raildruk, lambda, knock, EGT, turbospeed, cilinderdruk, carterdruk en oliedruk.</p></div>
       <div class="button-row"><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Alles resetten</button></div>
@@ -4252,6 +4347,7 @@
         if (snap[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(snap[key])) };
       }
       state.buildName = String(snap.buildName || 'Geïmporteerde EA888-build').slice(0,52);
+      markOnboarding('built');
       state.bench = { results:{} };
       state.lastDynoSignature = '';
       pendingOilId = state.service.oilId;
@@ -4395,6 +4491,8 @@
     const from = edit.fromValue, to = el.value;
     el.dataset.committed = to;
     if (Number(from) === Number(to)) return;
+    markOnboarding('built');
+    saveState();
     const label = rangeLabel(el);
     const undo = () => { writePath(edit.path, edit.before); saveState(); render(); showToast(`${label} teruggezet naar ${rangeText(el, from)}.`); };
     const lim = el.dataset.als ? alsLimit(el.dataset.als, Number(to)) : safeLimit(edit.path);
@@ -4630,6 +4728,7 @@
       state.tune.als = m === 'custom' ? { ...C.resolveAntiLag(state).params, mode: 'custom' } : { ...state.tune.als, mode: m };
       saveState(); haptic(8); return render();
     }
+    if (btn.dataset.compareRun != null) { dynoCompareIndex = Number(btn.dataset.compareRun); dynoComparePinned = true; state.settings.dynoCompare = true; saveState(); haptic(6); return render(); }
     if (btn.dataset.dynoChannel) { dynoChannel = btn.dataset.dynoChannel; haptic(5); return render(); }
     if (btn.dataset.racePanel) { stopBurnout({ silent: true }); clearTreeTimers(); treeSession = null; racePanel = btn.dataset.racePanel; haptic(6); return render(); }
     if (btn.dataset.raceMode) {
@@ -4653,6 +4752,7 @@
     if (btn.dataset.preset) {
       const announce = offerUndo(['selections', 'tune', 'assembly', 'service', 'vehicle', 'dynoConfig', 'buildName'].map(k => ['__root', k]), 'Build geladen. Het resultaat blijft verborgen tot de dyno.');
       state = C.applyPreset(state, btn.dataset.preset);
+      markOnboarding('built');
       pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
       saveState(); haptic([12,25,12]);
       render();
@@ -4665,6 +4765,7 @@
       if (state.selections[btn.dataset.partCat] === btn.dataset.partId) return;
       const announce = offerUndo([['selections', btn.dataset.partCat]], `${cat?.short || 'Onderdeel'}: ${oldName} → ${cat?.items.find(x => x.id === btn.dataset.partId)?.name || btn.dataset.partId}`);
       state.selections[btn.dataset.partCat] = btn.dataset.partId;
+      markOnboarding('built');
       saveState(); haptic(16);
       render();
       return announce();
@@ -4736,6 +4837,8 @@
       case 'confirm-rebuild': doRebuild(); break;
       case 'export-build': showExportModal(); break;
       case 'backup-save': exportFullBackup(); break;
+      case 'toggle-challenges': showAllChallenges = !showAllChallenges; render(); break;
+      case 'coach-dismiss': onboarding().dismissed = true; saveState(); render(); break;
       case 'value-editor-apply': applyValueEditor(); break;
       case 'limit-revert': { const p = pendingLimit; pendingLimit = null; closeModal(); p?.undo(); break; }
       case 'limit-accept': { const p = pendingLimit; pendingLimit = null; closeModal(); if (p) showToast(p.text, { label: 'Ongedaan', run: p.undo }); break; }
@@ -4933,7 +5036,7 @@
 
   window.addEventListener('resize', () => {
     if (raceGame?.phase === 'stage') positionStageFlames();
-    if (activeTab === 'dyno' && !dynoRunning && state.lastDyno) drawDynoChart($('#dyno-chart'), state.lastDyno, 1, !currentDyno(), dynoChannel, state.dynoRuns?.[1] || null);
+    if (activeTab === 'dyno' && !dynoRunning && state.lastDyno) drawDynoChart($('#dyno-chart'), state.lastDyno, 1, !currentDyno(), dynoChannel, compareRun());
     if (activeTab === 'drag' && racePanel === 'telemetry' && state.lastDrag) drawDragTelemetry($('#v12-telemetry-canvas'), state.lastDrag);
   });
 

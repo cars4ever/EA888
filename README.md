@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.4.0 (branch `claude-dev`) — phase 1: foundation
+## v1.5.0 (branch `claude-dev`) — phase 2: design system and controls
+
+- Design tokens, bundled fonts, one component library, docked navigation, readable type everywhere.
+- Steppers, tap-to-type values, confirmation above hardware limits and undo after every change.
+- A/B dyno comparison, guided first build, much shorter pages.
+
+## v1.4.0 — phase 1: foundation
 
 - **Real Android project** (`android/`, Gradle + AGP 8.13): targetSdk 35, minSdk 26, v2 + v3 signing, APK and
   AAB (Play Store), adaptive launcher icon, edge-to-edge with system-bar insets passed to the CSS, Android back

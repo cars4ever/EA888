@@ -101,6 +101,7 @@ def main() -> None:
         print('CHECKPOINT garage', flush=True)
         load_app(page, assets)
         report['checks']['garage_loaded'] = page.locator('.garage-page').count() == 1
+        report['checks']['first_build_coach_shown'] = page.locator('.coach-card .coach-steps li').count() == 3
         initial_hp = page.evaluate("() => Math.round(__EA888_DEBUG__.dyno().peakHp)")
         report['checks']['initial_dyno_current'] = f'{initial_hp} pk' in page.locator('.v5-car-card').inner_text()
         if screenshots:
@@ -151,6 +152,9 @@ def main() -> None:
         for panel_id in ('boost', 'fuel', 'cams', 'safety'):
             click(page, f'[data-tune-panel="{panel_id}"]')
             assert page.locator(f'[data-tune-panel="{panel_id}"].active').count() == 1
+        click(page, '[data-nav="build"]')
+        report['checks']['compact_part_rows'] = page.locator('.part-row').count() >= 5 and page.locator('.part-row').first.bounding_box()['height'] < 140
+        click(page, '[data-nav="tune"]')
         report['checks']['all_tune_panels'] = True
 
         # Targeted updates: a re-render keeps the existing DOM nodes and the scroll position (no page swap).
@@ -532,6 +536,7 @@ def main() -> None:
           preset: 'hx52', selections: {fuel: 'ron95'},
           tune: {ignitionTrimDeg: 2, knockControl: false, boostHighBar: EA888Core.PRESETS.hx52.tune.boostHighBar + 0.6}
         })""")
+        report['checks']['ab_compare_card'] = page.locator('.ab-card').count() == 1 and page.locator('.ab-row').count() >= 3
         wear_before = page.evaluate("() => __EA888_DEBUG__.dyno()")
         click(page, '[data-action="start-dyno"]')
         page.wait_for_selector('.v4-result-card[data-dyno-status="aborted"]', timeout=12000)

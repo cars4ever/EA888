@@ -193,6 +193,23 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 - No emulator here (no KVM): Android verification is aapt2 badging, apksigner, dexdump of the bridge and the
   full browser smoke test on the assets extracted from the release APK.
 
+## 9. Phase 2: design system and controls (v1.5.0)
+
+- Styles split mechanically (pixel-identical) into `src/styles/app.css` and `race.css`; new `tokens.css`,
+  `fonts.css` (bundled OFL fonts) and `components.css` (last in the cascade: every shared component defined
+  once). 52 duplicate legacy component rules removed; no page text below 10 px.
+- Docked bottom navigation (48 px+ targets above the gesture area), one button language (default / disabled /
+  armed / active / danger), segmented controls with automatic columns.
+- Range controls: -/+ steppers with hold-to-repeat, tap-to-type value editor, confirmation above hardware limits
+  (boost > boost-control maximum, rev limit > weakest part, ignition trim > +3 deg, ALS EGT > 1100 C, shaft >
+  100 %), undo toast that restores only the touched state paths.
+- A/B dyno: pick any earlier run as A; deltas only over the rpm range both runs measured; different cell
+  conditions are flagged.
+- Guided first build (build -> full pull -> quarter mile) with real completion signals; veterans skip it.
+- Shorter pages: compact part rows (Motor 7.7k -> 2.7k px), oil details only for the chosen oil, 3 of 6
+  challenges by default, foldable hardware table (Data 3.6k -> 2.3k px).
+- Not yet: app.js module split and the race-scene CSS (phase 3 rebuilds the race scenes).
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
