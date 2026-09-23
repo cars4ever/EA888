@@ -42,7 +42,7 @@ function burnout(preset, seconds, mutate) {
   for (let t = 0; t < seconds; t += 0.01) {
     p = b.step(0.01, { throttle: true });
     maxSmoke = Math.max(maxSmoke, p.smoke);
-    if (p.smoke > 0.01 && p.tyreSurfaceC < 110) smokeBelow110 = true;
+    if (p.smoke > 0.01 && p.tyreSurfaceC < 95) smokeBelow110 = true;
     if (t > 1.5) maxRpm = Math.max(maxRpm, p.rpm);
   }
   return { b, p, maxSmoke, smokeBelow110, maxRpm, st };

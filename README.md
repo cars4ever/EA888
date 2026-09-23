@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.10.0 (branch `claude-dev`) — phase 7: tyres, a physical burnout, knock in the race
+## v1.11.0 (branch `claude-dev`) — wheel hop, mounts, tuner advice
+
+- Wheel hop from the driveline's torsional mode; mounts and bushings (dogbone insert to solid race mounts) stop it.
+- Tuner advice per dyno notice: exact parts and settings, each tested on the dyno simulation, applied with one tap.
+- Burnout from the water box at a set rpm, without anti-lag.
+
+## v1.10.0 — phase 7: tyres, a physical burnout, knock in the race
 
 - Tyre skin and core temperatures from the slip power; one grip window per compound for everything.
 - The burnout runs on the vehicle model (clutch dump, rpm held, slip power, smoke from a hot skin) and predicts the tyre temperature at the launch; staging cools the tyres.

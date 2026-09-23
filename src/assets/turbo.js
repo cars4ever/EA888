@@ -328,7 +328,32 @@
     };
   }
 
-  const Turbo = { DATA, getMap, compressorPoint, matchEngine, makeEvaluator, COMP_REF, TURB_REF, LBMIN_PER_KGS };
+  // Compound boost: a small high-pressure (HP) turbo in series ahead of the main (low-pressure) turbo. The HP
+  // stage spools early and covers the region where the main turbo alone is spool-limited; once the main turbo
+  // can hold the target by itself the HP turbine bypass opens and the HP compressor is bypassed. Modeled
+  // approach: each stage is matched on its own map and the delivered boost is the better of the two in the
+  // spool region; the series pressure-ratio multiplication beyond either turbo and the interstage state are
+  // not solved. The exhaust sees both turbines while the HP stage works (higher EMP), and the compressor
+  // outlet state comes from the stage that delivers.
+  function matchCompound(ctx, hpMap, target) {
+    const lp = matchEngine(ctx, target);
+    const spoolLimited = lp.limitedBy === 'spool' || lp.limitedBy === 'spool-transient';
+    if (!hpMap || !spoolLimited) return { ...lp, compoundStage: 'lp', hpShaftRpm: 0, hpShaftPct: 0 };
+    const hp = matchEngine({ ...ctx, map: hpMap }, { ...target, prevShaftRpm: target.prevHpShaftRpm });
+    if (hp.boostBar <= lp.boostBar + 1e-3) return { ...lp, compoundStage: 'lp', hpShaftRpm: 0, hpShaftPct: 0 };
+    // both turbines in the exhaust path: the HP turbine's expansion on top of the main turbine's back pressure
+    const empBarAbs = hp.empBarAbs + Math.max(0, lp.empBarAbs - ctx.baroBar) * 0.6;
+    return {
+      ...hp,
+      limitedBy: hp.limitedBy === 'target' ? 'compound-hp' : `compound-hp ${hp.limitedBy}`,
+      empBarAbs,
+      shaftRpm: lp.shaftRpm, shaftSpeedPct: lp.shaftSpeedPct,
+      hpShaftRpm: hp.shaftRpm, hpShaftPct: hp.shaftSpeedPct,
+      compoundStage: 'hp'
+    };
+  }
+
+  const Turbo = { DATA, getMap, compressorPoint, matchEngine, matchCompound, makeEvaluator, COMP_REF, TURB_REF, LBMIN_PER_KGS };
   if (typeof module !== 'undefined' && module.exports) module.exports = Turbo;
   root.EA888Turbo = Turbo;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

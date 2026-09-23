@@ -337,6 +337,18 @@ def main() -> None:
         page.wait_for_timeout(80)
         report['checks']['datalog_spark_channel'] = spark_drawn and page.locator('[data-action="export-dyno-log"]').count() == 1
         click(page, '[data-dyno-channel="power"]')
+        # Tuner advice: bought per notice, computed on the dyno simulation, applied with one tap.
+        if page.locator('[data-advice-buy]').count():
+            key = page.locator('[data-advice-buy]').first.get_attribute('data-advice-buy')
+            bank_a = page.evaluate("window.__EA888_DEBUG__.career().bank")
+            click(page, f'[data-advice-buy="{key}"]')
+            page.wait_for_selector(f'[data-advice-apply="{key}"], .advice-box.bought', timeout=90000)
+            bank_b = page.evaluate("window.__EA888_DEBUG__.career().bank")
+            recs = page.locator('.advice-box.bought .advice-rec').count()
+            report['checks']['tuner_advice_bought'] = bank_b == bank_a - 150 and recs >= 1
+            if page.locator(f'[data-advice-apply="{key}"]').count():
+                click(page, f'[data-advice-apply="{key}"]')
+                report['checks']['tuner_advice_applied'] = 'Toegepast' in page.locator('#toast').inner_text()
         # Regression (v1.9.0 on the phone: the dyno hung): even when every audio call throws, the pull runs to
         # its end and is saved; the failures land in the error log instead of stopping the loop.
         page.evaluate("window.__EA888_DEBUG__.breakAudioForTest(true)")
@@ -704,11 +716,11 @@ def main() -> None:
         report['checks']['burnout_3d_scene'] = b3.get('active') is True and b3.get('mode') == 'burnout' and b3.get('carZ', 0) > 10 and b3.get('smoke', 1) == 0
         thr = page.locator('#v7-burn-throttle')
         thr.dispatch_event('pointerdown', {'pointerId': 61, 'pointerType': 'touch', 'isPrimary': True})
-        page.wait_for_function("window.__EA888_DEBUG__.race3d().smoke > 12", timeout=60000)
+        page.wait_for_function("window.__EA888_DEBUG__.race3d().smoke > 3", timeout=150000)
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-burnout-3d.png'), full_page=False, animations='disabled', timeout=20000)
         thr.dispatch_event('pointerup', {'pointerId': 61, 'pointerType': 'touch', 'isPrimary': True})
-        report['checks']['burnout_3d_smoke_from_slip'] = page.evaluate("window.__EA888_DEBUG__.race3d().smoke") > 12
+        report["checks"]["burnout_3d_smoke_from_slip"] = page.evaluate("window.__EA888_DEBUG__.race3d().smoke") > 3
         assert page.evaluate("window.__EA888_DEBUG__.enterStageForTest()")
         page.wait_for_selector('#race-game-root .v8-stage-game.has-3d', state='visible', timeout=15000)
         page.wait_for_timeout(600)

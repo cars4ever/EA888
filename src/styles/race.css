@@ -995,3 +995,15 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v8-burnout-game.has-3d .v8-burn-smoke, .v8-stage-game.has-3d .ea-flame-layer { display:none !important; }
 .v8-burnout-game.has-3d .v8-cinematic-shade, .v8-stage-game.has-3d .v8-cinematic-shade { z-index:4; opacity:.62; }
 .v8-stage-game.has-3d .v12-stage-rival img { display:none; }
+
+/* N2O hold button in the race and the setup row */
+.v14-n2o-button { min-width: 84px; min-height: 64px; border-radius: 16px; border: 2px solid #4cc9ff; background: rgba(8,24,40,.86); color: #e8f7ff; display: grid; place-items: center; gap: 1px; padding: 6px 8px; touch-action: none; }
+.v14-n2o-button span { font-size: 18px; font-weight: 900; color: #7fdcff; }
+.v14-n2o-button b { font-size: 12px; letter-spacing: .06em; }
+.v14-n2o-button small { font-size: 10px; opacity: .8; }
+.v14-n2o-button.active { background: linear-gradient(180deg, #1b8fd6, #0a4f86); box-shadow: 0 0 22px rgba(76,201,255,.6); }
+.v14-n2o-button.empty, .v14-n2o-button:disabled { border-color: #3a4450; color: #6b7682; opacity: .6; }
+.n2o-setup { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0; }
+.n2o-setup small { display: block; color: var(--text-dim, #9aa4b2); font-size: 12px; }
+.v14-n2o-dock { position: absolute; z-index: 30; right: 12px; bottom: calc(150px + var(--safe-bottom, 12px)); }
+.has-3d .v14-n2o-dock { bottom: calc(150px + var(--safe-bottom, 12px)); }

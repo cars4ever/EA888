@@ -13,7 +13,7 @@ function presetResult(id, mutate) {
 }
 
 // Catalogue depth and explicit big-turbo support.
-assert.strictEqual(C.CATEGORIES.length, 20, 'expected 20 component categories');
+assert.strictEqual(C.CATEGORIES.length, 22, 'expected 22 component categories');
 assert.strictEqual(C.CATEGORY_MAP.turbo.items.length, 17, 'expected 17 turbo choices');
 assert.strictEqual(Math.max(...C.CATEGORY_MAP.turbo.items.map(x => x.compressorMm || 0)), 106, 'largest Precision (106 mm) missing');
 assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'pt9803' && x.compressorMm === 98), '98-mm turbo missing');
@@ -189,6 +189,10 @@ const careerSuite = require('./test_career.js');
 const audioSuite = require('./test_audio.js');
 // Tyre temperatures, the physical burnout and knock events in the race.
 const tyreSuite = require('./test_tyres.js');
+// Tuner advice: recommendations that are solved on the same simulation the dyno measures.
+const adviceSuite = require('./test_advice.js');
+// Stroker/destroker, welded head, compound boost, driver nitrous.
+const phase8Suite = require('./test_phase8.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -211,7 +215,9 @@ const report = {
   vehicle: vehicleSuite,
   career: careerSuite,
   audio: audioSuite,
-  tyres: tyreSuite
+  tyres: tyreSuite,
+  advice: adviceSuite,
+  phase8: phase8Suite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

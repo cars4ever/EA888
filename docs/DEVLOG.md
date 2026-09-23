@@ -353,6 +353,30 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
   burnout -> more launch heat, race continues the tyre state, cold/optimum/overheated 60 ft, no knock on a
   map at its margin, knock control vs damage).
 
+## 15. Wheel hop, mounts, tuner advice, burnout fix (v1.11.0)
+
+- Wheel hop: the driveline's torsional mode (drive shafts in series with the engine/gearbox roll on its
+  mounts, the driven wheels on it; ~7 Hz on OEM parts) driven by the clutch torque through the clutch
+  damper springs. Its damping is the mounts' damping minus the tyre's negative damping past its peak
+  (strong at low speed, filtered by the longitudinal relaxation length). An oscillation that keeps going
+  for more than 1.5 periods while the tyre works at its limit is hop: less traction, torque peaks,
+  driveline wear; the 3D body bounces with it and the tyres chatter. Launch metering by ECU (slip-
+  controlled launch control, DSG, two-step, a clutch dump on the stock ECU). New category Motorsteunen &
+  bussen (OEM, dogbone insert, poly, solid race mounts with NVH wear).
+- Tuner advice: every dyno notice has a key and a measurable limit; for EUR 150 the tuner runs concrete
+  candidates (parts, exact settings with old -> new value, services) through the dyno simulation without
+  measurement noise, ranks solutions first and then by price (EUR 500 per percent of power lost), tries a
+  combination when nothing single solves it, and lists one option per kind of fix with before/after,
+  power and price; one tap applies it (undo). The knock notice now fires at the knock-control margin
+  (0.93) as in the race.
+- Burnout: starts in the water box (wet tyre ~45 % of dry street grip), the tyre spins itself dry and then
+  grips ~80 %, heats and smokes; a bogged engine is re-revved; the held rpm is a setup value
+  (Burnout-toerental) and the burnout never runs anti-lag. Before, sticky tyres on a prepped track bogged
+  the burnout to ~1100 rpm.
+- Tests: tests/test_advice.js (the best recommendation, applied and measured again, has the predicted
+  power and removes the notice; ranking; table vs quick-setup boost; no knock notice on a stock map);
+  hop and burnout regressions in tests/test_tyres.js; smoke checks for buying and applying advice.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

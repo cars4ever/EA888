@@ -264,3 +264,17 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .sound-mixer-card .small-copy { font-size: var(--fs-sm, 13px); line-height: 1.45; margin: 6px 0 10px; }
 .sound-mixer-card .mixer-grid { display: grid; gap: 4px; grid-template-columns: 1fr; }
 @media (min-width: 720px) { .sound-mixer-card .mixer-grid { grid-template-columns: 1fr 1fr; column-gap: 18px; } }
+
+/* ---- Tuner advice in the dyno diagnosis ---- */
+.advice-box { margin-top: 10px; display: grid; gap: 6px; }
+.advice-box small { color: var(--text-dim, #9aa4b2); font-size: 12px; line-height: 1.4; }
+.advice-box.running b { font-size: 13px; }
+.advice-box.running i { display: block; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent, #ff8a1c) var(--p, 0%), rgba(255,255,255,.1) var(--p, 0%)); }
+.advice-rec { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 9px 10px; border-radius: 10px; background: rgba(255,255,255,.04); border-left: 3px solid rgba(255,255,255,.2); }
+.advice-rec.good { border-left-color: #3ddc84; }
+.advice-rec.warn { border-left-color: #ffb020; }
+.advice-rec.bad { border-left-color: #ff5a6a; opacity: .75; }
+.advice-rec b { font-size: 12px; letter-spacing: .02em; }
+.advice-rec p { margin: 2px 0; font-size: 13px; line-height: 1.35; }
+.advice-rec .btn { min-height: 40px; }
+.advice-note { display: block; margin-top: 2px; }

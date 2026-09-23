@@ -70,7 +70,7 @@
   let raceGame = null;
   let raceGameRaf = null;
   let raceGameTimers = [];
-  let raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
+  let raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false, nitrous:false };
   const raceGamePointerMap = new Map();
   let raceGameLastFrame = 0;
   let raceGameAuto = false;
@@ -2421,7 +2421,14 @@
       const enough = Number(state.bank || 0) >= C.ADVICE_PRICE;
       return `<div class="advice-box"><button class="btn small" data-advice-buy="${esc(key)}" ${enough && !adviceJob ? '' : 'disabled'}>Tuneradvies · ${euro(C.ADVICE_PRICE)}</button><small>${!enough ? `Budget te laag (${euro(state.bank)}).` : adviceJob ? 'De tuner is nog met een ander advies bezig.' : 'De tuner test onderdelen en instellingen op jouw motor en zegt exact wat het oplost.'}</small></div>`;
     }
-    const recs = bought.evals.slice(0, 4);
+    // one option per kind of fix (ignition, boost, fuel, a part category...), best first
+    const seen = new Set(), recs = [];
+    for (const e of bought.evals) {
+      const fam = e.id.startsWith('part:') ? e.id.split(':').slice(0, 2).join(':') : e.id.split(':')[0];
+      if (seen.has(fam)) continue;
+      seen.add(fam); recs.push(e);
+      if (recs.length >= 4) break;
+    }
     return `<div class="advice-box bought"><span class="eyebrow">Tuneradvies · ${esc(recs[0]?.metric || '')}</span>${recs.map((e, i) => {
       const dHp = Math.round(e.hpAfter - e.hpBefore);
       const tag = e.resolved ? 'good' : e.improved ? 'warn' : 'bad';
@@ -2990,6 +2997,7 @@
         ${outcome}
         <div class="v12-analysis-card"><span>PIEKWAARDEN</span><b>${Math.round(maxSpeed)} km/u</b><small>${Math.round(maxRpm)} rpm · ${maxBoost.toFixed(2)} bar</small></div>
         <div class="v12-analysis-card"><span>TRACTIE</span><b>${maxSpin.toFixed(0)}% spin</b><small>${Number(run.burnoutTempC || 0).toFixed(0)}°C band bij launch · ${Number(run.sixtyFt || 0).toFixed(3)} s 60 ft</small></div>
+        ${run.n2oMaxHp > 0 ? `<div class="v12-analysis-card ${run.headLiftS > .05 || run.n2oLeanS > .05 ? 'loss' : ''}"><span>LACHGAS</span><b>${Math.round(run.n2oMaxHp)} pk · ${run.n2oShotS.toFixed(1)} s</b><small>${run.headLiftS > .05 ? `head-lift ${run.headLiftS.toFixed(1)} s: sterkere afdichting nodig` : run.n2oLeanS > .05 ? `arm (dry kit) ${run.n2oLeanS.toFixed(1)} s: groter brandstofsysteem` : `${run.n2oUsedKg.toFixed(2)} kg verbruikt`}</small></div>` : ''}
         ${Number.isFinite(run.hopS) ? `<div class="v12-analysis-card ${run.hopS > .2 ? 'loss' : ''}"><span>WHEEL HOP</span><b>${run.hopS > .05 ? `${run.hopS.toFixed(1)} s` : 'geen'}</b><small>${run.hopS > .2 ? 'steunen/bussen (Bouw → Steunen) of TC dempen het' : `${esc(C.getPart(state, 'mounts').name)}`}</small></div>` : ''}
         ${Number.isFinite(run.knockEvents) ? `<div class="v12-analysis-card ${run.knockDamagePct > 0 ? 'loss' : ''}"><span>KLOP</span><b>${run.knockEvents} cycli</b><small>${run.knockDamagePct > 0 ? `zonder knock control · schade +${run.knockDamagePct.toFixed(2)}%` : run.kcMaxRetardDeg > .05 ? `knock control max −${run.kcMaxRetardDeg.toFixed(1)}°` : 'geen klop'}</small></div>` : ''}
         <div class="v12-analysis-card"><span>RIJLIJN</span><b>${Number(maxLane || 0).toFixed(2)} m</b><small>${run.lineTouches || 0} correcties · ${run.laneDnf ? 'run ongeldig' : 'binnen de strip'}</small></div>
@@ -3143,6 +3151,8 @@
           </div>
           <div class="card">
             <span class="eyebrow">Start & chassis</span><h3>Launchgedrag</h3>
+            ${C.getPart(state, 'nitrous').shotHp > 0 ? `<div class="n2o-setup"><div><b>${esc(C.getPart(state, 'nitrous').name)}</b><small>Fles ${nitrousBottleKg().toFixed(1)} / ${C.getPart(state, 'nitrous').bottleKg.toFixed(1)} kg · ~${Math.floor(nitrousBottleKg() / (C.getPart(state, 'nitrous').shotHp * 0.00085 * 9))} passes · houd N₂O vast tijdens de race</small></div><button class="btn small" data-action="n2o-refill" ${nitrousBottleKg() >= C.getPart(state, 'nitrous').bottleKg - .01 ? 'disabled' : ''}>Vullen · ${euro(Math.round((C.getPart(state, 'nitrous').bottleKg - nitrousBottleKg()) * N2O_EUR_PER_KG))}</button></div>
+            ${slider('nitrousRetardPer50', 'N₂O-ontstekingsretard', 0, 6, .5, Number(state.tune.nitrousRetardPer50 ?? 2), '° / 50 pk', 1, 'De ECU trekt zoveel ontsteking terug per 50 pk shot: minder klop, maar ook minder koppel.')}` : ''}
             ${vehicleRange('burnoutRpm', 'Burnout-toerental', 3000, 7000, 100, v.burnoutRpm ?? 5000, ' rpm', 0, 'Dit toerental houd je vast tijdens de burnout (altijd zonder anti-lag). Hoger = meer slipvermogen en sneller warm.')}
             ${vehicleRange('burnoutLevel', 'Opgeslagen bandwarmte', 0, 100, 1, v.burnoutLevel, '%', 0, 'De interactieve burnout overschrijft dit met de werkelijk behaalde temperatuur.')}
             ${vehicleRange('suspensionTransferPct', 'Gewichtsoverdracht', 25, 100, 1, v.suspensionTransferPct, '%', 0, 'FWD wil minder achterwaartse transfer; RWD profiteert van gecontroleerde squat.')}
@@ -3705,6 +3715,9 @@
           ${shiftControl}
           <button class="v9-steer-button v10-steer-button right" data-v7-control="steerRight"><b>RECHTS</b><span>▶</span></button>
         </div>
+        <div class="v14-n2o-dock">
+          ${C.getPart(state, 'nitrous').shotHp > 0 ? `<button class="v14-n2o-button ${nitrousBottleKg() > .02 ? '' : 'empty'}" id="v14-n2o-button" data-v7-control="nitrous" ${nitrousBottleKg() > .02 ? '' : 'disabled'}><span>N₂O</span><b>${C.getPart(state, 'nitrous').shotHp} PK</b><small id="v14-n2o-bottle">${nitrousBottleKg().toFixed(1)} kg</small></button>` : ''}
+        </div>
         <div class="v8-run-telemetry v9-run-telemetry v10-run-telemetry"><span><b id="v7-run-g">0.00 g</b>acceleratie</span><span><b id="v7-run-wheelspin">0%</b>wheelspin</span><span><b id="v13-run-shaft">—</b>turbo-as</span><span><b id="v13-run-egt">—</b>EGT</span></div>
         <div class="v12-driveline-hud"><span><b id="v12-clutch-temp">58°C</b>koppeling</span><span><b id="v12-gearbox-temp">66°C</b>bak</span><span><b id="v12-stress">0%</b>stress</span></div>
       </main>
@@ -3855,14 +3868,14 @@
     const startingTemp = clamp(profile.trackC + 2, profile.trackC, profile.targetC - 8);
     burnoutRuntime = { key:`${profile.id}:${profile.trackC}:${state.vehicle.drivetrain}`, tempC:startingTemp, rpm:900, active:false, smoke:0, wheelSlip:0, startedAt:0, lastAt:0, elapsed:0 };
     raceGameAuto = !!auto;
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false, nitrous:false };
     raceGame = {
       open:true,
       phase:'burnout',
       startedAt:performance.now(),
       burn:{
-        rpm:900, tempC:startingTemp, timeLeft:state.settings?.reducedMotion ? (auto ? .9 : 3.5) : 8.0,
-        duration:state.settings?.reducedMotion ? (auto ? .9 : 3.5) : 8.0, started:false, done:false,
+        rpm:900, tempC:startingTemp, timeLeft:state.settings?.reducedMotion ? (auto ? .9 : 5) : 8.0,
+        duration:state.settings?.reducedMotion ? (auto ? .9 : 5) : 8.0, started:false, done:false,
         smoke:0, elapsed:0, qualityIntegral:0, qualityTime:0, score:0, label:'KOUD'
       },
       stage:{ progress:0, rpm:900, staged:false, deep:false, treeStarted:false, plannedGreen:0, green:false, launched:false, stagedSince:0, launchArmed:false },
@@ -3896,7 +3909,7 @@
     disposeRace3D();
     disposeReplay();
     clearRaceGameTimers();
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false, nitrous:false };
     raceGamePointerMap.clear();
     stopEngineAudio({ hard: true });
     raceGame = null;
@@ -4036,7 +4049,7 @@
     clearRaceGameTimers();
     raceGame.phase='stage';
     raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,stagedSince:0,launchArmed:false};
-    raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false,antilag:false};
+    raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false,antilag:false,nitrous:false};
     renderRaceGame();
     updateEngineAudio(900,.12,0);
     haptic(18);
@@ -4284,7 +4297,7 @@
     const engineMap = C.buildEngineMap(state);
     const launchFromRpm = Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200);
     const eventTrack = raceGame?.careerRound ? { ...state, vehicle: { ...state.vehicle, preparedTrack: !!C.CAREER_EVENT_MAP[raceGame.careerRound.eventId]?.prep } } : state;
-    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
+    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, bottleKg: nitrousBottleKg(), launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
     vehicleRt.state.we = launchFromRpm * Math.PI / 30;
     vehicleRt.launch();
     const run = {
@@ -4427,7 +4440,7 @@
       const h = Math.min(maxStep, remaining);
       remaining -= h;
       // Longitudinal physics: the shared vehicle model (engine, turbo, clutch, tyres, shifts).
-      const p = run.rt.step(h, { flatShift: !!run.flatShift, rollingAls: !!run.alsRolling });
+      const p = run.rt.step(h, { flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: !!raceGamePointer.nitrous || (run.driverAssist && run.gearIndex >= 1) });
       run.t = p.t;
       run.x = p.distanceM; run.v = p.v; run.a = p.a; run.rpm = p.rpm; run.gearIndex = p.gearIndex;
       run.wheelspin = clamp(p.slipRatio, 0, .95);
@@ -4907,7 +4920,16 @@
     node.style.opacity = depth > 205 ? '.35' : '1';
   }
 
+  function updateN2oHud() {
+    const btn = $('#v14-n2o-button');
+    const point = raceGame?.run?.rt?.point?.();
+    if (!btn || !point) return;
+    const kg = Number(point.bottleKg ?? 0), on = Number(point.n2oHp || 0) > 1;
+    btn.classList.toggle('active', on); btn.classList.toggle('empty', kg <= .02);
+    const b = $('#v14-n2o-bottle'); if (b) b.textContent = on ? `${Math.round(point.n2oHp)} pk · ${kg.toFixed(2)} kg` : `${kg.toFixed(2)} kg`;
+  }
   function updateV7RunDom(point) {
+    updateN2oHud();
     if (!point || !raceGame?.run) return;
     const run = raceGame.run;
     const frac = clamp(point.distanceM / 402.336, 0, 1);
@@ -5064,6 +5086,8 @@
       maxGearboxTempC:Number(run.maxGearboxTempC || run.gearboxTempC || 0),
       limiterTimeS:Number(run.limiterTime || 0),
       hopS:Number(run.rt?.state.hopS || 0), hopMax:Number(run.rt?.state.hopMaxI || 0),
+      n2oShotS:Number(run.rt?.state.n2oShotS || 0), n2oMaxHp:Number(run.rt?.state.n2oMaxHp || 0), n2oUsedKg:Math.max(0, Number(run.rt?.state.bottleStartKg || 0) - Number(run.rt?.state.bottleKg || 0)),
+      headLiftS:Number(run.rt?.state.headLiftS || 0), n2oLeanS:Number(run.rt?.state.n2oLeanS || 0),
       hopWearPct: run.rt ? C.hopWearPct(run.rt.state, C.getPart(state, 'mounts')) : 0,
       knockEvents:Number(run.rt?.state.knockEvents || 0), kcMaxRetardDeg:Number(run.rt?.state.kcMaxDeg || 0), knockDamagePct:Number(run.rt?.state.knockDamage || 0),
       launchTyreC:Number(run.burnoutTempC || 0),
@@ -5092,6 +5116,9 @@
 
   function commitV7DragResult(result){
     applyRaceTurboWear();
+    // nitrous used on this pass comes out of the bottle
+    if (result.n2oUsedKg > 0 && state.nitrous) state.nitrous.kg = Math.max(0, Number(state.nitrous.kg || 0) - result.n2oUsedKg);
+    if (result.headLiftS > .05) pushHistory({ type: 'damage', label: `Head-lift in de race (${result.headLiftS.toFixed(1)} s): de koppakking houdt de cilinderdruk niet` });
     // wheel hop and hard mounts: driveline wear from what this pass actually did
     if (result.hopWearPct > 0) {
       state.wear.transmission = clamp(Number(state.wear.transmission || 0) + result.hopWearPct, 0, 100);
@@ -5411,11 +5438,29 @@
     render();
   }
 
+  function rebuildCost() { return 6500 + Number(C.getPart(state, 'sealing').rebuildExtra || 0); }
+  // Nitrous bottle: kept per build in state (kg left); a new or other kit starts full.
+  const N2O_EUR_PER_KG = 18;
+  function nitrousBottleKg() {
+    const kit = C.getPart(state, 'nitrous');
+    if (!kit.shotHp) return 0;
+    if (!state.nitrous || state.nitrous.kitId !== kit.id) state.nitrous = { kitId: kit.id, kg: kit.bottleKg };
+    return clamp(Number(state.nitrous.kg), 0, kit.bottleKg);
+  }
+  function refillNitrous() {
+    const kit = C.getPart(state, 'nitrous'), need = kit.bottleKg - nitrousBottleKg();
+    if (need <= .01) return showToast('De fles is al vol.');
+    const cost = Math.round(need * N2O_EUR_PER_KG);
+    if (state.bank < cost) return showToast(`Budget te laag voor ${euro(cost)}.`);
+    state.bank -= cost; state.nitrous.kg = kit.bottleKg;
+    pushHistory({ type: 'service', label: `Lachgasfles gevuld: ${need.toFixed(1)} kg · ${euro(cost)}` });
+    saveState(); render(); showToast(`Fles gevuld (${need.toFixed(1)} kg, ${euro(cost)}).`);
+  }
   function doRebuild() {
     // A rebuild renews the engine incl. exhaust valves; the manifold is inspected and resurfaced.
     state.wear = { engine: 0, turbo: Math.max(0, state.wear.turbo - 10), transmission: Math.max(0, state.wear.transmission - 5), valves: 0, manifold: Math.max(0, state.wear.manifold - 25) };
     state.damage = { engine: 0, turbo: 0, transmission: 0 };
-    state.bank -= 6500;
+    state.bank -= rebuildCost();
     state.lastDynoSignature = '';
     pushHistory({ type: 'service', label: 'Motor geïnspecteerd en gereviseerd' });
     saveState(); closeModal(); haptic([30,30,30]);
@@ -5696,7 +5741,7 @@
   });
 
   window.addEventListener('blur', () => {
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false, nitrous:false };
     raceGamePointerMap.clear();
     if (burnoutRuntime?.active) stopBurnout({ silent: true });
   });
@@ -5790,6 +5835,7 @@
 
     switch (btn.dataset.action) {
       case 'open-drag-game': startDragGame(false); break;
+      case 'n2o-refill': refillNitrous(); break;
       case 'career-race': careerRace(); break;
       case 'career-forfeit': careerForfeit(); break;
       case 'auto-drag-game': startDragGame(true); break;
@@ -5843,7 +5889,7 @@
         break;
       }
       case 'oil-change': doOilChange(); break;
-      case 'open-rebuild': showModal('Motor inspecteren / reviseren', '<p class="modal-copy">Een volledige revisie wist virtuele motorschade en motorwear, verlaagt slijtage van turbo en bak en kost € 6.500 uit het spelbudget. Daarna zijn benchtests en een nieuwe dynometing verstandig.</p>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-rebuild">Reviseren</button>'); break;
+      case 'open-rebuild': showModal('Motor inspecteren / reviseren', `<p class="modal-copy">Een volledige revisie wist virtuele motorschade en motorwear, verlaagt slijtage van turbo en bak en kost ${euro(rebuildCost())} uit het spelbudget${C.getPart(state, 'sealing').rebuildExtra ? ' (de gelaste kop maakt demonteren duur)' : ''}. Daarna zijn benchtests en een nieuwe dynometing verstandig.</p>`, '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-rebuild">Reviseren</button>'); break;
       case 'confirm-rebuild': doRebuild(); break;
       case 'export-build': showExportModal(); break;
       case 'backup-save': exportFullBackup(); break;
