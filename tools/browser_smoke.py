@@ -22,31 +22,28 @@ def data_uri(path: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
+def inline_images(text: str, assets: Path) -> str:
+    """Replace every images/<file> reference that exists on disk by a data URI (no file:// in the sandbox)."""
+    def repl(m):
+        path = assets / 'images' / m.group(1)
+        return data_uri(path) if path.is_file() else m.group(0)
+    return re.sub(r'images/([A-Za-z0-9._-]+\.(?:png|jpe?g|webp|svg))', repl, text)
+
+
 def load_app(page, assets: Path) -> None:
     html = (assets / 'index.html').read_text(encoding='utf-8')
-    # Keep the real DOM skeleton and metadata, but inject production assets below.
+    scripts = re.findall(r'<script[^>]+src="([^"]+)"[^>]*></script>', html)
+    # Keep the real DOM skeleton and metadata, but inject the shipped assets below, in index.html order.
     html = re.sub(r'<link[^>]+href="styles\.css"[^>]*>', '', html)
-    html = re.sub(r'<script[^>]+src="(?:turbo-data|turbo|sim|audio-bank|app)\.js"[^>]*></script>', '', html)
+    html = re.sub(r'<script[^>]+src="[^"]+"[^>]*></script>', '', html)
     page.set_content(html, wait_until='domcontentloaded')
-    css = (assets / 'styles.css').read_text(encoding='utf-8')
-    for name in ('drag-strip-panorama.webp', 'drag-track-chase.webp', 'drag-burnout-box.webp', 'drag-v8-burnout.webp', 'drag-v8-stage.webp', 'drag-v8-race.webp', 'track-horizon-v10.webp'):
-        css = css.replace(f'images/{name}', data_uri(assets / 'images' / name))
-    page.add_style_tag(content=css)
-    for script in ('turbo-data.js', 'turbo.js', 'sim.js'):
-        page.add_script_tag(content=(assets / script).read_text(encoding='utf-8'))
-    page.add_script_tag(content=(assets / 'audio-bank.js').read_text(encoding='utf-8'))
-    app_js = (assets / 'app.js').read_text(encoding='utf-8')
-    image_names = (
-        'scirocco-app-icon.png', 'randy-scirocco-hero.jpg', 'randy-scirocco-garage.jpg',
-        'randy-scirocco-side.png', 'randy-scirocco-cutout.png',
-        'engine-realistic.webp', 'part-piston.webp', 'part-head.webp',
-        'part-turbo.webp', 'part-intercooler.webp', 'part-fuel.webp',
-        'part-transmission.webp', 'car-race.webp', 'drag-strip-panorama.webp',
-        'drag-track-chase.webp', 'drag-burnout-box.webp', 'drag-v8-burnout.webp', 'drag-v8-stage.webp', 'drag-v8-race.webp', 'randy-scirocco-rear.svg', 'rival-scirocco.svg', 'randy-scirocco-rear-photo.png', 'randy-scirocco-race-v10.png', 'track-horizon-v10.webp',
-    )
-    for name in image_names:
-        app_js = app_js.replace(f'images/{name}', data_uri(assets / 'images' / name))
-    page.add_script_tag(content=app_js)
+    page.add_style_tag(content=inline_images((assets / 'styles.css').read_text(encoding='utf-8'), assets))
+    for script in scripts:
+        path = assets / script
+        if not path.is_file():
+            continue  # e.g. platform.js when testing the raw sources
+        text = path.read_text(encoding='utf-8')
+        page.add_script_tag(content=inline_images(text, assets) if script == 'app.js' else text)
     page.wait_for_selector('.garage-page', state='visible')
 
 
@@ -153,6 +150,21 @@ def main() -> None:
             click(page, f'[data-tune-panel="{panel_id}"]')
             assert page.locator(f'[data-tune-panel="{panel_id}"].active').count() == 1
         report['checks']['all_tune_panels'] = True
+
+        # Targeted updates: a re-render keeps the existing DOM nodes and the scroll position (no page swap).
+        if page.evaluate("window.__EA888_DEBUG__.platform().loaded"):
+            page.evaluate("window.scrollTo(0, 420)")
+            page.wait_for_timeout(60)
+            kept = page.evaluate("""() => {
+              const node = document.querySelector('#content [data-tune-panel]');
+              node.__marker = 1;
+              const y = window.scrollY;
+              window.__EA888_DEBUG__.rerender();
+              const again = document.querySelector('#content [data-tune-panel]');
+              return { sameNode: again === node && again.__marker === 1, scrollKept: Math.abs(window.scrollY - y) < 2, y };
+            }""")
+            report['checks']['rerender_keeps_dom_and_scroll'] = kept['sameNode'] and kept['scrollKept'] and kept['y'] > 0
+            page.evaluate("window.scrollTo(0, 0)")
 
         # Scroll-safe sliders: a vertical swipe across a slider must not change it; a horizontal drag must.
         click(page, '[data-tune-panel="boost"]')

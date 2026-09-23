@@ -5,6 +5,15 @@
   const STORAGE_KEY = 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
   const APP_VERSION = '1.3.3';
+  // Platform layer (build/web/platform.js): targeted DOM updates and the Android bridge. Without it (tests
+  // that load the raw sources) the app falls back to replacing the markup and to browser APIs.
+  const PLATFORM = window.EA888Platform || null;
+  const NATIVE = PLATFORM?.native || null;
+  function patchHtml(el, html) {
+    if (!el) return;
+    if (PLATFORM) PLATFORM.patchHtml(el, html);
+    else el.innerHTML = html;
+  }
 
   const NAV = [
     ['bank', 'garage', 'Garage'],
@@ -239,7 +248,15 @@
   }
 
   function haptic(pattern = 12) {
-    if (!state.settings?.haptics || !navigator.vibrate) return;
+    if (!state.settings?.haptics) return;
+    if (NATIVE?.available) {
+      // Patterns ([on, off, on, ...]) become their first pulse plus a short follow-up.
+      const list = Array.isArray(pattern) ? pattern : [pattern];
+      NATIVE.haptic(list[0] || 10);
+      for (let i = 2, at = (list[0] || 0) + (list[1] || 0); i < list.length; at += (list[i] || 0) + (list[i + 1] || 0), i += 2) setTimeout(() => NATIVE.haptic(list[i]), at);
+      return;
+    }
+    if (!navigator.vibrate) return;
     try { navigator.vibrate(pattern); } catch (e) { /* unsupported */ }
   }
 
@@ -308,6 +325,48 @@
     const payload = JSON.parse(new TextDecoder().decode(bytes));
     if (payload.app !== 'EA888-LAB' || !payload.state) throw new Error('Geen geldige EA888 Lab-buildcode.');
     return payload.state;
+  }
+
+  // Full backup: the whole game (budget, history, dyno runs, wear, build slots), for reinstalls and new
+  // phones. Written through the system file dialog on Android; a download in a browser.
+  async function exportFullBackup() {
+    const payload = JSON.stringify({ app: 'EA888-LAB', kind: 'full-backup', appVersion: APP_VERSION, savedAt: new Date().toISOString(), state }, null, 1);
+    const day = new Date().toISOString().slice(0, 10);
+    const saver = NATIVE ? NATIVE.saveFile.bind(NATIVE) : null;
+    if (!saver) return showToast('Back-up naar bestand is niet beschikbaar in deze omgeving.');
+    const ok = await saver(`ea888-lab-backup-${day}.json`, payload);
+    if (ok) { pushHistory({ type: 'backup', label: 'Volledige back-up opgeslagen' }); saveState(); }
+    showToast(ok ? 'Back-up opgeslagen.' : 'Back-up niet opgeslagen.');
+  }
+
+  function restoreFromText(text) {
+    const raw = String(text || '').trim();
+    if (!raw) throw new Error('Het bestand is leeg.');
+    if (raw.startsWith('{')) {
+      const payload = JSON.parse(raw);
+      if (payload.app !== 'EA888-LAB' || payload.kind !== 'full-backup' || !payload.state) throw new Error('Dit is geen EA888 LAB-back-up.');
+      const slots = Array.isArray(payload.state.buildSlots) ? payload.state.buildSlots.slice(0, 3) : [null, null, null];
+      state = C.normalizeState(payload.state);
+      state.buildSlots = slots;
+      while (state.buildSlots.length < 3) state.buildSlots.push(null);
+      pushHistory({ type: 'backup', label: `Back-up teruggezet (${String(payload.appVersion || '?')}, ${String(payload.savedAt || '').slice(0, 10)})` });
+      return 'Volledige back-up teruggezet.';
+    }
+    importBuffer = raw;
+    confirmImport();
+    return '';
+  }
+
+  async function importFullBackup() {
+    if (!NATIVE) return showToast('Back-up openen is niet beschikbaar in deze omgeving.');
+    const text = await NATIVE.openFile();
+    if (text == null) return;
+    try {
+      const message = restoreFromText(text);
+      if (message) { saveState(); pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId; showToast(message); render(); }
+    } catch (e) {
+      showToast(`Terugzetten mislukt: ${e.message}`);
+    }
   }
 
   // -------------------------------------------------------------------
@@ -822,7 +881,7 @@
   function renderHeader() {
     const status = statusInfo();
     const dataActive = activeTab === 'data';
-    $('#topbar').innerHTML = `
+    patchHtml($('#topbar'), `
       <div class="topbar-inner">
         <div class="brand-block">
           <div class="brand-line"><span class="brand-mark">EA888</span><span class="brand-lab">LAB</span><span class="version-tag">v${APP_VERSION}</span></div>
@@ -832,14 +891,14 @@
           <div class="status-pill ${status.cls}"><b>${esc(status.label)}</b><span>${esc(status.detail)}</span></div>
           <button class="icon-button ${dataActive ? 'active' : ''}" data-go="data" aria-label="Open build sheet en data">${icon('data')}</button>
         </div>
-      </div>`;
+      </div>`);
   }
 
   function renderNav() {
-    $('#bottom-nav').innerHTML = NAV.map(([id, ico, label]) => `
+    patchHtml($('#bottom-nav'), NAV.map(([id, ico, label]) => `
       <button class="nav-btn ${activeTab === id ? 'active' : ''}" data-nav="${id}" aria-label="${label}">
         <span class="nav-icon">${icon(ico)}</span><span>${label}</span>
-      </button>`).join('');
+      </button>`).join(''));
   }
 
   function render() {
@@ -849,7 +908,7 @@
       bank: renderBank, build: renderBuild, tune: renderTune, dyno: renderDyno,
       drag: renderDrag, service: renderService, data: renderData
     };
-    $('#content').innerHTML = pages[activeTab]();
+    patchHtml($('#content'), pages[activeTab]());
     requestAnimationFrame(afterRender);
   }
 
@@ -4129,6 +4188,7 @@
       ${clean ? '<div class="notice success"><strong>Configuratie en dynodata komen overeen.</strong></div>' : staleNotice()}
 
       <div class="build-name-card card"><label><span class="eyebrow">Projectnaam</span><input id="build-name-input" value="${esc(state.buildName)}" maxlength="52" aria-label="Buildnaam"></label><div><button class="btn secondary small" data-action="export-build">Build exporteren</button><button class="btn ghost small" data-action="open-import">Build importeren</button></div></div>
+      <div class="card backup-card"><div><span class="eyebrow">Volledige back-up</span><p>Alles in één bestand: budget, historie, dynoruns, slijtage en buildslots. Maak er een vóór je de app verwijdert of van telefoon wisselt.</p></div><div class="backup-actions"><button class="btn small" data-action="backup-save" ${NATIVE ? '' : 'disabled'}>Back-up opslaan</button><button class="btn ghost small" data-action="backup-open" ${NATIVE ? '' : 'disabled'}>Back-up openen</button></div>${NATIVE ? '' : '<small class="why">Beschikbaar in de Android-app of de gebouwde webversie.</small>'}</div>
 
       <div class="data-kpis v4-data-kpis">
         <div><span>Motor</span><b>${num(geometry.displacementCc,0)} cc</b><small>${num(geometry.boreMm,2)} × ${num(geometry.strokeMm,1)} mm</small></div>
@@ -4506,6 +4566,8 @@
       case 'open-rebuild': showModal('Motor inspecteren / reviseren', '<p class="modal-copy">Een volledige revisie wist virtuele motorschade en motorwear, verlaagt slijtage van turbo en bak en kost € 6.500 uit het spelbudget. Daarna zijn benchtests en een nieuwe dynometing verstandig.</p>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-rebuild">Reviseren</button>'); break;
       case 'confirm-rebuild': doRebuild(); break;
       case 'export-build': showExportModal(); break;
+      case 'backup-save': exportFullBackup(); break;
+      case 'backup-open': importFullBackup(); break;
       case 'open-import': showImportModal(); break;
       case 'copy-build-code': copyBuildCode(); break;
       case 'confirm-import': confirmImport(); break;
@@ -4608,9 +4670,30 @@
     if (!document.hidden) resumePersistentAudio();
     else if (engineAudio) stopEngineAudio();
   });
+
+  // Android back button (MainActivity asks before leaving the app): close the top layer first.
+  window.__ea888HandleBack = () => {
+    if ($('#modal-root .modal')) { closeModal(); return true; }
+    if (raceGame?.open) { closeDragGame(); render(); return true; }
+    if (activeTab !== 'bank') { go('bank'); return true; }
+    return false;
+  };
+  window.__ea888OnNativePause = () => { if (engineAudio) stopEngineAudio(); };
+
+  // Keep the screen on while a pull or a race is running (the phone must not dim mid-run).
+  let screenKeptOn = false;
+  function syncKeepScreenOn() {
+    const on = !!raceGame?.open || !!dynoRunning;
+    if (on === screenKeptOn || !NATIVE) return;
+    screenKeptOn = on;
+    NATIVE.keepScreenOn(on);
+  }
+  setInterval(syncKeepScreenOn, 1000);
   window.addEventListener('pageshow', resumePersistentAudio);
 
   window.__EA888_DEBUG__ = {
+    rerender: () => { render(); return true; },
+    platform: () => ({ loaded: !!PLATFORM, native: !!NATIVE?.available }),
     audio: () => audioDiagnostics(),
     turbo: () => raceGame ? { phase: raceGame.phase, snap: raceGame.run?.turboSnap || raceGame.turboSnap || null, als: raceGame.alsInfo ? { enabled: raceGame.alsInfo.enabled, mode: raceGame.alsInfo.mode } : null, flames: (raceGame.flameLog || []).slice(-30), wear: raceGame.turbo ? cloneJson(raceGame.turbo.state.wear) : null, alsSeconds: raceGame.turbo?.state.alsSeconds || 0 } : null,
     stateWear: () => ({ wear: cloneJson(state.wear), damage: cloneJson(state.damage) }),

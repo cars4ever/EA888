@@ -1,0 +1,16 @@
+{
+  "name": "ea888-lab",
+  "private": true,
+  "description": "EA888 LAB - engineering-inspired EA888 / Scirocco tuning and drag simulator",
+  "scripts": {
+    "build:web": "node tools/build_web.js",
+    "test": "node tests/test_sim.js",
+    "smoke": "python3 tools/browser_smoke.py --assets build/web"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "dependencies": {
+    "morphdom": "2.7.8"
+  }
+}
