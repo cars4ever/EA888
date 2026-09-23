@@ -818,7 +818,7 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v12-analysis-card.loss { border-color:rgba(255,82,107,.46); background:linear-gradient(145deg,rgba(60,13,25,.72),#090c11); }
 .v12-analysis-card.loss b { color:#ff687e; }
 .v12-telemetry-note { padding:11px 14px; border-left:3px solid #ff9b1d; background:#0c121b; color:#758397; font-size:9px; }
-.v12-event-opponent { position:absolute; z-index:25; right:3%; top:31%; width:125px; padding:8px 8px 8px 52px; border:1px solid rgba(255,95,91,.38); border-radius:12px; background:rgba(8,10,15,.82); backdrop-filter:blur(8px); }
+.v12-event-opponent { position:absolute; z-index:25; right:3%; top:39%; width:125px; padding:8px 8px 8px 52px; border:1px solid rgba(255,95,91,.38); border-radius:12px; background:rgba(8,10,15,.82); backdrop-filter:blur(8px); }
 .v12-event-opponent img { position:absolute; left:-13px; bottom:-4px; width:72px; height:47px; object-fit:contain; filter:drop-shadow(0 6px 8px rgba(0,0,0,.8)); }
 .v12-event-opponent span,.v12-stage-rival span { display:block; color:#ff6964; font-size:6px; font-weight:1000; letter-spacing:1px; }
 .v12-event-opponent b,.v12-stage-rival b { display:block; margin-top:2px; font-size:8px; color:#f5f7fa; }
@@ -869,7 +869,7 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
   .v12-analysis-card { min-height:92px; padding:11px; }
   .v12-analysis-card b { font-size:14px; }
   .v12-overview-rival { display:none; }
-  .v12-event-opponent { top:28%; right:2%; transform:scale(.88); transform-origin:right top; }
+  .v12-event-opponent { top:38%; right:2%; transform:scale(.88); transform-origin:right top; }
   .v12-stage-rival { top:32%; right:2%; transform:scale(.86); transform-origin:right top; }
   .v12-rival-hud { top:15.5%; right:2%; min-width:112px; padding:7px 8px; }
   .v12-driveline-hud { left:2%; bottom:calc(151px + var(--safe-bottom)); width:40%; }

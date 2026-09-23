@@ -139,7 +139,7 @@
     return rs;
   }
   function rivalPass(profile) {
-    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, c: rivalConditions() });
+    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, vehicle: C.VEHICLE_MODEL_VERSION, c: rivalConditions() });
     if (rivalCache.has(key)) return rivalCache.get(key);
     try {
       const stored = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}');
@@ -147,7 +147,8 @@
     } catch (e) { /* storage unavailable */ }
     const rs = rivalState(profile);
     const dyno = C.simulateEngine(rs, { noise: false });
-    const pass = C.simulateRaceRun(rs, { reactionTime: 0, driverSkill: profile.skill, tyreTempC: 70 });
+    // rivals do a good burnout: their tyres are at the compound's optimum at the launch
+    const pass = C.simulateRaceRun(rs, { reactionTime: 0, driverSkill: profile.skill, tyreTempC: (C.TYRE[profile.tire] || C.TYRE.uhp).optC });
     const entry = { quarter: pass.quarter, trapKmh: pass.trapKmh, sixtyFt: pass.sixtyFt, eighth: pass.eighth, trace: pass.trace, peakHp: dyno.peakHp, peakTorqueNm: dyno.peakTorqueNm, massKg: pass.totalMassKg };
     rivalCache.set(key, entry);
     try {
@@ -166,7 +167,7 @@
   }
   // What is known about a rival: its build, and its measured numbers once its pass has been simulated.
   function rivalSpec(profile) {
-    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, c: rivalConditions() });
+    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, vehicle: C.VEHICLE_MODEL_VERSION, c: rivalConditions() });
     let e = rivalCache.get(key);
     if (!e) { try { e = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}')[key]; } catch (err) { e = null; } }
     return e ? `${Math.round(e.peakHp)} pk · ${e.quarter.toFixed(2)} s @ ${Math.round(e.trapKmh)} km/u` : profile.description;
@@ -2816,17 +2817,23 @@
     return `<div class="control compact-control"><div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output class="value-edit" tabindex="0" role="button" aria-label="Waarde intypen" data-value-for="vehicle.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div><div class="range-row"><button type="button" class="step-btn" data-step="-1" aria-label="Lager">−</button><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-vehicle="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}"><button type="button" class="step-btn" data-step="1" aria-label="Hoger">+</button></div></div>`;
   }
 
+  // Burnout targets come from the tyre model (C.TYRE): the optimum is the grip temperature at the launch,
+  // "caution" where the grip has fallen ~12 % from overheating. heatPerLevel is the slope of the stored-
+  // warmth setup slider (gripFactor); heatRate only feeds the legacy quick burnout.
   function burnoutProfile() {
     const id = state.vehicle.tireCompound;
-    const profiles = {
-      street: { targetC: 38, cautionC: 52, heatPerLevel: .28, heatRate: 9.5, minStageC: 30 },
-      uhp: { targetC: 52, cautionC: 70, heatPerLevel: .42, heatRate: 11.5, minStageC: 38 },
-      semislick: { targetC: 68, cautionC: 88, heatPerLevel: .55, heatRate: 13.5, minStageC: 48 },
-      drag_radial: { targetC: 82, cautionC: 102, heatPerLevel: .72, heatRate: 16.5, minStageC: 58 },
-      slick: { targetC: 82, cautionC: 106, heatPerLevel: .72, heatRate: 17.5, minStageC: 58 },
-      pro_radial: { targetC: 82, cautionC: 108, heatPerLevel: .72, heatRate: 18.5, minStageC: 60 }
-    };
-    return { id, ...(profiles[id] || profiles.street), trackC: Number(state.vehicle.trackTempC || 25) };
+    const t = C.TYRE[id] || C.TYRE.uhp;
+    const heatPerLevel = { street: .28, uhp: .42, semislick: .55 }[id] ?? .72;
+    const heatRate = { street: 9.5, uhp: 11.5, semislick: 13.5, drag_radial: 16.5, slick: 17.5 }[id] ?? 18.5;
+    return { id, tyre: t, targetC: t.optC, cautionC: Math.round(t.optC + t.windowC * .6), minStageC: Math.round(t.optC - t.windowC * .5),
+      heatPerLevel, heatRate, trackC: Number(state.vehicle.trackTempC || 25), ambientC: Number(state.vehicle.ambientTempC ?? 20) };
+  }
+  // Seconds from the end of the burnout to the launch (roll to the line, stage, tree): the cooling the
+  // burnout prediction assumes. The staging scene then simulates the real time taken.
+  const BURNOUT_TO_LAUNCH_S = 20;
+  function predictedLaunchTyreC(th) {
+    const p = burnoutProfile();
+    return C.tyreGripTempC(C.tyreThermalAfter(th, BURNOUT_TO_LAUNCH_S, { ambientC: p.ambientC, trackC: p.trackC, speedMs: 1 }));
   }
 
   function ensureBurnoutRuntime(forceReset = false) {
@@ -2842,10 +2849,12 @@
     return burnoutRuntime;
   }
 
+  // Score = the grip the tyre temperature gives at the launch (the vehicle model's own curve): 100 at the
+  // optimum, 0 at 10 % less grip (a drag launch is decided by a few percent).
   function burnoutAssessment(tempC = ensureBurnoutRuntime().tempC) {
     const profile = burnoutProfile();
     const difference = tempC - profile.targetC;
-    const score = Math.round(clamp(100 - Math.abs(difference) * (difference > 0 ? 4.6 : 3.4), 0, 100));
+    const score = Math.round(clamp(100 * (1 - (1 - C.tyreTempFactor(profile.tyre, tempC)) / .1), 0, 100));
     let label = 'KOUD', cls = 'cold';
     if (tempC > profile.cautionC) { label = 'TE HEET'; cls = 'hot'; }
     else if (score >= 84) { label = 'OPTIMAAL'; cls = 'good'; }
@@ -2914,7 +2923,8 @@
       <div class="v12-analysis-grid">
         ${outcome}
         <div class="v12-analysis-card"><span>PIEKWAARDEN</span><b>${Math.round(maxSpeed)} km/u</b><small>${Math.round(maxRpm)} rpm · ${maxBoost.toFixed(2)} bar</small></div>
-        <div class="v12-analysis-card"><span>TRACTIE</span><b>${maxSpin.toFixed(0)}% spin</b><small>${Number(run.burnoutTempC || 0).toFixed(0)}°C band · ${Number(run.sixtyFt || 0).toFixed(3)} s 60 ft</small></div>
+        <div class="v12-analysis-card"><span>TRACTIE</span><b>${maxSpin.toFixed(0)}% spin</b><small>${Number(run.burnoutTempC || 0).toFixed(0)}°C band bij launch · ${Number(run.sixtyFt || 0).toFixed(3)} s 60 ft</small></div>
+        ${Number.isFinite(run.knockEvents) ? `<div class="v12-analysis-card ${run.knockDamagePct > 0 ? 'loss' : ''}"><span>KLOP</span><b>${run.knockEvents} cycli</b><small>${run.knockDamagePct > 0 ? `zonder knock control · schade +${run.knockDamagePct.toFixed(2)}%` : run.kcMaxRetardDeg > .05 ? `knock control max −${run.kcMaxRetardDeg.toFixed(1)}°` : 'geen klop'}</small></div>` : ''}
         <div class="v12-analysis-card"><span>RIJLIJN</span><b>${Number(maxLane || 0).toFixed(2)} m</b><small>${run.lineTouches || 0} correcties · ${run.laneDnf ? 'run ongeldig' : 'binnen de strip'}</small></div>
         <div class="v12-analysis-card"><span>AANDRIJFLIJN</span><b>${Number(run.maxClutchTempC || 0).toFixed(0)}°C koppeling</b><small>${Number(run.maxGearboxTempC || 0).toFixed(0)}°C bak · stress ${Number(run.drivelineStress || 0).toFixed(0)}%</small></div>
         <div class="v12-analysis-card"><span>BEGRENZER</span><b>${Number(run.limiterTimeS || 0).toFixed(2)} s</b><small>Schakelscore ${run.shiftScore || 0}/100 · ${run.transmissionMode || '—'}</small></div>
@@ -3542,8 +3552,8 @@
         <section class="v8-burnout-hud">
           ${v7TachMarkup('v7-burn', b.rpm, 1)}
           <div class="v8-round-gauge"><span>BOOST</span><b id="v8-burn-boost">0.00</b><small>bar</small><i></i></div>
-          <div class="v8-temp-card"><span>BANDENTEMP</span><b id="v7-burn-temp">${Math.round(b.tempC)}°C</b><small>doel ${p.targetC}°C</small><div><i id="v7-temp-fill"></i><em id="v7-temp-marker"></em><strong style="left:${targetLeft}%;width:${targetWidth}%"></strong></div></div>
-          <div class="v8-wheelspin-card"><span>WHEELSPIN</span><b id="v8-burn-wheelspin">0%</b><small id="v7-burn-time">${b.timeLeft.toFixed(1)} s over</small></div>
+          <div class="v8-temp-card"><span>BAND OPPERVLAK</span><b id="v7-burn-temp">${Math.round(b.surfaceC ?? b.tempC)}°C</b><small id="v7-burn-temp-sub">launch ≈ ${Math.round(b.tempC)}°C · doel ${p.targetC}°C</small><div><i id="v7-temp-fill"></i><em id="v7-temp-marker"></em><strong style="left:${targetLeft}%;width:${targetWidth}%"></strong></div></div>
+          <div class="v8-wheelspin-card"><span>BAND SLIP</span><b id="v8-burn-wheelspin">0 km/u</b><small id="v7-burn-time">${b.timeLeft.toFixed(1)} s over</small></div>
         </section>
         <div class="v8-burn-smoke" id="v8-burn-smoke">${Array.from({length:14},(_,i)=>`<i style="--i:${i}"></i>`).join('')}</div>
         ${rival ? `<div class="v12-event-opponent"><img src="images/rival-scirocco.svg" alt="Rivaal"><span>VOLGENDE: ${rival.tag}</span><b>${esc(rival.name)}</b></div>` : ''}
@@ -3568,7 +3578,7 @@
           ${v7TachMarkup('v7-stage', s.rpm, 1)}
           <div class="v8-round-gauge"><span>BOOST</span><b id="v8-stage-boost">0.00</b><small>bar</small><i></i></div>
         </section>
-        <div class="v13-turbo-hud" id="v13-stage-turbo"><span>TURBO<b id="v13-stage-shaft">0k</b></span><span>EGT<b id="v13-stage-egt">—</b></span><span>ALS<b id="v13-stage-als">${raceGame?.alsInfo?.enabled ? 'GEREED' : 'UIT'}</b></span><span>SLIJTAGE<b id="v13-stage-wear">+0.000%</b></span></div>
+        <div class="v13-turbo-hud" id="v13-stage-turbo"><span>TURBO<b id="v13-stage-shaft">0k</b></span><span>EGT<b id="v13-stage-egt">—</b></span><span>ALS<b id="v13-stage-als">${raceGame?.alsInfo?.enabled ? 'GEREED' : 'UIT'}</b></span><span>SLIJTAGE<b id="v13-stage-wear">+0.000%</b></span><span>BAND<b id="v13-stage-tyre">—</b></span></div>
         <div class="v8-tree-wrap"><div class="v8-tree-copy"><span>PRE-STAGE</span><span>STAGE</span></div>${v7TreeMarkup(false)}</div>
         ${rival ? `<div class="v12-stage-rival"><img src="images/rival-scirocco.svg" alt="${esc(rival.name)}"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>RT-venster ${rival.reactionMin.toFixed(3)}–${rival.reactionMax.toFixed(3)} s</small></div>` : ''}
         <div class="v8-stage-message"><span id="v7-stage-status">KRUIP NAAR PRE-STAGE</span><b id="v7-stage-depth">${Math.round(s.progress)}%</b></div>
@@ -3797,6 +3807,12 @@
       popClock:0,
       turboWearApplied:false
     };
+    // Burnout on the vehicle model; the tyres start at the track temperature (the car rolled in cold).
+    try {
+      raceGame.burnRt = C.createBurnoutRuntime(state, { turbo: raceGame.turbo, targetRpm: 5000, startC: profile.trackC });
+      raceGame.tyreThermal = { ...raceGame.burnRt.tyreThermal };
+      Object.assign(raceGame.burn, { surfaceC: profile.trackC, bulkC: profile.trackC, tempC: predictedLaunchTyreC(raceGame.burnRt.tyreThermal) });
+    } catch (e) { logAppError('burnout', e); }
     raceGameLastFrame = performance.now();
     renderRaceGame();
     startEngineAudio('burnout');
@@ -3854,31 +3870,22 @@
   function updateV7BurnoutGame(dt, now) {
     const b = raceGame.burn;
     const profile = burnoutProfile();
-    const manualThrottle = !!raceGamePointer.burnout;
-    let throttle = manualThrottle;
-    if (raceGameAuto) throttle = b.rpm < 5250 || (b.rpm < 5850 && b.tempC < profile.targetC - 1);
+    const rt = raceGame.burnRt;
+    let throttle = !!raceGamePointer.burnout;
+    // auto driver: until the tyre is on course for the optimum at the launch
+    if (raceGameAuto) throttle = !b.done && predictedLaunchTyreC(rt.tyreThermal) < profile.targetC - 1;
     if (throttle && !b.started) { b.started = true; b.startAt = now; raceGameTone(520,.06,.025); }
-    const targetRpm = throttle ? 6400 : 900;
-    const response = throttle ? 3.5 : 4.4;
-    b.rpm += (targetRpm - b.rpm) * Math.min(1, dt * response);
-    if (throttle) b.rpm += Math.sin(now * .018) * 65;
-    b.rpm = clamp(b.rpm, 850, Math.min(Number(state.tune.revLimitRpm || 8000), 7600));
-    const rpmQuality = clamp(1 - Math.abs(b.rpm - 5000) / 1900, 0, 1);
-    if (throttle && b.rpm > 2400) {
-      const driveFactor = state.vehicle.drivetrain === 'AWD' ? .72 : 1;
-      const heat = profile.heatRate * driveFactor * (.36 + rpmQuality * .88) * dt;
-      b.tempC = clamp(b.tempC + heat, profile.trackC, profile.cautionC + 25);
-      b.smoke += (1 - b.smoke) * Math.min(1,dt*4.2);
-      b.qualityIntegral += rpmQuality * dt;
-      b.qualityTime += dt;
-    } else {
-      b.tempC = Math.max(profile.trackC, b.tempC - dt * .55);
-      b.smoke += (0 - b.smoke) * Math.min(1,dt*3.2);
-    }
+    // Physical burnout (sim.js createBurnoutRuntime): engine, clutch, spinning tyres, slip power, tyre heat.
+    const p = rt.step(dt, { throttle });
+    b.rpm = p.rpm; b.surfaceC = p.tyreSurfaceC; b.bulkC = p.tyreBulkC; b.smoke = p.smoke;
+    b.slipKmh = p.tyreSurfaceKmh; b.slipKw = p.slipPowerKw; b.boostBar = p.boostBar;
+    // what counts is the grip temperature expected at the launch after rolling to the line and staging
+    b.tempC = predictedLaunchTyreC(rt.tyreThermal);
     if (b.started) b.timeLeft = Math.max(0, b.timeLeft - dt);
     b.elapsed += dt;
-    burnoutRuntime.rpm = b.rpm; burnoutRuntime.tempC = b.tempC; burnoutRuntime.smoke = b.smoke; burnoutRuntime.active = throttle; burnoutRuntime.wheelSlip = throttle ? clamp((b.rpm-2200)/5000,0,1) : 0;
-    updateEngineAudio(b.rpm, throttle ? .88 : .12, throttle ? .86 : 0);
+    const slip = clamp(p.tyreSurfaceKmh / 45, 0, 1);
+    burnoutRuntime.rpm = b.rpm; burnoutRuntime.tempC = b.tempC; burnoutRuntime.smoke = b.smoke; burnoutRuntime.active = throttle; burnoutRuntime.wheelSlip = slip;
+    updateEngineAudio(b.rpm, throttle ? Math.max(.2, p.pedal) : .12, slip, { boostBar: p.boostBar, mapBar: p.mapBarAbs, egtC: p.egtC, lambda: p.lambda, cutFraction: p.limiter ? 1 : 0, cutKind: limiterCutKind() });
     updateV7BurnoutDom();
     updatePreRace3D('burnout', dt);
     if (b.started && b.timeLeft <= 0 && !b.done) finishV7Burnout();
@@ -3890,16 +3897,17 @@
     const assessment = burnoutAssessment(b.tempC);
     const profile = burnoutProfile();
     const tempPct = clamp((b.tempC - Math.min(0,profile.trackC)) / Math.max(1,profile.cautionC+18) * 100,0,100);
-    const rpmControl = b.qualityTime ? b.qualityIntegral / b.qualityTime : 0;
-    const combined = Math.round(assessment.score * .76 + rpmControl * 100 * .24);
+    const combined = assessment.score;
     b.score = combined;
     b.label = assessment.label;
 
     updateV7Tach('v7-burn', b.rpm, 1);
     const time = $('#v7-burn-time');
-    if (time) time.textContent = `${b.timeLeft.toFixed(1)} s over`;
+    if (time) time.textContent = `${Math.round(b.slipKw || 0)} kW slip · ${b.timeLeft.toFixed(1)} s`;
     const temp = $('#v7-burn-temp');
-    if (temp) temp.textContent = `${Math.round(b.tempC)}°C`;
+    if (temp) temp.textContent = `${Math.round(b.surfaceC ?? b.tempC)}°C`;
+    const tempSub = $('#v7-burn-temp-sub');
+    if (tempSub) tempSub.textContent = `kern ${Math.round(b.bulkC ?? b.tempC)}° · launch ≈ ${Math.round(b.tempC)}° · doel ${profile.targetC}°`;
     const fill = $('#v7-temp-fill');
     if (fill) fill.style.width = `${tempPct}%`;
     const marker = $('#v7-temp-marker');
@@ -3909,13 +3917,11 @@
     const score = $('#v7-burn-score');
     if (score) score.textContent = `${combined}% gripvenster`;
 
-    const enginePoint = state.lastDyno?.samples ? C.interpolateCurve(state.lastDyno.samples, b.rpm) : null;
-    const boost = b.rpm > 1800 ? Math.max(0, Number(enginePoint?.boostBar || 0) * .48) : 0;
+    // boost from the turbo runtime; tyre surface speed and slip power from the burnout model
     const boostNode = $('#v8-burn-boost');
-    if (boostNode) boostNode.textContent = boost.toFixed(2);
-    const slip = Math.round(clamp((b.rpm - 1800) / 5200,0,1) * (raceGamePointer.burnout || raceGameAuto ? 100 : 0));
+    if (boostNode) boostNode.textContent = Math.max(0, Number(b.boostBar || 0)).toFixed(2);
     const slipNode = $('#v8-burn-wheelspin');
-    if (slipNode) slipNode.textContent = `${slip}%`;
+    if (slipNode) slipNode.textContent = `${Math.round(b.slipKmh || 0)} km/u`;
 
     const smoke = $('#v8-burn-smoke');
     if (smoke) {
@@ -3932,8 +3938,8 @@
     if (button) button.classList.toggle('active', !!raceGamePointer.burnout || (raceGameAuto && !b.done));
     const instruction = $('#v7-burn-instruction');
     if (instruction && b.started) {
-      const title = assessment.score > 82 ? 'PERFECTE TEMPERATUUR' : b.tempC > profile.cautionC ? 'TE HEET · LAAT LOS' : 'HOUD RPM IN HET GROEN';
-      const line = assessment.score > 82 ? 'Laat nu los om door te gaan naar de startlijn.' : 'Bouw temperatuur op zonder de band te oververhitten.';
+      const title = assessment.score > 82 ? 'OP TEMPERATUUR' : b.tempC > profile.cautionC ? 'TE HEET · LAAT LOS' : b.tempC > profile.targetC ? 'WARM · BIJNA TE HEET' : 'BLIJF SPINNEN';
+      const line = assessment.score > 82 ? 'Laat nu los: na het stagen zit de band in zijn grip-venster.' : b.tempC > profile.targetC ? 'Het oppervlak koelt af tijdens het stagen, de kern niet: stop op tijd.' : 'De band warmt op door de slip; het oppervlak koelt snel af, de kern houdt de warmte vast.';
       instruction.innerHTML = `<b>${title}</b><span>${line}</span>`;
       instruction.classList.toggle('good', assessment.score > 82);
       instruction.classList.toggle('warn', b.tempC > profile.cautionC);
@@ -3944,10 +3950,12 @@
     const b = raceGame.burn;
     b.done = true; raceGame.phase = 'burnout-result';
     raceGamePointer.burnout = false;
+    // the tyres leave the burnout with this state; staging cools them further (updateV7StageGame)
+    if (raceGame.burnRt) raceGame.tyreThermal = { ...raceGame.burnRt.tyreThermal };
     syncBurnoutLevel(b.tempC);
     const assessment = burnoutAssessment(b.tempC);
     const instruction=$('#v7-burn-instruction');
-    if(instruction){instruction.classList.add(assessment.score>=78?'good':'warn');instruction.innerHTML=`<b>${assessment.score>=84?'PERFECT GRIP':assessment.score>=60?'BRUIKBARE GRIP':'SLECHTE BURNOUT'}</b><span>${Math.round(b.tempC)}°C · score ${b.score}/100 · door naar staging</span>`;}
+    if(instruction){instruction.classList.add(assessment.score>=78?'good':'warn');instruction.innerHTML=`<b>${assessment.score>=84?'PERFECT GRIP':assessment.score>=60?'BRUIKBARE GRIP':'SLECHTE BURNOUT'}</b><span>launch ≈ ${Math.round(b.tempC)}°C · grip ${assessment.score}/100 · door naar staging</span>`;}
     const pedal=$('#v7-burn-throttle'); if(pedal){pedal.disabled=true;pedal.innerHTML='<span>NAAR STAGE</span><small>camera wisselt naar achteraanzicht</small>'; pedal.classList.add('complete');}
     haptic(assessment.score>=80?[18,18,35]:[45,25,20]);
     engineShiftPop(.65);
@@ -4007,6 +4015,8 @@
 
     const snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: 0, twoStep: throttle && s.staged, alsRequest: alsHeld }) : null;
     raceGame.turboSnap = snap;
+    // the tyres cool while rolling to the line and waiting on the tree
+    if (raceGame.tyreThermal) { const pr = burnoutProfile(); C.tyreThermalStep(raceGame.tyreThermal, dt, { speedMs: creep ? 1.2 : 0, ambientC: pr.ambientC, trackC: pr.trackC }); }
     tickAlsFlames(snap, dt, $('#ea-stage-flames'));
     // Two-step without ALS: spark-cut launch limiter (tuned ECUs) pops small flames when hot enough.
     const twoStep = throttle && s.staged;
@@ -4075,6 +4085,11 @@
       const egtNode = $('#v13-stage-egt'); if (egtNode) egtNode.className = snap.egtC > 1050 ? 'bad' : snap.egtC > 950 ? 'warn' : '';
     }
     set('#v13-stage-als', alsStatusText(snap));
+    if (raceGame.tyreThermal) {
+      const g = C.tyreGripTempC(raceGame.tyreThermal), pr = burnoutProfile();
+      set('#v13-stage-tyre', `${Math.round(g)}°C`);
+      const tn = $('#v13-stage-tyre'); if (tn) tn.className = Math.abs(g - pr.targetC) < 8 ? 'good' : g > pr.cautionC ? 'bad' : 'warn';
+    }
     const alsBtn = $('#v13-als-button');
     if (alsBtn) {
       alsBtn.classList.toggle('active', !!snap?.alsActive);
@@ -4201,7 +4216,7 @@
     const engineMap = C.buildEngineMap(state);
     const launchFromRpm = Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200);
     const eventTrack = raceGame?.careerRound ? { ...state, vehicle: { ...state.vehicle, preparedTrack: !!C.CAREER_EVENT_MAP[raceGame.careerRound.eventId]?.prep } } : state;
-    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
+    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
     vehicleRt.state.we = launchFromRpm * Math.PI / 30;
     vehicleRt.launch();
     const run = {
@@ -4230,7 +4245,8 @@
       feedback: 'LAUNCH', feedbackUntil: 0, point: null,
       finished: false, finishReason: '', startMs: performance.now(),
       timeScale: auto ? (state.settings?.reducedMotion ? 6.0 : 2.15) : 1,
-      burnoutTempC: raceGame.burn.tempC, burnoutScore: raceGame.burn.score || burnout.score,
+      // tyre grip temperature at the launch (after the burnout and the staging)
+      burnoutTempC: raceGame.tyreThermal ? C.tyreGripTempC(raceGame.tyreThermal) : raceGame.burn.tempC, burnoutScore: raceGame.burn.score || burnout.score,
       raceMode:opponent ? 'heads_up' : 'solo', opponent, opponentGapM:0, opponentFinishShown:false,
       // The staging turbo runtime carries on: shaft speed built on ALS/two-step is kept at launch.
       turbo: vehicleRt.turbo, turboSnap:null, pendingFlames:[], limiterFlameClock:0,
@@ -4626,7 +4642,8 @@
     const shiftCut = pt.shifting && !run.autoShift && (run.flatShift || selectedTransmissionId() === 'sequential');
     const cutFraction = pt.limiter ? 1 : shiftCut ? 1 : 0;
     const cutKind = pt.limiter ? limiterCutKind() : 'spark';
-    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind } : { cutFraction, cutKind });
+    const knock = Number(pt.knockNow || 0);
+    updateEngineAudio(run.rpm, Math.max(.22, load), run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind, knock } : { cutFraction, cutKind, knock });
     try { updateRivalAudio(run); } catch (e) { audioFault(e); }
     if (run.x >= 402.336 || run.t >= 35 || (run.laneDnf && run.offTrackTime > 1.25)) finishV7Run();
   }
@@ -4972,6 +4989,8 @@
       maxClutchTempC:Number(run.maxClutchTempC || run.clutchTempC || 0),
       maxGearboxTempC:Number(run.maxGearboxTempC || run.gearboxTempC || 0),
       limiterTimeS:Number(run.limiterTime || 0),
+      knockEvents:Number(run.rt?.state.knockEvents || 0), kcMaxRetardDeg:Number(run.rt?.state.kcMaxDeg || 0), knockDamagePct:Number(run.rt?.state.knockDamage || 0),
+      launchTyreC:Number(run.burnoutTempC || 0),
       drivelineStress:Math.round(clamp(Number(run.drivelineStress || 0),0,1000)*10)/10,
       raceMode:run.opponent ? 'heads_up' : 'solo',
       opponentId:run.opponent?.profile?.id || null,
@@ -4997,6 +5016,12 @@
 
   function commitV7DragResult(result){
     applyRaceTurboWear();
+    // knocking cycles without knock control: engine damage from what this pass actually did
+    if (result.knockDamagePct > 0) {
+      state.damage.engine = clamp(Number(state.damage.engine || 0) + result.knockDamagePct, 0, 100);
+      state.wear.engine = clamp(Number(state.wear.engine || 0) + result.knockDamagePct * .5, 0, 100);
+      pushHistory({ type: 'knock', label: `Klop in de race: ${result.knockEvents} cycli · motorschade +${result.knockDamagePct.toFixed(2)}%` });
+    }
     state.lastDrag=result; markOnboarding('raced');
     state.dragRuns=Array.isArray(state.dragRuns)?state.dragRuns:[];state.dragRuns.unshift({...result});state.dragRuns=state.dragRuns.slice(0,30);
     const key=state.vehicle.drivetrain;

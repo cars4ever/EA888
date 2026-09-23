@@ -325,6 +325,34 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - Error log: the last 20 errors are listed under the self-test (Data page), so a failure on the phone can
   be reported. Smoke check dyno_survives_audio_failure runs a full pull with every audio call throwing.
 
+## 14. Phase 7: tyres, a physical burnout, knock in the race (v1.10.0)
+
+- Tyre temperatures (sim.js TYRE_THERMAL, tyreThermalStep): two nodes per driven tyre, the tread skin
+  (~0.25 kg, what a pyrometer reads) and the tread bulk (~3 kg). Heat from the slip power at the contact
+  patch (70 % into the tyre) and rolling hysteresis; skin -> bulk conduction (~2.5 s), convection that grows
+  with speed, conduction into the track. Grip uses a 60/40 skin/bulk blend through one temperature window
+  per compound (TYRE optC/windowC, drag compounds ~55-60 C at the launch); the setup grip (gripFactor) uses
+  the same curve, so the three inconsistent tyre targets of before are gone.
+- Burnout (createBurnoutRuntime): the car held on the brakes in first gear; the driver revs, dumps the
+  clutch (slipping clutch, a standing tyre holds until the drive torque beats static grip) and holds the
+  burnout rpm with the pedal; engine torque from the engine map with boost from the same turbo runtime as
+  the launch. Tyre surface speed, slip power, skin and bulk temperatures and smoke (skin above ~110 C) are
+  model values; a hotter tyre loses grip, so the slip power falls as it heats. The burnout HUD shows the
+  skin, the bulk and the predicted grip temperature at the launch (after ~20 s to the line); the score is
+  the grip that temperature gives. Staging cools the tyres in real time and the race starts from that state.
+  The burnout boost display no longer comes from a dyno lookup.
+- Knock in the race: knocking cycles from the map's knock index at the ECU's spark (a build at its map
+  margin does not knock; single cycles from ~0.97). Knock control pulls 1.5 deg per knocking cycle,
+  recovers 1 deg/s, lowers the index 2.3 %/deg and costs 1.2 %/deg torque. Without knock control each
+  knocking cycle adds engine damage (applied to the build after the pass). Knock is heard (the engine
+  voice's chamber-mode ring) and shown on the timeslip.
+- Rivals launch on tyres at their compound's optimum (a good burnout); the rival pass cache is keyed by
+  VEHICLE_MODEL_VERSION.
+- Tests: tests/test_tyres.js (skin heating rate, skin vs bulk cooling, convection with speed, one grip
+  window, burnout tyre speed through first gear, rpm hold, slip power, smoke only from a hot skin, longer
+  burnout -> more launch heat, race continues the tyre state, cold/optimum/overheated 60 ft, no knock on a
+  map at its margin, knock control vs damage).
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
@@ -346,14 +374,15 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - FWD launches are ~0.2-0.3 s slower over 60 ft than the best real FWD drag passes (tyre model and driver
   model are simple); trap speeds match power-to-weight.
 - The driveline has no torsional compliance (no axle hop) and one diff model per axle; no aero lift.
-- Knock in the race is taken from the map (knock control result); there are no individual knock events.
 - Turbo: see "Known inaccuracies (turbo)" above; spool transients still use an effective inertia factor.
 - ALS combustion is a lumped energy model; flame visuals are stylised, timing/intensity are simulation-driven.
 - Engine voice: the exhaust is one waveguide with lumped turbine and muffler filters, not a 1D gas-dynamics
   solution; blowdown pulse shapes and the engine-bay levels are tuned, not measured. It is an original
   synthesis, not a recording of a real car.
-- The burnout's thermal model is still the simple heating model; the smoke follows it and the tyre surface
-  speed, not a rubber pyrolysis model.
+- Tyres: two lumped thermal nodes with modeled coefficients (no tyre test data), one grip-vs-temperature
+  curve per compound; no tread wear, no pressure rise with temperature. The burnout car is held perfectly
+  still (no creep, no line-lock model).
+- Knock events are the expected number of knocking cycles (deterministic), not a stochastic per-cycle model.
 - 2D fallback track perspective is stylised; the 3D car is a procedural model without suspension motion.
 - Oil temperature, oil film and wear are still empirical models.
 

@@ -383,6 +383,11 @@ def main() -> None:
         page.wait_for_timeout(850)
         after_temp = int(page.locator('#v7-burn-temp').inner_text().replace('°C','').strip())
         report['checks']['interactive_burnout'] = after_temp > before_temp
+        # physical burnout: tyre surface speed from the engine through first gear, core and launch temperature
+        slip_text = page.locator('#v8-burn-wheelspin').inner_text()
+        sub_text = page.locator('#v7-burn-temp-sub').inner_text()
+        report['burnout_readouts'] = {'slip': slip_text, 'temps': sub_text, 'boost': page.locator('#v8-burn-boost').inner_text()}
+        report['checks']['burnout_physical_readouts'] = 'km/u' in slip_text and int(slip_text.split()[0]) > 5 and 'kern' in sub_text and 'launch' in sub_text
         report['burnout_temperature'] = {'before': before_temp, 'after': after_temp}
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-burnout.png'), full_page=False, animations='disabled', timeout=12000)

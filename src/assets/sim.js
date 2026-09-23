@@ -707,6 +707,8 @@
   // Bump when the engine/turbo physics changes (4.1: compressor-map turbo model).
   // 5.0: physical engine model (engine.js), ECU tables, fuel-system hardware; power is quoted in pk (PS).
   const ENGINE_MODEL_VERSION = '5.0';
+  // Vehicle model revision (tyres, burnout): part of the rival pass cache key, not of the dyno signature.
+  const VEHICLE_MODEL_VERSION = '2';
   const DYNO_START_RPM = 1500;
   const DYNO_STEP_RPM = 100;
   // Below this many samples (400 rpm of data) a partial peak is not quoted.
@@ -1831,8 +1833,8 @@
       tireTemp =
         Number(vehicle.trackTempC || 25) +
         burn * (tire.id === 'street' ? 0.28 : tire.id === 'uhp' ? 0.42 : tire.id === 'semislick' ? 0.55 : 0.72),
-      target = tire.id === 'street' ? 38 : tire.id === 'uhp' ? 52 : tire.id === 'semislick' ? 68 : 82,
-      tempFactor = clamp(1 - Math.abs(tireTemp - target) / (tire.id === 'street' ? 75 : 105), 0.75, 1.06);
+      // the same temperature window the vehicle model uses (TYRE optC/windowC)
+      tempFactor = tyreTempFactor(TYRE[tire.id] || TYRE.uhp, tireTemp);
     return {
       mu: tire.mu * pressurePenalty * widthFactor * sidewallFactor * prep * geometry.score * tempFactor,
       tire,
@@ -2242,14 +2244,15 @@
     promod_5speed: { type: 'dog', clutchNm: 2500, clutchKg: 7.5, engageS: 0.035, launchDumpS: 0.1 }
   });
   // Peak friction coefficient (dry asphalt / prepared drag strip), slip ratio at the peak and
-  // optimum tread temperature per compound. Modeled from typical published tyre behaviour.
+  // optimum grip temperature (tyreGripTempC) per compound. Drag compounds work best at ~50-65 C at the
+  // launch (the 120-150 F that drag tyre makers quote); street tyres lower. Modeled values.
   const TYRE = Object.freeze({
-    street: { mu: 1.0, muPrep: 1.12, peakSlip: 0.1, optC: 45, windowC: 60, relaxM: 0.35 },
-    uhp: { mu: 1.1, muPrep: 1.28, peakSlip: 0.09, optC: 60, windowC: 60, relaxM: 0.32 },
-    semislick: { mu: 1.22, muPrep: 1.52, peakSlip: 0.1, optC: 75, windowC: 55, relaxM: 0.3 },
-    drag_radial: { mu: 1.25, muPrep: 1.95, peakSlip: 0.12, optC: 70, windowC: 50, relaxM: 0.3 },
-    slick: { mu: 1.2, muPrep: 2.25, peakSlip: 0.15, optC: 80, windowC: 45, relaxM: 0.35 },
-    pro_radial: { mu: 1.3, muPrep: 2.1, peakSlip: 0.12, optC: 75, windowC: 45, relaxM: 0.3 }
+    street: { mu: 1.0, muPrep: 1.12, peakSlip: 0.1, optC: 40, windowC: 60, relaxM: 0.35 },
+    uhp: { mu: 1.1, muPrep: 1.28, peakSlip: 0.09, optC: 48, windowC: 58, relaxM: 0.32 },
+    semislick: { mu: 1.22, muPrep: 1.52, peakSlip: 0.1, optC: 60, windowC: 52, relaxM: 0.3 },
+    drag_radial: { mu: 1.25, muPrep: 1.95, peakSlip: 0.12, optC: 55, windowC: 45, relaxM: 0.3 },
+    slick: { mu: 1.2, muPrep: 2.25, peakSlip: 0.15, optC: 60, windowC: 40, relaxM: 0.35 },
+    pro_radial: { mu: 1.3, muPrep: 2.1, peakSlip: 0.12, optC: 58, windowC: 42, relaxM: 0.3 }
   });
   const ENGINE_INERTIA = 0.19; // kg m^2, crank + flywheel + clutch
   function magicFormula(kappa, peakSlip) {
@@ -2265,10 +2268,57 @@
     const setup = g.pressurePenalty * g.widthFactor * g.sidewallFactor * g.fitmentScore;
     return { ...t, base, setup, tempC: Number.isFinite(startTempC) ? startTempC : g.tireTempC, rolling: g.tire.rolling, geometry: g.geometry };
   }
+  // Grip versus tyre temperature (the one curve every grip calculation uses): full grip at the compound's
+  // optimum, falling off quadratically either side, never below 62 % (cold or greasy rubber).
+  function tyreTempFactor(ty, tempC) {
+    return clamp(1 - Math.pow((tempC - ty.optC) / ty.windowC, 2) * 0.35, 0.62, 1);
+  }
   function tyreMu(ty, tempC, fzRatio) {
-    const temp = clamp(1 - Math.pow((tempC - ty.optC) / ty.windowC, 2) * 0.35, 0.62, 1);
+    const temp = tyreTempFactor(ty, tempC);
     const load = clamp(1 - 0.1 * (fzRatio - 1), 0.8, 1.1); // load sensitivity
     return ty.base * ty.setup * temp * load;
+  }
+
+  // ---- Tyre temperatures ---------------------------------------------------------------------------
+  // Two nodes per driven tyre: the tread surface (the thin rubber skin the road sees and a pyrometer
+  // reads, ~0.25 kg) and the tread bulk under it (~3 kg of rubber and belts). Heat comes from the slip power
+  // at the contact patch (about 70 % goes into the tyre, the rest into the track) and from rolling
+  // hysteresis in the bulk. The surface loses heat into the bulk, to the air by convection (more with
+  // speed) and into the track through the contact patch; the bulk loses a little to the air. Grip follows
+  // a blend: the skin decides the friction, the bulk how long it lasts. Modeled values (no tyre data).
+  const TYRE_THERMAL = Object.freeze({
+    surfaceJK: 400,        // heat capacity of the surface skin per tyre, J/K (~0.25 kg x ~1700 J/kg K)
+    bulkJK: 5500,          // tread bulk per tyre, J/K
+    surfaceToBulkWK: 160,  // conduction skin -> bulk, W/K (time constant ~2.5 s)
+    contactWK: 20,         // skin -> track through the contact patch, W/K
+    areaM2: 0.22,          // tread band exposed to the air per tyre
+    bulkAirWK: 3,          // bulk/sidewall -> air, W/K
+    intoTyre: 0.7          // share of the slip power that heats the tyre
+  });
+  function tyreConvectionW(speedMs) { return (12 + 9 * Math.pow(Math.max(0, speedMs), 0.75)) * TYRE_THERMAL.areaM2; }
+  function makeTyreThermal(start) {
+    const c = Number.isFinite(start) ? start : 25;
+    return { surfaceC: c, bulkC: c };
+  }
+  // One step of h seconds. slipPowerW: |Fx x slip speed| of the driven axle; tyres: number of driven tyres.
+  function tyreThermalStep(th, h, { slipPowerW = 0, tyres = 2, speedMs = 0, ambientC = 20, trackC = 25, rollingW = 0 } = {}) {
+    const T = TYRE_THERMAL, n = Math.max(1, tyres);
+    const qIn = (Math.max(0, slipPowerW) * T.intoTyre) / n;
+    const qSb = T.surfaceToBulkWK * (th.surfaceC - th.bulkC);
+    const qAir = tyreConvectionW(speedMs) * (th.surfaceC - ambientC);
+    const qTrack = T.contactWK * (th.surfaceC - trackC);
+    const qBulkAir = T.bulkAirWK * (th.bulkC - ambientC);
+    th.surfaceC += ((qIn - qSb - qAir - qTrack) / T.surfaceJK) * h;
+    th.bulkC += ((qSb + Math.max(0, rollingW) / n - qBulkAir) / T.bulkJK) * h;
+    return th;
+  }
+  // The temperature the grip curve uses.
+  function tyreGripTempC(th) { return 0.6 * th.surfaceC + 0.4 * th.bulkC; }
+  // Cool (or warm) the tyres for `seconds` at a standstill or rolling slowly (staging), returning a copy.
+  function tyreThermalAfter(th, seconds, env = {}) {
+    const out = { ...th };
+    for (let t = 0; t < seconds; t += 0.05) tyreThermalStep(out, 0.05, env);
+    return out;
   }
   // opts: { launchRpm, reactionTime, engineMap, turbo (runtime), driver: 'auto'|'player', shiftRpm[] }
   function createRaceRuntime(inputState, opts = {}) {
@@ -2278,6 +2328,10 @@
     const trans = getPart(state, 'transmission'), dl = DRIVELINE[trans.id] || DRIVELINE.oem_6mt;
     const drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
     const ty = tyreFor(state, opts.tyreTempC);
+    // Tyre temperatures carry over from the burnout and staging when given; otherwise a uniform tyre.
+    const th = opts.tyreThermal ? { surfaceC: Number(opts.tyreThermal.surfaceC), bulkC: Number(opts.tyreThermal.bulkC) } : makeTyreThermal(ty.tempC);
+    const drivenTyres = state.vehicle.drivetrain === 'AWD' ? 4 : 2;
+    const ambientC = Number(state.vehicle.ambientTempC ?? 20), trackC = Number(state.vehicle.trackTempC ?? 28);
     const r = ty.geometry.radiusM, mass = buildMassKg(state), g = 9.80665;
     const wheelbase = Number(state.vehicle.wheelbaseM || 2.58), cgh = Number(state.vehicle.cgHeightM || 0.51);
     // Steady load transfer is exactly m a h / L; the suspension setting decides how fast it builds up (pitch).
@@ -2299,9 +2353,11 @@
       return clamp((0.93 - Number(snap.boostBar || 0) / target) / 0.58, 0, 1) * clamp((rpm() - 3000) / 400, 0, 1) * clamp((revLimit - rpm() + 800) / 2200, 0, 1);
     };
     const staticDriven = state.vehicle.drivetrain === 'FWD' ? drive.frontStatic : state.vehicle.drivetrain === 'RWD' ? 1 - drive.frontStatic : 1;
+    const kc = knockControlFor(state, getPart(state, 'ecu'), getPart(state, 'sensors'));
     const s = {
+      knockAcc: 0, knockEvents: 0, knockNow: 0, kcRetardDeg: 0, kcMaxDeg: 0, knockDamage: 0,
       t: 0, x: 0, v: 0, a: 0, gear: 0, we: (launchRpm * Math.PI) / 30, ww: 0, kappa: 0, engage: 0, launched: false, launchT: 0,
-      transfer: 0, tyreC: ty.tempC, clutchC: Number(opts.clutchTempC ?? 60), clutchJ: 0, shift: null, cut: false, limiterS: 0,
+      transfer: 0, tyreC: tyreGripTempC(th), clutchC: Number(opts.clutchTempC ?? 60), clutchJ: 0, shift: null, cut: false, limiterS: 0,
       fx: 0, wheelspin: 0, maxWheelspin: 0, torqueNm: 0, clutchNm: 0, slipRpm: 0, turboSnap: null, turboClock: 1, knockMax: 0, fuelG: 0, shiftLog: []
     };
     const ratio = () => gears[s.gear] * fd;
@@ -2382,6 +2438,26 @@
         pedal = Math.min(pedal, s.tc);
       }
       let tEng = cell.torqueNm > 0 ? cell.torqueNm * pedal - cell.frictionNm * (1 - pedal) * 0.3 : cell.torqueNm;
+      // Knock events: the map gives the end-gas knock index at the ECU's spark (1.0 = auto-ignition before
+      // the flame arrives). The ECU map keeps a margin to that limit, so a build that runs at its map does
+      // not knock; single cycles start to knock above ~0.97 (cycle-to-cycle variation) when conditions are
+      // worse than the map assumed. Knock control pulls 1.5 deg per knocking cycle and gives it back at
+      // 1 deg/s; each degree lowers the index ~2.3 % and costs ~1.2 % torque. Without knock control every
+      // knocking cycle is a pressure spike for pistons, rings and head gasket.
+      const firing = throttleOpen && !cut && s.launched;
+      const knockIdx = cell.knockIndex - 0.023 * s.kcRetardDeg;
+      s.knockNow = firing ? clamp((knockIdx - 0.97) / 0.25, 0, 1) * clamp(pedal, 0, 1) : 0;
+      if (firing && s.knockNow > 0) {
+        s.knockAcc += (rpm() / 30) * h * s.knockNow;
+        while (s.knockAcc >= 1) {
+          s.knockAcc -= 1; s.knockEvents++;
+          if (kc.enabled) s.kcRetardDeg = Math.min(kc.maxRetardDeg, s.kcRetardDeg + 1.5);
+          else s.knockDamage += 0.004 * (1 + Math.max(0, knockIdx - 1) * 4);
+        }
+      }
+      s.kcRetardDeg = Math.max(0, s.kcRetardDeg - h);
+      s.kcMaxDeg = Math.max(s.kcMaxDeg, s.kcRetardDeg);
+      if (tEng > 0) tEng *= 1 - 0.012 * s.kcRetardDeg;
       const n2o = throttleOpen ? nitrousTaper() * pedal : 0;
       if (n2o > 0) { tEng += ((nitrousHp * 7023) / Math.max(2600, rpm())) * n2o; s.n2oS = (s.n2oS || 0) + h; }
       if (cut === true) tEng = -cell.frictionNm * 0.6;
@@ -2437,8 +2513,9 @@
       // clutch temperature: slip energy into the pressure/friction plates, slow cooling
       const heatCap = dl.clutchKg * 460;
       s.clutchC += (Math.abs(tClutch * (s.we - R * s.ww)) * h * 0.85) / heatCap - (s.clutchC - 60) * 0.004 * h;
-      // tyre tread temperature from slip power
-      s.tyreC += (Math.abs(fx * slipV) * h) / (40 * 1200) - (s.tyreC - Number(state.vehicle.trackTempC || 28)) * 0.01 * h;
+      // tyre temperatures from the slip power at the contact patch, rolling hysteresis and cooling
+      if (s.launched) tyreThermalStep(th, h, { slipPowerW: Math.abs(fx * slipV), tyres: drivenTyres, speedMs: s.v, ambientC, trackC, rollingW: ty.rolling * fz * s.v * 0.5 });
+      s.tyreC = tyreGripTempC(th);
       // --- body
       const air = Math.max(0, s.v + headwind);
       const aero = 0.5 * rho * cdA * air * air, roll = ty.rolling * mass * g * (1 + s.v * 0.006);
@@ -2480,11 +2557,121 @@
       return {
         t: s.t, distanceM: s.x, speedKmh: s.v * 3.6, v: s.v, a: s.a, accelerationG: s.a / g, rpm: rpm(), gear: s.gear + 1, gearIndex: s.gear,
         wheelspinPct: Math.min(1, s.wheelspin) * 100, slipRatio: s.kappa, boostBar: Number(snap.boostBar || 0), shaftPct: Number(snap.shaftPct || 0),
-        egtC: Number(snap.egtC || 0), torqueNm: s.torqueNm, clutchNm: s.clutchNm, clutchSlipRpm: s.slipRpm, clutchTempC: s.clutchC, tyreTempC: s.tyreC,
+        egtC: Number(snap.egtC || 0), torqueNm: s.torqueNm, clutchNm: s.clutchNm, clutchSlipRpm: s.slipRpm, clutchTempC: s.clutchC, tyreTempC: s.tyreC, tyreSurfaceC: th.surfaceC, tyreBulkC: th.bulkC,
+        knockNow: s.knockNow, knockEvents: s.knockEvents, kcRetardDeg: s.kcRetardDeg, knockDamagePct: s.knockDamage,
         engage: s.engage, shifting: !!s.shift, limiter: s.cut, limiterS: s.limiterS, knockIndexMax: s.knockMax, fuelG: s.fuelG, launched: s.launched
       };
     }
-    return { state: s, step, launch, requestShift, point, turbo, engineMap: em, driveline: dl, tyre: ty, massKg: mass, launchRpm, revLimit, gears, finalDrive: fd, radiusM: r };
+    return { state: s, step, launch, requestShift, point, turbo, engineMap: em, driveline: dl, tyre: ty, tyreThermal: th, massKg: mass, launchRpm, revLimit, gears, finalDrive: fd, radiusM: r };
+  }
+
+  // ---- Burnout -------------------------------------------------------------------------------------
+  // The car is held on the brakes, first gear, clutch engaged: the driven wheels spin against the track.
+  //   (I_e R^2 + I_w) dw_w/dt = T_engine R eta - Fx r,   Fx = mu(T) Fz MF(slip)
+  // The driver holds the burnout rpm with the pedal; the slip power heats the tyres (tyreThermalStep) and
+  // boils rubber off the hot skin (smoke). Boost comes from the same turbo runtime as the launch.
+  function createBurnoutRuntime(inputState, opts = {}) {
+    const state = normalizeState(inputState);
+    const em = opts.engineMap || buildEngineMap(state);
+    const turbo = opts.turbo || createTurboRuntime(state, { engineMap: em });
+    const trans = getPart(state, 'transmission');
+    const drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
+    const ty = tyreFor(state);
+    const r = ty.geometry.radiusM, mass = buildMassKg(state), g = 9.80665;
+    const R = trans.gearRatios[0] * trans.finalDrive, eta = trans.transEfficiency * (1 - drive.loss * 0.34);
+    const wheelKg = Number(state.vehicle.wheelMassKg || 12.4) + 10, wheelI = wheelKg * r * r * 0.75;
+    const tyres = state.vehicle.drivetrain === 'AWD' ? 4 : 2;
+    const drivenI = tyres * wheelI + 0.25;
+    const staticDriven = state.vehicle.drivetrain === 'FWD' ? drive.frontStatic : state.vehicle.drivetrain === 'RWD' ? 1 - drive.frontStatic : 1;
+    const fz = mass * g * staticDriven;
+    const ambientC = Number(state.vehicle.ambientTempC ?? 20), trackC = Number(state.vehicle.trackTempC ?? 28);
+    const th = opts.tyreThermal ? { ...opts.tyreThermal } : makeTyreThermal(Number.isFinite(opts.startC) ? opts.startC : trackC);
+    const targetRpm = clamp(Number(opts.targetRpm ?? 5000), 2500, em.revLimit - 300);
+    const clutchNm = (DRIVELINE[trans.id] || DRIVELINE.oem_6mt).clutchNm;
+    const s = { t: 0, we: (900 * Math.PI) / 30, ww: 0, pedal: 0, smoke: 0, slipPowerW: 0, fx: 0, torqueNm: 0, energyJ: 0, turboSnap: null, turboClock: 1, cut: false };
+    const rpm = () => (s.we * 30) / Math.PI;
+    function substep(h, throttle) {
+      s.t += h;
+      if (rpm() >= em.revLimit) s.cut = true; else if (rpm() < em.revLimit - 150) s.cut = false;
+      const snap = s.turboSnap || {};
+      const cell = engineMapLookup(em, rpm(), throttle ? Number(snap.mapBarAbs || 1) : 0.35, snap.manifoldK || ENGINE_MAP_REF_K, throttle ? Number(snap.empBarAbs || 1) : 1.05);
+      // Driver: holds the burnout rpm with the pedal. Feed-forward = the engine torque that balances the
+      // tyre friction at the wheels, plus a correction on the rpm error; the foot follows in ~0.1 s.
+      if (throttle) {
+        const hold = (s.fx * r) / (R * eta) + cell.frictionNm * 0.3;
+        const ff = hold / Math.max(40, cell.torqueNm + cell.frictionNm * 0.3);
+        const want = clamp(ff + ((targetRpm - rpm()) / 1000) * 0.9, 0.08, 1);
+        s.pedal += (want - s.pedal) * clamp(h / 0.1, 0, 1);
+      } else s.pedal = 0;
+      let tEng = throttle ? cell.torqueNm * s.pedal - cell.frictionNm * (1 - s.pedal) * 0.3 : -cell.frictionNm * 0.8;
+      if (s.cut) tEng = -cell.frictionNm * 0.6;
+      s.torqueNm = tEng;
+      if (throttle) {
+        // Rev with the clutch in, then dump it: the clutch slips (capacity limited) until engine and wheels
+        // turn together; locked, the car stands still, so the whole tyre surface speed is slip.
+        if (!s.dumped && rpm() >= targetRpm * 0.92) s.dumped = true;
+        s.engage = s.dumped ? Math.min(1, (s.engage || 0) + h / 0.15) : 0;
+        const mu = tyreMu(ty, tyreGripTempC(th), 1);
+        const vSlip = s.ww * r;
+        const grip = mu * fz;
+        const fxRoll = vSlip < 0.02 ? 0 : grip * magicFormula(vSlip / 1.0, ty.peakSlip);
+        const slip = s.we - R * s.ww;
+        const cap = clutchNm * s.engage;
+        if (s.engage > 0.5 && Math.abs(slip) < 2) {
+          const acc = (tEng * R * eta - fxRoll * r) / (drivenI + ENGINE_INERTIA * R * R);
+          s.ww = Math.max(0, s.ww + acc * h);
+          s.we = Math.max((900 * Math.PI) / 30, s.ww * R);
+          s.fx = fxRoll;
+        } else {
+          const tc = Math.sign(slip || 1) * cap;
+          s.we = Math.max((900 * Math.PI) / 30, s.we + ((tEng - tc) / ENGINE_INERTIA) * h);
+          // a standing tyre holds until the clutch torque at the wheels exceeds static grip
+          const drive = tc * R * eta;
+          const fx = s.ww * r < 0.02 && drive <= grip * r ? drive / r : fxRoll || grip;
+          s.ww = Math.max(0, s.ww + ((drive - fx * r) / drivenI) * h);
+          if (Math.sign(s.we - R * s.ww) !== Math.sign(slip) && s.engage > 0.5) s.we = s.ww * R;
+          s.fx = fx;
+        }
+        s.slipPowerW = s.fx * s.ww * r;
+      } else {
+        // clutch in, wheels brake to a stop, engine back to idle
+        s.dumped = false; s.engage = 0;
+        s.ww = Math.max(0, s.ww - 40 * h);
+        s.we += (((900 * Math.PI) / 30) - s.we) * clamp(h * 4, 0, 1);
+        s.slipPowerW = 0; s.fx = 0;
+      }
+      s.energyJ += s.slipPowerW * h;
+      tyreThermalStep(th, h, { slipPowerW: s.slipPowerW, tyres, speedMs: 0, ambientC, trackC });
+      // Smoke: oils and rubber vaporise off a skin above ~110 C, more with more slip power.
+      const hot = clamp((th.surfaceC - 110) / 90, 0, 1);
+      const want = hot * hot * (3 - 2 * hot) * clamp(s.slipPowerW / 60000, 0, 1.2);
+      s.smoke += (want - s.smoke) * clamp(h * (want > s.smoke ? 4 : 1.2), 0, 1);
+    }
+    function step(dt, input = {}) {
+      dt = clamp(Number(dt) || 0, 0, 0.2);
+      const throttle = !!input.throttle;
+      let left = dt;
+      while (left > 1e-9) {
+        const h = Math.min(0.002, left);
+        left -= h;
+        s.turboClock += h;
+        if (s.turboClock >= 0.01 || !s.turboSnap) {
+          s.turboSnap = turbo.step(s.turboClock, { rpm: rpm(), throttle: throttle ? s.pedal : 0, gearIndex: 0 });
+          s.turboClock = 0;
+        }
+        substep(h, throttle);
+      }
+      return point();
+    }
+    function point() {
+      const snap = s.turboSnap || {};
+      return {
+        t: s.t, rpm: rpm(), pedal: s.pedal, tyreSurfaceKmh: s.ww * r * 3.6, slipPowerKw: s.slipPowerW / 1000, energyKj: s.energyJ / 1000,
+        tyreSurfaceC: th.surfaceC, tyreBulkC: th.bulkC, tyreGripC: tyreGripTempC(th), smoke: s.smoke,
+        boostBar: Number(snap.boostBar || 0), egtC: Number(snap.egtC || 0), mapBarAbs: snap.mapBarAbs, lambda: snap.lambda, limiter: s.cut, torqueNm: s.torqueNm
+      };
+    }
+    return { state: s, step, point, turbo, tyre: ty, tyreThermal: th, targetRpm };
   }
   // Optimal upshift points from the engine map: shift where the next gear gives more wheel torque.
   function optimalShiftRpms(state, em) {
@@ -2534,6 +2721,7 @@
       thousandFt: milestones.thousandFt, quarter: milestones.quarter, trapKmh: milestones.trapKmh, zeroTo100: zero100,
       finishTotalTime: milestones.quarter + Math.max(0, reaction), wheelspinPct: rt.state.maxWheelspin * 100, shifts: rt.state.shiftLog.length,
       totalMassKg: rt.massKg, trace, shiftRpms: shiftRpm, maxClutchTempC: rt.state.clutchC, limiterTimeS: rt.state.limiterS,
+      knockEvents: rt.state.knockEvents, kcMaxRetardDeg: rt.state.kcMaxDeg, knockDamagePct: rt.state.knockDamage,
       drivetrain: (DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD).name, tireName: (TIRE_MAP[state.vehicle.tireCompound] || {}).name
     };
   }
@@ -2896,6 +3084,7 @@
     ECU_LOAD_AXIS,
     ECU_GEARS,
     ENGINE_MODEL_VERSION,
+    VEHICLE_MODEL_VERSION,
     Engine,
     DYNO_CORRECTIONS,
     CAREER_EVENTS,
@@ -2909,6 +3098,14 @@
     buildEngineMap,
     engineMapLookup,
     createRaceRuntime,
+    createBurnoutRuntime,
+    makeTyreThermal,
+    tyreThermalStep,
+    tyreThermalAfter,
+    tyreGripTempC,
+    tyreTempFactor,
+    TYRE,
+    TYRE_THERMAL,
     simulateRaceRun,
     optimalShiftRpms,
     DRIVELINE,

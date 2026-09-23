@@ -187,6 +187,8 @@ const vehicleSuite = require('./test_vehicle.js');
 const careerSuite = require('./test_career.js');
 // Engine voice: sound synthesized from the combustion events (firing order, cuts, afterfire, knock).
 const audioSuite = require('./test_audio.js');
+// Tyre temperatures, the physical burnout and knock events in the race.
+const tyreSuite = require('./test_tyres.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -208,7 +210,8 @@ const report = {
   engine: engineSuite,
   vehicle: vehicleSuite,
   career: careerSuite,
-  audio: audioSuite
+  audio: audioSuite,
+  tyres: tyreSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));
