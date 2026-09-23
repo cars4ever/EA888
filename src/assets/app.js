@@ -1962,7 +1962,7 @@
   }
 
   function dynoChannelTabs() {
-    const channels = [['power','PK / Nm'],['air','Lucht'],['map','Turbokaart'],['fuel','Brandstof'],['thermal','Thermisch'],['risk','Risico']];
+    const channels = [['power','PK / Nm'],['spark','Ontsteking'],['air','Lucht'],['map','Turbokaart'],['fuel','Brandstof'],['cyl','Cilinder'],['thermal','Thermisch'],['risk','Risico']];
     return `<div class="dyno-channel-tabs">${channels.map(([id,label]) => `<button class="${dynoChannel === id ? 'active' : ''}" data-dyno-channel="${id}">${label}</button>`).join('')}</div>`;
   }
 
@@ -2019,7 +2019,8 @@
           <div><span>RAIL</span><b id="live-rail">${point ? Math.round(point.railBar) : '—'}<small> bar</small></b></div>
         </div>
         ${dynoChannelTabs()}
-        <div class="dyno-chart-wrap"><canvas id="dyno-chart" aria-label="Dynografiek voor geselecteerde datakanalen"></canvas></div>
+        <div class="dyno-chart-wrap"><canvas id="dyno-chart" aria-label="Dynografiek voor geselecteerde datakanalen; tik voor de waarden bij een toerental"></canvas></div>
+        <div class="log-actions"><small>Tik op de grafiek voor alle kanalen bij dat toerental.</small><button class="btn ghost small" data-action="export-dyno-log" ${state.lastDyno?.samples?.length ? '' : 'disabled'}>Datalog (CSV)</button></div>
         <div class="dyno-progress"><i id="dyno-progress"></i><span id="dyno-live-status">${active ? 'PULL START' : !clean ? 'WACHT OP NIEUWE PULL' : C.isCompletedDyno(r) ? 'LAATSTE VOLLEDIGE PULL' : r.status === C.DYNO_STATUS.FAILED_TO_START ? 'PULL NIET GESTART' : `AFGEBROKEN @ ${r.abortRpm} RPM · PARTIËLE DATA`}</span></div>
       </div>
 
@@ -2139,7 +2140,21 @@
     const defs = {
       power: [
         { key:'hp', label:'PK', color:'#ffad17', unit:'pk' },
-        { key:'torqueNm', label:'NM', color:'#36b8ff', unit:'Nm' }
+        { key:'torqueNm', label:'NM', color:'#36b8ff', unit:'Nm' },
+        { key:'wheelHp', label:'WIEL-PK', color:'#b98cff', unit:'pk' }
+      ],
+      // Spark log: what the table asked, what the ECU fired after knock control, and the physical limits.
+      spark: [
+        { key:'sparkCmdDeg', label:'TABEL', color:'#8290a4', unit:'°' },
+        { key:'sparkDeg', label:'ONTSTEKING', color:'#ffad17', unit:'°' },
+        { key:'mbtDeg', label:'MBT', color:'#48db9c', unit:'°' },
+        { key:'knockRetardDeg', label:'KNOCKRETARD', color:'#ff5365', unit:'°' }
+      ],
+      cyl: [
+        { key:'pMaxBar', label:'PMAX', color:'#ff654d', unit:'bar' },
+        { key:'bmepBar', label:'BMEP', color:'#ffad17', unit:'bar' },
+        { key:'volumetricEff', label:'VE', color:'#36b8ff', unit:'' },
+        { key:'ca50Deg', label:'CA50', color:'#b98cff', unit:'°' }
       ],
       air: [
         { key:'boostBar', label:'BOOST', color:'#36b8ff', unit:'bar' },
@@ -2150,7 +2165,8 @@
       fuel: [
         { key:'fuelDutyPct', label:'DUTY', color:'#ffad17', unit:'%' },
         { key:'railBar', label:'RAIL', color:'#36b8ff', unit:'bar' },
-        { key:'lambda', label:'LAMBDA', color:'#48db9c', unit:'λ' }
+        { key:'lambda', label:'LAMBDA', color:'#48db9c', unit:'λ' },
+        { key:'lambdaTarget', label:'λ-DOEL', color:'#2b7a58', unit:'λ' }
       ],
       thermal: [
         { key:'egtC', label:'EGT', color:'#ff654d', unit:'°C' },
@@ -2280,7 +2296,13 @@
     defs.forEach(def => {
       const vals = visible.map(p => Number(p[def.key])).filter(Number.isFinite);
       let min = Math.min(...vals), max = Math.max(...vals);
-      if (def.key === 'hp' || def.key === 'torqueNm') { min = 0; max = Math.max(100, Math.ceil(Math.max(...visible.map(p => Math.max(p.hp || 0, p.torqueNm || 0)))/100)*100); }
+      if (def.key === 'hp' || def.key === 'torqueNm' || def.key === 'wheelHp') { min = 0; max = Math.max(100, Math.ceil(Math.max(...visible.map(p => Math.max(p.hp || 0, p.torqueNm || 0)))/100)*100); }
+      else if (['sparkCmdDeg', 'sparkDeg', 'mbtDeg'].includes(def.key)) { min = -10; max = Math.max(40, Math.ceil(Math.max(...visible.map(p => Math.max(p.mbtDeg || 0, p.sparkCmdDeg || 0))) / 5) * 5); }
+      else if (def.key === 'knockRetardDeg') { min = 0; max = 15; }
+      else if (def.key === 'pMaxBar' || def.key === 'bmepBar') { min = 0; max = Math.max(60, Math.ceil(Math.max(...visible.map(p => p.pMaxBar || 0)) / 20) * 20); }
+      else if (def.key === 'volumetricEff') { min = 0.5; max = 1.2; }
+      else if (def.key === 'ca50Deg') { min = 0; max = 40; }
+      else if (def.key === 'lambdaTarget') { min = .65; max = 1.0; }
       else if (def.key === 'boostBar' || def.key === 'empBar') { min=0; max=Math.max(1,Math.ceil(Math.max(...visible.map(p=>Math.max(p.boostBar||0,p.empBar||0)))*2)/2); }
       else if (def.key === 'railBar') { min=0; max=Math.max(200,Math.ceil(max/25)*25); }
       else if (def.key === 'fuelDutyPct' || def.key === 'turboLoadPct' || def.key === 'spoolPct' || def.key === 'shaftSpeedPct' || def.key === 'oilAerationPct') { min=0; max=Math.max(100,Math.ceil(max/25)*25); }
@@ -2331,6 +2353,46 @@
     if (faded) { ctx.fillStyle='#aab4c2';ctx.font='800 11px system-ui,sans-serif';ctx.fillText('OUDE CONFIGURATIE',width-142,37); }
     else if (dynoIsPartial(result) && progress >= 1) { ctx.fillStyle='#ff7c8a';ctx.font='800 11px system-ui,sans-serif';ctx.fillText('PARTIËLE DATA',width-116,37); }
     if (showComparison) { ctx.fillStyle='#8290a4';ctx.font='700 9px system-ui,sans-serif';ctx.fillText('- - VORIGE RUN',pad.l+8,pad.t+plotH-6); }
+    // Log cursor: tap the chart to read every channel of this view at the nearest logged sample.
+    if (Number.isFinite(dynoCursorRpm) && progress >= 1 && channel === dynoChannel) {
+      const sp = visible.reduce((best, p) => (Math.abs(p.rpm - dynoCursorRpm) < Math.abs(best.rpm - dynoCursorRpm) ? p : best), visible[0]);
+      const cx = x(sp.rpm);
+      ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(cx, pad.t); ctx.lineTo(cx, pad.t + plotH); ctx.stroke(); ctx.setLineDash([]);
+      const lines = [`${sp.rpm} rpm`, ...defs.map(def => { const v = Number(sp[def.key]); return `${def.label} ${Number.isFinite(v) ? v.toFixed(Math.abs(v) < 10 ? 2 : 0) : '—'} ${def.unit}`; })];
+      ctx.font = '700 10px ui-monospace, monospace';
+      const bw = Math.max(...lines.map(t => ctx.measureText(t).width)) + 14, bh = lines.length * 14 + 8;
+      const bx = cx + bw + 8 > width - pad.r ? cx - bw - 8 : cx + 8, by = pad.t + 6;
+      ctx.fillStyle = 'rgba(6,9,14,.9)'; ctx.fillRect(bx, by, bw, bh); ctx.strokeStyle = '#2a3746'; ctx.strokeRect(bx, by, bw, bh);
+      lines.forEach((t, i) => { ctx.fillStyle = i === 0 ? '#f4f6f8' : defs[i - 1].color; ctx.fillText(t, bx + 7, by + 16 + i * 14); });
+      ctx.restore();
+    }
+  }
+  let dynoCursorRpm = null;
+  document.addEventListener('click', ev => {
+    const cv = ev.target.closest?.('#dyno-chart');
+    if (!cv || dynoRunning || !state.lastDyno?.samples?.length || dynoChannel === 'map') return;
+    const r = cv.getBoundingClientRect(), res = state.lastDyno;
+    const rpmMin = Number(res.startRpm) || 1500, rpmMax = Math.max(rpmMin + 500, Number(res.targetRpm) || 8000);
+    const rpm = rpmMin + clamp((ev.clientX - r.left - 45) / Math.max(1, r.width - 60), 0, 1) * (rpmMax - rpmMin);
+    dynoCursorRpm = Number.isFinite(dynoCursorRpm) && Math.abs(dynoCursorRpm - rpm) < 60 ? null : rpm;
+    drawDynoChart(cv, res, 1, !currentDyno(), dynoChannel, compareRun());
+  });
+  // Datalog export: every logged channel of a pull (or a race) as CSV, for your own analysis.
+  function logCsv(rows, preferred = []) {
+    if (!rows?.length) return '';
+    const keys = [...new Set([...preferred, ...Object.keys(rows[0])])].filter(k => rows.some(r => typeof r[k] === 'number' || typeof r[k] === 'string' || typeof r[k] === 'boolean'));
+    const cell = v => (typeof v === 'number' ? String(Math.round(v * 1000) / 1000) : typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v == null ? '' : String(v));
+    return [keys.join(','), ...rows.map(r => keys.map(k => cell(r[k])).join(','))].join('\n');
+  }
+  async function exportLog(kind) {
+    const saver = NATIVE ? NATIVE.saveFile.bind(NATIVE) : null;
+    const src = kind === 'race' ? state.lastDrag?.trace : state.lastDyno?.samples;
+    if (!saver) return showToast('Exporteren is niet beschikbaar in deze omgeving.');
+    if (!src?.length) return showToast(kind === 'race' ? 'Nog geen race om te exporteren.' : 'Nog geen dynopull om te exporteren.');
+    const csv = logCsv(src, kind === 'race' ? ['time', 'distanceM', 'speedKmh', 'rpm', 'gear'] : ['rpm', 'tS', 'hp', 'torqueNm', 'boostBar', 'sparkDeg', 'knockRetardDeg', 'lambda', 'railBar', 'egtC', 'iatC']);
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    const ok = await saver(`ea888-${kind === 'race' ? 'race' : 'dyno'}-log-${stamp}.csv`, csv);
+    showToast(ok ? `Datalog opgeslagen (${src.length} regels).` : 'Datalog niet opgeslagen.');
   }
 
   // The pull is simulated up front but revealed sample by sample at the
@@ -2510,6 +2572,7 @@
         <div class="v12-analysis-card"><span>AANDRIJFLIJN</span><b>${Number(run.maxClutchTempC || 0).toFixed(0)}°C koppeling</b><small>${Number(run.maxGearboxTempC || 0).toFixed(0)}°C bak · stress ${Number(run.drivelineStress || 0).toFixed(0)}%</small></div>
         <div class="v12-analysis-card"><span>BEGRENZER</span><b>${Number(run.limiterTimeS || 0).toFixed(2)} s</b><small>Schakelscore ${run.shiftScore || 0}/100 · ${run.transmissionMode || '—'}</small></div>
       </div>
+      <div class="log-actions"><small>Alle racekanalen (snelheid, rpm, boost, slip, koppeling, koppel, EGT, rijlijn) per 35 ms.</small><button class="btn ghost small" data-action="export-race-log">Racelog (CSV)</button></div>
       <div class="v12-telemetry-note">Telemetrie is een fysisch gamemodel, geen vervanging voor echte ECU-, CAN- of dynologs.</div>
     </div>`;
   }
@@ -3773,7 +3836,11 @@
       drivelineStress:run.drivelineStress,
       opponentDistanceM:Number(run.opponent?.current?.distanceM || 0),
       opponentSpeedKmh:Number(run.opponent?.current?.speedKmh || 0),
-      opponentGapM:Number(run.opponentGapM || 0)
+      opponentGapM:Number(run.opponentGapM || 0),
+      engineTorqueNm:Number(run.rt?.state.torqueNm || 0),
+      clutchSlipRpm:Number(run.rt?.state.slipRpm || 0),
+      tyreTempC:Number(run.rt?.state.tyreC || 0),
+      egtC:Number(run.turboSnap?.egtC || 0)
     };
   }
 
@@ -5120,6 +5187,8 @@
         saveState(); haptic(12); showToast('OEM-achtige map geladen; mechanische nokmetingen behouden.'); render(); break;
       }
       case 'run-all-bench': runAllBench(); break;
+      case 'export-dyno-log': exportLog('dyno'); break;
+      case 'export-race-log': exportLog('race'); break;
       case 'ecu-range': case 'ecu-step': case 'ecu-set': case 'ecu-set-apply': case 'ecu-smooth': case 'ecu-interp':
       case 'ecu-copy-gears': case 'ecu-follow-quick': case 'ecu-basemap': case 'ecu-basemap-apply': ecuAction(btn.dataset.action, btn); break;
       case 'apply-assembly-targets': {

@@ -29,7 +29,8 @@ public class NativeBridge {
         if (content == null || content.length() > 5_000_000) return;
         String name = suggestedName == null ? "ea888-lab-backup.json" : suggestedName.replaceAll("[^A-Za-z0-9._-]", "_");
         synchronized (this) { pendingSave = content; }
-        activity.runOnUiThread(() -> activity.createDocument.launch(name));
+        final boolean csv = name.toLowerCase(java.util.Locale.ROOT).endsWith(".csv");
+        activity.runOnUiThread(() -> (csv ? activity.createCsvDocument : activity.createDocument).launch(name));
     }
 
     synchronized String takePendingSave() {

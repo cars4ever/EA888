@@ -12,7 +12,14 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.6.0 (branch `claude-dev`) — phase 3: race 2.0
+## v1.7.0 (branch `claude-dev`) — phase 4: one physical simulation
+
+- Combustion-cycle engine model: power, spark, knock, EGT and fuel follow from physics (stock CAWB 194 pk / 273 Nm vs VW 200 PS / 280 Nm).
+- ECU tables with a table editor, base maps, knock control; real fuel hardware (HPFP, DI window, MPI), flex fuel.
+- Dyno with DIN/ISO/SAE correction, wheel power, heat soak; datalog channels with cursor and CSV export.
+- One vehicle model (clutch, tyres, load transfer, gearboxes) for the race, the quick pass and real rival builds.
+
+## v1.6.0 — phase 3: race 2.0
 
 - WebGL drag strip with a 3D Scirocco and rival, smoke and flames from the simulation, chase camera that feels the g-forces.
 - Ghost of your fastest run, replay with director cameras on the finish screen, compact race HUD.

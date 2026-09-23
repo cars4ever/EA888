@@ -225,3 +225,6 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .dyno-correction > span { font-weight:700; font-size:14px; }
 .dyno-correction .segment-control { margin-bottom:0; }
 .dyno-correction small { color:var(--muted); font-size:12px; line-height:1.4; }
+.log-actions { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:10px 0; }
+.log-actions small { color:var(--muted); font-size:12px; flex:1 1 200px; }
+.log-actions .btn { min-height:44px; }

@@ -287,6 +287,13 @@ def main() -> None:
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-dyno.png'), full_page=False, animations='disabled', timeout=12000)
 
+        # Datalog: spark channel (table vs fired spark vs MBT vs knock retard), cursor readout, CSV export action.
+        click(page, '[data-dyno-channel="spark"]')
+        spark_drawn = page.eval_on_selector('#dyno-chart', "c => c.width > 200 && c.getContext('2d').getImageData(Math.floor(c.width*.6), Math.floor(c.height*.5), 1, 1).data[3] > 0")
+        page.eval_on_selector('#dyno-chart', "c => { const r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + r.width * .6, clientY: r.top + r.height * .5 })); }")
+        page.wait_for_timeout(80)
+        report['checks']['datalog_spark_channel'] = spark_drawn and page.locator('[data-action="export-dyno-log"]').count() == 1
+        click(page, '[data-dyno-channel="power"]')
         print('CHECKPOINT dyno done', flush=True)
         # V7 drag workflow: overview -> separate fullscreen burnout -> separate staging/tree -> rear chase run -> overview.
         print('DRAG go', flush=True)

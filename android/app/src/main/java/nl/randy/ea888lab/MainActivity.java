@@ -45,6 +45,9 @@ public class MainActivity extends ComponentActivity {
 
     final ActivityResultLauncher<String> createDocument =
             registerForActivityResult(new ActivityResultContracts.CreateDocument("application/json"), this::onDocumentCreated);
+    // Datalogs are CSV: a separate launcher so the provider does not force a .json extension.
+    final ActivityResultLauncher<String> createCsvDocument =
+            registerForActivityResult(new ActivityResultContracts.CreateDocument("text/csv"), this::onDocumentCreated);
     final ActivityResultLauncher<String[]> openDocument =
             registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::onDocumentOpened);
 

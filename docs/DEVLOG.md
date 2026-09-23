@@ -229,6 +229,38 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 - Smoke checks: 3D draw calls/triangles, disposal after finish, ghost stored with a record, 2D fallback draws,
   replay recorded to the finish line, replay plays back, replay disposed on close.
 
+## 11. Phase 4: one physical simulation (v1.7.0)
+
+Why: the v1.6 engine scaled a fixed torque curve with boost (K04 hybrid: 682 Nm at 1.8 bar = 43 bar BMEP,
+VE 1.44), spark and lambda had no physical meaning, the race used its own formulas and the rival was a scaled
+copy of the player's dyno curve. Every preset ran the same 60 ft.
+
+- **Engine (src/assets/engine.js, data/engine/*.json)**: zero-D closed cycle IVC to EVO (Wiebe heat release,
+  Woschni wall heat, variable gamma); VE from the Taylor inlet Mach index, cam/runner tuning, ideal-cycle
+  backpressure, residual gas and overlap scavenging; end-gas knock from the Douaud-Eyzat induction time with
+  the Kalghatgi octane index and end-gas wall cooling; Chen-Flynn friction; pumping from MAP vs EMP; EGT from
+  the cycle state at EVO. Fuel blends from components (octane linear in molar fraction).
+- **Calibration**: stock CAWB 194 pk / 273 Nm (VW 200 PS / 280 Nm); knock limit fitted to 9 reference points
+  (1.3 deg RMS); K03 turbine and wastegates re-sized for the real airflow (wastegates are now absolute orifices).
+- **Fuel hardware**: HPFP displacement x rpm (efficiency falls with rail pressure), DI flow within the
+  injection window, port injection, low-pressure pump; the rail falls when the pump saturates; lean -> lambda
+  protection lowers boost. Flex-fuel part with ethanol content.
+- **ECU tables** (canonical in `tune.ecu`): boost per gear x rpm; spark, lambda, cam per MAP x rpm; base spark
+  map = min(MBT, knock limit - 2 deg) for the fitted hardware; knock control with a retard budget and knock
+  boost protection; quick setup drives tables that were not edited by hand. Editor: heat map, range select,
+  step/set/smooth/interpolate/copy, last-pull trace and knock-retard cells, exact undo.
+- **Dyno measurement**: DIN 70020 / ISO 1585 / SAE J1349 correction (dry-air pressure), wheel power from
+  chassis-dyno losses in the pull gear, heat soak between pulls, repeatability scatter, pull gear, humidity.
+- **Vehicle model** (sim.js createRaceRuntime): engine map from the combustion model (density and pumping
+  corrected at runtime), turbo runtime on the breathing model, engine inertia + slipping/locked clutch with
+  fade and heat, driven-wheel dynamics, Pacejka-type tyre with relaxation length, load transfer m a h / L with
+  suspension lag, shift phases per gearbox, slip-controlled launch, traction control, nitrous spool shot.
+  Player race, quick pass and every rival use it; rivals are real builds (cached).
+- **Datalog**: spark (table / fired / MBT / knock retard), cylinder (Pmax, BMEP, VE, CA50), fuel (duty, rail,
+  lambda vs target) channels, tap cursor, CSV export for dyno and race (Android CSV save dialog).
+- **Validation**: stock Scirocco 0-100 7.2 s (VW 7.2 s), 15.1 s @ 155 km/h; trap speeds within 3 % of the Hale
+  formula for stock, K04 hybrid and HX52 builds. Tests: tests/test_engine.js, tests/test_vehicle.js.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
@@ -241,22 +273,21 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 
 ## Remaining known inaccuracies
 
-- Turbo: see "Known inaccuracies (turbo)" above (outer map efficiency, reference conditions, modeled map shape,
-  inflated VE on the big pro-mod presets, simple turbine efficiency).
-- Spool transients use an effective inertia factor (×2.5) instead of modeling exhaust-manifold filling and
-  thermal lag.
-- ALS combustion is a lumped energy model (fraction of the fuel energy released in the manifold); there is no
-  per-cylinder or crank-angle model, and catalyst damage is not modeled.
-- The realtime race uses the dyno's WOT samples for engine airflow at part load/two-step (scaled), not a
-  separate part-load model.
-- Flame visuals (CSS sprites in 2D, additive sprites in 3D) are stylised; timing/intensity are simulation-driven.
-- The ALS sound is synthesized to match the physics qualitatively (bang rate, crack/boom balance); it is not
-  a recording of a real car.
-- 2D fallback: the track perspective is stylised (car art larger than its lane). The 3D view is to scale, but
-  the car is a low-poly procedural model, not a scanned Scirocco; there is no suspension or body roll yet.
-- Replay samples are taken per rendered frame (at most 30 Hz); on a very slow device the replay is coarser
-  (interpolated between samples).
-- The analytic `simulateDrag` (used for the rival) still uses the steady dyno curve (no transient turbo).
+- Engine: single-zone cycle with Wiebe combustion (no turbulence/flame model), end-gas knock from a
+  correlation fitted to estimated knock-limited spark points (+/-3 deg), no cylinder-to-cylinder spread.
+  Head flow coefficients, cam tuning and fuel-system flows are modeled values, not flow-bench data (see the
+  mapType of every entry in data/engine/).
+- The race engine map uses a reference charge temperature and corrects density and pumping at runtime; VE
+  changes from exhaust pressure within the race are second order and not remapped.
+- FWD launches are ~0.2-0.3 s slower over 60 ft than the best real FWD drag passes (tyre model and driver
+  model are simple); trap speeds match power-to-weight.
+- The driveline has no torsional compliance (no axle hop) and one diff model per axle; no aero lift.
+- Knock in the race is taken from the map (knock control result); there are no individual knock events.
+- Turbo: see "Known inaccuracies (turbo)" above; spool transients still use an effective inertia factor.
+- ALS combustion is a lumped energy model; flame visuals are stylised, timing/intensity are simulation-driven.
+- The ALS sound is synthesized; it is not a recording of a real car.
+- 2D fallback track perspective is stylised; the 3D car is a procedural model without suspension motion.
+- Oil temperature, oil film and wear are still empirical models.
 
 ## APK signing
 

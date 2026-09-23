@@ -62,7 +62,7 @@ export const native = {
       return new Promise(resolve => { pendingSave = resolve; bridge.saveFile(name, text); });
     }
     try {
-      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      const url = URL.createObjectURL(new Blob([text], { type: /\.csv$/i.test(name) ? 'text/csv' : 'application/json' }));
       const a = Object.assign(document.createElement('a'), { href: url, download: name });
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
