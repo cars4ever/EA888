@@ -16,8 +16,10 @@
   const MECH_EFF = 0.95;
   // Effective inertia multiplier for spool transients: the rotor alone would spool
   // unrealistically fast because exhaust-manifold filling and thermal lag are not
-  // modeled explicitly (approximation, tuned to ~0.3-0.8 s turbo lag).
-  const TRANSIENT_INERTIA_FACTOR = 2.0;
+  // modeled explicitly. 1.35 puts a K04 on a 2.0 L within ~300 rpm of its steady
+  // boost threshold in a 550 rpm/s dyno sweep (Bell: a matched street turbo lags a
+  // few hundred rpm in a load-controlled pull, ~0.3-0.6 s).
+  const TRANSIENT_INERTIA_FACTOR = 1.35;
   const LBMIN_PER_KGS = 132.277;
   const COMP_REF = { tK: 302.6, pBar: 0.9618 }; // Garrett compressor reference, 545 R / 13.95 psia
   const TURB_REF = { tK: 288.3, pBar: 1.01325 }; // turbine flow correction, 519 R / 14.696 psia
@@ -159,7 +161,9 @@
       turbineNozzle: er => (tMax * nozzle(er)) / nozzle(4),
       // wastegate valve: an orifice with its own flow capacity, same nozzle law
       wastegateFlow: (er, wg) => ((wg.flowLbMin ?? (wg.flowRatio || 0) * tMax) * nozzle(er)) / nozzle(4),
-      turbineEfficiency: er => src.turbine.maxEfficiency * clamp(0.55 + (0.45 * (er - 1)) / 0.8, 0.55, 1) * (src.turbine.twinScroll ? 1.03 : 1),
+      // total-to-static efficiency vs expansion ratio, shaped on Garrett turbine maps: ~88 % of peak at ER 1.3,
+      // ~95 % at 1.5, the peak from ER ~1.8 (pulse flow from a twin-scroll housing adds ~3 %)
+      turbineEfficiency: er => src.turbine.maxEfficiency * clamp(0.74 + (0.26 * (er - 1)) / 0.8, 0.74, 1) * (src.turbine.twinScroll ? 1.03 : 1),
       inertia: src.rotorInertiaKgM2
     };
     return map;

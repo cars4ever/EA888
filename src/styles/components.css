@@ -313,3 +313,4 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .map-tune.applied { opacity: .75; }
 .map-tune.running { display: block; }
 .map-tune.running i { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: linear-gradient(90deg, var(--c-accent) var(--p), rgba(255,255,255,.1) var(--p)); }
+.map-tune.blocked { border-left-color: var(--c-bad); }

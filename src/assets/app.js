@@ -2463,11 +2463,11 @@
     const pickable = recs.filter(e => (e.resolved || e.improved) && e.kind !== 'combo');
     const row = (e, i) => {
       const dHp = Math.round(e.hpAfter - e.hpBefore);
-      const tag = e.resolved ? 'good' : e.improved ? 'warn' : 'bad';
+      const tag = e.tier === 0 ? 'good' : e.tier <= 3 ? 'warn' : 'bad';
       const canPick = pickable.includes(e) && !applied.has(e.id);
       return `<div class="advice-rec ${tag} ${picked.has(e.id) ? 'picked' : ''} ${applied.has(e.id) ? 'applied' : ''}">
         ${canPick ? `<button class="advice-pick" data-advice-pick="${esc(key)}" data-advice-rec="${esc(e.id)}" aria-pressed="${picked.has(e.id)}" aria-label="Selecteer voor combinatie">${picked.has(e.id) ? '✔' : ''}</button>` : '<span class="advice-pick none"></span>'}
-        <div><b>${applied.has(e.id) ? '✔ Toegepast' : e.resolved ? '✔ Lost het op' : e.improved ? '↗ Helpt, lost het niet op' : '✕ Helpt niet'}${i === 0 && e.resolved && !applied.has(e.id) ? ' · beste keuze' : ''}</b><p>${esc(e.label)}</p><small>${esc(e.metric)} ${esc(e.beforeText)} → ${esc(e.afterText)} · ${Math.round(e.hpBefore)} → ${Math.round(e.hpAfter)} pk (${dHp >= 0 ? '+' : ''}${dHp}) · ${e.cost ? euro(e.cost) : 'gratis'}${e.sideEffects?.length ? ` · let op: ${esc(e.sideEffects.join('; '))}` : ''}</small></div>
+        <div><b>${applied.has(e.id) ? '✔ Toegepast' : e.resolved ? (e.tier === 2 ? `✔ Lost het op, maar kost ${Math.round(e.lossPct)}% vermogen` : '✔ Lost het op') : e.improved ? (e.tier === 3 ? `↗ Helpt, maar kost ${Math.round(e.lossPct)}% vermogen` : '↗ Helpt, lost het niet op') : '✕ Helpt niet'}${i === 0 && e.tier === 0 && !applied.has(e.id) ? ' · beste keuze' : ''}</b><p>${esc(e.label)}</p><small>${esc(e.metric)} ${esc(e.beforeText)} → ${esc(e.afterText)} · ${Math.round(e.hpBefore)} → ${Math.round(e.hpAfter)} pk (${dHp >= 0 ? '+' : ''}${dHp}) · ${e.cost ? euro(e.cost) : 'gratis'}${e.sideEffects?.length ? ` · let op: ${esc(e.sideEffects.join('; '))}` : ''}</small></div>
         ${(e.resolved || e.improved) && !applied.has(e.id) ? `<button class="btn small ghost" data-advice-apply="${esc(key)}" data-advice-rec="${esc(e.id)}">Toepassen</button>` : ''}</div>`;
     };
     const combo = bought.pickEval && bought.pickKey === [...picked].sort().join('+') ? bought.pickEval : null;
@@ -2523,8 +2523,11 @@
         return `<div class="map-tune"><div><b>${esc(g.label)}</b><small>${g.id === 'street' ? 'Ruime marges op klop, EGT, koppel, cilinderdruk en brandstof: gemaakt om lang mee te gaan.' : 'Het meeste vermogen binnen de grenzen die deze hardware net overleeft.'} Boost laag/midden/hoog, ontsteking, lambda en nokken.</small></div><button class="btn small" data-map-buy="${g.id}" ${enough && !mapJob && !adviceJob ? '' : 'disabled'}>${euro(g.price)}</button></div>`;
       }
       const d = Math.round(done.after.hp - done.before.hp);
-      return `<div class="map-tune done ${done.applied ? 'applied' : ''} ${done.ok ? '' : 'warn'}"><div><b>${esc(g.label)}: ${Math.round(done.before.hp)} → ${Math.round(done.after.hp)} pk (${d >= 0 ? '+' : ''}${d})${done.applied ? ' · ✔ toegepast' : ''}</b>
-        <small>${done.ok ? 'Binnen alle marges van deze map.' : 'Deze hardware haalt de marges van deze map niet volledig; dit is het dichtst dat de tuner erbij komt.'} ${done.changes.length ? done.changes.map(c => `${MAP_KEY_LABEL[c.key] || c.key} ${mapFmt(c.key, c.from)} → ${mapFmt(c.key, c.to)}`).join(' · ') : 'De huidige map is al optimaal.'}</small></div>
+      const overText = list => list.map(o => `${o.label} ${num(o.value, o.unit === '' ? 2 : 0)}${o.unit} (grens ${num(o.limit, o.unit === '' ? 2 : 0)}${o.unit})`).join(', ');
+      if (done.outcome === 'blocked') return `<div class="map-tune done blocked"><div><b>${esc(g.label)}: niet haalbaar met deze hardware · terugbetaald</b>
+        <small>Geen map haalt de marges: ${esc(overText(done.blockedBy || []))}. Dat los je op met onderdelen (zie het tuneradvies bij de diagnose), niet met de map.</small></div></div>`;
+      return `<div class="map-tune done ${done.applied ? 'applied' : ''} ${done.outcome === 'safer' ? 'warn' : ''}"><div><b>${esc(g.label)}: ${Math.round(done.before.hp)} → ${Math.round(done.after.hp)} pk (${d >= 0 ? '+' : ''}${d})${done.applied ? ' · ✔ toegepast' : ''}</b>
+        <small>${done.outcome === 'safer' ? `Je huidige map zit buiten de marges van deze map (${esc(overText(done.currentOver || []))}); deze map brengt hem erbinnen en kost daarvoor vermogen.` : 'Meer of gelijk vermogen, binnen alle marges van deze map.'} ${done.changes.length ? done.changes.map(c => `${MAP_KEY_LABEL[c.key] || c.key} ${mapFmt(c.key, c.from)} → ${mapFmt(c.key, c.to)}`).join(' · ') : 'De huidige map is al optimaal.'}</small></div>
         ${done.applied || !done.changes.length ? '' : `<button class="btn small" data-map-apply="${g.id}">Toepassen</button>`}</div>`;
     };
     return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · geoptimaliseerde map</span><h3>Laat de tuner je map schrijven</h3>${goals.map(card).join('')}<small class="advice-note">Handmatig aangepaste tabellen worden vervangen door de map van de tuner (ongedaan maken kan).</small></div>`;
@@ -2544,7 +2547,10 @@
       let done = false;
       try { done = job.opt.step(); } catch (e) { logAppError('map', e); done = true; }
       if (!done) { if (activeTab === 'dyno') render(); setTimeout(next, 16); return; }
-      mapStore()[job.id] = { ...job.opt.summary(), at: new Date().toISOString(), applied: false };
+      const sum = job.opt.summary();
+      mapStore()[job.id] = { ...sum, at: new Date().toISOString(), applied: false };
+      // a map the hardware cannot carry is not sold
+      if (sum.outcome === 'blocked') { state.bank += g.price; pushHistory({ type: 'advice', label: `${g.label} niet haalbaar · ${euro(g.price)} terug` }); }
       const ids = Object.keys(state.mapTunes); if (ids.length > 8) delete state.mapTunes[ids[0]];
       mapJob = null; saveState(); render(); showToast(`${g.label} klaar.`);
     };
@@ -2582,7 +2588,7 @@
       } catch (e) { logAppError('advice', e); }
       job.done++;
       if (job.done <= cands.length + 1) { if (activeTab === 'dyno') render(); setTimeout(next, 16); return; }
-      adviceStore()[job.id] = { at: new Date().toISOString(), key, soakK: job.base?.soakK || 0, baseState: { selections: snapshot.selections, tune: { ...snapshot.tune }, assembly: snapshot.assembly, service: snapshot.service, dynoConfig: snapshot.dynoConfig, vehicle: snapshot.vehicle, wear: snapshot.wear, damage: snapshot.damage }, evals: C.rankAdvice(job.evals).map(e => ({ ...e })), picked: [], applied: [] };
+      adviceStore()[job.id] = { at: new Date().toISOString(), key, soakK: job.base?.soakK || 0, baseState: { selections: snapshot.selections, tune: { ...snapshot.tune }, assembly: snapshot.assembly, service: snapshot.service, dynoConfig: snapshot.dynoConfig, vehicle: snapshot.vehicle, wear: snapshot.wear, damage: snapshot.damage }, evals: C.rankAdvice(job.evals, key).map(e => ({ ...e })), picked: [], applied: [] };
       const ids = Object.keys(state.advice); if (ids.length > 16) delete state.advice[ids[0]];
       adviceJob = null;
       saveState(); render();
@@ -4089,7 +4095,7 @@
     // Physical burnout (sim.js createBurnoutRuntime): engine, clutch, spinning tyres, slip power, tyre heat.
     const p = rt.step(dt, { throttle });
     b.rpm = p.rpm; b.surfaceC = p.tyreSurfaceC; b.bulkC = p.tyreBulkC; b.smoke = p.smoke;
-    b.slipKmh = p.tyreSurfaceKmh; b.slipKw = p.slipPowerKw; b.boostBar = p.boostBar;
+    b.slipKmh = p.tyreSurfaceKmh; b.slipKw = p.slipPowerKw; b.boostBar = p.boostBar; b.clutchSlipping = !!p.clutchSlipping;
     // what counts is the grip temperature expected at the launch after rolling to the line and staging
     b.tempC = predictedLaunchTyreC(rt.tyreThermal);
     if (b.started) b.timeLeft = Math.max(0, b.timeLeft - dt);
@@ -4114,7 +4120,7 @@
 
     updateV7Tach('v7-burn', b.rpm, 1);
     const time = $('#v7-burn-time');
-    if (time) time.textContent = `${Math.round(b.slipKw || 0)} kW slip · ${b.timeLeft.toFixed(1)} s`;
+    if (time) time.textContent = `${b.clutchSlipping ? 'koppeling slipt · ' : ''}${Math.round(b.slipKw || 0)} kW slip · ${b.timeLeft.toFixed(1)} s`;
     const temp = $('#v7-burn-temp');
     if (temp) temp.textContent = `${Math.round(b.surfaceC ?? b.tempC)}°C`;
     const tempSub = $('#v7-burn-temp-sub');

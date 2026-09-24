@@ -57,5 +57,40 @@ const build = (preset, mutate) => { const s = C.applyPreset(C.blankState(), pres
   for (const p of r.samples) assert(p.turboLoadPct === undefined || p.turboLoadPct >= (p.hpShaftPct || 0) - 1e-6, 'HP shaft speed is part of the turbo load');
 }
 
+// 5. Honest tuner (1.14.0: a map lost power on a build the hardware could not carry; a turbo 'fix' that
+//    halved the power was 'best choice'): a map is 'better' (more power inside the margins), 'safer' (the
+//    current map was outside them) or 'blocked' (no map meets them: named margins, not sold); an advice
+//    option that costs much power never ranks as the best choice.
+{
+  // inside its margins a map never loses power
+  const st = build('randy');
+  const o = C.createMapOptimizer(st, 'race'); while (!o.step()); const r = o.summary();
+  if (r.before.ok) assert(r.after.hp >= r.before.hp - 0.5 && r.outcome === 'better', `race map on a sound build: ${r.before.hp} -> ${r.after.hp} (${r.outcome})`);
+  // a build whose hardware cannot meet the street margins (tiny K03 HP stage choking a big LP turbo, 3+ bar)
+  const bad = build('unlimited', s => { s.selections.turbo = 'pt8685'; s.selections.turboHp = 'k03'; s.selections.fuelSystem = 'oem_fuel'; });
+  const ob = C.createMapOptimizer(bad, 'street'); while (!ob.step()); const rb = ob.summary();
+  assert(rb.outcome === 'blocked' ? rb.blockedBy.length > 0 : rb.ok, 'blocked maps name what blocks them');
+  for (const x of [r, rb]) assert(['better', 'safer', 'blocked'].includes(x.outcome));
+  // ranking: a resolved option that loses > 4 % power ranks below one that keeps the power
+  const e = (id, resolved, improved, hpAfter, cost = 0) => ({ id, resolved, improved, hpBefore: 1000, hpAfter, cost });
+  const ranked = C.rankAdvice([e('part:turbo:huge', true, true, 520, 4000), e('boost:-0.1', false, true, 995), e('part:boostControl:x', true, true, 990, 600)], 'turbo');
+  assert.deepStrictEqual(ranked.map(x => x.id), ['part:boostControl:x', 'boost:-0.1', 'part:turbo:huge']);
+  assert.strictEqual(ranked[2].tier, 2); assert(ranked[2].lossPct > 40);
+  // a safety issue accepts more power loss for the fix
+  assert.strictEqual(C.rankAdvice([e('spark:-2', true, true, 920)], 'knock')[0].tier, 0);
+}
+
+// 6. Regression (1.14.0: FWD and AWD burnouts with a laggy turbo bogged to ~1000 rpm): the pedal stays
+//    flat, the driver slips the clutch to keep the revs in the power band (>= 80 % of the dump rpm) until the
+//    turbo builds boost; the slip energy goes into the clutch.
+for (const dt of ['FWD', 'AWD', 'RWD']) for (const [lp, hp] of [['pt8685', ''], ['pt9103', 'pt6870'], ['pt7675', 'k04']]) {
+  const st = build('unlimited', s => { s.selections.turbo = lp; s.selections.turboHp = hp; s.vehicle.drivetrain = dt; s.vehicle.tireCompound = 'drag_radial'; s.vehicle.preparedTrack = true; });
+  const rt = C.createBurnoutRuntime(st, { startC: 28 });
+  let min = 1e9, slipped = false, p;
+  for (let i = 0; i < 100; i++) { p = rt.step(0.05, { throttle: true }); if (p.t > 1.0) min = Math.min(min, p.rpm); if (p.clutchSlipping) slipped = true; assert(p.pedal > 0.97 || p.t < 0.4, 'pedal flat'); }
+  assert(min > 0.75 * rt.targetRpm, `${dt} ${lp}+${hp || '-'}: no bog (min ${Math.round(min)} rpm, dump ${rt.targetRpm})`);
+  if (slipped) assert(p.clutchKj > 0, 'a slipping clutch takes the energy');
+}
+
 module.exports = { ok: true };
 console.log('PASS phase 10 tests');

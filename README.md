@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.14.0 (branch `claude-dev`) — tuner help, optimised maps, N2O switch
+## v1.15.0 (branch `claude-dev`) — physics audit, a sensible tuner, clutch-slip burnout
+
+- The model is checked against the rules of thumb in Graham Bell's Forced Induction Performance Tuning (airflow per hp, BSFC, EGT, compressor outlet temperature, intercooler, back pressure, VE, turbo lag); turbine efficiency and turbo lag corrected.
+- Tuner advice never calls a fix that halves your power the best choice; maps are better, safer (explained) or not sold.
+- Burnout: the driver slips the clutch while the turbo builds boost, so FWD/AWD no longer bog.
+
+## v1.14.0 — tuner help, optimised maps, N2O switch
 
 - Compound fix: the HP bypass keeps the manifold pressure in check (no more absurd EMP/EGT with a small HP turbo), smooth handover to the big turbo.
 - Tuner advice: tick several recommendations and apply them together; the advice stays visible after applying.

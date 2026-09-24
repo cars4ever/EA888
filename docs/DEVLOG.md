@@ -449,6 +449,31 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
   rebuilds the ECU tables from the new quick setup (undo restores the previous tables).
 - Tests: tests/test_phase10.js; the compound EMP/EGT regression in tests/test_phase9.js.
 
+## 19. Physics audit against Bell, a sensible tuner, clutch-slip burnout (v1.15.0)
+
+- Audit (tests/test_physics_audit.js) against the rules of thumb in A. Graham Bell, "Forced Induction
+  Performance Tuning", on every preset: hp per lb/min of air (gasoline ~9.5-10.5, alcohol more), BSFC per
+  fuel, turbine inlet temperature, the adiabatic compressor outlet temperature, intercooler effectiveness,
+  EMP/MAP 0.75-2.0 and VE. The steady-state model was inside these ranges already.
+- Two corrections from the audit: turbine efficiency versus expansion ratio now follows the shape of Garrett
+  turbine maps (88 % of peak at ER 1.3, 95 % at 1.5, peak from ~1.8; it was 72 % at 1.4), and the transient
+  inertia factor is 1.35 instead of 2.0, so a K04 on the 2.0 L lags its steady boost threshold by a few
+  hundred rpm in a 550 rpm/s pull (it lagged ~1000 rpm). Known limitation: every Precision turbine is one
+  mid A/R housing scaled by wheel size, so big turbos (PT7675 and up) come in late on 2.0 L, as they do
+  with a large housing; smaller A/R housings are not modelled yet.
+- Tuner advice ranking: a fix that costs more than 4 % power (12 % for knock, a failure or another safety
+  limit) never ranks first or as "best choice"; it is shown with its power cost. Turbo-load advice offers
+  the next one or two turbo sizes, and with a compound the next HP stage up.
+- Optimised maps are honest: 'better' (more power inside the margins), 'safer' (the current map was
+  outside them; named), or 'blocked' (no map meets the margins: named, not sold, refunded). A map inside
+  its margins never loses power; when the current map is outside them the tuner first lowers the boost
+  across the board, then optimises.
+- Burnout: after the dump the driver slips the clutch (pedal flat) whenever the revs fall below 80 % of the
+  dump rpm, until the turbo builds boost and the tyres break loose; the slip energy goes into the clutch.
+  FWD and AWD cars with a laggy turbo no longer bog to idle. (An AWD car with a huge turbo stays near the
+  floor rpm: four driven tyres under the full weight cannot be spun without boost.)
+- Tests: tests/test_physics_audit.js, tests/test_phase10.js sections 5-6.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

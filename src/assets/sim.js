@@ -2847,7 +2847,14 @@
         // Rev with the clutch in, then dump it: the clutch slips (capacity limited) until engine and wheels
         // turn together; locked, the car stands still, so the whole tyre surface speed is slip.
         if (!s.dumped && rpm() >= Math.min(targetRpm, cutRpm - 150)) s.dumped = true;
-        s.engage = s.dumped ? Math.min(1, (s.engage || 0) + h / 0.15) : 0;
+        // Left foot: the clutch goes in fast after the dump. If the tyres hold and the engine bogs (a laggy turbo
+        // has no boost yet), the driver slips the clutch to keep the revs in the power band - the pedal stays
+        // flat - and locks it again once the engine pulls: that loads the engine so the turbo builds boost and
+        // the tyres break loose. The slip energy goes into the clutch.
+        const floor = Math.min(targetRpm, cutRpm - 150) * 0.8;
+        if (!s.dumped) s.engage = 0;
+        else if (rpm() < floor) { s.engage = Math.max(0, (s.engage || 0) - h / 0.2); s.clutchSlipping = true; }
+        else if (!s.clutchSlipping || rpm() > floor * 1.06) { s.engage = Math.min(1, (s.engage || 0) + h / (s.clutchSlipping ? 0.4 : 0.15)); if (s.engage >= 1) s.clutchSlipping = false; }
         const mu = tyreMu(ty, tyreGripTempC(th), 1) * streetGrip * (0.8 - 0.35 * s.water);
         const vSlip = s.ww * r;
         const grip = mu * fz;
@@ -2861,6 +2868,7 @@
           s.fx = fxRoll;
         } else {
           const tc = Math.sign(slip || 1) * cap;
+          s.clutchJ = (s.clutchJ || 0) + Math.abs(tc * slip) * h;
           s.we = Math.max((900 * Math.PI) / 30, s.we + ((tEng - tc) / ENGINE_INERTIA) * h);
           // a standing tyre holds until the clutch torque at the wheels exceeds static grip
           const drive = tc * R * eta;
@@ -2906,7 +2914,8 @@
       return {
         t: s.t, rpm: rpm(), pedal: s.pedal, tyreSurfaceKmh: s.ww * r * 3.6, slipPowerKw: s.slipPowerW / 1000, energyKj: s.energyJ / 1000,
         tyreSurfaceC: th.surfaceC, tyreBulkC: th.bulkC, tyreGripC: tyreGripTempC(th), smoke: s.smoke,
-        boostBar: Number(snap.boostBar || 0), egtC: Number(snap.egtC || 0), mapBarAbs: snap.mapBarAbs, lambda: snap.lambda, limiter: s.cut, torqueNm: s.torqueNm
+        boostBar: Number(snap.boostBar || 0), egtC: Number(snap.egtC || 0), mapBarAbs: snap.mapBarAbs, lambda: snap.lambda, limiter: s.cut, torqueNm: s.torqueNm,
+        clutchEngage: s.engage || 0, clutchSlipping: !!s.clutchSlipping, clutchKj: (s.clutchJ || 0) / 1000
       };
     }
     return { state: s, step, point, turbo, tyre: ty, tyreThermal: th, targetRpm, mode, cutRpm };
@@ -3140,7 +3149,18 @@
     const byMetric = (cat, field, n) => nextParts(cat, n, (i, cur) => Number(i[field]) > Number(cur[field])).sort((a, b) => 0);
     const groups = {
       fuel: () => [...byMetric('fuelSystem', 'fuelSystemHp', 3), boost(-0.1), boost(-0.2)],
-      turbo: () => [boost(-0.1), boost(-0.2), boost(-0.3), ...nextParts('boostControl', 2), ...byMetric('turbo', 'compressorMm', 2)],
+      turbo: () => {
+        const c = compoundHp(state), lp = getPart(state, 'turbo'), list = [boost(-0.1), boost(-0.2), boost(-0.3), ...nextParts('boostControl', 2)];
+        const turbos = CATEGORY_MAP.turbo.items;
+        if (c && c.valid) {
+          // compound: the next HP stage up (still smaller than the LP turbo), and the next LP turbo up
+          const nextHp = turbos.filter(i => i.compressorMm > c.item.compressorMm && i.compressorMm < lp.compressorMm).sort((a, b) => a.compressorMm - b.compressorMm).slice(0, 2);
+          for (const i of nextHp) list.push({ id: `hp:${i.id}`, kind: 'part', cost: i.price || 0, label: `HP-trap ${c.item.name} → ${i.name} (Turbo → compound)`, patch: { selections: { turboHp: i.id } } });
+        }
+        // the next one or two sizes up, not a Pro Mod turbo on a street engine
+        const up = turbos.filter(i => i.compressorMm > lp.compressorMm).sort((a, b) => a.compressorMm - b.compressorMm).slice(0, 2);
+        return [...list, ...up.map(i => part('turbo', i))];
+      },
       knock: () => [spark(-1), spark(-2), spark(-3), ...byMetric('fuel', 'octane', 3), ...byMetric('air', 'cooling', 2), boost(-0.1), boost(-0.2), toggle('knockControl', 'Knock control')],
       iat: () => [...byMetric('air', 'cooling', 3), boost(-0.2),
         state.dynoConfig.fanSpeedPct < 100 ? { id: 'fan:100', kind: 'setting', cost: 0, label: `Testcelfan ${Math.round(state.dynoConfig.fanSpeedPct)}% → 100% (Dyno → Testcel)`, patch: { dynoConfig: { fanSpeedPct: 100 } } } : null],
@@ -3205,7 +3225,7 @@
     const before = issue.value(base.result), after = issue.value(r);
     const others = diagnoseDyno(r).filter(d => d.severity === 'danger' && d.key && !String(d.key).startsWith(String(key).split(':')[0]));
     return {
-      id: candidate.id, kind: candidate.kind, label: candidate.label, cost: candidate.cost, patch: candidate.patch,
+      id: candidate.id, kind: candidate.kind, label: candidate.label, cost: candidate.cost, patch: candidate.patch, issueKey: String(key),
       metric: issue.label, before, after, beforeText: issue.fmt(before), afterText: issue.fmt(after),
       resolved: issue.ok(after) && r.status === DYNO_STATUS.COMPLETED && !others.length,
       improved: issue.label === 'pull' ? after > before : (issue.ok(1e9) ? after > before : after < before),
@@ -3216,12 +3236,22 @@
   // Best first: solutions before improvements; within those the lowest "price" where every percent of
   // power lost counts as EUR 500 (a free setting that costs 5 % is worse than a EUR 900 part that costs none).
   function advicePenalty(e) { return e.cost + Math.max(0, (e.hpBefore - e.hpAfter) / Math.max(1, e.hpBefore) * 100) * 500; }
-  function rankAdvice(evals) {
-    return evals.slice().sort((a, b) => (b.resolved - a.resolved) || (b.improved - a.improved) || (advicePenalty(a) - advicePenalty(b)));
+  // A fix that costs a lot of power is not a good fix: within a small loss (more for a failure or a safety
+  // limit, where giving up some power is the point) it ranks first; beyond it, after every option that keeps
+  // the power. 'Best choice' only goes to a fix inside that loss.
+  const ADVICE_SAFETY = /^(abort|knock|oil|assembly|iat|cam)/;
+  function adviceLossPct(e) { return Math.max(0, (e.hpBefore - e.hpAfter) / Math.max(1, e.hpBefore) * 100); }
+  function adviceTier(e, key) {
+    const tol = ADVICE_SAFETY.test(String(key || e.issueKey || '')) ? 12 : 4, ok = adviceLossPct(e) <= tol;
+    return e.resolved && ok ? 0 : e.improved && ok ? 1 : e.resolved ? 2 : e.improved ? 3 : 4;
+  }
+  function rankAdvice(evals, key) {
+    return evals.map(e => ({ ...e, tier: adviceTier(e, key), lossPct: round(adviceLossPct(e), 1) }))
+      .sort((a, b) => (a.tier - b.tier) || (advicePenalty(a) - advicePenalty(b)));
   }
   // When no single change solves it: the two best improvements of different kinds together.
   function adviceCombination(evals) {
-    const top = rankAdvice(evals).filter(e => e.improved && !e.resolved);
+    const top = rankAdvice(evals).filter(e => e.improved && !e.resolved && e.tier <= 1);
     const a = top[0], b = top.find(e => e.id !== a?.id && e.id.split(':')[0] !== a?.id.split(':')[0]);
     if (!a || !b) return null;
     return mergeAdvice([a, b]);
@@ -3242,8 +3272,8 @@
   // for this hardware: a coordinate search on the same dyno simulation, within the limits of the chosen
   // goal. Street: big margins (reliability, knock, EGT); race: the most power the engine survives.
   const MAP_TUNES = {
-    street: { id: 'street', label: 'Straatmap (veilig)', price: 450, knockMax: 0.9, egtMaxC: 940, fuelDutyMax: 88, turboLoadMax: 94, torqueFrac: 0.88, clampFrac: 0.85, hpFrac: 0.9, budget: 22 },
-    race: { id: 'race', label: 'Racemap (maximaal)', price: 950, knockMax: 0.98, egtMaxC: 990, fuelDutyMax: 95, turboLoadMax: 99, torqueFrac: 0.98, clampFrac: 0.95, hpFrac: 1.0, budget: 30 }
+    street: { id: 'street', label: 'Straatmap (veilig)', price: 450, knockMax: 0.9, egtMaxC: 940, fuelDutyMax: 88, turboLoadMax: 94, torqueFrac: 0.88, clampFrac: 0.85, hpFrac: 0.9, budget: 28 },
+    race: { id: 'race', label: 'Racemap (maximaal)', price: 950, knockMax: 0.98, egtMaxC: 990, fuelDutyMax: 95, turboLoadMax: 99, torqueFrac: 0.98, clampFrac: 0.95, hpFrac: 1.0, budget: 34 }
   };
   const MAP_PARAMS = [
     { key: 'boostMidBar', step: 0.15, min: 0, max: 4.2 },
@@ -3264,12 +3294,16 @@
   }
   function mapScore(r, goal, lim) {
     const done = r.status === DYNO_STATUS.COMPLETED;
-    const v = (x, l) => Math.max(0, Number(x || 0) / l - 1);
-    const viol = (done ? 0 : 3) + v(r.peakTorqueNm, lim.torqueNm * goal.torqueFrac) * 5 + v(r.peakHp, lim.hp * goal.hpFrac) * 5 + v(r.maxBmepBar, lim.clampBmep * goal.clampFrac) * 5 + v(r.maxKnockRisk, goal.knockMax) * 5 +
-      v(r.maxEgtC, goal.egtMaxC) * 5 + v(r.maxFuelDuty, goal.fuelDutyMax) * 3 + v(r.maxTurboLoad, goal.turboLoadMax) * 3;
+    const checks = [
+      ['torque', 'koppel', r.peakTorqueNm, lim.torqueNm * goal.torqueFrac, 5, ' Nm'], ['power', 'vermogen', r.peakHp, lim.hp * goal.hpFrac, 5, ' pk'],
+      ['bmep', 'cilinderdruk (BMEP)', r.maxBmepBar, lim.clampBmep * goal.clampFrac, 5, ' bar'], ['knock', 'klopindex', r.maxKnockRisk, goal.knockMax, 5, ''],
+      ['egt', 'EGT', r.maxEgtC, goal.egtMaxC, 5, ' °C'], ['fuel', 'brandstofduty', r.maxFuelDuty, goal.fuelDutyMax, 3, ' %'], ['turbo', 'turbo-load', r.maxTurboLoad, goal.turboLoadMax, 3, ' %']
+    ];
+    const over = checks.filter(c => Number(c[2] || 0) > c[3] * 1.0005).map(c => ({ key: c[0], label: c[1], value: Number(c[2] || 0), limit: c[3], unit: c[5] }));
+    const viol = (done ? 0 : 3) + checks.reduce((a, c) => a + Math.max(0, Number(c[2] || 0) / c[3] - 1) * c[4], 0);
     const hp = Number(r.peakHp || 0), top = (r.samples || []).filter(p => p.rpm >= 3500);
     const area = top.length ? top.reduce((a, p) => a + p.hp, 0) / top.length : 0;
-    return { ok: viol === 0, score: viol === 0 ? hp * 0.6 + area * 0.4 : -1000 - viol * 100 + hp * 0.01, hp, viol };
+    return { ok: viol === 0, score: viol === 0 ? hp * 0.6 + area * 0.4 : -1000 - viol * 100 + hp * 0.01, hp, viol, over };
   }
   // Stepwise optimiser for the app (one dyno simulation per step()): { step() -> done, best, evals, total }
   function createMapOptimizer(inputState, goalId, opts = {}) {
@@ -3292,8 +3326,21 @@
       for (const p of MAP_PARAMS) for (const dir of [1, -1]) queue.push([p, dir]);
     };
     refill(); improvedRound = true;
+    // Like a tuner on the dyno: when the current map is outside the margins, first take the boost down across
+    // the board until it is inside (one pull per try), then optimise from there.
+    const scales = best.s.ok ? [] : [0.94, 0.88, 0.82, 0.75, 0.66, 0.55];
     function step() {
       if (evals >= goal.budget) return true;
+      if (scales.length && !best.s.ok) {
+        const f = scales.shift();
+        const tune = { ...start };
+        for (const k of ['boostLowBar', 'boostMidBar', 'boostHighBar']) tune[k] = round(Math.max(0, start[k] * f), 3);
+        const result = run(tune); evals++;
+        const sc = mapScore(result, goal, lim);
+        if (sc.score > best.s.score) best = { tune, result, s: sc };
+        if (sc.ok) scales.length = 0;
+        return evals >= goal.budget;
+      }
       if (!queue.length) { if (rounds > 4) return true; refill(); }
       const [p, dir] = queue.shift();
       const cap = /^boost/.test(p.key) ? Math.min(p.max, hwMax) : p.max;
@@ -3308,7 +3355,11 @@
     }
     function summary() {
       const b0 = mapScore(baseRes, goal, lim);
-      return { goal: goal.id, label: goal.label, price: goal.price, ok: best.s.ok, evals, before: { hp: baseRes.peakHp, reliability: baseRes.reliabilityScore, ok: b0.ok },
+      // Honest outcome: 'better' (more power within the margins), 'safer' (the current map was outside the
+      // margins; this one is inside, at some cost in power), 'blocked' (the hardware cannot meet the margins:
+      // no map is sold; the blocking margins are named).
+      const outcome = !best.s.ok ? 'blocked' : best.result.peakHp >= baseRes.peakHp - 0.5 ? 'better' : 'safer';
+      return { goal: goal.id, label: goal.label, price: goal.price, ok: best.s.ok, outcome, blockedBy: best.s.ok ? [] : best.s.over, currentOver: b0.over, evals, before: { hp: baseRes.peakHp, reliability: baseRes.reliabilityScore, ok: b0.ok },
         after: { hp: best.result.peakHp, reliability: best.result.reliabilityScore, knock: best.result.maxKnockRisk, egtC: best.result.maxEgtC },
         tune: best.tune, changes: MAP_PARAMS.filter(p => Math.abs(best.tune[p.key] - start[p.key]) > 1e-6).map(p => ({ key: p.key, from: start[p.key], to: best.tune[p.key] })),
         patch: { tune: { ...best.tune, ecu: null } } };
