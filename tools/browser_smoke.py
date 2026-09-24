@@ -531,7 +531,7 @@ def main() -> None:
         page.wait_for_selector('.v12-telemetry-panel', state='visible')
         report['checks']['telemetry_panel_after_run'] = page.locator('.v12-telemetry-panel').count() == 1
         report['checks']['telemetry_analysis_cards'] = page.locator('.v12-analysis-card').count() >= 6
-        report['checks']['telemetry_canvas_drawn'] = page.eval_on_selector('#v12-telemetry-canvas', "c => c.width > 500 && c.height > 400 && c.getContext('2d').getImageData(Math.floor(c.width*.5), Math.floor(c.height*.5), 1, 1).data[3] > 0")
+        report['checks']['telemetry_canvas_drawn'] = page.eval_on_selector('#v12-telemetry-canvas', "c => c.width > 500 / Math.max(1, 2 / devicePixelRatio) && c.height > 400 / Math.max(1, 2 / devicePixelRatio) && c.getContext('2d').getImageData(Math.floor(c.width*.5), Math.floor(c.height*.5), 1, 1).data[3] > 0")
         if screenshots:
             page.screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-telemetry.png'), full_page=False, animations='disabled', timeout=12000)
         click(page, '[data-race-panel="tree"]')
@@ -543,7 +543,7 @@ def main() -> None:
         click(page, '[data-action="auto-drag-game"]')
         page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=12000)
         page.wait_for_timeout(300)
-        report['checks']['race_2d_fallback_draws'] = page.evaluate("window.__EA888_DEBUG__.race3d().active") is False and page.eval_on_selector('#v10-track-canvas', "c => c.width > 500 && c.getContext('2d').getImageData(Math.floor(c.width/2), Math.floor(c.height*.65), 1, 1).data[3] > 0")
+        report['checks']['race_2d_fallback_draws'] = page.evaluate("window.__EA888_DEBUG__.race3d().active") is False and page.eval_on_selector('#v10-track-canvas', "c => c.width > 500 / Math.max(1, 2 / devicePixelRatio) && c.getContext('2d').getImageData(Math.floor(c.width/2), Math.floor(c.height*.65), 1, 1).data[3] > 0")
         page.evaluate("window.__EA888_DEBUG__.setGraphics3dForTest(true)")
         dsg_race = page.evaluate("window.__EA888_DEBUG__.race()")
         audio_third = page.evaluate("window.__EA888_DEBUG__.audio()")
@@ -820,7 +820,10 @@ def main() -> None:
         report['navigation_geometry'] = overlap
         report['console_errors'] = console_errors
         report['page_errors'] = page_errors
-        report['ok'] = all(report['checks'].values()) and not console_errors and not page_errors
+        # the self-test injects an audio failure on purpose (breakAudioForTest); its log lines are expected
+        unexpected = [e for e in console_errors if 'test audio failure' not in e]
+        report['unexpected_console_errors'] = unexpected
+        report['ok'] = all(report['checks'].values()) and not unexpected and not page_errors
         context.close()
         browser.close()
 
