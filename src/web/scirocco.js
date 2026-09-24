@@ -206,20 +206,21 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
   const M = ghost ? new Proxy({}, { get: () => G }) : {
     paint: new THREE.MeshPhysicalMaterial({ color, metalness: .45, roughness: .28, clearcoat: 1, clearcoatRoughness: .04, envMap, envMapIntensity: 1.6 }),
     black: new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: .6, metalness: .15, envMap, envMapIntensity: .35 }),
-    gloss: new THREE.MeshPhysicalMaterial({ color: 0x07080a, roughness: .12, metalness: .2, clearcoat: 1, envMap, envMapIntensity: .9 }),
+    gloss: new THREE.MeshStandardMaterial({ color: 0x07080a, roughness: .12, metalness: .3, envMap, envMapIntensity: .9 }),
     well: new THREE.MeshStandardMaterial({ color: 0x060606, roughness: 1 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0x03050a, metalness: .2, roughness: .04, clearcoat: 1, envMap, envMapIntensity: 1.25 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x03050a, metalness: .3, roughness: .04, envMap, envMapIntensity: 1.25 }),
     chrome: new THREE.MeshStandardMaterial({ color: 0xe6e9ee, metalness: .85, roughness: .16, envMap, envMapIntensity: 2.2 }),
     // smoked lenses: dark, lit from inside by the bar and (when braking) the whole lamp
-    tail: new THREE.MeshPhysicalMaterial({ color: 0x160203, emissive: 0x8a0008, emissiveIntensity: .7, roughness: .1, clearcoat: 1, envMap, envMapIntensity: 1.1 }),
+    tail: new THREE.MeshStandardMaterial({ color: 0x160203, emissive: 0x8a0008, emissiveIntensity: .7, roughness: .1, metalness: .2, envMap, envMapIntensity: 1.1 }),
     tailBar: new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, .15, .12) }),
     reflector: new THREE.MeshStandardMaterial({ color: 0x5a0508, emissive: 0x8a0006, emissiveIntensity: .8, roughness: .3 }),
     head: new THREE.MeshStandardMaterial({ color: 0x1a1d22, emissive: 0xdde8ff, emissiveIntensity: 1.4, roughness: .2 }),
-    headHousing: new THREE.MeshPhysicalMaterial({ color: 0x14171c, metalness: .6, roughness: .2, clearcoat: 1, envMap }),
+    headHousing: new THREE.MeshStandardMaterial({ color: 0x14171c, metalness: .6, roughness: .2, envMap }),
     tyre: new THREE.MeshStandardMaterial({ color: 0x121212, roughness: .9 }),
     barrel: new THREE.MeshStandardMaterial({ color: 0x3a3d42, metalness: .8, roughness: .35, envMap }),
     // oil-slick / neo-chrome centres like the reference wheels
-    rimCentre: new THREE.MeshPhysicalMaterial({ color: 0x8c7cf0, metalness: .85, roughness: .22, iridescence: 1, iridescenceIOR: 1.7, iridescenceThicknessRange: [250, 900], envMap, envMapIntensity: 2.4 }),
+    // (a tinted metal instead of thin-film iridescence: that shader stalls the first frame on phones)
+    rimCentre: new THREE.MeshStandardMaterial({ color: 0x8c7cf0, metalness: .9, roughness: .22, emissive: 0x1a0f3a, envMap, envMapIntensity: 2.4 }),
     caliper: new THREE.MeshStandardMaterial({ color: 0xc8141c, roughness: .35, metalness: .2 }),
     plate: new THREE.MeshStandardMaterial({ map: plateTexture, roughness: .5, color: plateTexture ? 0xffffff : 0xf2c21a })
   };

@@ -72,14 +72,14 @@ def load_app(page, assets: Path) -> None:
     page.wait_for_selector('.garage-page', state='visible')
 
 
-def click(page, selector: str) -> None:
+def click(page, selector: str, timeout: int | None = None) -> None:
     locator = page.locator(selector).first
     try:
         locator.click(timeout=5000)
     except PlaywrightTimeoutError:
         # Element screenshots can leave Chromium with transient actionability
         # geometry; a real DOM click still exercises the app handler.
-        locator.evaluate("element => element.click()")
+        locator.evaluate("element => element.click()", timeout=timeout)
     page.wait_for_timeout(80)
 
 
@@ -117,8 +117,8 @@ def main() -> None:
             serve_assets(context, assets)
         page = context.new_page()
         page.set_default_timeout(12000)
-        page.on('pageerror', lambda exc: page_errors.append(str(exc)))
-        page.on('console', lambda msg: console_errors.append(msg.text) if msg.type == 'error' else None)
+        page.on('pageerror', lambda exc: (page_errors.append(str(exc)), print('PAGEERROR', exc, flush=True)))
+        page.on('console', lambda msg: (console_errors.append(msg.text), print('CONSOLEERROR', msg.text, flush=True)) if msg.type == 'error' else None)
         page.add_init_script("""
           Object.defineProperty(navigator, 'vibrate', {value: () => true, configurable: true});
           if (!navigator.clipboard) Object.defineProperty(navigator, 'clipboard', {value: {writeText: async () => {}}, configurable: true});
@@ -413,7 +413,7 @@ def main() -> None:
             report['checks']['strip_acoustics_on_burnout'] = audio_first.get('acoustic') == 'strip'
         else:
             report['checks']['pcm_multisample_audio'] = audio_first.get('ready') is True and audio_first.get('sampleLayers', 0) >= 6 and 'PCM multisample v11' in audio_first.get('model', '')
-        click(page, '[data-action="close-drag-game"]')
+        click(page, '[data-action="close-drag-game"]', timeout=40000)
         page.wait_for_selector('.v7-race-overview', state='visible')
         page.wait_for_timeout(120)
         audio_after_manual_close = page.evaluate("window.__EA888_DEBUG__.audio()")
@@ -569,7 +569,7 @@ def main() -> None:
             click(page, '[data-action="career-race"]')
             page.wait_for_selector('#race-game-root .v8-game', timeout=12000)
             in_round = page.evaluate("window.__EA888_DEBUG__.career().inRound")
-            click(page, '[data-action="close-drag-game"]')
+            click(page, '[data-action="close-drag-game"]', timeout=40000)
             page.wait_for_selector('#race-game-root .v8-game', state='detached', timeout=8000)
             click(page, '[data-race-panel="career"]')
             click(page, '[data-action="career-forfeit"]')
@@ -645,7 +645,7 @@ def main() -> None:
         report['checks']['als_wear_accumulates'] = als_held['wear']['turbo'] + als_held['wear']['valves'] > 0
         report['checks']['als_stops_on_release'] = r['alsActive'] is False and h['alsActive'] is True
         page.wait_for_timeout(200)
-        click(page, '[data-action="close-drag-game"]')
+        click(page, '[data-action="close-drag-game"]', timeout=40000)
         page.wait_for_selector('.v7-race-overview', state='visible')
         wear_after_als = page.evaluate("window.__EA888_DEBUG__.stateWear()")
         report['checks']['als_wear_persisted'] = wear_after_als['wear']['turbo'] > wear_before_als['wear']['turbo'] and wear_after_als['wear']['valves'] > wear_before_als['wear']['valves']
@@ -668,7 +668,8 @@ def main() -> None:
         pedal = page.evaluate("window.__EA888_DEBUG__.raceReaction()")
         report['checks']['pedal_launch_on_press_after_green'] = pedal['reactionTime'] >= 0 and pedal['redLight'] is False and pedal['startRpm'] < pedal['launchTargetRpm']
         report['pedal_launch'] = pedal
-        click(page, '[data-action="close-drag-game"]')
+        # the 3D race runs at ~1 fps in software GL, with a ~6 s stall while the scene compiles
+        click(page, '[data-action="close-drag-game"]', timeout=40000)
         page.wait_for_selector('.v7-race-overview', state='visible')
 
         # Race with drag ALS: rolling ALS on shifts and event-driven shift/ALS flames.
@@ -701,7 +702,7 @@ def main() -> None:
         page.wait_for_timeout(200)
         report['checks']['mixer_reaches_audio_graph'] = abs((page.evaluate("window.__EA888_DEBUG__.audio().mix") or {}).get('engine', 0) - 0.4) < 0.03
         page.evaluate("() => { const el = document.createElement('input'); el.type = 'range'; el.dataset.mix = 'engine'; el.value = '100'; document.body.appendChild(el); el.dispatchEvent(new Event('input', {bubbles: true})); el.remove(); }")
-        click(page, '[data-action="close-drag-game"]')
+        click(page, '[data-action="close-drag-game"]', timeout=40000)
         page.wait_for_selector('.v7-race-overview', state='visible')
         click(page, '[data-nav="service"]')
         click(page, '[data-engine-sound="synth"]')
@@ -736,7 +737,7 @@ def main() -> None:
         report['stage_3d'] = {'before': s0, 'staged': s1}
         report['checks']['stage_3d_scene'] = s0.get('mode') == 'stage' and s0.get('carZ', 0) > 1.0 and abs(s1.get('carZ', 9)) < 0.06
         report['checks']['stage_3d_tree_bulbs'] = 'preL' in s1.get('lit', []) and 'stageL' in s1.get('lit', [])
-        click(page, '[data-action="close-drag-game"]')
+        click(page, '[data-action="close-drag-game"]', timeout=40000)
         page.wait_for_selector('.v7-race-overview', state='visible')
 
         print('CHECKPOINT drag done', flush=True)
