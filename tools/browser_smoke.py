@@ -11,7 +11,11 @@ import base64
 import json
 import re
 from pathlib import Path
+import sys
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import browser_env
 
 
 def data_uri(path: Path) -> str:
@@ -102,9 +106,7 @@ def main() -> None:
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            executable_path='/usr/bin/chromium',
-            headless=True,
-            args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu-sandbox']
+            **browser_env.launch_kwargs(p, ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu-sandbox'])
         )
         context = browser.new_context(
             viewport={'width': 480, 'height': 1000},
