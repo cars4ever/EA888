@@ -55,7 +55,7 @@ function bodySection(z) {
 }
 // Right half of a section, bottom centre to top centre. Segment kinds: 'under' (underbody, wheel well),
 // 'side', 'top'. The same number of points at every station so sections can be lofted.
-const NS = 12, NR = 5, NT = 6;
+const NS = 8, NR = 4, NT = 5;
 function bodyRing(z) {
   const s = bodySection(z), pts = [], kinds = [];
   const push = (x, y, k) => { pts.push([x, y]); kinds.push(k); };
@@ -130,8 +130,8 @@ function loft(stations, ringFn, pick, { closed = true, caps = null, offset = 0 }
 }
 const range = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + ((b - a) * i) / n);
 function stationsBody() {
-  const zs = new Set([...range(DIM.noseZ, -1.9, 6), ...range(-1.9, 1.9, 60), ...range(1.9, DIM.tailZ, 6)]);
-  for (const zw of [ZF, ZR]) for (const t of range(-1, 1, 14)) zs.add(zw + t * ARCH_R * 0.999);
+  const zs = new Set([...range(DIM.noseZ, -1.9, 5), ...range(-1.9, 1.9, 30), ...range(1.9, DIM.tailZ, 5)]);
+  for (const zw of [ZF, ZR]) for (const t of range(-1, 1, 10)) zs.add(zw + t * ARCH_R * 0.999);
   return [...zs].map(z => Math.round(z * 1e4) / 1e4).sort((a, b) => a - b);
 }
 
@@ -168,21 +168,21 @@ const roundedRect = (x0, y0, x1, y1, r) => {
 // ---- wheels: three-piece deep dish, polished lip, five spokes, red caliper ------------------------------
 function buildWheel(m, side, ghost) {
   const w = new THREE.Group(), R = DIM.wheelR, width = 0.235;
-  const tyre = new THREE.Mesh(new THREE.TorusGeometry(R - 0.052, 0.058, 14, 40), m.tyre);
+  const tyre = new THREE.Mesh(new THREE.TorusGeometry(R - 0.052, 0.058, 8, 28), m.tyre);
   tyre.rotation.y = Math.PI / 2; tyre.scale.set(1, 1, width / 0.116 * 0.92);
   w.add(tyre);
-  const tread = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.004, R - 0.004, width * 0.86, 40, 1, true), m.tyre);
+  const tread = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.004, R - 0.004, width * 0.86, 28, 1, true), m.tyre);
   tread.rotation.z = Math.PI / 2; w.add(tread);
   if (ghost) return w;
   const face = side * (width / 2 - 0.01);
   // polished outer lip and the deep dish stepping in to the spokes
-  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.228, 0.018, 10, 40), m.chrome);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.228, 0.018, 6, 28), m.chrome);
   lip.rotation.y = Math.PI / 2; lip.position.x = face; w.add(lip);
-  const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.228, 0.19, 0.075, 40, 1, true), m.chrome);
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.228, 0.19, 0.075, 28, 1, true), m.chrome);
   dish.rotation.z = -side * Math.PI / 2; dish.position.x = face - side * 0.037; w.add(dish);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, width * 0.8, 32, 1, true), m.barrel);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, width * 0.8, 20, 1, true), m.barrel);
   barrel.rotation.z = Math.PI / 2; w.add(barrel);
-  const centre = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.012, 32), m.rimCentre);
+  const centre = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.012, 24), m.rimCentre);
   centre.rotation.z = Math.PI / 2; centre.position.x = face - side * 0.08; w.add(centre);
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2, spoke = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.15, 0.058), m.rimCentre);
@@ -244,7 +244,7 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
     if (z <= ZRT) return 'paint';
     return 'glass';
   };
-  const gh = loft(range(ZA, ZC, 48), glassRing, gKey);
+  const gh = loft(range(ZA, ZC, 28), glassRing, gKey);
   body.add(new THREE.Mesh(gh.geo, gh.keys.map(k => M[k])));
   // Black window surround: a thin strip just above the beltline along the side glass.
   const trimRing = z => { const g = glassRing(z); return { pts: [g.pts[0], [g.pts[0][0] - 0.006, g.pts[0][1] + 0.022]].map(p => [p[0] + 0.004, p[1]]), kinds: ['t', 't'] }; };
