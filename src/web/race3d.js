@@ -502,8 +502,19 @@ export function create(canvas, opts = {}) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
   } catch (e) { return null; }
   const quality = resolveQuality(opts.quality, renderer);
-  const dpr = Math.min(window.devicePixelRatio || 1, opts.maxPixelRatio || quality.maxPixelRatio);
-  renderer.setPixelRatio(dpr);
+  // The tier also caps the pixel ratio, so a step down actually reduces the pixels drawn; opts.maxPixelRatio
+  // overrides it and then stays fixed.
+  let dpr = 1;
+  function applyPixelRatio() {
+    const want = Math.min(window.devicePixelRatio || 1, opts.maxPixelRatio || quality.maxPixelRatio);
+    if (Math.abs(want - dpr) < 0.01) return false;
+    dpr = want;
+    renderer.setPixelRatio(dpr);
+    composer?.setPixelRatio(dpr);
+    return true;
+  }
+  // the first call is below, once `composer` exists (it is a `let` further down: touching it here
+  // would hit its temporal dead zone)
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -612,8 +623,10 @@ export function create(canvas, opts = {}) {
     if (next === quality.tier) { downgrades = 2; return; }
     downgrades++;
     Object.assign(quality, { tier: next, ...TIERS[next] });
+    const scaled = applyPixelRatio();
     buildComposer();
     waterReflector(quality.reflections);
+    if (scaled) resize();
     opts.onQuality?.({ tier: next, avgFrameMs: Math.round(avg), reason: 'frame cost' });
   }
 
@@ -621,6 +634,7 @@ export function create(canvas, opts = {}) {
   const driven = opts.drivetrain === 'RWD' ? [2, 3] : opts.drivetrain === 'AWD' ? [0, 1, 2, 3] : [0, 1];
   const tmp = new THREE.Vector3();
   let last = null, time = 0, smokeAcc = 0, wheelAngle = 0, rivalWheel = 0, disposed = false;
+  applyPixelRatio();
   buildComposer();
   waterReflector(quality.reflections);
 
@@ -863,7 +877,14 @@ export function create(canvas, opts = {}) {
     dispose,
     scene: () => ({ mode: pre.mode || 'run', carZ: player.root.position.z, lit: litKey ? litKey.split(',') : [], smoke: smoke.active() }),
     quality: () => ({ ...quality }),
-    setQuality: q => { Object.assign(quality, resolveQuality(q, renderer)); buildComposer(); waterReflector(quality.reflections); return { ...quality }; },
+    setQuality: q => {
+      Object.assign(quality, resolveQuality(q, renderer));
+      const scaled = applyPixelRatio();
+      buildComposer();
+      waterReflector(quality.reflections);
+      if (scaled) resize();
+      return { ...quality };
+    },
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries })
   };
 }
