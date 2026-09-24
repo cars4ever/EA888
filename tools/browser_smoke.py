@@ -89,6 +89,7 @@ def main() -> None:
     parser.add_argument('--screenshots', type=Path)
     parser.add_argument('--report', type=Path)
     parser.add_argument('--inline', action='store_true', help='inject the assets into about:blank (no secure context: sample audio only)')
+    parser.add_argument('--dpr', type=float, default=2, help='device scale factor (1 for slow software-GL hosts: the 3D scenes draw 2.5x fewer pixels)')
     args = parser.parse_args()
     assets = args.assets.resolve()
     screenshots = args.screenshots.resolve() if args.screenshots else None
@@ -107,7 +108,7 @@ def main() -> None:
         )
         context = browser.new_context(
             viewport={'width': 480, 'height': 1000},
-            device_scale_factor=2,
+            device_scale_factor=args.dpr,
             is_mobile=True,
             has_touch=True,
             locale='nl-NL',
