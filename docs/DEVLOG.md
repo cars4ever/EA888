@@ -502,6 +502,22 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - **Water box.** A planar Reflector (512) on the high tier, so the car, the walls and the floodlights stand
   in the water; the flat pane above it thins to 0.45 opacity when the mirror carries the image. It is built
   on first use and follows the tier, including a step down from the watchdog.
+- **Two things the composer broke, and the guards against them.** `renderer.info` resets itself at the
+  start of every `render()` call and the composer makes several per frame, so `info()` reported the last
+  fullscreen quad (1 call, 2 triangles) instead of the scene; the browser-smoke 3D checks read exactly that
+  and failed (`realtime_canvas_track`, `replay_plays_back`). `autoReset` is off now and the counters are
+  reset once per frame, covering the whole frame including post-processing (236 calls / 14.6k triangles for
+  a full track scene). `tools/track_preview.py` fails below 50 calls or 2000 triangles, so it cannot break
+  silently again - it runs in seconds where the smoke test takes 25 minutes. Second, the pixel ratio was
+  read once at create() and then fixed, so a tier step down changed the effects but not the pixels drawn:
+  on a phone short of fill rate the watchdog never pulled the cheapest lever. It follows the tier now
+  (2.0 / 1.6 / 1.2) and the renderer, composer and canvas resize with it.
+- **Tier on a software rasteriser.** SwiftShader, llvmpipe and Mesa software report plenty of memory and
+  cores but cannot afford a second scene pass, so the guess asks the renderer what it is
+  (`WEBGL_debug_renderer_info`) and starts them on low. That covers the headless smoke test and phones that
+  fell back from a broken driver. Consequence for coverage: the browser-smoke test therefore exercises the
+  **low** tier, with bloom and the reflector off. The bloom and reflection paths are covered by
+  `tools/track_preview.py` across all three tiers instead, and neither has been measured on a real phone.
 - **tools/track_preview.py** renders eight fixed points on the strip (burnout, staging, tree, launch, mid,
   finish, side, high) at a chosen tier, serving the page from the app's own https origin as
   WebViewAssetLoader does on Android. **tools/browser_env.py** resolves the headless Chromium from
