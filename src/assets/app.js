@@ -2531,7 +2531,8 @@
   }
   function buyMapTune(goal) {
     const g = C.MAP_TUNES[goal];
-    if (!g || mapJob || adviceJob || Number(state.bank || 0) < g.price || !currentDyno()) return;
+    // the tuner maps the current build (also after an applied advice); it needs a completed pull to start from
+    if (!g || mapJob || adviceJob || Number(state.bank || 0) < g.price || !C.isCompletedDyno(state.lastDyno)) return;
     state.bank -= g.price;
     pushHistory({ type: 'advice', label: `${g.label} gekocht · ${euro(g.price)}` });
     saveState();
