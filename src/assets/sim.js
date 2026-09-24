@@ -110,11 +110,6 @@
     { id: 'welded_head', name: 'Kop aan blok gelast (one-piece)', detail: 'Kop en blok zijn aan elkaar gelast: er is geen pakking meer die kan lichten, dus geen head-lift bij extreme boost. Nadelen: niet meer demonteerbaar (revisie kost fors meer) en lasspanning geeft iets minder koelmarge.', specs: 'Gelaste naad · geen pakking · niet demonteerbaar · drag only', price: 3400, headClampBmep: 999, reliabilityBonus: -2, cooling: -0.03, rebuildExtra: 6500, visualKey: 'race' }
   );
   // Compound boost: a small high-pressure turbo in series ahead of the main turbo (Turbo.matchCompound).
-  RAW_CATEGORIES.push({ id: 'compound', label: 'Compound boost', short: 'Compound', items: [
-    { id: 'no_compound', name: 'Geen compound (één turbo)', detail: 'Eén turbo doet het werk: een grote turbo spoolt laat.', specs: 'Single turbo', price: 0, hpTurboId: '', visualKey: 'oem' },
-    { id: 'compound_k04', name: 'Compound: K04 HP-trap + bypass', detail: 'Een K04 als hogedruktrap vóór de hoofdturbo: hij spoolt onderin en vult het gat tot de grote turbo de boost zelf houdt; dan opent de turbine-bypass. Meer uitlaattegendruk en warmte in de overgang.', specs: 'K04-064 HP · turbine-bypass · interstage leiding', price: 4400, hpTurboId: 'k04', massDeltaKg: 17, visualKey: 'race' },
-    { id: 'compound_g25', name: 'Compound: G25-550 HP-trap + bypass', detail: 'Een G25-550 als hogedruktrap: meer flow dan de K04, dus hij houdt de boost langer vast tot de hoofdturbo overneemt. Zinvol achter een PT68 of groter.', specs: 'G25-550 HP · turbine-bypass · interstage leiding', price: 6200, hpTurboId: 'g25', massDeltaKg: 19, visualKey: 'race' }
-  ] });
   // Driver-activated nitrous (the N2O button in the race), separate from the automatic spool shot in 'spool'.
   RAW_CATEGORIES.push({ id: 'nitrous', label: 'Lachgas (race-knop)', short: 'N2O', items: [
     { id: 'no_n2o', name: 'Geen lachgas', detail: 'Geen N2O-systeem.', specs: '—', price: 0, shotHp: 0, n2oType: 'none', progressiveS: 0, bottleKg: 0, visualKey: 'oem' },
@@ -310,6 +305,23 @@
     };
   }
 
+  // Compound turbocharging: a second turbo from the turbo list as the high-pressure (HP) stage in series
+  // with the main (LP) turbo (selections.turboHp, '' = single turbo). The kit is the HP exhaust manifold,
+  // interstage piping, the HP turbine bypass valve and the HP compressor bypass (check) valve. The HP
+  // stage must be the smaller turbo: it breathes pre-compressed air and must spool first.
+  const COMPOUND_KIT = { price: 2600, massKg: 14, name: 'Compound-kit (HP-spruitstuk, interstage, turbine- en compressorbypass)' };
+  function compoundHp(state) {
+    const id = state.selections && state.selections.turboHp;
+    if (!id) return null;
+    const hp = CATEGORY_MAP.turbo.items.find(i => i.id === id), lp = getPart(state, 'turbo');
+    if (!hp) return null;
+    const valid = Number(hp.compressorMm) > 0 && Number(hp.compressorMm) < Number(lp.compressorMm || 0) && hp.id !== lp.id;
+    return { item: hp, valid, reason: valid ? '' : `${hp.name} is niet kleiner dan de hoofdturbo ${lp.name}: de HP-trap moet de kleinere turbo zijn.` };
+  }
+  function compoundHpMap(state) {
+    const c = compoundHp(state);
+    return c && c.valid ? Turbo.getMap(c.item.id) : null;
+  }
   function getPart(state, categoryId) {
     const cat = CATEGORY_MAP[categoryId];
     if (!cat) throw new Error(`Unknown category ${categoryId}`);
@@ -345,6 +357,13 @@
     // v1.3.0 generic turbos were replaced by the Precision catalogue: map old ids to the nearest model.
     if (LEGACY_TURBO_IDS[s.selections.turbo]) s.selections.turbo = LEGACY_TURBO_IDS[s.selections.turbo];
     for (const cat of CATEGORIES) if (!cat.items.some(x => x.id === s.selections[cat.id])) s.selections[cat.id] = cat.items[0].id;
+    // 1.12 compound kits (a separate category) became a second turbo from the turbo list
+    if (s.selections.compound) {
+      const legacy = { compound_k04: 'k04', compound_g25: 'g25' }[s.selections.compound];
+      if (legacy && !s.selections.turboHp) s.selections.turboHp = legacy;
+      delete s.selections.compound;
+    }
+    if (typeof s.selections.turboHp !== 'string' || (s.selections.turboHp && !CATEGORY_MAP.turbo.items.some(x => x.id === s.selections.turboHp))) s.selections.turboHp = '';
     if (!OIL_MAP[s.service.oilId]) s.service.oilId = base.service.oilId;
     if (!FILTER_MAP[s.service.filterId]) s.service.filterId = base.service.filterId;
     if (!TIRE_MAP[s.vehicle.tireCompound]) s.vehicle.tireCompound = base.vehicle.tireCompound;
@@ -744,6 +763,8 @@
       return fail('lean_out', 'engine', 'Brandstofsysteem liep leeg: lean-out onder boost.', over(point.fuelDutyPct, 113));
     if (point.shaftSpeedPct > 112)
       return fail('turbo_overspeed', 'turbo', 'Turbo overspeed: asoptoerental boven de compressorgrens.', over(point.shaftSpeedPct, 112, 0.15));
+    if (point.hpShaftPct > 112)
+      return fail('turbo_overspeed', 'turbo', 'Overspeed van de HP-turbo (compound): de kleine trap draait boven zijn asgrens.', over(point.hpShaftPct, 112, 0.15));
     if (point.knockRisk > 1.35 || (point.knockRisk > 1.05 && !tune.knockControl))
       return fail('knock', 'engine', 'Zware knock/detonatie.', over(point.knockRisk, tune.knockControl ? 1.35 : 1.05));
     if (point.boostBar > ignition.sparkBoostLimit * 1.22 && ignition.sparkQuality < 1.01)
@@ -1227,9 +1248,8 @@
       ringSeal = (0.94 + assembly.ringScore * 0.06 - assembly.ringWideRisk * 0.025) * wearFactor,
       assemblyPower = 0.965 + assembly.score * 0.035,
       camTimingVe = camTiming.applicable ? 0.9 + 0.1 * camTiming.score : 1;
-    // Compound boost: the HP stage's map when a compound kit is fitted (Turbo.matchCompound).
-    const compoundPart = getPart(state, 'compound');
-    const hpMap = compoundPart.hpTurboId ? Turbo.getMap(compoundPart.hpTurboId) : null;
+    // Compound: the HP turbo's map when a second turbo is fitted in series (Turbo.matchCompound).
+    const hpMap = compoundHpMap(state);
     const matchBoost = (ctx, target) => (hpMap ? Turbo.matchCompound(ctx, hpMap, target) : Turbo.matchEngine(ctx, target));
     let prevShaftRpm = NaN,
       prevHpShaftRpm = NaN,
@@ -1413,6 +1433,11 @@
         boostTargetBar: targetBoost,
         boostLimitedBy: protectedBy ? `${protectedBy}-protection` : tp.limitedBy,
         shaftSpeedPct: tp.shaftSpeedPct,
+        hpShaftPct: tp.hpShaftPct || 0,
+        prLp: tp.prLp || tp.pressureRatio,
+        prHp: tp.prHp || 1,
+        interstageBar: tp.interstageBarAbs ? tp.interstageBarAbs - baroBar : 0,
+        compoundStage: tp.compoundStage || '',
         compressorPr: tp.pressureRatio,
         correctedFlowLbMin: tp.correctedFlowLbMin,
         compressorEff: tp.compressorEff,
@@ -1421,6 +1446,7 @@
         chokeMarginPct: tp.chokeMarginPct,
         surge: tp.surge,
         wastegatePct: tp.wastegatePct,
+        hpBypassPct: tp.hpBypassPct ?? 0,
         turbineKw: tp.turbineKw,
         compressorKw: tp.compressorKw,
         volumetricEff: op.ve
@@ -1599,6 +1625,8 @@
       'danger',
       'beveiliging'
     );
+    const compound = compoundHp(state);
+    addWarning(warnings, compound && !compound.valid, compound ? `${compound.reason} De compound werkt zo niet; de HP-turbo staat uit.` : '', 'danger', 'turbo');
     addWarning(
       warnings,
       Math.round(Number(tune.revLimitRpm) / 100) * 100 > revLimit,
@@ -1913,7 +1941,8 @@
   // part's mass difference versus OEM (block, oiling, turbo, ice tank, gearbox, ...) and rotating wheel mass.
   function buildMassKg(state) {
     const vehicle = state.vehicle;
-    const parts = CATEGORIES.reduce((sum, cat) => sum + Number(getPart(state, cat.id)?.massDeltaKg || 0), 0);
+    const c = compoundHp(state);
+    const parts = CATEGORIES.reduce((sum, cat) => sum + Number(getPart(state, cat.id)?.massDeltaKg || 0), 0) + (c ? COMPOUND_KIT.massKg + Number(c.item.massDeltaKg || 0) : 0);
     const wheelMassPenalty = Math.max(0, Number(vehicle.wheelMassKg || 0) - 7.5) * 4 * 1.35;
     return Math.max(750, Number(vehicle.massKg || 1350) + Number(DRIVETRAINS[vehicle.drivetrain]?.mass || 0) + parts + wheelMassPenalty);
   }
@@ -2142,8 +2171,7 @@
       boostControl = getPart(state, 'boostControl'),
       fuel = getPart(state, 'fuel'),
       map = Turbo.getMap(turbo.id),
-      compoundPart = getPart(state, 'compound'),
-      hpMap = compoundPart.hpTurboId ? Turbo.getMap(compoundPart.hpTurboId) : null,
+      hpMap = compoundHpMap(state),
       matchBoostRt = (ctx, target) => (hpMap ? Turbo.matchCompound(ctx, hpMap, target) : Turbo.matchEngine(ctx, target)),
       chargeAir = Turbo.DATA.chargeAir[air.id] || Turbo.DATA.chargeAir.oem_air,
       exhaustSystem = Turbo.DATA.exhaust[exhaust.id] || Turbo.DATA.exhaust.oem_exhaust,
@@ -3226,7 +3254,8 @@
     return state;
   }
   function totalPartsPrice(state) {
-    return CATEGORIES.reduce((sum, cat) => sum + getPart(state, cat.id).price, 0);
+    const c = compoundHp(state);
+    return CATEGORIES.reduce((sum, cat) => sum + getPart(state, cat.id).price, 0) + (c ? c.item.price + COMPOUND_KIT.price : 0);
   }
   // ---- Career: events, class rules and bracket racing -----------------------------------------------
   // Events are knock-out ladders. Heads-up: first to the finish wins. Bracket (dial-in): each driver
@@ -3507,6 +3536,8 @@
     diagnoseDyno,
     rpmLimitChain,
     effectiveRevLimit,
+    COMPOUND_KIT,
+    compoundHp,
     ADVICE_PRICE,
     adviceCandidates,
     applyAdvicePatch,

@@ -69,5 +69,68 @@ const build = (preset, mutate) => { const s = C.applyPreset(C.blankState(), pres
   assert(rt.point().rpm < 1300, 'off the throttle it idles');
 }
 
+// 3. Compound = two turbos from the turbo list in series. Physics invariants of the series solution.
+{
+  const T = require('../src/assets/turbo.js');
+  // capture a real solver context from a dyno pull (the engine's breathing, exhaust and charge air)
+  const seen = [];
+  const orig = T.matchCompound;
+  T.matchCompound = function (ctx, hpMap, target) { const r = orig.call(this, ctx, hpMap, target); seen.push({ ctx, hpMap, target, r }); return r; };
+  const st = build('hx52', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = 'k04'; });
+  const comp = C.simulateEngine(st, { noise: false });
+  T.matchCompound = orig;
+  const series = seen.filter(x => x.r.compoundStage === 'series' && x.r.limitedBy === 'target');
+  assert(series.length > 3, 'the HP stage works at the target in the mid range');
+  for (const { ctx, r } of series) {
+    const K = 0.2857;
+    // the pressure ratios multiply (less the interstage duct loss)
+    assert(Math.abs(r.prLp * r.prHp - r.pressureRatio) / r.pressureRatio < 0.03, `PR ${r.pressureRatio.toFixed(3)} vs ${r.prLp.toFixed(3)} x ${r.prHp.toFixed(3)}`);
+    // the HP stage breathes the warm LP outlet; its outlet is hotter still before the intercooler
+    assert(r.interstageC > ctx.ambientK - 273.15 + 3 && r.compoundStage && r.compressorOutC > r.interstageC, 'interstage temperature between ambient and the HP outlet');
+    // the dense interstage air: the small HP wheel sees the LP corrected flow divided by the LP pressure
+    // ratio (times sqrt of the temperature rise), i.e. far less than the LP wheel
+    const Ta = ctx.ambientK, Ti = r.interstageC + 273.15, expect = r.correctedFlowLbMin * Math.sqrt(Ti / Ta) / r.prLp;
+    assert(r.hpCorrectedFlowLbMin >= expect * 0.99 && r.hpCorrectedFlowLbMin < expect * 1.06 && r.hpCorrectedFlowLbMin < r.correctedFlowLbMin, `HP corrected flow ${r.hpCorrectedFlowLbMin} vs ${expect}`);
+    // exhaust: manifold > interstage > turbine outlet (two expansions in series)
+    assert(r.empBarAbs > r.interstageExhaustBarAbs && r.interstageExhaustBarAbs > r.turbineOutBarAbs, 'two turbine stages in series');
+    // at the target the HP turbine bypass regulates (0..100 %)
+    assert(r.hpBypassPct >= 0 && r.hpBypassPct <= 100);
+    // no free energy: turbine power drives both compressors
+    assert(r.turbineKw * 0.95 >= r.compressorKw * 0.98, `turbines ${r.turbineKw.toFixed(1)} kW vs compressors ${r.compressorKw.toFixed(1)} kW`);
+    void K;
+  }
+  // the fitted airflow the solver uses matches the engine model
+  const { ctx, target } = series[0];
+  const fit = T.airflowFit(ctx, target.targetBoostBar);
+  for (const B of [0.2, target.targetBoostBar * 0.6, target.targetBoostBar]) for (const tK of [300, 330, 360])
+    assert(Math.abs(fit(B, tK) / ctx.airflowAt(B, tK) - 1) < 0.004, `airflow fit at ${B.toFixed(2)} bar, ${tK} K`);
+
+  // compound vs each turbo alone: spools like the small one, keeps the top end of the big one
+  const alone = id => C.simulateEngine(build('hx52', s => { s.selections.turbo = id; s.selections.turboHp = ''; }), { noise: false });
+  const small = alone('k04'), big = alone('pt6870');
+  const at = (r, rpm) => r.samples.find(p => p.rpm === rpm) || {};
+  assert(at(comp, 4000).boostBar > at(big, 4000).boostBar + 0.4, 'far more boost at 4000 than the big turbo alone');
+  assert(at(comp, 4000).boostBar > at(small, 4000).boostBar - 0.05, 'as much as the small turbo alone');
+  assert(comp.peakHp > small.peakHp * 1.2, `more top end than the small turbo alone (${comp.peakHp} vs ${small.peakHp})`);
+  assert(comp.peakHp >= big.peakHp * 0.98, `no less than the big turbo alone (${comp.peakHp} vs ${big.peakHp})`);
+
+  // the HP stage must be the smaller turbo; otherwise it is refused (warning, no effect)
+  const wrong = build('hx52', s => { s.selections.turbo = 'k04'; s.selections.turboHp = 'pt7675'; });
+  assert.strictEqual(C.compoundHp(wrong).valid, false);
+  const rw = C.simulateEngine(wrong, { noise: false });
+  assert(rw.warnings.some(w => /HP-trap moet de kleinere turbo/.test(w.text)), 'the refusal is explained');
+  assert.strictEqual(rw.peakHp, small.peakHp, 'an invalid compound changes nothing');
+
+  // one canonical build: the HP turbo is part of the selections, price, mass and the dyno signature
+  const one = build('hx52', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = ''; });
+  assert.strictEqual(C.totalPartsPrice(st) - C.totalPartsPrice(one), C.CATEGORY_MAP.turbo.items.find(i => i.id === 'k04').price + C.COMPOUND_KIT.price);
+  assert(C.buildMassKg(st) > C.buildMassKg(one));
+  assert.notStrictEqual(C.engineSignature(st), C.engineSignature(one), 'fitting the HP turbo invalidates the dyno');
+  // 1.12 saves with a compound kit category migrate to the HP turbo
+  const old = C.normalizeState({ ...C.blankState(), selections: { ...C.blankState().selections, compound: 'compound_g25' } });
+  assert.strictEqual(old.selections.turboHp, 'g25');
+  assert.strictEqual(old.selections.compound, undefined);
+}
+
 module.exports = { ok: true };
 console.log('PASS phase 9 tests');

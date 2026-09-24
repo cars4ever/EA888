@@ -278,3 +278,18 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .advice-rec p { margin: 2px 0; font-size: 13px; line-height: 1.35; }
 .advice-rec .btn { min-height: 40px; }
 .advice-note { display: block; margin-top: 2px; }
+
+/* ---------- Compound: second turbo from the turbo list as the HP stage ---------- */
+.part-row:has([data-compound-hp]), .part-row:has(.part-row-mounted.hp) { grid-template-columns: minmax(0, 1fr) auto auto; }
+.part-row-mounted.hp { color: var(--c-warn); }
+.compound-panel { display: flex; gap: var(--s-2); align-items: center; justify-content: space-between; margin-bottom: var(--s-4); padding: 12px 14px; border: 1px solid var(--c-line); border-left: 4px solid var(--c-text-3); border-radius: var(--r-control); background: var(--c-surface-1); }
+.compound-panel.on { border-left-color: var(--c-accent); }
+.compound-panel.danger { border-left-color: var(--c-bad); }
+.compound-panel > div { display: grid; gap: 3px; min-width: 0; }
+.compound-panel b { font: 650 14.5px/1.25 var(--font-body); color: var(--c-text); }
+.compound-panel small { color: var(--c-text-3); font-size: 12.5px; line-height: 1.4; }
+@media (max-width: 520px) {
+  .part-row:has([data-compound-hp]), .part-row:has(.part-row-mounted.hp) { grid-template-columns: minmax(0, 1fr) auto; }
+  .part-row [data-compound-hp], .part-row .part-row-mounted.hp { grid-column: 2; }
+  .compound-panel { flex-direction: column; align-items: stretch; }
+}

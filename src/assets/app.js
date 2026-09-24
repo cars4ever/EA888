@@ -1711,6 +1711,7 @@
         <div class="selection-chip">Gemonteerd: <b>${esc(C.getPart(state, cat.id).name)}</b></div>
       </div>
       <div class="notice"><strong>Geen vermogenspreview.</strong> Alleen fysieke specificaties zijn zichtbaar. De interactie tussen onderdelen wordt pas gemeten op de dyno.</div>
+      ${cat.id === 'turbo' ? compoundPanel() : ''}
       <div class="parts-grid">${items.length ? items.map(p => partCard(cat, p, selected === p.id)).join('') : '<div class="empty-card">Geen onderdelen gevonden. Wis de zoekopdracht.</div>'}</div>
     </div>`;
   }
@@ -1784,6 +1785,17 @@
     </div>`;
   }
 
+  // Compound: a second, smaller turbo from the same list as the high-pressure stage (sim.js compoundHp).
+  function compoundPanel() {
+    const c = C.compoundHp(state), lp = C.getPart(state, 'turbo');
+    const kit = C.COMPOUND_KIT;
+    if (!c) return `<div class="compound-panel"><div><span class="eyebrow">Compound (twee turbo's in serie)</span><b>Eén turbo: ${esc(lp.name)}</b>
+      <small>Kies bij een kleinere turbo "Als HP-trap": die blaast na de hoofdturbo (drukverhoudingen vermenigvuldigen) en spoolt onderin; bovenin opent de turbinebypass en neemt de grote turbo het over. Kit ${euro(kit.price)} + de HP-turbo, +${kit.massKg} kg.</small></div></div>`;
+    return `<div class="compound-panel ${c.valid ? 'on' : 'danger'}"><div><span class="eyebrow">Compound (twee turbo's in serie)</span>
+      <b>LP ${esc(lp.name)} → HP ${esc(c.item.name)}</b>
+      <small>${c.valid ? `Lucht: filter → LP-compressor → HP-compressor → intercooler. Uitlaat: HP-turbine (met bypass) → LP-turbine. ${esc(kit.name)}: ${euro(kit.price)} + ${euro(c.item.price)}.` : esc(c.reason)}</small></div>
+      <button class="btn small secondary" data-compound-hp="">HP-trap eraf</button></div>`;
+  }
   // Compact part row: name, key spec, price and the mount button always visible; the description and the
   // compressor meter fold out. Open rows are remembered so a re-render never folds them away.
   const openPartRows = new Set();
@@ -1810,7 +1822,16 @@
         <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${turboMeta}${hopMeta}</div>
       </details>
       ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`}
+      ${cat.id === 'turbo' ? compoundButton(part, selected) : ''}
     </article>`;
+  }
+  function compoundButton(part, selected) {
+    if (selected) return '';
+    const lp = C.getPart(state, 'turbo'), isHp = state.selections.turboHp === part.id;
+    if (isHp) return '<span class="part-row-mounted hp">HP-trap</span>';
+    const smaller = Number(part.compressorMm) > 0 && Number(part.compressorMm) < Number(lp.compressorMm || 0);
+    return smaller ? `<button class="btn small secondary" data-compound-hp="${part.id}">Als HP-trap</button>`
+      : `<button class="btn small secondary" disabled title="De HP-trap moet kleiner zijn dan ${esc(lp.name)}">Als HP-trap</button>`;
   }
   document.addEventListener('toggle', ev => {
     const key = ev.target?.dataset?.partDetails;
@@ -5809,6 +5830,16 @@
       markOnboarding('built');
       pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
       saveState(); haptic([12,25,12]);
+      render();
+      return announce();
+    }
+    if (btn.dataset.compoundHp !== undefined) {
+      if (btn.disabled) return;
+      const id = btn.dataset.compoundHp;
+      const before = C.compoundHp(state);
+      const announce = offerUndo([['selections', 'turboHp']], id ? `Compound: HP-trap ${C.CATEGORY_MAP.turbo.items.find(x => x.id === id)?.name || id}` : `Compound: HP-trap ${before?.item?.name || ''} eraf`);
+      state.selections.turboHp = id;
+      saveState(); haptic(16);
       render();
       return announce();
     }

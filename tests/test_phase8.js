@@ -29,16 +29,19 @@ const at = (r, rpm) => r.samples.find(p => p.rpm === rpm) || {};
   assert(C.CATEGORY_MAP.sealing.items.find(i => i.id === 'welded_head').rebuildExtra > 0, 'a welded engine costs more to rebuild');
 }
 
-// 3. Compound boost: the HP stage spools a big turbo that cannot spool on 2.0 L by itself; more EMP while it works.
+// 3. Compound boost (a second turbo from the turbo list as the HP stage): spools a big turbo that
+//    cannot spool on 2.0 L by itself; more EMP while it works. Series physics: tests/test_phase9.js.
 {
-  const pull = compound => C.simulateEngine(build('hx52', s => { s.selections.turbo = 'pt7675'; s.selections.compound = compound; }), { noise: false });
-  const single = pull('no_compound'), comp = pull('compound_g25');
+  const pull = hp => C.simulateEngine(build('hx52', s => { s.selections.turbo = 'pt7675'; s.selections.turboHp = hp; }), { noise: false });
+  const single = pull(''), comp = pull('g25');
   assert(at(comp, 4000).boostBar > at(single, 4000).boostBar + 0.3, `compound spools earlier (${at(comp, 4000).boostBar} vs ${at(single, 4000).boostBar} bar at 4000)`);
   assert(comp.peakHp > single.peakHp, 'and makes more power in a dyno pull');
   assert(at(comp, 4000).empBar > at(single, 4000).empBar, 'two turbines in the exhaust: more back pressure');
-  // no effect where the main turbo is not spool-limited
-  const k04 = C.simulateEngine(build('k04'), { noise: false }), k04c = C.simulateEngine(build('k04', s => { s.selections.compound = 'compound_k04'; }), { noise: false });
-  assert(Math.abs(at(k04c, 6000).boostBar - at(k04, 6000).boostBar) < 0.05, 'at the top the HP stage is bypassed');
+  // where the main turbo is not spool-limited the HP stage is bypassed
+  const k04 = C.simulateEngine(build('k04'), { noise: false }), k04c = C.simulateEngine(build('k04', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = 'k04'; }), { noise: false });
+  const top = k04c.samples[k04c.samples.length - 1];
+  assert(top.compoundStage === 'lp' || top.hpBypassPct > 60, `at the top the HP stage is (being) bypassed: ${top.compoundStage} ${top.hpBypassPct}`);
+  assert(k04.samples.length > 0);
 }
 
 // 4. Driver nitrous: only with the button, ramps in, costs bottle, faster pass; head lift on weak sealing.

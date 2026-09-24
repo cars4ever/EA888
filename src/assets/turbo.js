@@ -328,32 +328,225 @@
     };
   }
 
-  // Compound boost: a small high-pressure (HP) turbo in series ahead of the main (low-pressure) turbo. The HP
-  // stage spools early and covers the region where the main turbo alone is spool-limited; once the main turbo
-  // can hold the target by itself the HP turbine bypass opens and the HP compressor is bypassed. Modeled
-  // approach: each stage is matched on its own map and the delivered boost is the better of the two in the
-  // spool region; the series pressure-ratio multiplication beyond either turbo and the interstage state are
-  // not solved. The exhaust sees both turbines while the HP stage works (higher EMP), and the compressor
-  // outlet state comes from the stage that delivers.
+  // ---- compound (series) turbocharging ----------------------------------------
+  // A small high-pressure (HP) turbo in series with the main low-pressure (LP) turbo:
+  //   air:     filter -> LP compressor -> interstage duct -> HP compressor -> intercooler -> manifold
+  //   exhaust: manifold -> HP turbine (+ bypass valve) -> LP turbine (+ wastegate) -> exhaust system
+  // The pressure ratios multiply (PR = PR_lp * PR_hp, less the interstage loss). The HP compressor breathes
+  // the hot, dense LP outlet air: the higher inlet pressure lowers its corrected flow (why a small wheel can
+  // pass the flow), the interstage temperature raises its work. All exhaust passes both turbine stages: the
+  // HP turbine expands from the manifold to the interstage pressure, the LP turbine from there to the
+  // exhaust. The LP turbine sets the interstage pressure; its power sets the LP pressure ratio (its shaft
+  // balances), the rest of the pressure ratio is the HP stage's job. Controller: the HP turbine bypass is
+  // shut while spooling and modulates at the target; when the LP turbo alone can hold the target, the HP
+  // compressor bypass (check valve) opens and the exhaust passes the open HP bypass (a small restriction).
+  // No interstage intercooler is modeled (typical for gasoline compound kits).
+  const COMPOUND = { interstageLossBarAtRef: 0.035, hpBypassFlowRatio: 1.4 };
+  const nozzleLaw = er => Math.sqrt(Math.max(0, 1 - 1 / (er * er)));
+  function makeSeriesEvaluator(ctx, hp) {
+    const lp = ctx.map, { baroBar, ambientK } = ctx, ca = ctx.chargeAir, ex = ctx.exhaust, wg = ctx.wastegate;
+    const stageK = (tIn, pr, eff) => tIn * (1 + (Math.pow(pr, K_AIR) - 1) / eff);
+    const bypassLbMin = er => (COMPOUND.hpBypassFlowRatio * hp.turbineFlowMax * nozzleLaw(er)) / nozzleLaw(4);
+    // pressure p (bar abs) where flow(p) = lb, flow increasing in p
+    // (Illinois regula falsi: the flow curves are smooth and monotonic, ~6 evaluations to 1e-5)
+    const solveP = (flow, lb, pOut) => {
+      let a = pOut * 1.0005, b = pOut * 9, fa = flow(a) - lb, fb = flow(b) - lb, side = 0;
+      if (fb < 0) return b;
+      if (fa >= 0) return a;
+      for (let i = 0; i < 30; i++) {
+        const c = (a * fb - b * fa) / (fb - fa), fc = flow(c) - lb;
+        if (Math.abs(fc) < lb * 1e-5 || Math.abs(b - a) < pOut * 1e-6) return c;
+        if (fc * fb > 0) { b = c; fb = fc; if (side === -1) fa /= 2; side = -1; }
+        else { a = c; fa = fc; if (side === 1) fb /= 2; side = 1; }
+      }
+      return (a * fb - b * fa) / (fb - fa);
+    };
+    // Air side at total boost B with the LP pressure ratio x (x = null: the full ratio on the LP stage).
+    function air(B, m, x) {
+      const lb = m * LBMIN_PER_KGS, q = lb / ca.refFlowLbMin;
+      const p1 = baroBar - ca.filterLossBarAtRef * q * q, p2 = baroBar + B + ca.lossBarAtRef * q * q;
+      const dpInt = COMPOUND.interstageLossBarAtRef * q * q;
+      const xFull = Math.max(1, (p2 + dpInt) / p1);
+      const xl = x == null ? xFull : clamp(x, 1, xFull);
+      const wcLp = (lb * Math.sqrt(ambientK / COMP_REF.tK)) / (p1 / COMP_REF.pBar), effLp = lp.efficiency(wcLp, xl);
+      const tI = stageK(ambientK, xl, effLp), pI = p1 * xl, pHi = Math.max(0.3, pI - dpInt), prHp = Math.max(1, p2 / pHi);
+      const wcHp = (lb * Math.sqrt(tI / COMP_REF.tK)) / (pHi / COMP_REF.pBar), effHp = hp.efficiency(wcHp, prHp);
+      const t2 = prHp > 1.0005 ? stageK(tI, prHp, effHp) : tI;
+      const lpKw = (m * CP_AIR * ambientK * (Math.pow(xl, K_AIR) - 1)) / effLp / 1000;
+      const hpKw = prHp > 1.0005 ? (m * CP_AIR * tI * (Math.pow(prHp, K_AIR) - 1)) / effHp / 1000 : 0;
+      return { m, lb, p1, p2, pI, pHi, x: xl, xFull, prHp, wcLp, wcHp, effLp, effHp, tI, t2, lpKw, hpKw };
+    }
+    // Exhaust side for the engine flow m at boost B: HP turbine (bypass uHp) into the LP turbine (wastegate uLp).
+    function exhaust(B, m, uHp, uLp) {
+      const mExh = m * (1 + 1 / (ctx.stoichAfr * ctx.lambda)) + (ctx.extraExhaustKgS || 0), lbExh = mExh * LBMIN_PER_KGS;
+      const t3 = ctx.exhaustTempK(B) + ((ctx.extraExhaustKw || 0) * 1000) / (mExh * CP_EXH);
+      const p4 = baroBar + (2757 * ex.restriction * lbExh * lbExh) / Math.pow(ex.pipeMm, 4);
+      const corr = (p, t) => p / TURB_REF.pBar / Math.sqrt(t / TURB_REF.tK);
+      let tI = t3, pI = p4, p3 = p4, hpKw = 0, hpKgS = 0, erH = 1;
+      for (let it = 0; it < 2; it++) {
+        pI = solveP(p => (lp.turbineFlow(p / p4) + uLp * lp.wastegateFlow(p / p4, wg)) * corr(p, tI), lbExh, p4);
+        p3 = solveP(p => (hp.turbineFlow(p / pI) + uHp * bypassLbMin(p / pI)) * corr(p, t3), lbExh, pI);
+        erH = p3 / pI;
+        hpKgS = Math.min(mExh, (hp.turbineFlow(erH) * corr(p3, t3)) / LBMIN_PER_KGS);
+        hpKw = (hp.turbineEfficiency(erH) * hpKgS * CP_EXH * t3 * (1 - Math.pow(erH, -K_EXH))) / 1000;
+        tI = t3 - (hpKw * 1000) / (mExh * CP_EXH);
+      }
+      const erL = pI / p4, lpKgS = Math.min(mExh, (lp.turbineFlow(erL) * corr(pI, tI)) / LBMIN_PER_KGS);
+      const lpKw = (lp.turbineEfficiency(erL) * lpKgS * CP_EXH * tI * (1 - Math.pow(erL, -K_EXH))) / 1000;
+      return { mExh, t3, p3, pI, p4, tI, erH, erL, hpKw, lpKw, hpKgS, lpKgS, bypassKgS: mExh - hpKgS, wastegateKgS: mExh - lpKgS };
+    }
+    const cache = new Map();
+    // Steady point at boost B: the LP shaft balances (its turbine power sets x), the HP shaft surplus is left.
+    function point(B, uHp = 0, uLp = 0) {
+      const key = `${Math.round(B * 1e5)}|${Math.round(uHp * 1e4)}|${Math.round(uLp * 1e4)}`;
+      if (cache.has(key)) return cache.get(key);
+      let tMan = ambientK + 10, a = null, e = null, lpAlone = false;
+      for (let it = 0; it < 2; it++) {
+        const m = Math.max(1e-4, ctx.airflowAt(B, tMan));
+        e = exhaust(B, m, uHp, uLp);
+        const avail = MECH_EFF * e.lpKw, full = air(B, m, null);
+        if (avail >= full.lpKw) { a = full; lpAlone = true; }
+        else {
+          // LP pressure ratio its turbine power can drive: x^k = 1 + P eff / (m cp T), eff from the map
+          let x = Math.max(1.0001, Math.min(full.xFull, full.x));
+          const wr = (m * CP_AIR * ambientK) / 1000;
+          for (let i = 0; i < 4; i++) x = clamp(Math.pow(1 + (avail * air(B, m, x).effLp) / wr, 1 / K_AIR), 1, full.xFull);
+          a = air(B, m, x); lpAlone = false;
+        }
+        tMan = ctx.chargeCooling(a.t2, a.lb);
+      }
+      const out = { B, uHp, uLp, a, e, tMan, lpAlone, hpSurplusKw: MECH_EFF * e.hpKw - a.hpKw,
+        lpShaftRpm: lp.shaftRpm(a.wcLp, a.x), hpShaftRpm: a.prHp > 1.0005 ? hp.shaftRpm(a.wcHp, a.prHp) : 0 };
+      cache.set(key, out);
+      return out;
+    }
+    // Rotor-speed-limited point (transient): each compressor makes what its current shaft speed allows.
+    function atSpeeds(B, nLp, nHp) {
+      const m = Math.max(1e-4, ctx.airflowAt(B, ambientK + 25));
+      const full = air(B, m, null);
+      let lo = 1, hi = full.xFull;
+      for (let i = 0; i < 14; i++) { const mid = 0.5 * (lo + hi); if (lp.shaftRpm(full.wcLp, mid) <= nLp) lo = mid; else hi = mid; }
+      const a = air(B, m, lo);
+      return { a, ok: a.prHp <= 1.0005 || hp.shaftRpm(a.wcHp, a.prHp) <= nHp, m };
+    }
+    return { point, atSpeeds, air, exhaust, hpPassthrough: (m, B, uLp) => exhaust(B, m, 1, uLp) };
+  }
+
+  // Engine airflow is smooth in boost (quadratic to <0.1 %) and scales with a power of the manifold
+  // temperature; the series solver asks for it a few hundred times per call, so it is fitted from four
+  // exact evaluations (checked against the exact model in tests/test_phase9.js).
+  function airflowFit(ctx, span) {
+    const f = ctx.airflowAt, tR = ctx.ambientK + 25, S = Math.max(0.3, span);
+    const n0 = f(0, tR), n1 = f(S / 2, tR), n2 = f(S, tR), hot = f(S, tR + 40);
+    const e = Math.log(n2 / Math.max(1e-9, hot)) / Math.log((tR + 40) / tR);
+    return (B, tK) => {
+      const x = (2 * B) / S;
+      const m = (n0 * (1 - x) * (2 - x)) / 2 + n1 * x * (2 - x) + (n2 * x * (x - 1)) / 2;
+      return Math.max(1e-5, m * Math.pow(tR / tK, e));
+    };
+  }
   function matchCompound(ctx, hpMap, target) {
-    const lp = matchEngine(ctx, target);
-    const spoolLimited = lp.limitedBy === 'spool' || lp.limitedBy === 'spool-transient';
-    if (!hpMap || !spoolLimited) return { ...lp, compoundStage: 'lp', hpShaftRpm: 0, hpShaftPct: 0 };
-    const hp = matchEngine({ ...ctx, map: hpMap }, { ...target, prevShaftRpm: target.prevHpShaftRpm });
-    if (hp.boostBar <= lp.boostBar + 1e-3) return { ...lp, compoundStage: 'lp', hpShaftRpm: 0, hpShaftPct: 0 };
-    // both turbines in the exhaust path: the HP turbine's expansion on top of the main turbine's back pressure
-    const empBarAbs = hp.empBarAbs + Math.max(0, lp.empBarAbs - ctx.baroBar) * 0.6;
+    const lpMap = ctx.map;
+    const single = matchEngine(ctx, target);
+    const t3Memo = new Map(), t3 = B => { const k = Math.round(B * 1e4); if (!t3Memo.has(k)) t3Memo.set(k, ctx.exhaustTempK(B)); return t3Memo.get(k); };
+    const ev = makeSeriesEvaluator({ ...ctx, airflowAt: airflowFit(ctx, target.targetBoostBar), exhaustTempK: t3 }, hpMap);
+    const B0 = Math.max(0, target.targetBoostBar);
+    // LP turbo alone (HP compressor bypassed, HP turbine bypass open): the exhaust still passes the HP stage.
+    const lpOnly = () => {
+      const pass = ev.hpPassthrough(single.massFlowKgS, single.boostBar, single.wastegatePct / 100);
+      const extraEmp = Math.max(0, pass.p3 - pass.pI);
+      return { ...single, empBarAbs: single.empBarAbs + extraEmp, expansionRatio: single.expansionRatio, compoundStage: 'lp', hpShaftRpm: 0, hpShaftPct: 0,
+        hpBypassPct: 100, prLp: single.pressureRatio, prHp: 1, interstageBarAbs: null, interstageC: null };
+    };
+    if (single.limitedBy !== 'spool' && single.limitedBy !== 'spool-transient') return lpOnly();
+    const works = b => { const p = ev.point(b, 0, 0); return p.lpAlone || p.hpSurplusKw >= 0; };
+    let B = B0, limitedBy = 'target', surge = false;
+    if (!works(B)) { B = bisectMax(0, B, works, 14); limitedBy = 'spool'; }
+    const chokeOk = b => { const { a } = ev.point(b, 0, 0); return a.wcLp <= lpMap.chokeFlow(a.x) && (a.prHp <= 1.0005 || a.wcHp <= hpMap.chokeFlow(a.prHp)); };
+    if (!chokeOk(B)) { B = bisectMax(0, B, chokeOk, 14); limitedBy = 'choke'; }
+    const speedOk = b => { const p = ev.point(b, 0, 0); return p.lpShaftRpm <= lpMap.maxShaftRpm * 0.98 && p.hpShaftRpm <= hpMap.maxShaftRpm * 0.98; };
+    if (ctx.protectShaftSpeed && !speedOk(B)) { B = bisectMax(0, B, speedOk, 14); limitedBy = 'shaft-limit'; }
+    const stableOk = b => { const { a } = ev.point(b, 0, 0); return a.wcLp >= lpMap.surgeFlow(a.x) && (a.prHp <= 1.0005 || a.wcHp >= hpMap.surgeFlow(a.prHp)); };
+    if (!stableOk(B)) { surge = true; B = bisectMax(0, B, stableOk, 14); limitedBy = 'surge'; }
+    // the LP turbo alone does better here (the series stage choked or surged): HP stage bypassed
+    if (single.boostBar >= B - 1e-3) return lpOnly();
+    // controller: open the HP turbine bypass until the HP shaft balances at the target
+    let uHp = 0;
+    if (limitedBy === 'target') {
+      if (ev.point(B, 1, 0).hpSurplusKw >= 0) uHp = 1;
+      else if (ev.point(B, 0, 0).hpSurplusKw > 0) {
+        let lo = 0, hi = 1;
+        for (let i = 0; i < 10; i++) { const mid = 0.5 * (lo + hi); if (ev.point(B, mid, 0).hpSurplusKw > 0) lo = mid; else hi = mid; }
+        uHp = 0.5 * (lo + hi);
+      }
+    }
+    let P = ev.point(B, uHp, 0), a = P.a, nLp = P.lpShaftRpm, nHp = P.hpShaftRpm, transient = false;
+    // rotor inertia: both rotors accelerate on their own surplus from their previous speeds
+    const pL = target.prevShaftRpm, pH = target.prevHpShaftRpm;
+    if (Number.isFinite(pL) && target.dtS > 0 && (pL < nLp - 1 || (Number.isFinite(pH) && pH < nHp - 1))) {
+      const IL = lpMap.inertia * TRANSIENT_INERTIA_FACTOR, IH = hpMap.inertia * TRANSIENT_INERTIA_FACTOR, steps = 4, dt = target.dtS / steps;
+      let nl = Math.min(pL, nLp), nh = Number.isFinite(pH) ? pH : 0, Bt = 0;
+      const hpCap = hpMap.maxShaftRpm * (ctx.protectShaftSpeed ? 0.98 : 1.15);
+      for (let s = 0; s < steps; s++) {
+        Bt = bisectMax(0, B, b => ev.atSpeeds(b, nl, nh).ok, 11);
+        const q = ev.atSpeeds(Bt, nl, nh), e = ev.exhaust(Bt, q.m, 0, 0);
+        const sl = MECH_EFF * e.lpKw - q.a.lpKw, sh = MECH_EFF * e.hpKw - q.a.hpKw;
+        const step = (n, I, kw) => { const w = (n * 2 * Math.PI) / 60; return (Math.sqrt(Math.max(0, w * w + (2 * kw * 1000 * dt) / I)) * 60) / (2 * Math.PI); };
+        nl = Math.min(nLp, step(nl, IL, sl));
+        nh = Math.min(hpCap, step(nh, IH, sh));
+      }
+      Bt = bisectMax(0, B, b => ev.atSpeeds(b, nl, nh).ok, 12);
+      if (Bt < B - 1e-3) {
+        transient = true; limitedBy = 'spool-transient'; B = Bt; uHp = 0;
+        const q = ev.atSpeeds(B, nl, nh);
+        P = { ...ev.point(B, 0, 0), a: q.a };
+        a = q.a; nLp = nl; nh = Math.max(nh, 0); nHp = nh;
+      }
+    }
+    const e = P.e, tMan = P.tMan;
+    if (!transient) { nLp = P.lpShaftRpm; nHp = P.hpShaftRpm; }
+    const prTotal = a.p2 / a.p1;
+    const ptL = compressorPoint(lpMap, a.wcLp, a.x), ptH = compressorPoint(hpMap, a.wcHp, Math.max(1, a.prHp));
+    const overallEff = (ctx.ambientK * (Math.pow(prTotal, K_AIR) - 1)) / Math.max(1e-6, a.t2 - ctx.ambientK);
     return {
-      ...hp,
-      limitedBy: hp.limitedBy === 'target' ? 'compound-hp' : `compound-hp ${hp.limitedBy}`,
-      empBarAbs,
-      shaftRpm: lp.shaftRpm, shaftSpeedPct: lp.shaftSpeedPct,
-      hpShaftRpm: hp.shaftRpm, hpShaftPct: hp.shaftSpeedPct,
-      compoundStage: 'hp'
+      boostBar: B,
+      targetBoostBar: B0,
+      limitedBy,
+      surge,
+      shaftRpm: nLp,
+      shaftSpeedPct: (nLp / lpMap.maxShaftRpm) * 100,
+      hpShaftRpm: nHp,
+      hpShaftPct: (nHp / hpMap.maxShaftRpm) * 100,
+      pressureRatio: prTotal,
+      prLp: a.x,
+      prHp: a.prHp,
+      interstageBarAbs: a.pI,
+      interstageC: a.tI - 273.15,
+      correctedFlowLbMin: a.wcLp,
+      hpCorrectedFlowLbMin: a.wcHp,
+      massFlowLbMin: a.lb,
+      massFlowKgS: a.m,
+      compressorEff: clamp(overallEff, 0.3, 0.9),
+      compressorOutC: a.t2 - 273.15,
+      manifoldC: tMan - 273.15,
+      surgeMarginPct: Math.min(ptL.surgeMarginPct, ptH.surgeMarginPct),
+      chokeMarginPct: Math.min(ptL.chokeMarginPct, ptH.chokeMarginPct),
+      compressorKw: a.lpKw + a.hpKw,
+      turbineKw: e.lpKw + e.hpKw,
+      empBarAbs: e.p3,
+      interstageExhaustBarAbs: e.pI,
+      turbineOutBarAbs: e.p4,
+      expansionRatio: e.p3 / e.p4,
+      wastegatePct: 0,
+      hpBypassPct: uHp * 100,
+      wastegateFlowKgS: e.bypassKgS,
+      exhaustFlowKgS: e.mExh,
+      t3C: e.t3 - 273.15,
+      compoundStage: 'series'
     };
   }
 
-  const Turbo = { DATA, getMap, compressorPoint, matchEngine, matchCompound, makeEvaluator, COMP_REF, TURB_REF, LBMIN_PER_KGS };
+  const Turbo = { DATA, getMap, compressorPoint, matchEngine, matchCompound, makeEvaluator, makeSeriesEvaluator, airflowFit, COMPOUND, COMP_REF, TURB_REF, LBMIN_PER_KGS };
   if (typeof module !== 'undefined' && module.exports) module.exports = Turbo;
   root.EA888Turbo = Turbo;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
