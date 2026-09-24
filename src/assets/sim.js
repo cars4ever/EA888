@@ -282,6 +282,7 @@
         headwindKmh: 0,
         burnoutLevel: 15,
         burnoutRpm: 5000,
+        burnoutLimiter: false,
         shiftRpm: 7600,
         suspensionTransferPct: 60,
         cdA: 0.68,
@@ -2789,8 +2790,13 @@
     const fz = mass * g * staticDriven;
     const ambientC = Number(state.vehicle.ambientTempC ?? 20), trackC = Number(state.vehicle.trackTempC ?? 28);
     const th = opts.tyreThermal ? { ...opts.tyreThermal } : makeTyreThermal(Number.isFinite(opts.startC) ? opts.startC : trackC);
-    // The rpm the driver holds is a setting (vehicle.burnoutRpm); the burnout runs without anti-lag.
+    // The burnout runs without anti-lag. The driver's foot is the pedal: holding the button is full
+    // throttle (no controller backs it off). vehicle.burnoutLimiter adds the ECU burnout limiter:
+    // a spark/fuel cut at vehicle.burnoutRpm, like a launch limiter, with the pedal still flat. 'full'
+    // (default) runs against the normal rev limiter. The clutch is dumped at the set burnout rpm.
+    const mode = (opts.mode ?? (state.vehicle.burnoutLimiter ? 'limiter' : 'full')) === 'limiter' ? 'limiter' : 'full';
     const targetRpm = clamp(Number(opts.targetRpm ?? state.vehicle.burnoutRpm ?? 5000), 2500, em.revLimit - 300);
+    const cutRpm = mode === 'limiter' ? targetRpm : em.revLimit;
     // The burnout starts in the water box: a wet tyre keeps ~45 % of its dry street grip (the track prep sits
     // under the water), which is what lets the engine break a sticky drag tyre loose. The spinning tyre
     // flings and boils the water off (dry after ~1 s at 60 kW of slip); a dry tyre on the burnout pad
@@ -2801,26 +2807,18 @@
     const rpm = () => (s.we * 30) / Math.PI;
     function substep(h, throttle) {
       s.t += h;
-      if (rpm() >= em.revLimit) s.cut = true; else if (rpm() < em.revLimit - 150) s.cut = false;
+      if (rpm() >= cutRpm) s.cut = true; else if (rpm() < cutRpm - 120) s.cut = false;
       const snap = s.turboSnap || {};
       const cell = engineMapLookup(em, rpm(), throttle ? Number(snap.mapBarAbs || 1) : 0.35, snap.manifoldK || ENGINE_MAP_REF_K, throttle ? Number(snap.empBarAbs || 1) : 1.05);
-      // Driver: holds the burnout rpm with the pedal. Feed-forward = the engine torque that balances the
-      // tyre friction at the wheels, plus a correction on the rpm error; the foot follows in ~0.1 s.
-      if (throttle) {
-        const hold = (s.fx * r) / (R * eta) + cell.frictionNm * 0.3;
-        const ff = hold / Math.max(40, cell.torqueNm + cell.frictionNm * 0.3);
-        const want = clamp(ff + ((targetRpm - rpm()) / 1000) * 0.9, 0.08, 1);
-        s.pedal += (want - s.pedal) * clamp(h / 0.1, 0, 1);
-      } else s.pedal = 0;
+      // the foot goes to the pedal position in ~0.06 s (throttle body and foot)
+      s.pedal += (throttle - s.pedal) * clamp(h / 0.06, 0, 1);
       let tEng = throttle ? cell.torqueNm * s.pedal - cell.frictionNm * (1 - s.pedal) * 0.3 : -cell.frictionNm * 0.8;
       if (s.cut) tEng = -cell.frictionNm * 0.6;
       s.torqueNm = tEng;
       if (throttle) {
         // Rev with the clutch in, then dump it: the clutch slips (capacity limited) until engine and wheels
         // turn together; locked, the car stands still, so the whole tyre surface speed is slip.
-        if (!s.dumped && rpm() >= targetRpm * 0.92) s.dumped = true;
-        // bogged down (the tyres held): the driver clutches in and revs up again
-        if (s.dumped && s.engage >= 1 && rpm() < targetRpm * 0.45) { s.dumped = false; s.engage = 0; }
+        if (!s.dumped && rpm() >= Math.min(targetRpm, cutRpm - 150)) s.dumped = true;
         s.engage = s.dumped ? Math.min(1, (s.engage || 0) + h / 0.15) : 0;
         const mu = tyreMu(ty, tyreGripTempC(th), 1) * streetGrip * (0.8 - 0.35 * s.water);
         const vSlip = s.ww * r;
@@ -2861,7 +2859,7 @@
     }
     function step(dt, input = {}) {
       dt = clamp(Number(dt) || 0, 0, 0.2);
-      const throttle = !!input.throttle;
+      const throttle = typeof input.throttle === 'number' ? clamp(input.throttle, 0, 1) : input.throttle ? 1 : 0;
       let left = dt;
       while (left > 1e-9) {
         const h = Math.min(0.002, left);
@@ -2883,7 +2881,7 @@
         boostBar: Number(snap.boostBar || 0), egtC: Number(snap.egtC || 0), mapBarAbs: snap.mapBarAbs, lambda: snap.lambda, limiter: s.cut, torqueNm: s.torqueNm
       };
     }
-    return { state: s, step, point, turbo, tyre: ty, tyreThermal: th, targetRpm };
+    return { state: s, step, point, turbo, tyre: ty, tyreThermal: th, targetRpm, mode, cutRpm };
   }
   // The driveline's torsional (hop) mode for a build and mounts part: frequency and the mounts' damping.
   function hopMode(inputState, mountsId) {

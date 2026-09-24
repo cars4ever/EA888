@@ -36,7 +36,8 @@ for (const [id, t] of Object.entries(C.TYRE)) {
 
 // 4. Burnout: engine, clutch dump and spinning tyres on the brakes.
 function burnout(preset, seconds, mutate) {
-  const st = build(preset, s => { s.vehicle.tireCompound = 'drag_radial'; if (mutate) mutate(s); });
+  // with the burnout limiter at 5000 rpm (the pedal stays flat; the ECU cuts)
+  const st = build(preset, s => { s.vehicle.tireCompound = 'drag_radial'; s.vehicle.burnoutLimiter = true; if (mutate) mutate(s); });
   const b = C.createBurnoutRuntime(st, { targetRpm: 5000, startC: 28 });
   let p, maxSmoke = 0, smokeBelow110 = false, maxRpm = 0;
   for (let t = 0; t < seconds; t += 0.01) {
@@ -53,7 +54,7 @@ function burnout(preset, seconds, mutate) {
   const tr = C.getPart(st, 'transmission');
   const expectKmh = p.rpm / (tr.gearRatios[0] * tr.finalDrive) / 60 * 2 * Math.PI * b.tyre.geometry.radiusM * 3.6;
   assert(Math.abs(p.tyreSurfaceKmh - expectKmh) / expectKmh < 0.03, `tyre surface ${p.tyreSurfaceKmh} vs ${expectKmh} km/h`);
-  assert(Math.abs(p.rpm - 5000) < 300 && maxRpm < 5600, `the driver holds the burnout rpm: ${p.rpm} (max ${maxRpm})`);
+  assert(Math.abs(p.rpm - 5000) < 300 && maxRpm < 5600, `the burnout limiter holds 5000 rpm: ${p.rpm} (max ${maxRpm})`);
   assert(p.slipPowerKw > 30 && p.slipPowerKw < 200, `slip power ${p.slipPowerKw} kW`);
   assert(p.tyreSurfaceC > 120 && p.tyreBulkC > 35 && p.tyreBulkC < p.tyreSurfaceC, `after 5 s: skin ${p.tyreSurfaceC}, bulk ${p.tyreBulkC}`);
   assert(maxSmoke > 0.05 && !smokeBelow110, 'smoke only from a hot skin');
@@ -130,14 +131,16 @@ console.log('PASS tyre, burnout and knock tests');
 }
 
 // 8. Regression (1.10.0: sticky tyres on a prepped track bogged the burnout to ~1100 rpm, which looked like
-//    anti-lag cutting in): the burnout starts in the water box, holds the rpm set in the setup and never
-//    runs anti-lag.
-for (const tyre of ['drag_radial', 'slick', 'pro_radial']) for (const rpm of [4000, 6000]) {
-  const st = build('randy', s => { s.vehicle.tireCompound = tyre; s.vehicle.preparedTrack = true; s.vehicle.burnoutRpm = rpm; s.tune.als = { ...s.tune.als, mode: 'drag' }; });
+//    anti-lag cutting in; 1.12.0: a pedal controller held the rpm, which felt like something intervening):
+//    the burnout starts in the water box, never runs anti-lag, and at full throttle the revs never fall
+//    below the clutch-dump rpm once the tyres spin; with the burnout limiter they sit at the set rpm.
+for (const tyre of ['drag_radial', 'slick', 'pro_radial']) for (const rpm of [4000, 6000]) for (const limiter of [false, true]) {
+  const st = build('randy', s => { s.vehicle.tireCompound = tyre; s.vehicle.preparedTrack = true; s.vehicle.burnoutRpm = rpm; s.vehicle.burnoutLimiter = limiter; s.tune.als = { ...s.tune.als, mode: 'drag' }; });
   const b = C.createBurnoutRuntime(st, { startC: 28 });
-  let minRpm = 1e9, alsSeen = false;
-  for (let t = 0; t < 5; t += 0.02) { const p = b.step(0.02, { throttle: true }); if (t > 1.5) minRpm = Math.min(minRpm, p.rpm); if (b.turbo.state.alsActive) alsSeen = true; }
-  assert(minRpm > rpm - 250, `${tyre} ${rpm}: burnout must hold the set rpm (min ${Math.round(minRpm)})`);
+  let minRpm = 1e9, maxRpm = 0, alsSeen = false;
+  for (let t = 0; t < 5; t += 0.02) { const p = b.step(0.02, { throttle: true }); if (t > 1.5) { minRpm = Math.min(minRpm, p.rpm); maxRpm = Math.max(maxRpm, p.rpm); } if (b.turbo.state.alsActive) alsSeen = true; }
+  assert(minRpm > rpm - 250, `${tyre} ${rpm} ${limiter ? 'limiter' : 'full'}: the revs must not fall back (min ${Math.round(minRpm)})`);
+  if (limiter) assert(maxRpm < rpm + 250, `${tyre} ${rpm}: the burnout limiter cuts at the set rpm (max ${Math.round(maxRpm)})`);
   assert(!alsSeen, `${tyre}: no anti-lag during the burnout`);
   assert(b.point().smoke > 0 || rpm < 5000, `${tyre} ${rpm}: a dried tyre at high rpm smokes`);
 }

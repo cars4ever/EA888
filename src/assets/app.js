@@ -3160,7 +3160,8 @@
             <span class="eyebrow">Start & chassis</span><h3>Launchgedrag</h3>
             ${C.getPart(state, 'nitrous').shotHp > 0 ? `<div class="n2o-setup"><div><b>${esc(C.getPart(state, 'nitrous').name)}</b><small>Fles ${nitrousBottleKg().toFixed(1)} / ${C.getPart(state, 'nitrous').bottleKg.toFixed(1)} kg · ~${Math.floor(nitrousBottleKg() / (C.getPart(state, 'nitrous').shotHp * 0.00085 * 9))} passes · houd N₂O vast tijdens de race</small></div><button class="btn small" data-action="n2o-refill" ${nitrousBottleKg() >= C.getPart(state, 'nitrous').bottleKg - .01 ? 'disabled' : ''}>Vullen · ${euro(Math.round((C.getPart(state, 'nitrous').bottleKg - nitrousBottleKg()) * N2O_EUR_PER_KG))}</button></div>
             ${slider('nitrousRetardPer50', 'N₂O-ontstekingsretard', 0, 6, .5, Number(state.tune.nitrousRetardPer50 ?? 2), '° / 50 pk', 1, 'De ECU trekt zoveel ontsteking terug per 50 pk shot: minder klop, maar ook minder koppel.')}` : ''}
-            ${vehicleRange('burnoutRpm', 'Burnout-toerental', 3000, 7000, 100, v.burnoutRpm ?? 5000, ' rpm', 0, 'Dit toerental houd je vast tijdens de burnout (altijd zonder anti-lag). Hoger = meer slipvermogen en sneller warm.')}
+            ${switchRow('burnoutLimiter', 'Burnout-limiter', v.burnoutLimiter ? 'Aan: de ECU knipt op het burnout-toerental, jij houdt vol gas.' : 'Uit: vol gas tot de gewone toerenbegrenzer. De burnout draait altijd zonder anti-lag.', 'vehicle')}
+            ${vehicleRange('burnoutRpm', v.burnoutLimiter ? 'Burnout-limiter / koppeling los' : 'Koppeling los bij', 3000, 7000, 100, v.burnoutRpm ?? 5000, ' rpm', 0, v.burnoutLimiter ? 'Hier knipt de burnout-limiter. Hoger = meer slipvermogen en sneller warm.' : 'Op dit toerental laat je de koppeling op; daarna bepaal jij het gas.')}
             ${vehicleRange('burnoutLevel', 'Opgeslagen bandwarmte', 0, 100, 1, v.burnoutLevel, '%', 0, 'De interactieve burnout overschrijft dit met de werkelijk behaalde temperatuur.')}
             ${vehicleRange('suspensionTransferPct', 'Gewichtsoverdracht', 25, 100, 1, v.suspensionTransferPct, '%', 0, 'FWD wil minder achterwaartse transfer; RWD profiteert van gecontroleerde squat.')}
             ${vehicleRange('shiftRpm', 'Schakeltoerental', 4500, 10000, 100, v.shiftRpm, ' rpm', 0, 'De game geeft een shiftcue rond dit toerental.')}
@@ -3642,9 +3643,9 @@
         </section>
         <div class="v8-burn-smoke" id="v8-burn-smoke">${Array.from({length:14},(_,i)=>`<i style="--i:${i}"></i>`).join('')}</div>
         ${rival ? `<div class="v12-event-opponent"><img src="images/rival-scirocco.svg" alt="Rivaal"><span>VOLGENDE: ${rival.tag}</span><b>${esc(rival.name)}</b></div>` : ''}
-        <div class="v8-burnout-status" id="v7-burn-instruction"><b>HOUD VAST VOOR BURNOUT</b><span>Laat los om te stoppen. Houd rpm in de oranje zone en mik op de groene temperatuurband.</span></div>
+        <div class="v8-burnout-status" id="v7-burn-instruction"><b>HOUD VAST VOOR BURNOUT</b><span>Vasthouden = vol gas, loslaten = gas eraf. Mik op de groene temperatuurband.</span></div>
         <div class="v8-burn-score"><b id="v7-burn-label">KOUD</b><span id="v7-burn-score">0% gripvenster</span></div>
-        <button class="v8-burnout-button" id="v7-burn-throttle" data-v7-control="burnout"><span>HOUD VAST VOOR BURNOUT</span><small>LAAT LOS OM TE STOPPEN</small></button>
+        <button class="v8-burnout-button" id="v7-burn-throttle" data-v7-control="burnout"><span>VOL GAS · HOUD VAST</span><small>LAAT LOS OM TE STOPPEN</small></button>
       </main>
       ${v7GameProgress(0)}
     </div>`;
