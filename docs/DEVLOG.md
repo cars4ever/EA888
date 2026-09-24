@@ -214,7 +214,7 @@ large: PT5558, PT5862, PT6062, PT6466, PT6870, 7675, Next Gen 8085/8685, Pro Mod
 
 - `src/web/race3d.js` (three.js, bundled by esbuild): WebGL drag strip (asphalt/rubber/lane textures, walls,
   stands, lights, markers 60 ft -> finish, tree), procedural Scirocco (extruded, sculpted body, plate
-  KK-895-H), rival car, PMREM reflections. It only **draws** the simulation: every frame gets the realtime
+  plate erased), rival car, PMREM reflections. It only **draws** the simulation: every frame gets the realtime
   point (distance, lateral position, speed, g, wheelspin, rival distance) from app.js; it never integrates.
 - Smoke from simulated wheelspin, flames and flame light from the same `exhaustFlameEvent`/ALS sustain values
   as the 2D view. Chase camera on springs: lags under acceleration, FOV opens with speed, yaw follows steering.

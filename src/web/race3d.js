@@ -2,14 +2,13 @@
 // Draws only what the simulation computes: positions, speed, wheelspin, flames and the rival come from the
 // realtime physics in app.js every frame. World units are metres; the car drives towards -Z.
 import * as THREE from 'three';
+import { buildScirocco } from './scirocco.js';
 
 const LANE = 4.3;               // lane width: car half width 0.91 m + 1.22 m of allowed drift to the line
 const FINISH = 402.336;         // quarter mile
 const MARKS = [[18.288, '60 FT'], [100.584, '330 FT'], [201.168, '1/8 MIJL'], [304.8, '1000 FT'], [FINISH, 'FINISH']];
 const WHEEL_R = 0.323;          // 235/40 R18
-const WHEELBASE = 2.58, TRACK_W = 1.57, CAR_W = 1.81;
-const BEVEL = 0.07;             // body edge rounding; the extrusion grows the outline by this much
-const REAR = 2.14 + BEVEL;      // rear face of the body (z), where lights, plate, diffuser and tips sit
+const WHEELBASE = 2.578, TRACK_W = 1.57;
 // Staging: the stage beam sits where the front tyre's leading edge is when the car root is at z = 0 (the
 // run starts there); the pre-stage beam is 7 in (178 mm) behind it. Burnout box behind the water box.
 const STAGE_Z = -(WHEELBASE / 2 + WHEEL_R), PRESTAGE_M = 0.178;
@@ -113,13 +112,13 @@ function boardTexture(label) {
     g.fillText(label, w / 2, h / 2 + 4);
   });
 }
-function plateTexture(text) {
+// Dutch plate with the registration erased (the owner's plate is never shown): yellow, the blue EU/NL
+// strip, no characters.
+function plateTexture() {
   return canvasTex(520, 114, (g, w, h) => {
-    g.fillStyle = '#f5c518'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#f2c21a'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#1c3fa8'; g.fillRect(0, 0, 58, h);
     g.fillStyle = '#fff'; g.font = '700 26px sans-serif'; g.textAlign = 'center'; g.fillText('NL', 29, h - 16);
-    g.fillStyle = '#111'; g.font = '800 84px sans-serif'; g.textBaseline = 'middle';
-    g.fillText(text, (w + 58) / 2, h / 2 + 4);
     g.strokeStyle = '#111'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
   });
 }
@@ -161,187 +160,16 @@ function makeEnvironment(renderer) {
   return tex;
 }
 
-// ---------------------------------------------------------------- car (Scirocco Mk3, procedural)
-function extrudeProfile(points, width, bevel) {
-  // points: [s (forward, +front), y] clockwise; extruded across the width, centred on x = 0.
-  const shape = new THREE.Shape();
-  points.forEach(([s, y], i) => (i ? shape.lineTo(s, y) : shape.moveTo(s, y)));
-  shape.closePath();
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: width - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 4, curveSegments: 16, steps: 10 });
-  geo.rotateY(Math.PI / 2);              // shape x (forward) -> world -z, extrusion -> world x
-  geo.translate(-(width - bevel * 2) / 2, 0, 0);
-  return geo;
-}
-function taper(geo, yFrom, yTo, amount) {
-  // Tumblehome: the glasshouse narrows towards the roof.
-  const p = geo.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const y = p.getY(i);
-    const t = Math.min(1, Math.max(0, (y - yFrom) / (yTo - yFrom)));
-    p.setX(i, p.getX(i) * (1 - amount * t));
-  }
-  p.needsUpdate = true;
-  geo.computeVertexNormals();
-  return geo;
-}
-
-// Body sculpting on the extruded block: the rear face bulges out in the middle (crown), the corners round off in
-// plan view, the sides tuck under at the sill and roll in above the shoulder, and the hips swell over the rear
-// wheels. Everything that sits on the rear face uses rearCrown() so it stays on the surface.
-const rearCrown = x => 0.075 * Math.max(0, 1 - (x / 0.905) ** 2);
-function sculptBody(geo) {
-  const p = geo.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    const ax = Math.abs(x) / (CAR_W / 2);
-    // Crown on the rear (z > 1.7) and front (z < -1.8) faces.
-    if (z > 1.7) z += rearCrown(x) * Math.min(1, (z - 1.7) / 0.45);
-    if (z < -1.8) z -= 0.05 * Math.max(0, 1 - ax * ax) * Math.min(1, (-1.8 - z) / 0.4);
-    // Plan-view rounding of the four corners.
-    const endZ = Math.max(0, Math.abs(z) - 1.75) / 0.5;
-    let k = 1 - 0.07 * endZ * endZ;
-    // Tuck-under at the sill, roll-in above the shoulder line.
-    if (y < 0.42) k *= 1 - 0.06 * (0.42 - y) / 0.25;
-    if (y > 0.86) k *= 1 - 0.09 * Math.min(1, (y - 0.86) / 0.2);
-    // Hips over the rear wheels (the Scirocco's wide rear shoulders).
-    const hip = Math.exp(-(((z - 1.25) / 0.55) ** 2)) * Math.exp(-(((y - 0.72) / 0.2) ** 2));
-    k *= 1 + 0.035 * hip;
-    p.setXYZ(i, x * k, y, z);
-  }
-  p.needsUpdate = true;
-  geo.computeVertexNormals();
-  return geo;
-}
-
-function buildCar({ color = 0x1f4fd8, plate = 'KK-895-H', envMap, ghost = false }) {
-  const root = new THREE.Group();
-  const body = new THREE.Group();
-  root.add(body);
-  const paint = ghost
-    ? new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: .22, depthWrite: false })
-    : new THREE.MeshPhysicalMaterial({ color, metalness: .35, roughness: .32, clearcoat: 1, clearcoatRoughness: .05, envMap, envMapIntensity: 1.7 });
-  const black = ghost ? paint : new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: .55, metalness: .2, envMap, envMapIntensity: .4 });
-  const glass = ghost ? paint : new THREE.MeshPhysicalMaterial({ color: 0x05070b, metalness: .1, roughness: .05, envMap, envMapIntensity: 1.3, clearcoat: 1 });
-  const chrome = ghost ? paint : new THREE.MeshStandardMaterial({ color: 0xd9dde3, metalness: 1, roughness: .18, envMap, envMapIntensity: 1.2 });
-  const tail = ghost ? paint : new THREE.MeshStandardMaterial({ color: 0x2a0000, emissive: 0xe0000c, emissiveIntensity: 1.25, roughness: .3 });
-
-  // Lower body: long hood, wide rear shoulders, steep hatch, wheel arches cut from the side profile.
-  const lower = [
-    [2.14, 0.40], [2.10, 0.60], [1.55, 0.77], [0.58, 0.96], [-0.60, 0.98], [-1.60, 1.00], [-2.02, 1.03], [-2.11, 0.96],
-    [-2.14, 0.56], [-2.10, 0.24], [-1.70, 0.22], [-1.66, 0.36], [-1.58, 0.52], [-1.42, 0.63], [-1.29, 0.66], [-1.16, 0.63], [-1.00, 0.52], [-0.92, 0.36],
-    [-0.90, 0.22], [0.90, 0.22], [0.92, 0.36], [1.00, 0.52], [1.16, 0.63], [1.29, 0.66], [1.42, 0.63], [1.58, 0.52], [1.66, 0.36], [1.70, 0.22], [2.08, 0.22]
-  ].reverse();
-  const lowerMesh = new THREE.Mesh(sculptBody(extrudeProfile(lower, CAR_W, BEVEL)), paint);
-  body.add(lowerMesh);
-  // Glasshouse: body-coloured roof and pillars; glass set proud of it.
-  const cabinPts = [[0.60, 0.95], [-0.32, 1.37], [-1.12, 1.40], [-1.99, 1.02], [-1.60, 0.98]].reverse();
-  const cabin = new THREE.Mesh(taper(extrudeProfile(cabinPts, 1.56, 0.06), 0.97, 1.40, 0.2), paint);
-  body.add(cabin);
-  const glassPts = [[0.52, 1.00], [-0.28, 1.335], [-1.08, 1.36], [-1.9, 1.05], [-1.56, 1.0]].reverse();
-  const glassMesh = new THREE.Mesh(taper(extrudeProfile(glassPts, 1.585, 0.02), 0.97, 1.40, 0.2), glass);
-  body.add(glassMesh);
-  // Rear window: the big dark panel you see from the chase camera, following the hatch slope.
-  const rw = new THREE.BufferGeometry();
-  // Hatch slope from (z 1.99, y 1.02) to (z 1.12, y 1.40); outward normal (back and up), past the 6 cm bevel.
-  const nz = 0.40, ny = 0.916, off = 0.072;
-  const P = (x, z, y) => [x, y + ny * off, z + nz * off];
-  rw.setAttribute('position', new THREE.Float32BufferAttribute([
-    ...P(-0.66, 1.93, 1.05), ...P(0.66, 1.93, 1.05), ...P(0.52, 1.2, 1.37),
-    ...P(-0.66, 1.93, 1.05), ...P(0.52, 1.2, 1.37), ...P(-0.52, 1.2, 1.37)
-  ], 3));
-  rw.computeVertexNormals();
-  body.add(new THREE.Mesh(rw, glass));
-  // Roof spoiler.
-  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.035, 0.26), black);
-  spoiler.position.set(0, 1.405, 1.2); spoiler.rotation.x = -.12;
-  body.add(spoiler);
-
-  // Tail lights: wide wedges wrapping into the rear corners.
-  for (const sx of [-1, 1]) {
-    const s = new THREE.Shape();
-    s.moveTo(0.26, 0.0); s.lineTo(0.76, 0.03); s.lineTo(0.79, 0.14); s.lineTo(0.30, 0.13); s.lineTo(0.24, 0.06);
-    const g = new THREE.ShapeGeometry(s);
-    if (sx < 0) { g.scale(-1, 1, 1); }
-    const m = new THREE.Mesh(g, tail);
-    m.position.set(0, 0.84, REAR + rearCrown(0.57) - 0.006); m.rotation.x = -.18;
-    m.material.side = THREE.DoubleSide;
-    body.add(m);
-  }
-  const third = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.025), tail);
-  third.position.set(0, 1.45, 1.25); third.rotation.x = -1.1;
-  body.add(third);
-  // Plate, badge, diffuser, twin exhausts.
-  if (!ghost) {
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.114), new THREE.MeshStandardMaterial({ map: plateTexture(plate), roughness: .5, emissive: 0x222222, emissiveMap: null }));
-    pl.position.set(0, 0.66, REAR + rearCrown(0) + 0.004);
-    body.add(pl);
-    const badge = new THREE.Mesh(new THREE.CircleGeometry(0.045, 28), new THREE.MeshStandardMaterial({ color: 0x5d646d, metalness: .9, roughness: .45, envMap, envMapIntensity: .35 }));
-    badge.position.set(0, 0.95, REAR + rearCrown(0) - 0.035); badge.rotation.x = -.25;
-    body.add(badge);
-  }
-  const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.16, 0.12), black);
-  diffuser.position.set(0, 0.27, REAR + rearCrown(0.5) - 0.03);
-  body.add(diffuser);
-  const tips = [];
-  for (const sx of [-1, 1]) {
-    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.058, 0.16, 20, 1, true), chrome);
-    tip.rotation.x = Math.PI / 2;
-    tip.position.set(sx * 0.55, 0.29, REAR + rearCrown(0.55) + 0.02);
-    body.add(tip);
-    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.046, 20), new THREE.MeshBasicMaterial({ color: 0x050505 }));
-    hole.position.set(sx * 0.55, 0.29, REAR + rearCrown(0.55) + 0.09);
-    body.add(hole);
-    const anchor = new THREE.Object3D();
-    anchor.position.set(sx * 0.55, 0.29, REAR + rearCrown(0.55) + 0.13);
-    body.add(anchor);
-    tips.push(anchor);
-  }
-  // Mirrors and headlights.
-  for (const sx of [-1, 1]) {
-    const mir = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.11, 0.12), paint);
-    mir.position.set(sx * 0.98, 1.03, -0.42);
-    body.add(mir);
-  }
-  if (!ghost) {
-    const head = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xdde8ff, emissiveIntensity: 1.6 });
-    for (const sx of [-1, 1]) {
-      const h = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.08), head);
-      h.position.set(sx * 0.58, 0.68, -REAR + 0.01); h.rotation.y = Math.PI; h.rotation.x = .3;
-      body.add(h);
-    }
-  }
-  // Wheels (not part of the pitching body).
-  const wheels = [];
-  const tyreMat = ghost ? paint : new THREE.MeshStandardMaterial({ color: 0x101010, roughness: .92 });
-  const rimMat = ghost ? paint : new THREE.MeshStandardMaterial({ color: 0x9aa1aa, metalness: .9, roughness: .3, envMap });
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    const w = new THREE.Group();
-    const tyre = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 0.235, 32), tyreMat);
-    tyre.rotation.z = Math.PI / 2;
-    w.add(tyre);
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.228, 0.228, 0.24, 24), rimMat);
-    rim.rotation.z = Math.PI / 2;
-    w.add(rim);
-    for (let k = 0; k < 5; k++) {
-      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.05), ghost ? paint : black);
-      spoke.position.x = sx * 0.125;
-      spoke.rotation.x = k / 5 * Math.PI * 2;
-      spoke.position.y = Math.cos(k / 5 * Math.PI * 2) * 0.1;
-      spoke.position.z = Math.sin(k / 5 * Math.PI * 2) * 0.1;
-      w.add(spoke);
-    }
-    w.position.set(sx * TRACK_W / 2, WHEEL_R, sz * WHEELBASE / 2);
-    root.add(w);
-    wheels.push(w);
-  }
+// ---------------------------------------------------------------- car (Scirocco Mk3, procedural: scirocco.js)
+function buildCar({ color = 0x1f4fd8, envMap, ghost = false }) {
+  const car = buildScirocco({ color, envMap, ghost, plateTexture: ghost ? null : plateTexture() });
   // Soft contact shadow.
   if (!ghost) {
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 5.0), new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(0,0,0,.85)', 'rgba(0,0,0,0)'), transparent: true, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012;
-    root.add(shadow);
+    car.root.add(shadow);
   }
-  if (ghost) root.traverse(o => { if (o.isMesh) o.renderOrder = 5; });
-  return { root, body, wheels, tips, tailMat: tail };
+  return car;
 }
 
 // ---------------------------------------------------------------- track
@@ -619,9 +447,9 @@ export function create(canvas, opts = {}) {
   }
   setLights(null);
 
-  const player = buildCar({ color: opts.playerColor ?? 0x1f4fd8, plate: opts.plate || 'KK-895-H', envMap });
+  const player = buildCar({ color: opts.playerColor ?? 0x1f4fd8, envMap });
   scene.add(player.root);
-  const rival = opts.headsUp ? buildCar({ color: opts.rivalColor ?? 0x6b1a1a, plate: 'RIVAL-12', envMap }) : null;
+  const rival = opts.headsUp ? buildCar({ color: opts.rivalColor ?? 0x6b1a1a, envMap }) : null;
   if (rival) { rival.root.position.set(LANE, 0, 0); scene.add(rival.root); }
   const ghost = opts.ghost?.length ? buildCar({ ghost: true, envMap }) : null;
   if (ghost) scene.add(ghost.root);
@@ -875,4 +703,5 @@ export function create(canvas, opts = {}) {
   };
 }
 
+export { buildCar, makeEnvironment };
 window.EA888Race3D = { create, supported };

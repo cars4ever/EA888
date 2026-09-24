@@ -95,7 +95,7 @@
   <rect x="411" y="429" width="178" height="64" rx="9" fill="#f5c400" stroke="#1c1c1c" stroke-width="6"/>
   <rect x="411" y="429" width="27" height="64" rx="6" fill="#174fbd"/>
   <text x="425" y="456" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#fff">NL</text>
-  <text x="515" y="472" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" font-weight="800" fill="#111">KK-895-H</text>
+  <text x="515" y="472" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" font-weight="800" fill="#111"></text>
 
   <!-- exhausts -->
   <g>
