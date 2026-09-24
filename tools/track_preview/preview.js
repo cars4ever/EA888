@@ -35,5 +35,11 @@ window.renderShot = name => {
   return true;
 };
 window.previewQuality = () => view?.quality();
+window.previewSurfaces = () => {
+  const out = {};
+  view?.scene && null;
+  race3d.__scene?.traverse?.(() => {});
+  return out;
+};
 window.previewInfo = () => view?.info();
 window.previewReady = true;

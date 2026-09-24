@@ -64,6 +64,18 @@ function noise(ctx, w, h, amount, alpha) {
   }
   ctx.putImageData(img, 0, 0);
 }
+// Poly Haven photo surfaces (CC0, see docs/DEVLOG.md 20). They are loaded straight into a GPU texture and
+// go on their own plane under the painted markings: drawing a file:// image into a canvas taints it, and a
+// tainted canvas cannot be uploaded as a texture in a WebView.
+function surfaceTexture(src, repeat) {
+  const t = new THREE.TextureLoader().load(src, tex => { tex.needsUpdate = true; }, undefined, () => {});
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(repeat[0], repeat[1]);
+  t.anisotropy = 8;
+  return t;
+}
+
 function softDot(size = 128, inner = 'rgba(255,255,255,1)', outer = 'rgba(255,255,255,0)') {
   return canvasTex(size, size, (g, w) => {
     const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
@@ -78,8 +90,7 @@ function stripTexture() {
   // sits where the tyres run: 0.785 m either side of each lane centre.
   const W = 1024, H = 1024, span = LANE * 3; // from x = -LANE to x = 2 * LANE
   return canvasTex(W, H, (g) => {
-    g.fillStyle = '#34373c'; g.fillRect(0, 0, W, H);
-    noise(g, W, H, 26);
+    // markings only: the asphalt itself is the photo plane underneath
     const px = x => (x + LANE) / span * W;
     for (const lane of [0, LANE]) {
       for (const side of [-1, 1]) {
@@ -101,8 +112,7 @@ function launchPadTexture() {
   // Concrete launch pad: lighter, with heavy rubber and traction compound in the tyre tracks.
   const W = 1024, H = 512, span = LANE * 3;
   return canvasTex(W, H, (g) => {
-    g.fillStyle = '#505254'; g.fillRect(0, 0, W, H);
-    noise(g, W, H, 30);
+    // markings only: the concrete itself is the photo plane underneath
     const px = x => (x + LANE) / span * W;
     for (const lane of [0, LANE]) for (const side of [-1, 1]) {
       const cx = px(lane + side * TRACK_W / 2), bw = 0.5 / span * W;
@@ -210,15 +220,26 @@ function buildTrack(scene, maps) {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, len + 200), new THREE.MeshStandardMaterial({ color: 0x0c0f13, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2; ground.position.set(cx, -0.02, start - len / 2);
   group.add(ground);
-  // Strip: asphalt + concrete launch pad for the first 100 m.
-  const stripMat = new THREE.MeshStandardMaterial({ map: maps.strip, roughness: .82, metalness: 0 });
+  // Strip: photographed asphalt with the painted markings on a layer just above it, then the concrete
+  // launch pad for the first 110 m the same way. The colour under the map is the night exposure, and it is
+  // also what shows if the photo fails to load.
+  const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 3, len), new THREE.MeshStandardMaterial({
+    map: maps.asphalt, color: 0xb0b6c0, roughness: .82, metalness: 0 }));
+  asphalt.rotation.x = -Math.PI / 2; asphalt.position.set(cx, 0, start - len / 2);
+  group.add(asphalt);
+  const stripMat = new THREE.MeshStandardMaterial({ map: maps.strip, roughness: .82, metalness: 0, transparent: true, depthWrite: false });
   maps.strip.repeat.set(1, len / 20);
   const strip = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 3, len), stripMat);
-  strip.rotation.x = -Math.PI / 2; strip.position.set(cx, 0, start - len / 2);
+  strip.rotation.x = -Math.PI / 2; strip.position.set(cx, 0.002, start - len / 2);
   group.add(strip);
+  const padBase = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 3, 110), new THREE.MeshStandardMaterial({
+    map: maps.concrete, color: 0xc2c6cc, roughness: .7 }));
+  padBase.rotation.x = -Math.PI / 2; padBase.position.set(cx, 0.004, 55 - 110 / 2 - 10);
+  group.add(padBase);
   maps.pad.repeat.set(1, 110 / 10);
-  const pad = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 3, 110), new THREE.MeshStandardMaterial({ map: maps.pad, roughness: .7 }));
-  pad.rotation.x = -Math.PI / 2; pad.position.set(cx, 0.004, 55 - 110 / 2 - 10);
+  const pad = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 3, 110), new THREE.MeshStandardMaterial({
+    map: maps.pad, roughness: .7, transparent: true, depthWrite: false }));
+  pad.rotation.x = -Math.PI / 2; pad.position.set(cx, 0.006, 55 - 110 / 2 - 10);
   group.add(pad);
   // Guard walls with painted blocks (the speed reference).
   maps.wall.repeat.set(len / 32, 1);
@@ -308,7 +329,8 @@ function buildTrack(scene, maps) {
   // Floodlight towers with their light pools on the asphalt.
   const poleMat = new THREE.MeshStandardMaterial({ color: 0x2b313a, metalness: .5, roughness: .6 });
   const headMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.9, 2.2) });
-  const pool = new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(255,214,150,.28)', 'rgba(255,214,150,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  // The pools overlap several deep down the strip; at the old strength they washed the asphalt out to sand.
+  const pool = new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(255,226,186,.13)', 'rgba(255,226,186,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
   const glow = new THREE.SpriteMaterial({ map: softDot(64, 'rgba(255,230,180,1)', 'rgba(255,200,120,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
   for (let z = 30; z > -620; z -= 42) {
     for (const [x, dir] of [[-LANE / 2 - 3.2, 1], [LANE * 1.5 + 3.2, -1]]) {
@@ -458,7 +480,12 @@ export function create(canvas, opts = {}) {
   const key = new THREE.DirectionalLight(0xffe2b8, 1.6); key.position.set(-18, 22, 10); scene.add(key);
   const rim = new THREE.DirectionalLight(0x9fb8ff, 0.8); rim.position.set(20, 14, -30); scene.add(rim);
 
-  const maps = { strip: stripTexture(), pad: launchPadTexture(), wall: wallTexture(), crowd: crowdTexture() };
+  const maps = {
+    strip: stripTexture(), pad: launchPadTexture(), wall: wallTexture(), crowd: crowdTexture(),
+    // the photo grain repeats every 4 m across and 5 m along, finer than the 20 m marking tile
+    asphalt: surfaceTexture('images/track-asphalt.webp', [3.2, 152]),
+    concrete: surfaceTexture('images/track-concrete.webp', [3.2, 22]),
+  };
   const track = buildTrack(scene, maps);
   const bulbs = track.userData.bulbs;
   let litKey = '';
