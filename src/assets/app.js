@@ -4665,6 +4665,19 @@
   // ---- 3D race view (build/web/race3d.js). The simulation stays in this file; the renderer only draws it.
   // Falls back to the 2D canvas when WebGL is missing, the renderer fails, or 3D is switched off.
   function race3DEnabled() { return state.settings?.graphics3d !== false && !!window.EA888Race3D?.supported?.(); }
+  // Picture quality: 'auto' lets the renderer choose from the device and then correct itself by measuring
+  // its own frame cost; a step down is remembered so the settings page can say it happened.
+  function race3DQualityOpts() {
+    const chosen = state.settings?.graphicsQuality;
+    return {
+      quality: chosen && chosen !== 'auto' ? chosen : undefined,
+      onQuality: info => {
+        if (!info?.tier || state.settings.graphicsQualityAuto === info.tier) return;
+        state.settings.graphicsQualityAuto = info.tier;
+        saveState();
+      }
+    };
+  }
   function startRace3D() {
     disposeRace3D();
     const run = raceGame?.run;
@@ -4677,7 +4690,8 @@
         drivetrain: state.vehicle.drivetrain,
         rivalColor: run.opponent ? parseInt(String(run.opponent.profile.color || '#6b1a1a').replace('#', ''), 16) : undefined,
         ghost: ghostData,
-        reducedMotion: !!state.settings?.reducedMotion
+        reducedMotion: !!state.settings?.reducedMotion,
+        ...race3DQualityOpts()
       });
     } catch (e) {
       console.error('race3d', e);
@@ -4714,7 +4728,8 @@
         headsUp: !!rival,
         drivetrain: state.vehicle.drivetrain,
         rivalColor: rival ? parseInt(String(rival.color || '#6b1a1a').replace('#', ''), 16) : undefined,
-        reducedMotion: !!state.settings?.reducedMotion
+        reducedMotion: !!state.settings?.reducedMotion,
+        ...race3DQualityOpts()
       });
     } catch (e) {
       console.error('race3d', e);
@@ -5415,6 +5430,11 @@
         ${switchRow('haptics', 'Trillingsfeedback', 'Trilling bij schakelen, tree-lampen, fouten en dynostart.', 'settings')}
         ${switchRow('reducedMotion', 'Minder animatie', 'Versnelt dyno- en raceanimaties en beperkt beweging.', 'settings')}
         ${switchRow('graphics3d', '3D-racebeeld', window.EA888Race3D?.supported?.() ? 'Realtime 3D-baan met je Scirocco, rook en vlammen. Uit = de lichtere 2D-weergave.' : 'Niet beschikbaar: dit toestel ondersteunt geen WebGL.', 'settings')}
+        ${state.settings.graphics3d === false ? '' : `
+        <div class="segment-control graphics-quality" role="group" aria-label="Beeldkwaliteit 3D">
+          ${['auto', 'high', 'medium', 'low'].map(q => `<button class="${(state.settings.graphicsQuality || 'auto') === q ? 'active' : ''}" data-graphics-quality="${q}">${{ auto: 'Automatisch', high: 'Hoog', medium: 'Gemiddeld', low: 'Laag' }[q]}</button>`).join('')}
+        </div>
+        <p class="muted small-copy">Hoog: gloed om de lampen en vlammen, spiegeling in de waterbak, belichte rook. Gemiddeld laat de spiegeling weg, laag ook de gloed.${state.settings.graphicsQualityAuto ? ` Automatisch teruggeschakeld naar <b>${{ high: 'hoog', medium: 'gemiddeld', low: 'laag' }[state.settings.graphicsQualityAuto] || state.settings.graphicsQualityAuto}</b> omdat dit toestel de beelden niet bijhield.` : ''}</p>`}
       </div>
       <div class="card settings-card sound-mixer-card">
         <span class="eyebrow">Geluid</span><h2>Motorgeluid & mixer</h2>
@@ -5899,6 +5919,11 @@
     if (btn.dataset.engineView) { engineView = btn.dataset.engineView; haptic(6); return render(); }
     if (btn.dataset.tunePanel) { tunePanel = btn.dataset.tunePanel; haptic(6); return render(); }
     if (btn.dataset.careerEnter) return careerEnter(btn.dataset.careerEnter);
+    if (btn.dataset.graphicsQuality) {
+      state.settings.graphicsQuality = btn.dataset.graphicsQuality;
+      state.settings.graphicsQualityAuto = null;   // an explicit choice clears the automatic step down
+      saveState(); haptic(6); return render();
+    }
     if (btn.dataset.engineSound) {
       state.settings.engineSound = btn.dataset.engineSound === 'samples' ? 'samples' : 'synth';
       stopEngineAudio({ hard: true }); // the next sound start builds the chosen engine voice
