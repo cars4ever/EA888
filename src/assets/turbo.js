@@ -341,12 +341,15 @@
   // shut while spooling and modulates at the target; when the LP turbo alone can hold the target, the HP
   // compressor bypass (check valve) opens and the exhaust passes the open HP bypass (a small restriction).
   // No interstage intercooler is modeled (typical for gasoline compound kits).
-  const COMPOUND = { interstageLossBarAtRef: 0.035, hpBypassFlowRatio: 1.4 };
+  // empCapRatio: the controller keeps the manifold pressure below this multiple of the boost pressure (both
+  // absolute) by opening the HP turbine bypass; a small HP turbine would otherwise choke the exhaust.
+  const COMPOUND = { interstageLossBarAtRef: 0.035, hpBypassFlowRatio: 1.4, empCapRatio: 1.9, handoverMargin: 0 };
   const nozzleLaw = er => Math.sqrt(Math.max(0, 1 - 1 / (er * er)));
   function makeSeriesEvaluator(ctx, hp) {
     const lp = ctx.map, { baroBar, ambientK } = ctx, ca = ctx.chargeAir, ex = ctx.exhaust, wg = ctx.wastegate;
     const stageK = (tIn, pr, eff) => tIn * (1 + (Math.pow(pr, K_AIR) - 1) / eff);
-    const bypassLbMin = er => (COMPOUND.hpBypassFlowRatio * hp.turbineFlowMax * nozzleLaw(er)) / nozzleLaw(4);
+    // the HP turbine bypass is sized for the full exhaust flow (at least the LP turbine's capacity)
+    const bypassLbMin = er => (Math.max(COMPOUND.hpBypassFlowRatio * hp.turbineFlowMax, 1.1 * lp.turbineFlowMax) * nozzleLaw(er)) / nozzleLaw(4);
     // pressure p (bar abs) where flow(p) = lb, flow increasing in p
     // (Illinois regula falsi: the flow curves are smooth and monotonic, ~6 evaluations to 1e-5)
     const solveP = (flow, lb, pOut) => {
@@ -459,10 +462,30 @@
         hpBypassPct: 100, prLp: single.pressureRatio, prHp: 1, interstageBarAbs: null, interstageC: null };
     };
     if (single.limitedBy !== 'spool' && single.limitedBy !== 'spool-transient') return lpOnly();
-    const works = b => { const p = ev.point(b, 0, 0); return p.lpAlone || p.hpSurplusKw >= 0; };
+    // Smallest HP bypass opening that keeps the manifold pressure under the cap (EMP / MAP, absolute).
+    const empOk = (b, u) => ev.point(b, u, 0).e.p3 <= COMPOUND.empCapRatio * (ctx.baroBar + b);
+    const uMinMemo = new Map();
+    const uMin = b => {
+      const k = Math.round(b * 1e4);
+      if (uMinMemo.has(k)) return uMinMemo.get(k);
+      // Handover schedule: as the HP compressor nears choke the bypass opens progressively, so the exhaust
+      // energy moves to the LP turbine and it is up to speed before the HP stage runs out of flow.
+      const a0 = ev.point(b, 0, 0).a;
+      const hpChokeMargin = a0.prHp > 1.0005 ? 1 - a0.wcHp / Math.max(1e-6, hpMap.chokeFlow(a0.prHp)) : 1;
+      let u = COMPOUND.handoverMargin > 0 ? clamp((COMPOUND.handoverMargin - hpChokeMargin) / COMPOUND.handoverMargin, 0, 0.85) : 0;
+      if (!empOk(b, u)) {
+        if (!empOk(b, 1)) u = 1;
+        else { let lo = u, hi = 1; for (let i = 0; i < 8; i++) { const mid = 0.5 * (lo + hi); if (empOk(b, mid)) hi = mid; else lo = mid; } u = hi; }
+      }
+      uMinMemo.set(k, u);
+      return u;
+    };
+    const works = b => { const u = uMin(b), p = ev.point(b, u, 0); return (p.lpAlone || p.hpSurplusKw >= 0) && (u < 1 || empOk(b, 1)); };
     let B = B0, limitedBy = 'target', surge = false;
     if (!works(B)) { B = bisectMax(0, B, works, 14); limitedBy = 'spool'; }
-    const chokeOk = b => { const { a } = ev.point(b, 0, 0); return a.wcLp <= lpMap.chokeFlow(a.x) && (a.prHp <= 1.0005 || a.wcHp <= hpMap.chokeFlow(a.prHp)); };
+    // past its choke line the HP wheel loses efficiency fast (map efficiency), which the shaft balance feels;
+    // only the LP compressor has a hard choke limit here
+    const chokeOk = b => { const { a } = ev.point(b, uMin(b), 0); return a.wcLp <= lpMap.chokeFlow(a.x); };
     if (!chokeOk(B)) { B = bisectMax(0, B, chokeOk, 14); limitedBy = 'choke'; }
     const speedOk = b => { const p = ev.point(b, 0, 0); return p.lpShaftRpm <= lpMap.maxShaftRpm * 0.98 && p.hpShaftRpm <= hpMap.maxShaftRpm * 0.98; };
     if (ctx.protectShaftSpeed && !speedOk(B)) { B = bisectMax(0, B, speedOk, 14); limitedBy = 'shaft-limit'; }
@@ -471,11 +494,12 @@
     // the LP turbo alone does better here (the series stage choked or surged): HP stage bypassed
     if (single.boostBar >= B - 1e-3) return lpOnly();
     // controller: open the HP turbine bypass until the HP shaft balances at the target
-    let uHp = 0;
+    const u0 = uMin(B);
+    let uHp = u0;
     if (limitedBy === 'target') {
       if (ev.point(B, 1, 0).hpSurplusKw >= 0) uHp = 1;
-      else if (ev.point(B, 0, 0).hpSurplusKw > 0) {
-        let lo = 0, hi = 1;
+      else if (ev.point(B, u0, 0).hpSurplusKw > 0) {
+        let lo = u0, hi = 1;
         for (let i = 0; i < 10; i++) { const mid = 0.5 * (lo + hi); if (ev.point(B, mid, 0).hpSurplusKw > 0) lo = mid; else hi = mid; }
         uHp = 0.5 * (lo + hi);
       }
@@ -489,7 +513,7 @@
       const hpCap = hpMap.maxShaftRpm * (ctx.protectShaftSpeed ? 0.98 : 1.15);
       for (let s = 0; s < steps; s++) {
         Bt = bisectMax(0, B, b => ev.atSpeeds(b, nl, nh).ok, 11);
-        const q = ev.atSpeeds(Bt, nl, nh), e = ev.exhaust(Bt, q.m, 0, 0);
+        const q = ev.atSpeeds(Bt, nl, nh), e = ev.exhaust(Bt, q.m, uMin(Bt), 0);
         const sl = MECH_EFF * e.lpKw - q.a.lpKw, sh = MECH_EFF * e.hpKw - q.a.hpKw;
         const step = (n, I, kw) => { const w = (n * 2 * Math.PI) / 60; return (Math.sqrt(Math.max(0, w * w + (2 * kw * 1000 * dt) / I)) * 60) / (2 * Math.PI); };
         nl = Math.min(nLp, step(nl, IL, sl));
@@ -497,9 +521,9 @@
       }
       Bt = bisectMax(0, B, b => ev.atSpeeds(b, nl, nh).ok, 12);
       if (Bt < B - 1e-3) {
-        transient = true; limitedBy = 'spool-transient'; B = Bt; uHp = 0;
+        transient = true; limitedBy = 'spool-transient'; B = Bt; uHp = uMin(Bt);
         const q = ev.atSpeeds(B, nl, nh);
-        P = { ...ev.point(B, 0, 0), a: q.a };
+        P = { ...ev.point(B, uHp, 0), a: q.a };
         a = q.a; nLp = nl; nh = Math.max(nh, 0); nHp = nh;
       }
     }

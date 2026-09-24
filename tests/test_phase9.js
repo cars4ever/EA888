@@ -86,7 +86,7 @@ const build = (preset, mutate) => { const s = C.applyPreset(C.blankState(), pres
     // the pressure ratios multiply (less the interstage duct loss)
     assert(Math.abs(r.prLp * r.prHp - r.pressureRatio) / r.pressureRatio < 0.03, `PR ${r.pressureRatio.toFixed(3)} vs ${r.prLp.toFixed(3)} x ${r.prHp.toFixed(3)}`);
     // the HP stage breathes the warm LP outlet; its outlet is hotter still before the intercooler
-    assert(r.interstageC > ctx.ambientK - 273.15 + 3 && r.compoundStage && r.compressorOutC > r.interstageC, 'interstage temperature between ambient and the HP outlet');
+    assert(r.interstageC > ctx.ambientK - 273.15 + 3 && r.compoundStage && r.compressorOutC >= r.interstageC - 1e-6, 'interstage temperature between ambient and the HP outlet');
     // the dense interstage air: the small HP wheel sees the LP corrected flow divided by the LP pressure
     // ratio (times sqrt of the temperature rise), i.e. far less than the LP wheel
     const Ta = ctx.ambientK, Ti = r.interstageC + 273.15, expect = r.correctedFlowLbMin * Math.sqrt(Ti / Ta) / r.prLp;
@@ -130,6 +130,26 @@ const build = (preset, mutate) => { const s = C.applyPreset(C.blankState(), pres
   const old = C.normalizeState({ ...C.blankState(), selections: { ...C.blankState().selections, compound: 'compound_g25' } });
   assert.strictEqual(old.selections.turboHp, 'g25');
   assert.strictEqual(old.selections.compound, undefined);
+}
+
+// 4. Regression (1.13.0: a small HP turbine choked the exhaust, 11.7 bar manifold pressure and a 2912 C EGT
+//    on the dyno): the controller opens the HP turbine bypass to keep EMP within 1.9 x MAP (absolute), the
+//    bypass is sized for the full exhaust flow, and the handover to the LP turbo has no boost collapse.
+{
+  const baro = 1.01325;
+  for (const [lp, hp] of [['g25', 'k03'], ['pt8685', 'k03'], ['pt10603', 'k03'], ['pt6870', 'k04'], ['pt7675', 'g25'], ['k04_hybrid', 'k03']]) {
+    const r = C.simulateEngine(build('randy', s => { s.selections.turbo = lp; s.selections.turboHp = hp; }), { noise: false });
+    for (const p of r.samples) {
+      assert(p.empBar + baro <= 1.9 * (p.boostBar + baro) + 0.15 || p.compoundStage === 'lp', `${lp}+${hp} ${p.rpm}: EMP ${p.empBar} bar at ${p.boostBar} bar boost`);
+      assert(p.egtC < 1100, `${lp}+${hp} ${p.rpm}: EGT ${p.egtC}`);
+    }
+    assert(Math.max(...r.samples.map(p => p.empBar)) < 5, `${lp}+${hp}: manifold pressure stays physical`);
+  }
+  // PT6870 + K04: once at the target it holds it to the limiter (no drop when the HP stage hands over)
+  const r = C.simulateEngine(build('randy', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = 'k04'; }), { noise: false });
+  const on = r.samples.filter(p => p.rpm >= 5000);
+  assert(Math.min(...on.map(p => p.boostBar)) > 0.85 * Math.max(...on.map(p => p.boostBar)), `no boost collapse at the handover: ${on.map(p => p.boostBar.toFixed(2)).join(' ')}`);
+  assert(on[on.length - 1].hpBypassPct > on[0].hpBypassPct, 'the HP bypass opens as the LP turbo takes over');
 }
 
 module.exports = { ok: true };

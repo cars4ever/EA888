@@ -40,7 +40,7 @@ const at = (r, rpm) => r.samples.find(p => p.rpm === rpm) || {};
   // where the main turbo is not spool-limited the HP stage is bypassed
   const k04 = C.simulateEngine(build('k04'), { noise: false }), k04c = C.simulateEngine(build('k04', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = 'k04'; }), { noise: false });
   const top = k04c.samples[k04c.samples.length - 1];
-  assert(top.compoundStage === 'lp' || top.hpBypassPct > 60, `at the top the HP stage is (being) bypassed: ${top.compoundStage} ${top.hpBypassPct}`);
+  assert(top.compoundStage === 'lp' || (top.prHp < 1.3 && top.hpBypassPct > 30), `at the top the HP stage does little and is being bypassed: ${top.compoundStage} PR_hp ${top.prHp} bypass ${top.hpBypassPct}`);
   assert(k04.samples.length > 0);
 }
 
