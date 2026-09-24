@@ -31,7 +31,19 @@ const TIERS = {
 };
 const TIER_ORDER = ['high', 'medium', 'low'];
 
-function defaultTier() {
+function softwareRenderer(renderer) {
+  // A software rasteriser reports plenty of memory and cores but cannot afford a second scene pass. The
+  // headless smoke test runs on SwiftShader, and so do phones that fell back from a broken driver.
+  try {
+    const gl = renderer.getContext();
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '') : '';
+    return /swiftshader|llvmpipe|software|mesa offscreen/i.test(name);
+  } catch (e) { return false; }
+}
+
+function defaultTier(renderer) {
+  if (renderer && softwareRenderer(renderer)) return 'low';
   // Conservative: only a desktop-class thread count and memory earn the top tier. The frame-time watchdog
   // in create() steps down anyway when the device cannot hold it.
   const mem = navigator.deviceMemory || 0, cores = navigator.hardwareConcurrency || 0;
@@ -40,9 +52,9 @@ function defaultTier() {
   return 'low';
 }
 
-function resolveQuality(q) {
+function resolveQuality(q, renderer) {
   if (typeof q === 'string' && TIERS[q]) return { tier: q, ...TIERS[q] };
-  const tier = defaultTier();
+  const tier = defaultTier(renderer);
   return { tier, ...TIERS[tier], ...(q && typeof q === 'object' ? q : {}) };
 }
 
@@ -489,7 +501,7 @@ export function create(canvas, opts = {}) {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
   } catch (e) { return null; }
-  const quality = resolveQuality(opts.quality);
+  const quality = resolveQuality(opts.quality, renderer);
   const dpr = Math.min(window.devicePixelRatio || 1, opts.maxPixelRatio || quality.maxPixelRatio);
   renderer.setPixelRatio(dpr);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -577,7 +589,12 @@ export function create(canvas, opts = {}) {
     composer.addPass(bloomPass);
     composer.addPass(new OutputPass());
   }
+  // renderer.info resets itself at the start of every render() call, and the composer makes several per
+  // frame, so it would otherwise report the last fullscreen quad (1 call, 2 triangles) instead of the
+  // scene. Reset once per frame ourselves and let it accumulate over every pass.
+  renderer.info.autoReset = false;
   function draw() {
+    renderer.info.reset();
     if (composer) composer.render();
     else renderer.render(scene, camera);
   }
@@ -846,7 +863,7 @@ export function create(canvas, opts = {}) {
     dispose,
     scene: () => ({ mode: pre.mode || 'run', carZ: player.root.position.z, lit: litKey ? litKey.split(',') : [], smoke: smoke.active() }),
     quality: () => ({ ...quality }),
-    setQuality: q => { Object.assign(quality, resolveQuality(q)); buildComposer(); waterReflector(quality.reflections); return { ...quality }; },
+    setQuality: q => { Object.assign(quality, resolveQuality(q, renderer)); buildComposer(); waterReflector(quality.reflections); return { ...quality }; },
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries })
   };
 }

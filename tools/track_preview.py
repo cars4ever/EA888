@@ -15,7 +15,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default='/tmp/track-preview')
     ap.add_argument('--shots', default=SHOTS)
-    ap.add_argument('--quality', default='high', help='high | medium | low')
+    ap.add_argument('--quality', default='high', help='high | medium | low | auto (let the renderer pick)')
     ap.add_argument('--width', type=int, default=1000)
     ap.add_argument('--height', type=int, default=560)
     a = ap.parse_args()
@@ -49,17 +49,27 @@ def main():
         pg.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
         pg.goto(f'{APP_ORIGIN}/assets/index.html')
         pg.wait_for_function('window.previewReady === true', timeout=60000)
-        if not pg.evaluate(f'buildTrackPreview({a.quality!r})'):
+        arg = 'null' if a.quality == 'auto' else repr(a.quality)
+        if not pg.evaluate(f'buildTrackPreview({arg})'):
             sys.exit('race3d.create() returned null (no WebGL?)')
         for shot in a.shots.split(','):
             if not pg.evaluate(f'renderShot({shot!r})'):
                 sys.exit(f'unknown shot {shot}')
             pg.locator('#c').screenshot(path=str(out / f'{shot}.png'))
-        print('quality:', pg.evaluate('previewQuality()'))
-        print('info   :', pg.evaluate('previewInfo()'))
+        quality = pg.evaluate('previewQuality()')
+        info = pg.evaluate('previewInfo()')
+        print('quality:', quality)
+        print('info   :', info)
         b.close()
     if errors:
         print('page errors:', *errors, sep='\n  ')
+        return 1
+    # renderer.info must describe the scene, not the last post-processing pass. With an EffectComposer in
+    # the chain and the default autoReset, it reported a single fullscreen quad (1 call, 2 triangles) and
+    # the browser-smoke 3D checks failed on it. Guard it here: this runs in seconds, the smoke test does not.
+    if info['calls'] < 50 or info['triangles'] < 2000:
+        print(f"renderer.info reports {info['calls']} calls / {info['triangles']} triangles for a full "
+              f"track scene: it is measuring a post-processing pass, not the scene")
         return 1
     print(out)
     return 0
