@@ -791,7 +791,8 @@ def main() -> None:
         aborted = page.evaluate("() => __EA888_DEBUG__.dyno()")
         card_text = page.locator('.v4-result-card').first.inner_text()
         report['aborted_dyno'] = {k: aborted[k] for k in ('status', 'abortRpm', 'abortReason', 'peakHp', 'peakHpRpm', 'reliabilityScore', 'sampleCount', 'maxSampleRpm')}
-        report['checks']['dyno_abort_status'] = aborted['status'] == 'aborted' and 5400 <= aborted['abortRpm'] <= 6300 and 'knock' in aborted['abortReason'].lower()
+        # (where it knocks follows the spool: 1.15's turbine efficiency brings the HX52's boost, and the knock, in earlier)
+        report['checks']['dyno_abort_status'] = aborted['status'] == 'aborted' and 4500 <= aborted['abortRpm'] <= 6500 and 'knock' in aborted['abortReason'].lower()
         report['checks']['dyno_abort_no_future_samples'] = aborted['maxSampleRpm'] == aborted['abortRpm'] and (aborted['peakHpRpm'] or 0) <= aborted['abortRpm']
         abort_rpm = aborted['abortRpm']
         quoted_rpms = [int(x) for x in re.findall(r'@ ([0-9]{4,5}) rpm', card_text)]
