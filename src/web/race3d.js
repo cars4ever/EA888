@@ -6,6 +6,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { buildScirocco } from './scirocco.js';
 
 const LANE = 4.3;               // lane width: car half width 0.91 m + 1.22 m of allowed drift to the line
@@ -270,9 +271,13 @@ function buildTrack(scene, maps) {
       eye.position.set(x - side * 0.06, 0.11, z); group.add(eye);
     }
   }
-  // Water box (wet, reflective) and the dark rubber of countless burnouts just past it.
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 2 - 0.4, 5.5), new THREE.MeshStandardMaterial({ color: 0x0d1217, roughness: .08, metalness: .6, transparent: true, opacity: .92 }));
+  // Water box. Two versions of the same patch: a dark low-roughness material that only mirrors the
+  // environment map (cheap, always there), and a real planar reflection that shows the car, the walls and
+  // the floodlights standing in the water. The quality tier picks one; see waterReflector() below.
+  const waterSize = [LANE * 2 - 0.4, 5.5];
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(...waterSize), new THREE.MeshStandardMaterial({ color: 0x0d1217, roughness: .08, metalness: .6, transparent: true, opacity: .92 }));
   water.rotation.x = -Math.PI / 2; water.position.set(cx, 0.006, WATER_Z); group.add(water);
+  group.userData.water = { mesh: water, size: waterSize, x: cx, z: WATER_Z };
   const rubber = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 2, 9), new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(0,0,0,.55)', 'rgba(0,0,0,0)'), transparent: true, depthWrite: false }));
   rubber.rotation.x = -Math.PI / 2; rubber.position.set(cx, 0.007, BURNOUT_Z - 2); group.add(rubber);
   for (const [d] of MARKS) line(-d, 0.08);
@@ -365,9 +370,15 @@ function buildTrack(scene, maps) {
 }
 
 // ---------------------------------------------------------------- effects
+// Tyre smoke. The cloud is not a uniform grey: what rises into the floodlights goes warm, what hangs at
+// axle height behind the car catches the tail lights and the exhaust flame. The lighting pass is a colour
+// per sprite (240 at most), so it costs nothing on the GPU and switches off on the low tier.
+const SMOKE_SHADE = new THREE.Color(0x6d7d95);   // in its own shadow, low down
+const SMOKE_LIT = new THREE.Color(0xffe6c2);     // up in the floodlights
 function makeSmoke(scene) {
   const tex = softDot(128, 'rgba(220,224,230,.9)', 'rgba(200,205,212,0)');
   const pool = [];
+  const shade = new THREE.Color();
   for (let i = 0; i < 240; i++) {
     const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, color: 0xcfd4da });
     const s = new THREE.Sprite(m); s.visible = false; scene.add(s);
@@ -385,7 +396,8 @@ function makeSmoke(scene) {
       p.base = .26 + strength * .4;
       p.s.scale.setScalar(.6);
     },
-    update(dt) {
+    // lit: null on the low tier, else { pos, tail 0..1, flame 0..1, flameColor }
+    update(dt, lit = null) {
       for (const p of pool) {
         if (!p.s.visible) continue;
         p.life += dt;
@@ -395,6 +407,12 @@ function makeSmoke(scene) {
         p.vx *= .97; p.vz *= .97;
         p.s.scale.setScalar(.5 + p.grow * k);
         p.s.material.opacity = p.base * (1 - k) * Math.min(1, k * 6);
+        if (!lit) { p.s.material.color.set(0xcfd4da); continue; }
+        shade.copy(SMOKE_SHADE).lerp(SMOKE_LIT, Math.min(1, p.s.position.y / 2.4));
+        const near = Math.max(0, 1 - p.s.position.distanceTo(lit.pos) / 6.5);
+        if (lit.tail > 0) shade.lerp(TAIL_GLOW, near * lit.tail * 0.5);
+        if (lit.flame > 0) shade.lerp(lit.flameColor, near * lit.flame * 0.75);
+        p.s.material.color.copy(shade);
       }
     },
     active() { return pool.reduce((n, p) => n + (p.s.visible ? 1 : 0), 0); },
@@ -402,6 +420,8 @@ function makeSmoke(scene) {
   };
 }
 
+const TAIL_GLOW = new THREE.Color(0xff2a1c);
+const TAIL_LIT = 0.35;   // the tail lights are on all run; they wash the cloud behind the car red
 const FLAME_COLORS = { 'blue-white': [0xd9ecff, 0x4f9dff], orange: [0xfff1c0, 0xff7a1c], red: [0xffd2a0, 0xd8300c] };
 function makeFlames(car, scene) {
   const core = softDot(64, 'rgba(255,255,255,1)', 'rgba(255,255,255,0)');
@@ -416,6 +436,7 @@ function makeFlames(car, scene) {
   car.body.add(light);
   let pops = [];      // { t, dur, size, color }
   let sustain = 0, sustainColor = 'orange';
+  const state = { alpha: 0, color: new THREE.Color(0xff7a1c) };   // what the smoke is lit by
   return {
     pop(fe) {
       if (!fe?.visible) return;
@@ -446,7 +467,10 @@ function makeFlames(car, scene) {
         f.outer.position.z = .08 * size;
       }
       light.intensity = alpha * 3.2 * Math.max(.4, size);
+      state.alpha = alpha; state.color.setHex(co);
+      return state;
     },
+    state: () => state,
     dispose() { core.dispose(); sets.forEach(f => { f.inner.material.dispose(); f.outer.material.dispose(); }); }
   };
 }
@@ -488,6 +512,25 @@ export function create(canvas, opts = {}) {
   };
   const track = buildTrack(scene, maps);
   const bulbs = track.userData.bulbs;
+
+  // Planar reflection in the water box, built the first time the quality tier asks for it. It renders the
+  // scene a second time into a 512 target, so it stays on the high tier only; below that the water keeps
+  // its environment-map sheen and the reflector is simply hidden.
+  let reflector = null;
+  function waterReflector(on) {
+    const w = track.userData.water;
+    if (on && !reflector) {
+      reflector = new Reflector(new THREE.PlaneGeometry(...w.size), {
+        textureWidth: 512, textureHeight: 512, color: 0x4a5260,
+      });
+      reflector.rotation.x = -Math.PI / 2;
+      reflector.position.set(w.x, 0.005, w.z);
+      scene.add(reflector);
+    }
+    if (reflector) reflector.visible = !!on;
+    // the flat water sits just above the mirror and thins out when the mirror carries the image
+    w.mesh.material.opacity = on ? 0.45 : 0.92;
+  }
   let litKey = '';
   // names: the lit bulbs (e.g. ['preL','preR','stageL']); null = the run default (both greens lit)
   function setLights(names) {
@@ -553,6 +596,7 @@ export function create(canvas, opts = {}) {
     downgrades++;
     Object.assign(quality, { tier: next, ...TIERS[next] });
     buildComposer();
+    waterReflector(quality.reflections);
     opts.onQuality?.({ tier: next, avgFrameMs: Math.round(avg), reason: 'frame cost' });
   }
 
@@ -561,6 +605,7 @@ export function create(canvas, opts = {}) {
   const tmp = new THREE.Vector3();
   let last = null, time = 0, smokeAcc = 0, wheelAngle = 0, rivalWheel = 0, disposed = false;
   buildComposer();
+  waterReflector(quality.reflections);
 
   function resize() {
     const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
@@ -624,8 +669,8 @@ export function create(canvas, opts = {}) {
         smoke.spawn(tmp, smokeK, { life: 2.4, grow: 2.6, vz: 2.2 + vSurf * .12, wind: .5 });
       }
     }
-    smoke.update(dt);
-    flames.update(dt, time);
+    const fl = flames.update(dt, time);
+    smoke.update(dt, quality.litSmoke ? { pos: player.root.position, tail: TAIL_LIT, flame: fl.alpha, flameColor: fl.color } : null);
     // Cameras: the burnout from the side of the driven axle, slowly swinging; staging from behind the car,
     // low, with the tree in view.
     // Distance that fits the car (plus its smoke) across the view on a portrait phone screen.
@@ -710,8 +755,8 @@ export function create(canvas, opts = {}) {
         smoke.spawn(tmp, spin);
       }
     }
-    smoke.update(dt);
-    flames.update(dt, time);
+    const fl = flames.update(dt, time);
+    smoke.update(dt, quality.litSmoke ? { pos: player.root.position, tail: TAIL_LIT, flame: fl.alpha, flameColor: fl.color } : null);
     // Replay cameras cut between fixed trackside positions; live play always uses the chase camera.
     const mode = frame.camera || 'chase';
     if (mode !== 'chase') {
@@ -756,6 +801,7 @@ export function create(canvas, opts = {}) {
     Object.values(maps).forEach(t => t.dispose());
     envMap.dispose();
     composer?.dispose();
+    reflector?.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
   }
@@ -800,7 +846,7 @@ export function create(canvas, opts = {}) {
     dispose,
     scene: () => ({ mode: pre.mode || 'run', carZ: player.root.position.z, lit: litKey ? litKey.split(',') : [], smoke: smoke.active() }),
     quality: () => ({ ...quality }),
-    setQuality: q => { Object.assign(quality, resolveQuality(q)); buildComposer(); return { ...quality }; },
+    setQuality: q => { Object.assign(quality, resolveQuality(q)); buildComposer(); waterReflector(quality.reflections); return { ...quality }; },
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries })
   };
 }
