@@ -350,6 +350,19 @@ def main() -> None:
             if page.locator(f'[data-advice-apply="{key}"]').count():
                 click(page, f'[data-advice-apply="{key}"]')
                 report['checks']['tuner_advice_applied'] = 'Toegepast' in page.locator('#toast').inner_text()
+                # the advice stays on screen after applying (marked applied) until the next pull
+                report['checks']['tuner_advice_stays_after_apply'] = page.locator('.advice-box.bought .advice-rec.applied').count() >= 1
+        # Optimised map (paid tuner service): the tuner writes the map on the dyno simulation
+        report['checks']['map_tune_offered'] = page.locator('.map-tune-card [data-map-buy]').count() == 2 or page.locator('.map-tune-card .map-tune.done').count() >= 1
+        if page.locator('[data-map-buy="street"]:not([disabled])').count():
+            bank_a = page.evaluate("window.__EA888_DEBUG__.career().bank")
+            click(page, '[data-map-buy="street"]')
+            page.wait_for_selector('.map-tune.done', timeout=240000)
+            bank_b = page.evaluate("window.__EA888_DEBUG__.career().bank")
+            report['checks']['map_tune_bought'] = bank_b == bank_a - 450
+            if page.locator('[data-map-apply="street"]').count():
+                click(page, '[data-map-apply="street"]')
+                report['checks']['map_tune_applied'] = page.locator('.map-tune.done.applied').count() >= 1
         # Regression (v1.9.0 on the phone: the dyno hung): even when every audio call throws, the pull runs to
         # its end and is saved; the failures land in the error log instead of stopping the loop.
         page.evaluate("window.__EA888_DEBUG__.breakAudioForTest(true)")

@@ -12,7 +12,14 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.13.0 (branch `claude-dev`) — rev limits, real compound turbos, full-throttle burnout, the Scirocco
+## v1.14.0 (branch `claude-dev`) — tuner help, optimised maps, N2O switch
+
+- Compound fix: the HP bypass keeps the manifold pressure in check (no more absurd EMP/EGT with a small HP turbo), smooth handover to the big turbo.
+- Tuner advice: tick several recommendations and apply them together; the advice stays visible after applying.
+- Buy an optimised street or race map from the tuner.
+- N2O is an on/off switch in the race (sprays at full throttle while armed); the rival badge no longer covers it.
+
+## v1.13.0 — rev limits, real compound turbos, full-throttle burnout, the Scirocco
 
 - Over-rev names the part that limits the revs; with pro-mod parts the engine revs to 10 500 rpm. The ECU caps the limiter instead of breaking the engine.
 - Compound: fit a smaller turbo from the turbo list as the high-pressure stage; the two turbos work in series (pressure ratios multiply, interstage heat, two turbine stages, HP bypass).

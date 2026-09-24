@@ -2431,7 +2431,8 @@
         ${r.wear ? `<div><span>Slijtage van deze pull</span><b>motor +${num(r.wear.engine,2)}% · turbo +${num(r.wear.turbo,2)}% · ${num(r.wear.durationS,1)} s belast${r.damage && (r.damage.engine || r.damage.turbo) ? ` · schade motor +${num(r.damage.engine,0)}% / turbo +${num(r.damage.turbo,0)}%` : ''}</b></div>` : ''}
       </div>
       <div class="section-head small diagnostic-title"><div><span class="eyebrow">Automatische diagnose</span><h3>${completed ? 'Wat begrenst deze combinatie?' : 'Waarom stopte de pull?'}</h3></div></div>
-      <div class="diagnostic-grid">${diagnostics.map(d => `<article class="diagnostic-card ${d.severity}"><span>${esc(d.system)}</span><b>${esc(d.observation)}</b><p>${esc(d.action)}</p>${clean && d.key && d.key !== 'run' ? adviceBlock(d.key) : ''}</article>`).join('')}</div>
+      <div class="diagnostic-grid">${diagnostics.map(d => `<article class="diagnostic-card ${d.severity}"><span>${esc(d.system)}</span><b>${esc(d.observation)}</b><p>${esc(d.action)}</p>${d.key && d.key !== 'run' && (clean || adviceStore()[adviceId(d.key)]) ? adviceBlock(d.key) : ''}</article>`).join('')}</div>
+      ${completed && r === state.lastDyno ? mapTuneBlock() : ''}
       ${warnings ? `<div class="warning-list">${warnings}</div>` : completed ? '<div class="notice success"><strong>Geen extra hoofdwaarschuwingen.</strong> De run bleef binnen de gemodelleerde systeemgrenzen.</div>' : ''}
     </div>`;
   }
@@ -2452,16 +2453,111 @@
     // one option per kind of fix (ignition, boost, fuel, a part category...), best first
     const seen = new Set(), recs = [];
     for (const e of bought.evals) {
-      const fam = e.id.startsWith('part:') ? e.id.split(':').slice(0, 2).join(':') : e.id.split(':')[0];
+      if (e.kind === 'combo' && e.id.startsWith('combo:pick')) continue;
+      const fam = adviceFamily(e);
       if (seen.has(fam)) continue;
       seen.add(fam); recs.push(e);
-      if (recs.length >= 4) break;
+      if (recs.length >= 5) break;
     }
-    return `<div class="advice-box bought"><span class="eyebrow">Tuneradvies · ${esc(recs[0]?.metric || '')}</span>${recs.map((e, i) => {
+    const picked = new Set(bought.picked || []), applied = new Set(bought.applied || []);
+    const pickable = recs.filter(e => (e.resolved || e.improved) && e.kind !== 'combo');
+    const row = (e, i) => {
       const dHp = Math.round(e.hpAfter - e.hpBefore);
       const tag = e.resolved ? 'good' : e.improved ? 'warn' : 'bad';
-      return `<div class="advice-rec ${tag}"><div><b>${e.resolved ? '✔ Lost het op' : e.improved ? '↗ Helpt, lost het niet op' : '✕ Helpt niet'}${i === 0 && e.resolved ? ' · beste keuze' : ''}</b><p>${esc(e.label)}</p><small>${esc(e.metric)} ${esc(e.beforeText)} → ${esc(e.afterText)} · ${Math.round(e.hpBefore)} → ${Math.round(e.hpAfter)} pk (${dHp >= 0 ? '+' : ''}${dHp}) · ${e.cost ? euro(e.cost) : 'gratis'}${e.sideEffects?.length ? ` · let op: ${esc(e.sideEffects.join('; '))}` : ''}</small></div>${e.resolved || e.improved ? `<button class="btn small ghost" data-advice-apply="${esc(key)}" data-advice-rec="${esc(e.id)}">Toepassen</button>` : ''}</div>`;
-    }).join('')}<small class="advice-note">Voorspeld met dezelfde simulatie als de dyno, zonder meetruis. Meet na het toepassen opnieuw.</small></div>`;
+      const canPick = pickable.includes(e) && !applied.has(e.id);
+      return `<div class="advice-rec ${tag} ${picked.has(e.id) ? 'picked' : ''} ${applied.has(e.id) ? 'applied' : ''}">
+        ${canPick ? `<button class="advice-pick" data-advice-pick="${esc(key)}" data-advice-rec="${esc(e.id)}" aria-pressed="${picked.has(e.id)}" aria-label="Selecteer voor combinatie">${picked.has(e.id) ? '✔' : ''}</button>` : '<span class="advice-pick none"></span>'}
+        <div><b>${applied.has(e.id) ? '✔ Toegepast' : e.resolved ? '✔ Lost het op' : e.improved ? '↗ Helpt, lost het niet op' : '✕ Helpt niet'}${i === 0 && e.resolved && !applied.has(e.id) ? ' · beste keuze' : ''}</b><p>${esc(e.label)}</p><small>${esc(e.metric)} ${esc(e.beforeText)} → ${esc(e.afterText)} · ${Math.round(e.hpBefore)} → ${Math.round(e.hpAfter)} pk (${dHp >= 0 ? '+' : ''}${dHp}) · ${e.cost ? euro(e.cost) : 'gratis'}${e.sideEffects?.length ? ` · let op: ${esc(e.sideEffects.join('; '))}` : ''}</small></div>
+        ${(e.resolved || e.improved) && !applied.has(e.id) ? `<button class="btn small ghost" data-advice-apply="${esc(key)}" data-advice-rec="${esc(e.id)}">Toepassen</button>` : ''}</div>`;
+    };
+    const combo = bought.pickEval && bought.pickKey === [...picked].sort().join('+') ? bought.pickEval : null;
+    const comboHtml = picked.size >= 2 ? `<div class="advice-combo">${combo ? `<div class="advice-rec ${combo.resolved ? 'good' : combo.improved ? 'warn' : 'bad'}"><span class="advice-pick none"></span><div><b>Combinatie van ${picked.size}: ${combo.resolved ? '✔ lost het op' : combo.improved ? '↗ helpt' : '✕ helpt niet'}</b><small>${esc(combo.metric)} ${esc(combo.beforeText)} → ${esc(combo.afterText)} · ${Math.round(combo.hpBefore)} → ${Math.round(combo.hpAfter)} pk · ${combo.cost ? euro(combo.cost) : 'gratis'}</small></div>${combo.resolved || combo.improved ? `<button class="btn small" data-advice-apply="${esc(key)}" data-advice-rec="${esc(combo.id)}">Alles toepassen</button>` : ''}</div>`
+      : `<button class="btn small secondary" data-advice-combo="${esc(key)}">Combinatie van ${picked.size} doorrekenen</button>`}</div>` : pickable.length >= 2 ? '<small class="advice-note">Tik de vakjes aan om meerdere adviezen samen door te rekenen en in één keer toe te passen.</small>' : '';
+    return `<div class="advice-box bought"><span class="eyebrow">Tuneradvies · ${esc(recs[0]?.metric || '')}</span>${recs.map(row).join('')}${comboHtml}<small class="advice-note">Voorspeld met dezelfde simulatie als de dyno, bij dezelfde heat soak als je meting (${num(bought.soakK || 0, 1)} °C), zonder meetruis. Meet na het toepassen opnieuw.</small></div>`;
+  }
+  function adviceFamily(e) { return e.id.startsWith('part:') ? e.id.split(':').slice(0, 2).join(':') : e.id.split(':')[0]; }
+  function pickAdvice(key, recId) {
+    const bought = adviceStore()[adviceId(key)];
+    if (!bought) return;
+    const e = bought.evals.find(x => x.id === recId);
+    let picked = (bought.picked || []).filter(id => id !== recId);
+    // one option per family: picking a second turbo replaces the first
+    if (!(bought.picked || []).includes(recId)) picked = [...picked.filter(id => adviceFamily(bought.evals.find(x => x.id === id) || { id }) !== adviceFamily(e)), recId];
+    bought.picked = picked; bought.pickEval = null;
+    saveState(); haptic(6); render();
+  }
+  function evaluateAdviceCombo(key) {
+    const bought = adviceStore()[adviceId(key)];
+    if (!bought || adviceJob) return;
+    const list = (bought.picked || []).map(id => bought.evals.find(e => e.id === id)).filter(Boolean);
+    if (list.length < 2) return;
+    const snapshot = C.normalizeState(cloneJson(state));
+    adviceJob = { id: adviceId(key), key, done: 0, total: 2 };
+    render();
+    setTimeout(() => {
+      try {
+        // the combination is computed on the measured build (the same baseline the single options used)
+        const base = C.normalizeState(bought.baseState || snapshot);
+        const b0 = C.adviceBaseline(base, { soakK: bought.soakK || 0 });
+        const merged = { ...C.mergeAdvice(list), id: `combo:pick:${list.map(e => e.id).join('+')}` };
+        bought.pickEval = C.evaluateAdvice(base, key, merged, b0);
+        bought.pickKey = [...bought.picked].sort().join('+');
+        if (!bought.evals.some(e => e.id === bought.pickEval.id)) bought.evals.push(bought.pickEval);
+      } catch (e) { logAppError('advice', e); }
+      adviceJob = null; saveState(); render();
+    }, 30);
+  }
+  // ---- Optimised map (sim.js createMapOptimizer): the tuner writes the map on the dyno, paid per goal -------
+  let mapJob = null;
+  function mapStore() { if (!state.mapTunes || typeof state.mapTunes !== 'object') state.mapTunes = {}; return state.mapTunes; }
+  function mapId(goal) { return `${state.lastDynoSignature || ''}|${goal}`; }
+  const MAP_KEY_LABEL = { boostLowBar: 'boost laag', boostMidBar: 'boost midden', boostHighBar: 'boost hoog', ignitionTrimDeg: 'ontstekingstrim', lambda: 'lambda', intakeCamAdvanceDeg: 'inlaat-advance' };
+  const mapFmt = (k, v) => k.startsWith('boost') ? `${num(v, 2)} bar` : k === 'lambda' ? `${num(v, 2)} λ` : `${num(v, k === 'ignitionTrimDeg' ? 1 : 0)}°`;
+  function mapTuneBlock() {
+    const goals = Object.values(C.MAP_TUNES);
+    const card = g => {
+      const done = mapStore()[mapId(g.id)];
+      if (mapJob && mapJob.id === mapId(g.id)) return `<div class="map-tune running"><b>${esc(g.label)}: de tuner schrijft de map op de dyno… ${mapJob.opt.evals}/${mapJob.opt.total} pulls</b><i style="--p:${mapJob.opt.evals / mapJob.opt.total * 100}%"></i></div>`;
+      if (!done) {
+        const enough = Number(state.bank || 0) >= g.price;
+        return `<div class="map-tune"><div><b>${esc(g.label)}</b><small>${g.id === 'street' ? 'Ruime marges op klop, EGT, koppel, cilinderdruk en brandstof: gemaakt om lang mee te gaan.' : 'Het meeste vermogen binnen de grenzen die deze hardware net overleeft.'} Boost laag/midden/hoog, ontsteking, lambda en nokken.</small></div><button class="btn small" data-map-buy="${g.id}" ${enough && !mapJob && !adviceJob ? '' : 'disabled'}>${euro(g.price)}</button></div>`;
+      }
+      const d = Math.round(done.after.hp - done.before.hp);
+      return `<div class="map-tune done ${done.applied ? 'applied' : ''} ${done.ok ? '' : 'warn'}"><div><b>${esc(g.label)}: ${Math.round(done.before.hp)} → ${Math.round(done.after.hp)} pk (${d >= 0 ? '+' : ''}${d})${done.applied ? ' · ✔ toegepast' : ''}</b>
+        <small>${done.ok ? 'Binnen alle marges van deze map.' : 'Deze hardware haalt de marges van deze map niet volledig; dit is het dichtst dat de tuner erbij komt.'} ${done.changes.length ? done.changes.map(c => `${MAP_KEY_LABEL[c.key] || c.key} ${mapFmt(c.key, c.from)} → ${mapFmt(c.key, c.to)}`).join(' · ') : 'De huidige map is al optimaal.'}</small></div>
+        ${done.applied || !done.changes.length ? '' : `<button class="btn small" data-map-apply="${g.id}">Toepassen</button>`}</div>`;
+    };
+    return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · geoptimaliseerde map</span><h3>Laat de tuner je map schrijven</h3>${goals.map(card).join('')}<small class="advice-note">Handmatig aangepaste tabellen worden vervangen door de map van de tuner (ongedaan maken kan).</small></div>`;
+  }
+  function buyMapTune(goal) {
+    const g = C.MAP_TUNES[goal];
+    if (!g || mapJob || adviceJob || Number(state.bank || 0) < g.price || !currentDyno()) return;
+    state.bank -= g.price;
+    pushHistory({ type: 'advice', label: `${g.label} gekocht · ${euro(g.price)}` });
+    saveState();
+    const snapshot = C.normalizeState(cloneJson(state));
+    const job = mapJob = { id: mapId(goal), goal, opt: C.createMapOptimizer(snapshot, goal, { soakK: Number(state.lastDyno?.soakK) || 0 }) };
+    render();
+    const next = () => {
+      if (mapJob !== job) return;
+      let done = false;
+      try { done = job.opt.step(); } catch (e) { logAppError('map', e); done = true; }
+      if (!done) { if (activeTab === 'dyno') render(); setTimeout(next, 16); return; }
+      mapStore()[job.id] = { ...job.opt.summary(), at: new Date().toISOString(), applied: false };
+      const ids = Object.keys(state.mapTunes); if (ids.length > 8) delete state.mapTunes[ids[0]];
+      mapJob = null; saveState(); render(); showToast(`${g.label} klaar.`);
+    };
+    setTimeout(next, 30);
+  }
+  function applyMapTune(goal) {
+    const done = mapStore()[mapId(goal)];
+    if (!done) return;
+    const paths = [...Object.keys(done.patch.tune).map(k => ['tune', k])];
+    const announce = offerUndo(paths, `${done.label} toegepast. Meet opnieuw op de dyno.`);
+    state = C.applyAdvicePatch(state, done.patch);
+    done.applied = true; mapStore()[mapId(goal)] = done;
+    saveState(); haptic(14); render();
+    return announce();
   }
   function buyAdvice(key) {
     if (adviceJob || Number(state.bank || 0) < C.ADVICE_PRICE || !currentDyno()) return;
@@ -2475,7 +2571,7 @@
     const next = () => {
       if (adviceJob !== job) return;
       try {
-        if (!job.base) job.base = C.adviceBaseline(snapshot);
+        if (!job.base) job.base = C.adviceBaseline(snapshot, { soakK: Number(state.lastDyno?.soakK) || 0 });
         else if (job.done - 1 < cands.length) job.evals.push(C.evaluateAdvice(snapshot, key, cands[job.done - 1], job.base));
         else if (!job.combo) {
           job.combo = true;
@@ -2485,7 +2581,7 @@
       } catch (e) { logAppError('advice', e); }
       job.done++;
       if (job.done <= cands.length + 1) { if (activeTab === 'dyno') render(); setTimeout(next, 16); return; }
-      adviceStore()[job.id] = { at: new Date().toISOString(), key, evals: C.rankAdvice(job.evals).map(e => ({ ...e })) };
+      adviceStore()[job.id] = { at: new Date().toISOString(), key, soakK: job.base?.soakK || 0, baseState: { selections: snapshot.selections, tune: { ...snapshot.tune }, assembly: snapshot.assembly, service: snapshot.service, dynoConfig: snapshot.dynoConfig, vehicle: snapshot.vehicle, wear: snapshot.wear, damage: snapshot.damage }, evals: C.rankAdvice(job.evals).map(e => ({ ...e })), picked: [], applied: [] };
       const ids = Object.keys(state.advice); if (ids.length > 16) delete state.advice[ids[0]];
       adviceJob = null;
       saveState(); render();
@@ -2500,7 +2596,11 @@
     for (const k of ['selections', 'tune', 'service', 'assembly', 'dynoConfig']) for (const sub of Object.keys(e.patch[k] || {})) paths.push([k, sub]);
     if (Number.isFinite(e.patch.boostTableDelta)) paths.push(['tune', 'ecu']);
     const announce = offerUndo(paths, `Toegepast: ${e.label.slice(0, 80)}. Meet opnieuw op de dyno.`);
+    const bought = adviceStore()[adviceId(key)];
     state = C.applyAdvicePatch(state, e.patch);
+    // the advice stays on screen (marked applied) until the next measurement
+    const store = adviceStore(), b2 = store[adviceId(key)] || bought;
+    if (b2) { store[adviceId(key)] = b2; const ids = e.id.startsWith('combo:pick:') ? (b2.picked || []) : [e.id]; b2.applied = [...new Set([...(b2.applied || []), ...ids, e.id])]; b2.picked = []; }
     saveState(); haptic(14); render();
     return announce();
   }
@@ -5799,6 +5899,10 @@
     }
     if (btn.dataset.adviceBuy) { buyAdvice(btn.dataset.adviceBuy); return; }
     if (btn.dataset.adviceApply) return applyAdvice(btn.dataset.adviceApply, btn.dataset.adviceRec);
+    if (btn.dataset.advicePick) return pickAdvice(btn.dataset.advicePick, btn.dataset.adviceRec);
+    if (btn.dataset.adviceCombo) return evaluateAdviceCombo(btn.dataset.adviceCombo);
+    if (btn.dataset.mapBuy) return buyMapTune(btn.dataset.mapBuy);
+    if (btn.dataset.mapApply) return applyMapTune(btn.dataset.mapApply);
     if (btn.dataset.dynoCorrection) {
       const announce = offerUndo([['dynoConfig', 'correction']], `Correctienorm → ${C.DYNO_CORRECTIONS[btn.dataset.dynoCorrection]?.label || ''}`);
       state.dynoConfig.correction = btn.dataset.dynoCorrection; saveState(); haptic(6); render(); return announce();

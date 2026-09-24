@@ -1346,7 +1346,7 @@
       const wheelHp = Math.max(0, rawHp - loss.lossKw * 1.359622);
       const fuelDutyPct = Math.max(fd.dutyPct, fd.diDutyPct, fd.hpfpDutyPct, fd.mpiDutyPct);
       const railBar = fd.railBar ?? (hw.fuelSys.mpiPressureBar || 4);
-      const turboLoadPct = Math.max(tp.shaftSpeedPct, 100 - tp.chokeMarginPct),
+      const turboLoadPct = Math.max(tp.shaftSpeedPct, tp.hpShaftPct || 0, 100 - tp.chokeMarginPct),
         shaftLimit = turboMap.maxShaftRpm,
         turboShaftRpm = tp.shaftRpm,
         empBar = tp.empBarAbs - baroBar;
@@ -3191,15 +3191,17 @@
     return normalizeState(state);
   }
   // Baseline of the current build on the advice terms (no measurement noise, same conditions).
-  function adviceBaseline(inputState) {
-    const r = simulateEngine(inputState, { noise: false, soakK: 0 });
-    return { peakHp: r.peakHp, result: r };
+  // (at the heat soak of the measured pull: a prediction made on a cold cell would not match the next pull)
+  function adviceBaseline(inputState, opts = {}) {
+    const soakK = clamp(Number(opts.soakK) || 0, 0, 60);
+    const r = simulateEngine(inputState, { noise: false, soakK });
+    return { peakHp: r.peakHp, result: r, soakK };
   }
   function evaluateAdvice(inputState, key, candidate, baseline) {
     const issue = adviceIssue(key);
     const base = baseline || adviceBaseline(inputState);
     const next = applyAdvicePatch(inputState, candidate.patch);
-    const r = simulateEngine(next, { noise: false, soakK: 0 });
+    const r = simulateEngine(next, { noise: false, soakK: base.soakK || 0 });
     const before = issue.value(base.result), after = issue.value(r);
     const others = diagnoseDyno(r).filter(d => d.severity === 'danger' && d.key && !String(d.key).startsWith(String(key).split(':')[0]));
     return {
@@ -3222,9 +3224,98 @@
     const top = rankAdvice(evals).filter(e => e.improved && !e.resolved);
     const a = top[0], b = top.find(e => e.id !== a?.id && e.id.split(':')[0] !== a?.id.split(':')[0]);
     if (!a || !b) return null;
-    const merge = (x, y) => { const out = { ...x }; for (const k of Object.keys(y)) out[k] = typeof y[k] === 'object' && !Array.isArray(y[k]) ? { ...(x[k] || {}), ...y[k] } : y[k]; return out; };
-    return { id: `combo:${a.id}+${b.id}`, kind: 'combo', cost: a.cost + b.cost, label: `Combinatie: ${a.label} + ${b.label}`, patch: merge(a.patch, b.patch) };
+    return mergeAdvice([a, b]);
   }
+  // Several chosen recommendations as one change (later ones win where they touch the same setting).
+  function mergeAdvicePatches(list) {
+    const out = {};
+    for (const y of list) for (const k of Object.keys(y)) out[k] = y[k] && typeof y[k] === 'object' && !Array.isArray(y[k]) ? { ...(out[k] || {}), ...y[k] } : y[k];
+    return out;
+  }
+  function mergeAdvice(list) {
+    return { id: `combo:${list.map(e => e.id).join('+')}`, kind: 'combo', cost: list.reduce((a, e) => a + (e.cost || 0), 0),
+      label: `Combinatie: ${list.map(e => e.label).join(' + ')}`, patch: mergeAdvicePatches(list.map(e => e.patch)) };
+  }
+
+  // ---- Optimised maps (paid tuner service) --------------------------------------------------------------
+  // The tuner sits on the dyno and writes the quick-setup map (boost low/mid/high, spark trim, lambda, cam)
+  // for this hardware: a coordinate search on the same dyno simulation, within the limits of the chosen
+  // goal. Street: big margins (reliability, knock, EGT); race: the most power the engine survives.
+  const MAP_TUNES = {
+    street: { id: 'street', label: 'Straatmap (veilig)', price: 450, knockMax: 0.9, egtMaxC: 940, fuelDutyMax: 88, turboLoadMax: 94, torqueFrac: 0.88, clampFrac: 0.85, hpFrac: 0.9, budget: 22 },
+    race: { id: 'race', label: 'Racemap (maximaal)', price: 950, knockMax: 0.98, egtMaxC: 990, fuelDutyMax: 95, turboLoadMax: 99, torqueFrac: 0.98, clampFrac: 0.95, hpFrac: 1.0, budget: 30 }
+  };
+  const MAP_PARAMS = [
+    { key: 'boostMidBar', step: 0.15, min: 0, max: 4.2 },
+    { key: 'boostHighBar', step: 0.15, min: 0, max: 4.5 },
+    { key: 'boostLowBar', step: 0.15, min: 0, max: 4.2 },
+    { key: 'ignitionTrimDeg', step: 1, min: -8, max: 7 },
+    { key: 'lambda', step: 0.02, min: 0.7, max: 0.9 },
+    { key: 'intakeCamAdvanceDeg', step: 4, min: -5, max: 30 }
+  ];
+  // Only the margins a map changes count (the reliability score also carries wear, oil and bench state).
+  function mapLimits(state) {
+    const parts = ['block', 'crank', 'oiling', 'head', 'valvetrain', 'ecu'].map(c => getPart(state, c));
+    return {
+      torqueNm: minPositive(...parts.map(p => p.torqueLimit), getPart(state, 'transmission').transTorque),
+      hp: minPositive(...parts.map(p => p.hpLimit)),
+      clampBmep: Number(getPart(state, 'sealing').headClampBmep) || 60
+    };
+  }
+  function mapScore(r, goal, lim) {
+    const done = r.status === DYNO_STATUS.COMPLETED;
+    const v = (x, l) => Math.max(0, Number(x || 0) / l - 1);
+    const viol = (done ? 0 : 3) + v(r.peakTorqueNm, lim.torqueNm * goal.torqueFrac) * 5 + v(r.peakHp, lim.hp * goal.hpFrac) * 5 + v(r.maxBmepBar, lim.clampBmep * goal.clampFrac) * 5 + v(r.maxKnockRisk, goal.knockMax) * 5 +
+      v(r.maxEgtC, goal.egtMaxC) * 5 + v(r.maxFuelDuty, goal.fuelDutyMax) * 3 + v(r.maxTurboLoad, goal.turboLoadMax) * 3;
+    const hp = Number(r.peakHp || 0), top = (r.samples || []).filter(p => p.rpm >= 3500);
+    const area = top.length ? top.reduce((a, p) => a + p.hp, 0) / top.length : 0;
+    return { ok: viol === 0, score: viol === 0 ? hp * 0.6 + area * 0.4 : -1000 - viol * 100 + hp * 0.01, hp, viol };
+  }
+  // Stepwise optimiser for the app (one dyno simulation per step()): { step() -> done, best, evals, total }
+  function createMapOptimizer(inputState, goalId, opts = {}) {
+    const goal = MAP_TUNES[goalId] || MAP_TUNES.street;
+    const base = normalizeState(inputState);
+    const hwMax = Number(getPart(base, 'boostControl').boostHardwareMaxBar) || 4.5;
+    const soakK = clamp(Number(opts.soakK) || 0, 0, 60);
+    const run = tune => simulateEngine(applyAdvicePatch(base, { tune: { ...tune, ecu: null } }), { noise: false, soakK });
+    const pick = t => Object.fromEntries(MAP_PARAMS.map(p => [p.key, Number(t[p.key])]));
+    const start = pick(base.tune);
+    const baseRes = simulateEngine(base, { noise: false, soakK }), lim = mapLimits(base);
+    let best = { tune: start, result: run(start) }; best.s = mapScore(best.result, goal, lim);
+    const steps = Object.fromEntries(MAP_PARAMS.map(p => [p.key, p.step]));
+    const queue = [];
+    let evals = 1, improvedRound = false, rounds = 0;
+    const refill = () => {
+      rounds++;
+      if (!improvedRound) for (const k of Object.keys(steps)) steps[k] /= 2;
+      improvedRound = false;
+      for (const p of MAP_PARAMS) for (const dir of [1, -1]) queue.push([p, dir]);
+    };
+    refill(); improvedRound = true;
+    function step() {
+      if (evals >= goal.budget) return true;
+      if (!queue.length) { if (rounds > 4) return true; refill(); }
+      const [p, dir] = queue.shift();
+      const cap = /^boost/.test(p.key) ? Math.min(p.max, hwMax) : p.max;
+      const v = round(clamp(best.tune[p.key] + dir * steps[p.key], p.min, cap), 3);
+      if (v === best.tune[p.key]) return false;
+      const tune = { ...best.tune, [p.key]: v };
+      const result = run(tune);
+      evals++;
+      const sc = mapScore(result, goal, lim);
+      if (sc.score > best.s.score + 0.2) { best = { tune, result, s: sc }; improvedRound = true; queue.unshift([p, dir]); }
+      return evals >= goal.budget;
+    }
+    function summary() {
+      const b0 = mapScore(baseRes, goal, lim);
+      return { goal: goal.id, label: goal.label, price: goal.price, ok: best.s.ok, evals, before: { hp: baseRes.peakHp, reliability: baseRes.reliabilityScore, ok: b0.ok },
+        after: { hp: best.result.peakHp, reliability: best.result.reliabilityScore, knock: best.result.maxKnockRisk, egtC: best.result.maxEgtC },
+        tune: best.tune, changes: MAP_PARAMS.filter(p => Math.abs(best.tune[p.key] - start[p.key]) > 1e-6).map(p => ({ key: p.key, from: start[p.key], to: best.tune[p.key] })),
+        patch: { tune: { ...best.tune, ecu: null } } };
+    }
+    return { step, summary, get evals() { return evals; }, total: goal.budget };
+  }
+
 
   function applyPreset(inputState, presetId) {
     const state = normalizeState(inputState, { noEcu: true }),
@@ -3545,6 +3636,9 @@
     evaluateAdvice,
     rankAdvice,
     adviceCombination,
+    mergeAdvice,
+    MAP_TUNES,
+    createMapOptimizer,
     applyPreset,
     totalPartsPrice,
     evaluateChallenges,

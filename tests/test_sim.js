@@ -194,6 +194,7 @@ const adviceSuite = require('./test_advice.js');
 // Stroker/destroker, welded head, compound boost, driver nitrous.
 const phase8Suite = require('./test_phase8.js');
 const phase9Suite = require('./test_phase9.js');
+const phase10Suite = require('./test_phase10.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -219,7 +220,8 @@ const report = {
   tyres: tyreSuite,
   advice: adviceSuite,
   phase8: phase8Suite,
-  phase9: phase9Suite
+  phase9: phase9Suite,
+  phase10: phase10Suite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

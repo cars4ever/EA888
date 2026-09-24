@@ -554,7 +554,10 @@
       compressorOutC: a.t2 - 273.15,
       manifoldC: tMan - 273.15,
       surgeMarginPct: Math.min(ptL.surgeMarginPct, ptH.surgeMarginPct),
-      chokeMarginPct: Math.min(ptL.chokeMarginPct, ptH.chokeMarginPct),
+      // past its choke line the HP wheel stops adding pressure and the bypass carries the flow: that is lost
+      // efficiency (the shaft balance feels it), not a load limit; the HP stage's load is its shaft speed
+      chokeMarginPct: ptL.chokeMarginPct,
+      hpChokeMarginPct: ptH.chokeMarginPct,
       compressorKw: a.lpKw + a.hpKw,
       turbineKw: e.lpKw + e.hpKw,
       empBarAbs: e.p3,

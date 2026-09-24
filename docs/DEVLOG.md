@@ -427,6 +427,28 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - Tests: tests/test_phase9.js (rpm chain and ECU cap, series-compound invariants, full-throttle burnout);
   the burnout regression in tests/test_tyres.js now checks that the revs never fall back.
 
+## 18. Compound EMP control, N2O arm switch, tuner help 2.0, optimised maps (v1.14.0)
+
+- Compound regression (1.13.0): a small HP turbine (e.g. a K03) choked the exhaust; the manifold pressure
+  reached 9-12 bar and fed back through the residuals to a ~2900 C EGT on the dyno. The controller now
+  opens the HP turbine bypass as far as needed to keep EMP <= 1.9 x MAP (absolute), the bypass valve is
+  sized for the full exhaust flow (the LP turbine's capacity), and past its choke line the HP wheel loses
+  efficiency (the shaft balance hands the work to the LP turbo) instead of the system dropping to the LP
+  turbo alone before it has spooled. The turbo load of a compound is the LP map margin plus both shaft
+  speeds (an HP wheel past choke is lost efficiency, not a 200 % load).
+- N2O in the race is an arm switch: tap on/off (holding it blocked the shift taps on some phones); armed,
+  the system sprays whenever the engine fires at full throttle. Bigger button with its state; the rival
+  badge moved to the left so it no longer covers it.
+- Tuner advice: recommendations can be ticked and evaluated together (one simulated combination, merged
+  patch, applied in one tap, one option per family); the advice stays on screen marked "applied" until the
+  next pull; predictions run at the heat soak of the measured pull.
+- Optimised maps (tuner help, paid): street map (EUR 450, wide margins) and race map (EUR 950, the most
+  the hardware survives). createMapOptimizer runs a coordinate search over boost low/mid/high, spark trim,
+  lambda and cam on the dyno simulation; the constraints are the margins a map controls (torque and power
+  against the weakest part, BMEP against the head clamp, knock, EGT, fuel duty, turbo load). Applying it
+  rebuilds the ECU tables from the new quick setup (undo restores the previous tables).
+- Tests: tests/test_phase10.js; the compound EMP/EGT regression in tests/test_phase9.js.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
