@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.15.0)
+# EA888 LAB — handoff (stand na v1.16.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–19).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–20).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.15.0 (versionCode 250)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.16.0 (versionCode 260)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke 136/136.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
@@ -23,7 +23,7 @@ Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.m
 | `src/web/race3d.js` | three.js-racebaan, camera's, rook/vlammen, replay |
 | `src/web/scirocco.js` | **procedurele 3D-Scirocco Mk3** (loft van doorsneden) — hier komt het Hunyuan3D-model |
 | `data/turbo/*.json`, `data/engine/*` | turbo- en motordata met herkomst (`mapType`) |
-| `tools/` | builds, smoke-test, `car_preview.py` (3D-auto renderen), `erase_plates.py` (kenteken weg) |
+| `tools/` | builds, smoke-test, `car_preview.py` (3D-auto), `track_preview.py` (baan, per kwaliteitstier), `browser_env.py` (headless Chromium), `car3d/` (foto's → Hunyuan3D → Blender → GLB), `erase_plates.py` (kenteken weg) |
 
 ## Commando's
 
@@ -37,7 +37,10 @@ python3 tools/car_preview.py --out /tmp/car   # 3D-auto van 6 kanten (rear, chas
 
 - De smoke-test duurt ~25 min. `--dpr 1` op trage software-GL-hosts (headless 3D ~1 fps); met een echte GPU kan
   de standaard `--dpr 2`.
-- Headless Chromium: `executable_path='/usr/bin/chromium'` staat in de tools; pas aan op een andere machine.
+- Headless Chromium: `tools/browser_env.py` zoekt hem via `$EA888_CHROMIUM`, dan de eigen build van
+  Playwright (`python3 -m playwright install chromium`), dan de systeempaden. Niets meer aan te passen.
+- Baan bekijken zonder de hele app: `python3 tools/track_preview.py --out /tmp/track --quality high`
+  (acht vaste punten op de baan; `--quality high|medium|low`).
 
 ## Release bouwen (getekend)
 
@@ -53,7 +56,23 @@ ANDROID_HOME=/pad/naar/android-sdk python3 tools/build_android.py
   `ea888-lab-release.jks` + `ea888-lab-release-key.txt`; zet ze op de server buiten de repo.
 - Android SDK: `tools/setup_android_sdk.sh`.
 
-## Volgende stap: Hunyuan3D-2 voor de Scirocco (en objecten langs de baan)
+## Volgende stap: vier nieuwe foto's, dan de auto opnieuw met multi-view
+
+De pipeline staat (`tools/car3d/`, zie de README daar) en is gemeten; DEVLOG 20 zegt wat er uit kwam.
+Kort: uit één schone zijfoto komt een goede Scirocco-silhouet, maar voor- en achterkant zijn verzonnen, en
+multi-view werd **slechter** omdat er geen recht-van-voren foto is. Afgesproken met de eigenaar:
+
+1. Vier foto's in **één sessie**: recht van voren, recht van achteren, links haaks, rechts haaks. Zelfde
+   rijhoogte, egale achtergrond (muur/garagedeur), droog, van een afstand met een lange brandpuntsafstand.
+   In `src/assets/images/` zetten en eerst door `tools/erase_plates.py`.
+2. `python3 tools/car3d/prep_inputs.py`, dan `gen_shape.py mv --port 7870 --octree 384`.
+3. `postprocess.py` (let op `--yaw`, zie `probe.py`), `render_views.py`, vergelijken met de foto's.
+4. Pas daarna integreren in `buildScirocco()`; het procedurele model blijft fallback en ghost-auto.
+
+Valt het opnieuw tegen: een gekocht Scirocco Mk3-model (Sketchfab/CGTrader, €30–150, licentie moet
+app/game-gebruik toestaan) door dezelfde stappen 3–5 hieronder.
+
+## Achtergrond: de oorspronkelijke Hunyuan3D-2-opzet (stappen 3–5 gelden nog)
 
 Doel: het procedurele model in `src/web/scirocco.js` vervangen door een echt 3D-model van Randy's blauwe
 Scirocco, zonder de physics-koppeling te breken.
@@ -83,18 +102,24 @@ Scirocco, zonder de physics-koppeling te breken.
 
 ## Daarna (afgesproken volgorde)
 
-1. Licht en sfeer in `race3d.js`: bloom (UnrealBloomPass), nacht-HDRI (Poly Haven, CC0), natte reflecterende
-   baan bij de waterbak, belichte rook.
-2. Baan: tribunes/publiek, lichtmasten, borden, startboom als model; licht bakken met Blender Cycles op de GPU.
+1. ~~Licht en sfeer in `race3d.js`~~ — gedaan in 1.16.0: bloom, foto-asfalt/beton (Poly Haven CC0),
+   belichte rook, spiegeling in de waterbak, kwaliteitstiers per onderdeel. Nog open: een echte nacht-HDRI
+   (de procedurele omgeving is op de lichtmasten getekend en geeft de strepen over de lak, een generieke
+   HDRI verliest die) en licht bakken met Cycles.
+2. Baan: tribunes/publiek, lichtmasten, borden en startboom staan er procedureel; als model met gebakken
+   licht (Blender Cycles op de GPU) kan het scherper.
 3. Gameplay: online ghosts/tijdlijst, broadcast-replay, weer/baanconditie per raceweekend, carrièrediepte,
    turbinehuis-A/R als onderdeel.
 
-## Bekende beperkingen (zie DEVLOG 19)
+## Bekende beperkingen (zie DEVLOG 19 en 20)
 
 - Alle Precision-turbines hebben één middelgroot turbinehuis (geschaald naar wielmaat): grote turbo's
   (PT7675+) komen op 2.0 L laat op druk. A/R-keuze is de oplossing.
 - Compound: geen interstage-intercooler; HP-compressor volledig in of uit de stroom.
-- Headless smoke-test draait 3D in software-GL; echte telefoonprestaties op een toestel meten.
+- Headless smoke-test draait 3D in software-GL; echte telefoonprestaties op een toestel meten. De
+  kwaliteitstier schakelt zichzelf terug bij >22 ms per frame (`opts.onQuality` meldt dat); dat is nog niet
+  op een echt toestel gemeten.
+- De 3D-auto is nog het procedurele model; de gegenereerde carrosserie haalde het niet (DEVLOG 20).
 
 ## Afspraken en regels
 

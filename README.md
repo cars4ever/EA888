@@ -12,7 +12,16 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.15.0 (branch `claude-dev`) — physics audit, a sensible tuner, clutch-slip burnout
+## v1.16.0 (branch `claude-dev`) — night lighting, photo track surfaces, quality tiers
+
+- Bloom over the whole race: the floodlights, the tree, the tail lights and the exhaust flames glow.
+- The strip and the launch pad are photographed asphalt and concrete (Poly Haven, CC0) under the painted markings.
+- Tyre smoke is lit: it goes warm where it rises into the floodlights, red behind the tail lights, and takes the colour of an exhaust flame.
+- The water box mirrors the car, the walls and the floodlights.
+- Quality is per feature (bloom, reflections, lit smoke, pixel ratio) in three tiers. The renderer measures its own frame cost and steps down on a phone that cannot hold ~45 fps.
+- A 3D car pipeline (photos → Hunyuan3D → Blender → GLB) is in `tools/car3d/`. The car in this build is still the procedural model: see DEVLOG 20 for what the generated body did and did not deliver.
+
+## v1.15.0 — physics audit, a sensible tuner, clutch-slip burnout
 
 - The model is checked against the rules of thumb in Graham Bell's Forced Induction Performance Tuning (airflow per hp, BSFC, EGT, compressor outlet temperature, intercooler, back pressure, VE, turbo lag); turbine efficiency and turbo lag corrected.
 - Tuner advice never calls a fix that halves your power the best choice; maps are better, safer (explained) or not sold.

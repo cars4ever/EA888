@@ -474,6 +474,67 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
   floor rpm: four driven tyres under the full weight cannot be spun without boost.)
 - Tests: tests/test_physics_audit.js, tests/test_phase10.js sections 5-6.
 
+## 20. Night lighting, photo track surfaces, quality tiers, and what Hunyuan3D delivered (v1.16.0)
+
+- **Bloom.** The race renders through an EffectComposer (RenderPass -> UnrealBloomPass -> OutputPass). The
+  emitters in the scene are authored well above white (floodlight heads 3.2, environment lamps 8, tree bulbs
+  up to 4, tail bar 3.2), while the clearcoat highlight on the paint peaks just over 1. The bloom threshold
+  sits at 1.75, between the two: the lamps, the tree, the tail lights and the flames glow, and a reflection
+  sliding over the flank no longer blows the car out (at the first threshold, 1.02, the burnout shot was a
+  white streak across the whole bonnet).
+- **Quality per feature, not one slider.** bloom strength, water reflections, lit smoke and the pixel ratio
+  are separate switches, grouped into high/medium/low only as a default. The tier is guessed from
+  deviceMemory/hardwareConcurrency and then corrected by measurement: the renderer averages its own frame
+  cost over 60 frames and steps down a tier (at most twice) when that exceeds 22 ms, reporting it through
+  opts.onQuality. quality() and setQuality() expose it, so a settings screen can override it.
+- **Track surfaces.** The strip and the launch pad now carry photographed asphalt and concrete (Poly Haven
+  'Asphalt Track' and 'Brushed Concrete', CC0, app use permitted) on their own plane, with the drawn lane
+  lines, rubber and expansion joints as a transparent layer just above. Both are desaturated (0.18/0.15) and
+  darkened to the night exposure before shipping; together 150 KB. Two things had to be worked around: a
+  canvas that has drawn a cross-origin image cannot be uploaded as a WebGL texture, so the photos are loaded
+  straight into a texture instead of being composited on the canvas the markings are drawn on; and the
+  floodlight pools (14 m planes, several deep along the strip) washed the new asphalt out to sand, so they
+  are down from 0.28 to 0.13 and less orange.
+- **Lit smoke.** Each smoke sprite is shaded from its height (low down it is in its own shadow, higher it
+  catches the floodlights) and from the car: the tail lights wash the cloud behind it red and an exhaust
+  flame throws its own colour into it. flames.update() returns the intensity and colour it is drawing so
+  the smoke can use them. A colour per sprite, 240 at most, and off on the low tier.
+- **Water box.** A planar Reflector (512) on the high tier, so the car, the walls and the floodlights stand
+  in the water; the flat pane above it thins to 0.45 opacity when the mirror carries the image. It is built
+  on first use and follows the tier, including a step down from the watchdog.
+- **tools/track_preview.py** renders eight fixed points on the strip (burnout, staging, tree, launch, mid,
+  finish, side, high) at a chosen tier, serving the page from the app's own https origin as
+  WebViewAssetLoader does on Android. **tools/browser_env.py** resolves the headless Chromium from
+  $EA888_CHROMIUM, Playwright's own build or the system paths, instead of the hard-coded /usr/bin/chromium.
+
+### The Hunyuan3D car: measured, and not shipped
+
+The pipeline is in `tools/car3d/` (rembg -> Hunyuan3D -> Blender -> GLB) and works end to end. The body it
+produces is **not** in this build. What the runs showed, on an RTX 3090:
+
+| Input | Model | Result |
+|---|---|---|
+| one clean side photo | Hunyuan3D-2.1, octree 512, 60 steps, 155 s | best: correct silhouette and proportions (4.256 x 1.99 x 1.36 m), roofline, C-pillar, shoulder line, arch flares, sill, mirror, roof spoiler all read as a Scirocco Mk3 |
+| 3/4 hero photo | same | worse: the parked car and the fence in the background came through as debris on the roof |
+| front/back/left/right | Hunyuan3D-2mv, octree 384 | **worse than one photo**: a wide lumpy fusion, 3.7 m across |
+
+The multi-view model needs a straight-on front view and there is none; standing the 3/4 hero in for it makes
+the views contradict each other, and the four photos come from three sessions (wet and dry, different ride
+height). The single-photo body is good in profile but its front and rear are invented: no readable
+headlights or grille, a generic rear with none of the car's wraparound tail lights or diffuser, and no panel
+gaps anywhere. The rear is the side the chase camera shows most.
+
+Agreed with the owner: **shoot four photos in one session** (straight on from the front, the rear and both
+sides, same ride height, plain background, dry, from a distance with a long focal length) and run multi-view
+again. Until then the procedural model in `src/web/scirocco.js` stays.
+
+Notes for that run: the multi-view weights (`tencent/Hunyuan3D-2mv`) are a 2.0-generation checkpoint whose
+`config.yaml` names `hy3dgen.shapegen.*` modules, while the 2.1 container calls the same classes
+`hy3dshape.*`; rewriting those six `target:` lines in a copy of the model directory is enough to load it,
+and the `--model_path` must contain `mv` because that is what switches the app into multi-view mode. The
+Blender step needs `--yaw` set from the orientation the generator happened to pick (`probe.py` prints the
+bounding box).
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
