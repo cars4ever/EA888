@@ -12,7 +12,14 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.16.0 (branch `claude-dev`) — night lighting, photo track surfaces, quality tiers
+## v1.17.0 (branch `claude-dev`) — the car is a scan of the real Scirocco
+
+- The player's car is now a body generated from the owner's own photos (Hunyuan3D multi-view, cleaned up in Blender), not the procedural shell.
+- The procedural car stays as the ghost, as the fallback, and on the lowest quality setting.
+- Wheels, exhaust flames and the brake light work exactly as before.
+- Honest limits: the front has no crisp headlight or grille shapes and there are no panel gaps. See DEVLOG 21.
+
+## v1.16.0 — night lighting, photo track surfaces, quality tiers
 
 - Bloom over the whole race: the floodlights, the tree, the tail lights and the exhaust flames glow.
 - The strip and the launch pad are photographed asphalt and concrete (Poly Haven, CC0) under the painted markings.

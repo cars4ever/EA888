@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.16.0)
+# EA888 LAB — handoff (stand na v1.17.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–20).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–21).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.16.0 (versionCode 260)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.17.0 (versionCode 270)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke 136/136.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
@@ -21,7 +21,7 @@ Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.m
 | `src/assets/app.js` | UI, spelverloop, audio, dyno-/race-schermen |
 | `src/assets/engine-voice.js` | realtime motorgeluid (AudioWorklet) |
 | `src/web/race3d.js` | three.js-racebaan, camera's, rook/vlammen, replay |
-| `src/web/scirocco.js` | **procedurele 3D-Scirocco Mk3** (loft van doorsneden) — hier komt het Hunyuan3D-model |
+| `src/web/scirocco.js` | de 3D-Scirocco: gescande carrosserie (`src/assets/models/scirocco-body.glb`) plus de procedurele loft als ghost/fallback, wielen, lampen, uitlaatankers |
 | `data/turbo/*.json`, `data/engine/*` | turbo- en motordata met herkomst (`mapType`) |
 | `tools/` | builds, smoke-test, `car_preview.py` (3D-auto), `track_preview.py` (baan, per kwaliteitstier), `browser_env.py` (headless Chromium), `car3d/` (foto's → Hunyuan3D → Blender → GLB), `erase_plates.py` (kenteken weg) |
 
@@ -56,24 +56,24 @@ ANDROID_HOME=/pad/naar/android-sdk python3 tools/build_android.py
   `ea888-lab-release.jks` + `ea888-lab-release-key.txt`; zet ze op de server buiten de repo.
 - Android SDK: `tools/setup_android_sdk.sh`.
 
-## Volgende stap: vier nieuwe foto's, dan de auto opnieuw met multi-view
+## Volgende stap: de voorkant van de auto
 
-De pipeline staat (`tools/car3d/`, zie de README daar) en is gemeten; DEVLOG 20 zegt wat er uit kwam.
-Kort: uit één schone zijfoto komt een goede Scirocco-silhouet, maar voor- en achterkant zijn verzonnen, en
-multi-view werd **slechter** omdat er geen recht-van-voren foto is. Afgesproken met de eigenaar:
+De auto is sinds 1.17.0 een scan van de echte Scirocco (DEVLOG 21). Wat nog niet goed is:
 
-1. Vier foto's in **één sessie**: recht van voren, recht van achteren, links haaks, rechts haaks. Zelfde
-   rijhoogte, egale achtergrond (muur/garagedeur), droog, van een afstand met een lange brandpuntsafstand.
-   In `src/assets/images/` zetten en eerst door `tools/erase_plates.py`.
-2. `docker start hunyuan3d-2mv` (staat klaar op poort 7870 met het gepatchte multi-view model; laden duurt
-   een paar minuten, `docker logs` zegt "Models Loaded"). Let op het geheugen: met beide Hunyuan-containers
-   tegelijk zit 64 GB RAM vol — stop `hunyuan3d-21` als je hem niet nodig hebt.
-   Dan `python3 tools/car3d/prep_inputs.py` en `gen_shape.py mv --port 7870 --octree 384`.
-3. `postprocess.py` (let op `--yaw`, zie `probe.py`), `render_views.py`, vergelijken met de foto's.
-4. Pas daarna integreren in `buildScirocco()`; het procedurele model blijft fallback en ghost-auto.
+1. **Voorkant.** Geen scherpe koplamp- of grillevormen; de lamp is een opgelegd vlak. Er is nog steeds geen
+   recht-van-voren foto. Eén zo'n foto (op ~1,2 m hoogte, 5–8 m afstand, wielen rechtuit, egale achtergrond)
+   en de multi-view kan opnieuw met vier kloppende views.
+2. **Geen panelnaden** (deuren, motorkap, tankklep) — die zou je in Blender in kunnen snijden, of laten zitten.
+3. **Wielkastrand is iets rafelig** waar `postprocess.py` de wielen wegknipt.
+4. **Rechterzijde ontbreekt nog**: nu de gespiegelde linkerkant. Voor een symmetrische auto prima, maar een
+   echte rechterfoto zou het bevestigen.
 
-Valt het opnieuw tegen: een gekocht Scirocco Mk3-model (Sketchfab/CGTrader, €30–150, licentie moet
-app/game-gebruik toestaan) door dezelfde stappen 3–5 hieronder.
+Werkwijze staat in `tools/car3d/README.md`. Kort: `prep_inputs.py`, `gen_shape.py mv --port 7870
+--octree 512 --steps 70`, `probe.py` voor de yaw, `postprocess.py`, `materials.py`, `probe_tail.py` voor de
+lamphoogtes, `gltf-transform optimize --compress meshopt`, dan `car_preview.py` en `track_preview.py`.
+
+Valt een nieuwe poging tegen: een gekocht Scirocco Mk3-model (Sketchfab/CGTrader, €30–150, licentie moet
+app/game-gebruik toestaan) door dezelfde stappen.
 
 ## Achtergrond: de oorspronkelijke Hunyuan3D-2-opzet (stappen 3–5 gelden nog)
 
@@ -122,7 +122,12 @@ Scirocco, zonder de physics-koppeling te breken.
 - Headless smoke-test draait 3D in software-GL; echte telefoonprestaties op een toestel meten. De
   kwaliteitstier schakelt zichzelf terug bij >22 ms per frame (`opts.onQuality` meldt dat); dat is nog niet
   op een echt toestel gemeten.
-- De 3D-auto is nog het procedurele model; de gegenereerde carrosserie haalde het niet (DEVLOG 20).
+- De gescande carrosserie heeft geen scherpe koplampen/grille en geen panelnaden (DEVLOG 21); de voorkant
+  is de zwakke kant. Op de laagste kwaliteitsstand rijdt het procedurele model (36k driehoeken per auto
+  tegen ~7k).
+- De foto's van de eigenaar staan **niet** in de repo. Wordt er ooit textuur gebakken, dan eerst de
+  kentekens eraf met `tools/erase_plates.py` (vakken met het oog controleren; de automatische detectie
+  vond ze in deze set niet betrouwbaar).
 
 ## Afspraken en regels
 

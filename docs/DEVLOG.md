@@ -555,6 +555,57 @@ and the `--model_path` must contain `mv` because that is what switches the app i
 Blender step needs `--yaw` set from the orientation the generator happened to pick (`probe.py` prints the
 bounding box).
 
+## 21. The scanned car (v1.17.0)
+
+The owner shot seven more photos. Seven, all from the left of the car: two square-on left profiles (one dry
+and sharp, one from the same wet session as the old side photo), three 3/4 front-left and two 3/4 rear-left.
+Still no straight-on front and no right-hand side. What made the difference anyway was the existing
+`randy-scirocco-rear-photo.png`, which is a square-on rear: left + rear + a mirrored left are three
+consistent views, and Hunyuan3D-2mv needs a fourth only because it insists on a `front` key.
+
+| Input | Result |
+|---|---|
+| the new dry side photo alone, octree 512 | worse than the old one: a tall bulbous greenhouse. The side windows are see-through in this shot (bright green trees) and the generator read the glasshouse as solid volume |
+| multi-view: 3/4 front, rear photo, left, mirrored left, octree 384 | the real thing - but the cowl came out as a field of ragged geometry |
+| the same at octree 512 / 70 steps / another seed | **the one shipped**: the cowl is clean, the rear carries the wraparound tail light line, the diffuser fins and the twin oval tailpipes, and the profile is a Scirocco Mk3 at 4.256 x 2.19 x 1.41 m |
+| the same with a different 3/4 front photo | a 3.8 m wide blob |
+
+So multi-view does work, with views that agree; the single-photo attempts in DEVLOG 20 failed because the
+four photos did not. The front is still the weak side: no crisp headlight or grille shapes, no panel gaps
+anywhere, and the wheel-arch cut leaves a slightly ragged lip. The rear - which the chase camera shows most
+of the time - is good.
+
+### Getting it into the game
+
+- **Orientation.** The multi-view model comes out with the length already along Y, where the single-image
+  ones needed a 90 degree yaw. `tools/car3d/probe.py` prints the bounding box; the yaw is set from it. Wrong
+  yaw is not subtle: the car scales to 8.8 m wide.
+- **Materials.** Blender assigns only `paint` and `trim` (dark, below 0.36 m: bumpers, sills, diffuser).
+  Cutting the lights out of the mesh by position and normal was tried twice and both times gave something
+  wrong - half the hatch, then two ragged blobs - because the generated recesses are soft.
+- **The lamps are laid onto the surface instead.** A subdivided patch whose every vertex is dropped onto the
+  body by a ray along the car's axis and lifted 4 mm clear, so it follows the real curvature instead of
+  floating as a flat card. Their heights are measured, not guessed: `tools/car3d/probe_tail.py` prints a
+  depth map of the tail and the nose, and the tail shows a band recessed 3-4 cm at y = 0.70..0.82 (the light
+  line) with a second recess at 0.50..0.58 (the plate). Two things had to be handled: a ray near the outer
+  edge slips past the nose and lands on the wing a metre further back, which dragged the patch out into a
+  wedge hanging off the car (rejected now against the patch's median depth, with a tolerance per lamp
+  because the nose is genuinely raked - 36 cm to 92 cm across the headlight); and a PlaneGeometry faces +Z,
+  so a lamp on the nose faced into the car and was culled away until its winding was reversed.
+- **One Object3D cannot hang in two cars.** `loadBody()` resolves with a single scene, and adding it to the
+  second car reparented it out of the first: with a rival on the strip the player had wheels and no body.
+  Each car clones it; the geometry is shared, only the node tree is new.
+- **Frame cost.** 36k triangles a car, so 72k with a rival where the procedural body was ~7k. The strip
+  itself is ~6k. The low quality tier therefore keeps the procedural body and everything else about the car
+  stays the same. High tier measures 42.8k triangles a frame against 14.6k before.
+- **Size.** 618 KB as meshopt (EXT_meshopt_compression + KHR_mesh_quantization), decoded by three's own
+  `meshopt_decoder.module.js`, which bundles - no separate wasm file to ship. Draco would have needed one.
+
+The registration is not in the model: only shape is generated (`/shape_generation` returns an untextured
+mesh), the photos are not committed, and the 3D plate recess is left blank as before. If a texture is ever
+baked from these photos, the plates have to be erased first - `tools/erase_plates.py` with boxes checked by
+eye, because neither the shipped detector nor a wider one found them reliably in this set.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
