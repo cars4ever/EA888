@@ -680,6 +680,28 @@
   function minPositive(...values) {
     return Math.min(...values.filter(v => Number.isFinite(v) && v > 0));
   }
+  // Mechanical rpm limits, weakest first. The ECU is not in this chain: an ECU that cannot command a
+  // higher limiter caps the revs (fuel/spark cut), it does not float valves.
+  const RPM_LIMIT_PARTS = {
+    valvetrain: rpm => `Valve-float: de klepveren/kleppen houden boven ~${rpm} rpm de nok niet meer bij.`,
+    head: rpm => `Valve-float: de nokkenassen/kop zijn niet gemaakt voor meer dan ~${rpm} rpm (nokprofiel en kleppen verliezen contact).`,
+    block: rpm => `Mechanische over-rev: zuigers/drijfstangen van het onderblok zijn gemaakt voor ~${rpm} rpm (massakrachten).`,
+    crank: rpm => `Mechanische over-rev: de krukas/demper is gemaakt voor ~${rpm} rpm (torsietrilling).`,
+    oiling: rpm => `Over-rev van het oliesysteem: boven ~${rpm} rpm schuimt/cavitert de olie en droogt het lager.`
+  };
+  function rpmLimitChain(inputState) {
+    const state = normalizeState(inputState);
+    const parts = Object.keys(RPM_LIMIT_PARTS).map(cat => { const p = getPart(state, cat); return { category: cat, id: p.id, name: p.name, rpm: Number(p.rpmLimit) || Infinity }; })
+      .sort((a, b) => a.rpm - b.rpm);
+    const ecu = getPart(state, 'ecu');
+    return { weakest: parts[0], parts, ecu: { id: ecu.id, name: ecu.name, rpm: Number(ecu.rpmLimit) || Infinity } };
+  }
+  // The limiter the ECU actually runs: the tune value, capped by what the ECU can command.
+  function effectiveRevLimit(state) {
+    const tuneRev = clamp(Math.round(Number(state.tune.revLimitRpm || 8000) / 100) * 100, 5000, 10500);
+    const ecuMax = Number(getPart(state, 'ecu').rpmLimit) || Infinity;
+    return Math.min(tuneRev, Math.floor(ecuMax / 100) * 100);
+  }
   function addWarning(list, condition, text, severity = 'warn', system = 'algemeen') {
     if (condition) list.push({ text, severity, system });
   }
@@ -692,6 +714,7 @@
       mechanicalHpLimit,
       componentTorqueLimit,
       componentRpmLimit,
+      rpmLimiter,
       sealing,
       ignition,
       oiling,
@@ -707,8 +730,13 @@
       return fail('mechanical_power', 'engine', 'Onderblok/krukas overschreed de mechanische vermogensmarge.', over(point.hp, mechanicalHpLimit * 1.18));
     if (point.torqueNm > componentTorqueLimit * 1.18)
       return fail('torque', 'engine', 'Koppelpiek overschreed de grens van motor of transmissie.', over(point.torqueNm, componentTorqueLimit * 1.18));
-    if (point.rpm > componentRpmLimit * 1.04)
-      return fail('overrev', 'engine', 'Valve-float of mechanische over-rev.', over(point.rpm, componentRpmLimit * 1.04, 0.1));
+    if (point.rpm > componentRpmLimit * 1.04) {
+      const w = rpmLimiter || { category: 'valvetrain', name: 'kleppentrein', rpm: componentRpmLimit };
+      const ev = fail('overrev', 'engine', `${RPM_LIMIT_PARTS[w.category](Math.round(w.rpm))} Begrenzer: ${w.name}.`, over(point.rpm, componentRpmLimit * 1.04, 0.1));
+      ev.limitCategory = w.category;
+      ev.limitPartId = w.id;
+      return ev;
+    }
     if (point.bmepBar > sealing.headClampBmep * 1.15)
       return fail('head_lift', 'engine', 'Head-lift: cilinderdruk overschreed de sealingmarge.', over(point.bmepBar, sealing.headClampBmep * 1.15));
     if (point.fuelDutyPct > 113 && !tune.railPressureCut)
@@ -1132,7 +1160,8 @@
       geometry = engineGeometry(state),
       camTiming = camTimingHealth(state),
       assembly = assemblyHealth(state);
-    const revLimit = clamp(Math.round(tune.revLimitRpm / 100) * 100, 5000, 10000),
+    const revLimit = effectiveRevLimit(state),
+      rpmChain = rpmLimitChain(state),
       effectiveFuelCapacity = fuelSystem.fuelSystemHp * fuel.fuelFlowFactor;
     const mechanicalHpLimit = minPositive(block.hpLimit, crank.hpLimit, oiling.hpLimit, head.hpLimit, valve.hpLimit, ecu.hpLimit),
       componentTorqueLimit = minPositive(
@@ -1144,7 +1173,7 @@
         ecu.torqueLimit,
         trans.transTorque
       ),
-      componentRpmLimit = minPositive(block.rpmLimit, crank.rpmLimit, oiling.rpmLimit, head.rpmLimit, valve.rpmLimit, ecu.rpmLimit);
+      componentRpmLimit = rpmChain.weakest.rpm;
     const wearTotal = state.wear.engine * 0.72 + state.wear.turbo * 0.18 + state.damage.engine * 0.9 + state.damage.turbo * 0.35,
       wearFactor = 1 - clamp(wearTotal / 230, 0, 0.32),
       health = oilHealth(state),
@@ -1405,6 +1434,7 @@
         mechanicalHpLimit,
         componentTorqueLimit,
         componentRpmLimit,
+        rpmLimiter: rpmChain.weakest,
         sealing,
         ignition,
         oiling,
@@ -1570,6 +1600,20 @@
     );
     addWarning(
       warnings,
+      Math.round(Number(tune.revLimitRpm) / 100) * 100 > revLimit,
+      `${ecu.name} kan maximaal ${revLimit} rpm aansturen: de begrenzer staat hoger (${Math.round(Number(tune.revLimitRpm))} rpm) en wordt afgekapt.`,
+      'warn',
+      'ecu'
+    );
+    addWarning(
+      warnings,
+      rpmChain.weakest.rpm * 0.98 < revLimit,
+      `Toerengrens: ${rpmChain.weakest.name} (${CATEGORY_MAP[rpmChain.weakest.category].label}) is gemaakt voor ~${Math.round(rpmChain.weakest.rpm)} rpm, de begrenzer staat op ${revLimit} rpm.`,
+      rpmChain.weakest.rpm * 1.04 < revLimit ? 'danger' : 'warn',
+      'motor'
+    );
+    addWarning(
+      warnings,
       !tune.oilPressureProtection && revLimit > 7600,
       'Oliedrukbeveiliging staat uit bij hoog toerental.',
       'danger',
@@ -1678,7 +1722,7 @@
       ratios = [
         ['Onderblok/krukas', hpRatio],
         ['Koppel/transmissie', tqRatio],
-        ['Toerental/kleppentrein', rpmRatio],
+        [`Toerental (${CATEGORY_MAP[rpmChain.weakest.category].label})`, rpmRatio],
         ['Koppakking/head-lift', clampRatio],
         ['Brandstofcapaciteit', fuelRatio],
         ['Turbo-airflow/turbospeed', Math.max(turboRatio, shaftRatio)],
@@ -1717,6 +1761,7 @@
       abortReason: abort ? abort.reason : '',
       abortKind: abort ? abort.kind : null,
       abortCode: abort ? abort.code : null,
+      abortLimitCategory: abort && abort.limitCategory ? abort.limitCategory : null,
       abortSystem: abort ? abort.system : null,
       abortSeverity: abort ? abort.severity : 0,
       startRpm: DYNO_START_RPM,
@@ -2032,7 +2077,7 @@
     const key = engineSignature(state);
     if (engineMapCache.has(key)) return engineMapCache.get(key);
     const hw = engineHardware(state), ecuCal = state.tune.ecu, ecuPart = getPart(state, 'ecu'), sensors = getPart(state, 'sensors');
-    const revLimit = clamp(Math.round(state.tune.revLimitRpm / 100) * 100, 5000, 10500);
+    const revLimit = effectiveRevLimit(state);
     const rpmAxis = [700, 1000];
     for (let r = 1500; r <= revLimit + 500; r += 500) rpmAxis.push(r);
     const maxMap = Math.max(1.6, ...ecuCal.boost.flat()) + 1.013 + 0.6;
@@ -3088,7 +3133,20 @@
     else if (code === 'turbo_overspeed') list = groups.turbo();
     else if (code.startsWith('oil')) list = groups.oil();
     else if (code === 'mechanical_power' || code === 'torque') list = [boost(-0.2), boost(-0.4), ...nextParts('block', 2), ...nextParts('crank', 1), ...(code === 'torque' ? nextParts('transmission', 1, (i, c) => i.transTorque > c.transTorque) : [])];
-    else if (code === 'overrev') list = [{ id: 'rev:-400', kind: 'setting', cost: 0, label: `Toerenbegrenzer ${t.revLimitRpm} → ${t.revLimitRpm - 400} rpm (Tune)`, patch: { tune: { revLimitRpm: t.revLimitRpm - 400 } } }, ...nextParts('valvetrain', 2)];
+    else if (code === 'overrev') {
+      // Upgrade the part that actually set the limit (and the next weakest if it sits close behind).
+      const chain = rpmLimitChain(state), rev = effectiveRevLimit(state);
+      const weak = chain.parts.filter(p => p.rpm * 1.04 < rev + 200);
+      const safeRev = Math.floor(chain.weakest.rpm / 100) * 100;
+      const up = cat => nextParts(cat, 1, (i, cur) => Number(i.rpmLimit) > rev && i.price > cur.price).sort((a, b) => a.cost - b.cost);
+      list = [{ id: `rev:${safeRev}`, kind: 'setting', cost: 0, label: `Toerenbegrenzer ${t.revLimitRpm} → ${safeRev} rpm (Tune)`, patch: { tune: { revLimitRpm: safeRev } } }];
+      const cats = (weak.length ? weak : [chain.weakest]).map(p => p.category);
+      if (cats.length > 1) {
+        const combo = cats.map(c => up(c)[0]).filter(Boolean);
+        if (combo.length === cats.length) list.push({ id: `rpmset:${combo.map(x => x.id).join('+')}`, kind: 'part', cost: combo.reduce((a, x) => a + x.cost, 0),
+          label: combo.map(x => x.label).join(' + '), patch: { selections: Object.assign({}, ...combo.map(x => x.patch.selections)) } });
+      } else list.push(...up(cats[0]), ...nextParts(cats[0], 1, (i, cur) => Number(i.rpmLimit) > Number(cur.rpmLimit)));
+    }
     else if (code === 'head_lift') list = [...nextParts('sealing', 2), boost(-0.2), boost(-0.4)];
     else if (code === 'misfire') list = [...nextParts('ignition', 2), boost(-0.2)];
     else if (code === 'ecu_control') list = [...nextParts('ecu', 1), ...nextParts('sensors', 1), boost(-0.3)];
@@ -3449,6 +3507,8 @@
     applyRuntimeWear,
     interpolateCurve,
     diagnoseDyno,
+    rpmLimitChain,
+    effectiveRevLimit,
     ADVICE_PRICE,
     adviceCandidates,
     applyAdvicePatch,

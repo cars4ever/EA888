@@ -1792,6 +1792,13 @@
     const key = `${cat.id}:${part.id}`;
     const hop = cat.id === 'mounts' ? C.hopMode(state, part.id) : null;
     const hopMeta = hop ? `<div class="part-meter"><span>Hop-mode aandrijflijn</span><b>${hop.hz.toFixed(1)} Hz · demping ${Math.round(hop.zeta * 100)}%</b><i style="--fill:${clamp(hop.zeta / .4 * 100, 8, 100)}%"></i></div>` : '';
+    // Mechanical rpm limit: shows whether this part or another one is the weakest link for the set limiter.
+    let rpmMeta = '';
+    if (['block', 'crank', 'oiling', 'head', 'valvetrain', 'ecu'].includes(cat.id) && Number(part.rpmLimit) < 20000) {
+      const ch = C.rpmLimitChain(state), other = ch.parts.filter(p => p.category !== cat.id)[0];
+      const note = cat.id === 'ecu' ? 'max. aan te sturen begrenzer' : other && other.rpm < part.rpmLimit ? `zwakste andere schakel: ${esc(other.name)} ${Math.round(other.rpm)} rpm` : 'dit onderdeel is dan de zwakste schakel';
+      rpmMeta = `<div class="part-meter"><span>Toerengrens · ${note}</span><b>${Math.round(part.rpmLimit)} rpm</b><i style="--fill:${clamp((part.rpmLimit - 6500) / 4500 * 100, 8, 100)}%"></i></div>`;
+    }
     const turboMeta = cat.id === 'turbo' ? `<div class="part-meter"><span>Compressor</span><b>${part.compressorMm || 'OEM'} mm</b><i style="--fill:${clamp(((part.compressorMm || 45)-40)/80*100,8,100)}%"></i></div>` : '';
     return `<article class="part-card part-row ${selected ? 'selected' : ''}" data-part-row="${key}">
       <details ${openPartRows.has(key) ? 'open' : ''} data-part-details="${key}">
@@ -1800,7 +1807,7 @@
           <span class="part-row-main"><b>${esc(part.name)}${randy ? ' <em class="randy-badge">RANDY SPEC</em>' : ''}</b><small>${esc(part.specs)}</small></span>
           <span class="part-row-price">${part.price ? euro(part.price) : 'OEM'}</span>
         </summary>
-        <div class="part-row-body"><p>${esc(part.detail)}</p>${turboMeta}${hopMeta}</div>
+        <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${turboMeta}${hopMeta}</div>
       </details>
       ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`}
     </article>`;
@@ -5506,8 +5513,8 @@
       return { value: Number(bc.boostHardwareMaxBar), text: `${num(bc.boostHardwareMaxBar, 2)} bar`, why: `de limiet van ${bc.name}` };
     }
     if (g === 'tune' && k === 'revLimitRpm') {
-      const lim = Math.min(...['block', 'crank', 'oiling', 'head', 'valvetrain', 'ecu'].map(id => Number(C.getPart(state, id)?.rpmLimit) || Infinity));
-      return Number.isFinite(lim) ? { value: lim, text: `${Math.round(lim)} rpm`, why: 'de toerengrens van de zwakste gemonteerde component' } : null;
+      const ch = C.rpmLimitChain(state), w = ch.ecu.rpm < ch.weakest.rpm ? { name: ch.ecu.name, rpm: ch.ecu.rpm } : ch.weakest;
+      return Number.isFinite(w.rpm) ? { value: w.rpm, text: `${Math.round(w.rpm)} rpm`, why: `de toerengrens van ${w.name}, de zwakste schakel` } : null;
     }
     if (g === 'tune' && k === 'ignitionTrimDeg') return { value: 3, text: '+3,0°', why: 'de knockmarge van de basiskaart' };
     return null;
