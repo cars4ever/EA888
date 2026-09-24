@@ -964,7 +964,7 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .has-3d .v10-run-hud { transform:scale(.84); transform-origin:left top; }
 .has-3d .v10-split-board { transform:scale(.84); transform-origin:right top; }
 /* the split board keeps the top right; the rival card moves to the free corner above the controls */
-.has-3d .v12-rival-hud { top:auto; right:12px; bottom:calc(150px + var(--safe-bottom)); transform:scale(.9); transform-origin:right bottom; }
+.has-3d .v12-rival-hud { top:auto; right:auto; left:12px; bottom:calc(150px + var(--safe-bottom)); transform:scale(.9); transform-origin:left bottom; text-align:left; }
 .has-3d .v10-run-telemetry { opacity:.86; }
 .has-3d .v12-driveline-hud { display:none; }
 .has-3d .v10-shift-feedback { top:36%; }
@@ -997,10 +997,14 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v8-stage-game.has-3d .v12-stage-rival img { display:none; }
 
 /* N2O hold button in the race and the setup row */
-.v14-n2o-button { min-width: 84px; min-height: 64px; border-radius: 16px; border: 2px solid #4cc9ff; background: rgba(8,24,40,.86); color: #e8f7ff; display: grid; place-items: center; gap: 1px; padding: 6px 8px; touch-action: none; }
-.v14-n2o-button span { font-size: 18px; font-weight: 900; color: #7fdcff; }
+.v14-n2o-button { min-width: 104px; min-height: 84px; border-radius: 18px; border: 2px solid #4cc9ff; background: rgba(8,24,40,.94); color: #e8f7ff; box-shadow: 0 0 0 1px rgba(76,201,255,.25), 0 10px 26px rgba(0,0,0,.5); display: grid; place-items: center; gap: 1px; padding: 6px 8px; touch-action: none; }
+.v14-n2o-button span { font-size: 22px; font-weight: 900; color: #7fdcff; }
 .v14-n2o-button b { font-size: 12px; letter-spacing: .06em; }
 .v14-n2o-button small { font-size: 10px; opacity: .8; }
+.v14-n2o-button em { font-style: normal; font-size: 11px; font-weight: 900; letter-spacing: .08em; color: #9aa4b2; }
+.v14-n2o-button.armed { border-color: #7fe7ff; background: linear-gradient(180deg, rgba(20,90,140,.95), rgba(8,40,70,.95)); }
+.v14-n2o-button.armed em { color: #b9f3ff; }
+.v14-n2o-button.active em { color: #fff; }
 .v14-n2o-button.active { background: linear-gradient(180deg, #1b8fd6, #0a4f86); box-shadow: 0 0 22px rgba(76,201,255,.6); }
 .v14-n2o-button.empty, .v14-n2o-button:disabled { border-color: #3a4450; color: #6b7682; opacity: .6; }
 .n2o-setup { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0; }

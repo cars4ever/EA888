@@ -3745,7 +3745,7 @@
           <button class="v9-steer-button v10-steer-button right" data-v7-control="steerRight"><b>RECHTS</b><span>▶</span></button>
         </div>
         <div class="v14-n2o-dock">
-          ${C.getPart(state, 'nitrous').shotHp > 0 ? `<button class="v14-n2o-button ${nitrousBottleKg() > .02 ? '' : 'empty'}" id="v14-n2o-button" data-v7-control="nitrous" ${nitrousBottleKg() > .02 ? '' : 'disabled'}><span>N₂O</span><b>${C.getPart(state, 'nitrous').shotHp} PK</b><small id="v14-n2o-bottle">${nitrousBottleKg().toFixed(1)} kg</small></button>` : ''}
+          ${C.getPart(state, 'nitrous').shotHp > 0 ? `<button class="v14-n2o-button ${nitrousBottleKg() > .02 ? '' : 'empty'}" id="v14-n2o-button" data-v7-control="nitrous" aria-pressed="false" aria-label="Lachgas aan of uit" ${nitrousBottleKg() > .02 ? '' : 'disabled'}><span>N₂O</span><b>${C.getPart(state, 'nitrous').shotHp} PK</b><em id="v14-n2o-state">UIT</em><small id="v14-n2o-bottle">${nitrousBottleKg().toFixed(1)} kg</small></button>` : ''}
         </div>
         <div class="v8-run-telemetry v9-run-telemetry v10-run-telemetry"><span><b id="v7-run-g">0.00 g</b>acceleratie</span><span><b id="v7-run-wheelspin">0%</b>wheelspin</span><span><b id="v13-run-shaft">—</b>turbo-as</span><span><b id="v13-run-egt">—</b>EGT</span></div>
         <div class="v12-driveline-hud"><span><b id="v12-clutch-temp">58°C</b>koppeling</span><span><b id="v12-gearbox-temp">66°C</b>bak</span><span><b id="v12-stress">0%</b>stress</span></div>
@@ -4469,7 +4469,7 @@
       const h = Math.min(maxStep, remaining);
       remaining -= h;
       // Longitudinal physics: the shared vehicle model (engine, turbo, clutch, tyres, shifts).
-      const p = run.rt.step(h, { flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: !!raceGamePointer.nitrous || (run.driverAssist && run.gearIndex >= 1) });
+      const p = run.rt.step(h, { flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: !!raceGame.n2oArmed || (run.driverAssist && run.gearIndex >= 1) });
       run.t = p.t;
       run.x = p.distanceM; run.v = p.v; run.a = p.a; run.rpm = p.rpm; run.gearIndex = p.gearIndex;
       run.wheelspin = clamp(p.slipRatio, 0, .95);
@@ -4953,8 +4953,10 @@
     const btn = $('#v14-n2o-button');
     const point = raceGame?.run?.rt?.point?.();
     if (!btn || !point) return;
-    const kg = Number(point.bottleKg ?? 0), on = Number(point.n2oHp || 0) > 1;
-    btn.classList.toggle('active', on); btn.classList.toggle('empty', kg <= .02);
+    const kg = Number(point.bottleKg ?? 0), on = Number(point.n2oHp || 0) > 1, armed = !!raceGame.n2oArmed && kg > .02;
+    btn.classList.toggle('active', on); btn.classList.toggle('armed', armed); btn.classList.toggle('empty', kg <= .02);
+    btn.setAttribute('aria-pressed', String(armed));
+    const st = $('#v14-n2o-state'); if (st) st.textContent = kg <= .02 ? 'LEEG' : on ? 'SPUIT' : armed ? 'AAN · WOT' : 'UIT';
     const b = $('#v14-n2o-bottle'); if (b) b.textContent = on ? `${Math.round(point.n2oHp)} pk · ${kg.toFixed(2)} kg` : `${kg.toFixed(2)} kg`;
   }
   function updateV7RunDom(point) {
@@ -5717,6 +5719,9 @@
     if (gameControl && raceGame?.open && !gameControl.disabled) {
       event.preventDefault();
       const name = gameControl.dataset.v7Control;
+      // N2O is an arm switch (tap on / tap off): holding a button blocked the shift taps on some phones.
+      // Armed, the system sprays whenever the engine is firing at full throttle (not in a shift cut).
+      if (name === 'nitrous') { raceGame.n2oArmed = !raceGame.n2oArmed; haptic(raceGame.n2oArmed ? [10, 30, 10] : 8); updateN2oHud(); return; }
       raceGamePointerMap.set(event.pointerId, name);
       if (name in raceGamePointer) raceGamePointer[name] = true;
       try { gameControl.setPointerCapture(event.pointerId); } catch (e) {}
