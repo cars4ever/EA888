@@ -518,6 +518,10 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
   fell back from a broken driver. Consequence for coverage: the browser-smoke test therefore exercises the
   **low** tier, with bloom and the reflector off. The bloom and reflection paths are covered by
   `tools/track_preview.py` across all three tiers instead, and neither has been measured on a real phone.
+- **In the settings**, under the 3D switch: Automatisch / Hoog / Gemiddeld / Laag, with a line saying what
+  each drops. 'Automatisch' leaves it to the renderer; when the watchdog steps down, the settings page says
+  so (`graphicsQualityAuto`) instead of the picture quietly changing, and choosing a tier by hand clears
+  that and pins it. The control is hidden while the 3D race view is off.
 - **tools/track_preview.py** renders eight fixed points on the strip (burnout, staging, tree, launch, mid,
   finish, side, high) at a chosen tier, serving the page from the app's own https origin as
   WebViewAssetLoader does on Android. **tools/browser_env.py** resolves the headless Chromium from
