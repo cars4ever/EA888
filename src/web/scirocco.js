@@ -6,7 +6,35 @@
 // badge between them, the plate recess (plate left blank), black diffuser with red reflectors and oval
 // tailpipes, roof spoiler with the third brake light, deep-dish three-piece wheels with red calipers.
 // The car faces -Z; y is up; x = 0 is the centre line.
+//
+// Since 1.17.0 the shell of the player's car is a scanned body (models/scirocco-body.glb, generated from
+// the owner's photos, see tools/car3d/ and DEVLOG 21). The procedural body below is still built every time:
+// it is the ghost car, and it is what you see if the GLB fails to load or has not arrived yet. The two
+// share this file's materials, so the GLB inherits the paint colour, the environment map and the tail-light
+// material the race drives for the brake light.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const BODY_URL = 'models/scirocco-body.glb';
+// Where the generated body's exhaust mouths are, measured off the mesh (tools/car3d/materials.py prints it).
+const BODY_TIPS = { x: 0.539, y: 0.281, z: 2.12 };
+const BODY_HEADLIGHTS = { x: 0.56, y: 0.70, z: -2.07 };
+
+let bodyRequest = null;
+function loadBody() {
+  if (!bodyRequest) {
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);        // the GLB is meshopt-compressed (887 KB for 52k tris)
+    bodyRequest = new Promise(resolve => loader.load(
+      BODY_URL, gltf => resolve(gltf.scene), undefined, () => resolve(null)));
+  }
+  return bodyRequest;
+}
+
+// Resolves with the loaded body (or null when it could not be loaded and the procedural one stands in).
+// Callbacks registered by buildScirocco run first, so by the time this resolves the swap has happened.
+export function bodyReady() { return loadBody(); }
 
 export const DIM = { wheelbase: 2.578, track: 1.57, wheelR: 0.323, noseZ: -2.14, tailZ: 2.11 };
 const ZF = -DIM.wheelbase / 2, ZR = DIM.wheelbase / 2, ARCH_R = 0.348; // slammed: the tyres fill the arches
@@ -199,7 +227,77 @@ function buildWheel(m, side, ghost) {
 }
 
 // ---- the car -----------------------------------------------------------------------------------------
-export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTexture = null }) {
+// Lays a lamp onto the generated body. The generated headlight and tail-light recesses are too soft to
+// cut out of the mesh by position, so the crisp shapes are laid over them: a subdivided patch whose every
+// vertex is dropped onto the body by a ray along the car's axis, then lifted 4 mm clear of it. That way the
+// lamp follows the real surface (which curves round the corners) instead of floating as a flat card.
+// Heights come from the body itself: a depth map over the tail (tools/car3d/probe_tail.py) shows a band
+// recessed 3-4 cm at y = 0.70..0.82 running out to the corner - the tail light line - and a second recess
+// at y = 0.50..0.58 which is the plate. The lights wrap to x = 0.93, where the corner turns away.
+// `spread` is how far a hit may sit from the patch's median depth. It is not a flatness test: the nose is
+// genuinely raked (a depth map over it runs 36 cm to 92 cm across the headlight), so the tail gets a tight
+// figure and the nose a loose one. What it does catch is a ray that slipped past the bodywork and landed a
+// metre further back on the wing, which otherwise dragged the patch out into a wedge hanging off the car.
+const LAMPS = [
+  // from/dir: where the ray starts and which way it travels; x and y span the patch, in metres
+  { mat: 'tail', from: 4.0, dir: -1, x: [0.33, 0.93], y: [0.70, 0.82], spread: 0.12 },
+  { mat: 'head', from: -4.0, dir: 1, x: [0.30, 0.72], y: [0.86, 0.95], spread: 0.55 },
+];
+
+function surfaceLamps(bodyScene, M) {
+  const ray = new THREE.Raycaster();
+  const dir = new THREE.Vector3();
+  const origin = new THREE.Vector3();
+  const targets = [];
+  bodyScene.traverse(o => { if (o.isMesh) targets.push(o); });
+  bodyScene.updateMatrixWorld(true);
+  const out = [];
+  for (const spec of LAMPS) {
+    for (const sx of [1, -1]) {
+      const NX = 10, NY = 4;
+      const geo = new THREE.PlaneGeometry(spec.x[1] - spec.x[0], spec.y[1] - spec.y[0], NX, NY);
+      const pos = geo.attributes.position;
+      const cx = (spec.x[0] + spec.x[1]) / 2 * sx, cy = (spec.y[0] + spec.y[1]) / 2;
+      const depth = new Float32Array(pos.count);
+      const good = [];
+      for (let i = 0; i < pos.count; i++) {
+        const x = cx + pos.getX(i) * sx, y = cy + pos.getY(i);
+        origin.set(x, y, spec.from);
+        dir.set(0, 0, spec.dir);
+        ray.set(origin, dir);
+        const hit = ray.intersectObjects(targets, true)[0];
+        if (!hit) continue;
+        depth[i] = hit.point.z;
+        good.push(i);
+      }
+      if (good.length < pos.count * 0.8) { geo.dispose(); continue; }   // not on the body: drop the lamp
+      const sorted = good.map(i => depth[i]).sort((a, b) => a - b);
+      const median = sorted[sorted.length >> 1];
+      const onSurface = good.filter(i => Math.abs(depth[i] - median) < spec.spread);
+      if (onSurface.length < pos.count * 0.8) { geo.dispose(); continue; }   // the patch straddles an edge
+      const seen = new Set(onSurface);
+      for (let i = 0; i < pos.count; i++) pos.setZ(i, (seen.has(i) ? depth[i] : median) - spec.dir * 0.004);
+      // the patch was built in its own plane; move it into the car's frame
+      const m = new THREE.Matrix4().makeTranslation(cx, cy, 0);
+      geo.applyMatrix4(m);
+      // A PlaneGeometry faces +Z. That is right for the tail, but a lamp on the nose would then face into
+      // the car and be culled away, so its winding is reversed.
+      if (spec.dir > 0) {
+        const idx = geo.index.array;
+        for (let i = 0; i < idx.length; i += 3) { const t = idx[i]; idx[i] = idx[i + 2]; idx[i + 2] = t; }
+        geo.index.needsUpdate = true;
+      }
+      geo.computeVertexNormals();
+      const lamp = new THREE.Mesh(geo, spec.mat === 'tail' ? M.tail : M.head);
+      lamp.renderOrder = 1;
+      out.push(lamp);
+      if (spec.x[0] < 0.12) break;                                        // a centre bar is built once
+    }
+  }
+  return out;
+}
+
+export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTexture = null, model = true }) {
   const root = new THREE.Group(), body = new THREE.Group();
   root.add(body);
   const G = ghost ? new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: .22, depthWrite: false }) : null;
@@ -352,6 +450,9 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
     base.position.set(sx * 0.87, 0.99, -0.6); body.add(base);
   }
 
+  // Everything in `body` so far is the procedural shell; the flame anchors must survive a swap.
+  const procedural = body.children.filter(c => !tips.includes(c));
+
   // Wheels with calipers (the wheel groups spin; the calipers stay with the body)
   const wheels = [];
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
@@ -364,5 +465,32 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
     }
   }
   if (ghost) root.traverse(o => { if (o.isMesh) o.renderOrder = 5; });
+
+  // Swap the procedural shell for the scanned body once it arrives. Everything the race holds on to keeps
+  // working because it keeps the same objects: the wheels hang in root (untouched) and the flame anchors
+  // are moved to this body's exhaust mouths. The lamps are laid onto the surface afterwards and use M.tail
+  // and M.head, so tailMat still drives the brake light.
+  if (!ghost && model) {
+    loadBody().then(loaded => {
+      if (!loaded) return;                             // no GLB: the procedural body stays
+      // One Object3D cannot hang in two cars: adding it to the second reparents it out of the first, which
+      // left the player with wheels and no body as soon as a rival was on the strip. Clone per car; the
+      // geometry is shared, only the node tree is new.
+      const scene = loaded.clone(true);
+      const byName = { paint: M.paint, trim: M.black };
+      scene.traverse(o => {
+        if (!o.isMesh) return;
+        const named = Array.isArray(o.material) ? o.material : [o.material];
+        const pick = m => byName[String(m?.name || '').toLowerCase().split('.')[0]] || M.paint;
+        o.material = named.length === 1 ? pick(named[0]) : named.map(pick);
+        o.castShadow = o.receiveShadow = false;
+      });
+      for (const child of [...procedural]) body.remove(child);
+      body.add(scene);
+      tips.forEach((anchor, i) => anchor.position.set((i === 0 ? 1 : -1) * BODY_TIPS.x, BODY_TIPS.y, BODY_TIPS.z));
+      for (const lamp of surfaceLamps(scene, M)) body.add(lamp);
+
+    });
+  }
   return { root, body, wheels, tips, tailMat: M.tail, tailPieces };
 }

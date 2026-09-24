@@ -212,8 +212,8 @@ function makeEnvironment(renderer) {
 }
 
 // ---------------------------------------------------------------- car (Scirocco Mk3, procedural: scirocco.js)
-function buildCar({ color = 0x1f4fd8, envMap, ghost = false }) {
-  const car = buildScirocco({ color, envMap, ghost, plateTexture: ghost ? null : plateTexture() });
+function buildCar({ color = 0x1f4fd8, envMap, ghost = false, model = true }) {
+  const car = buildScirocco({ color, envMap, ghost, model, plateTexture: ghost ? null : plateTexture() });
   // Soft contact shadow.
   if (!ghost) {
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 5.0), new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(0,0,0,.85)', 'rgba(0,0,0,0)'), transparent: true, depthWrite: false }));
@@ -569,9 +569,12 @@ export function create(canvas, opts = {}) {
   }
   setLights(null);
 
-  const player = buildCar({ color: opts.playerColor ?? 0x1f4fd8, envMap });
+  // The scanned body is 36k triangles a car; with a rival on the strip that is 72k on top of the track, so
+  // the low tier keeps the procedural body (~7k) and everything else about the car stays the same.
+  const useModel = quality.tier !== 'low';
+  const player = buildCar({ color: opts.playerColor ?? 0x1f4fd8, envMap, model: useModel });
   scene.add(player.root);
-  const rival = opts.headsUp ? buildCar({ color: opts.rivalColor ?? 0x6b1a1a, envMap }) : null;
+  const rival = opts.headsUp ? buildCar({ color: opts.rivalColor ?? 0x6b1a1a, envMap, model: useModel }) : null;
   if (rival) { rival.root.position.set(LANE, 0, 0); scene.add(rival.root); }
   const ghost = opts.ghost?.length ? buildCar({ ghost: true, envMap }) : null;
   if (ghost) scene.add(ghost.root);

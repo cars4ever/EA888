@@ -1,6 +1,7 @@
 // Dev tool: drives the real race renderer to fixed points on the strip so the lighting, bloom and
 // reflections can be reviewed without running the whole app (tools/track_preview.py screenshots it).
 import * as race3d from '../../src/web/race3d.js';
+import { bodyReady } from '../../src/web/scirocco.js';
 
 const canvas = document.getElementById('c');
 let view = null;
@@ -42,4 +43,11 @@ window.previewSurfaces = () => {
   return out;
 };
 window.previewInfo = () => view?.info();
+
 window.previewReady = true;
+// the scanned body arrives asynchronously; the shots wait for it (or for the fallback) so the first one
+// is not rendered against the procedural car
+bodyReady().then(scene => {
+  window.previewBodyKind = scene ? 'generated GLB' : 'procedural fallback';
+  requestAnimationFrame(() => { window.previewBodyReady = true; });
+});

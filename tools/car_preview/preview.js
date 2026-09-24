@@ -1,6 +1,7 @@
 // Dev tool: renders the procedural 3D car from fixed views (tools/car_preview.py screenshots it).
 import * as THREE from 'three';
 import { buildCar, makeEnvironment } from '../../src/web/race3d.js';
+import { bodyReady } from '../../src/web/scirocco.js';
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(canvas.width, canvas.height, false);
@@ -31,3 +32,8 @@ window.renderView = name => {
   return true;
 };
 window.previewReady = true;
+// the scanned body arrives asynchronously; the screenshots wait for it (or for the fallback)
+bodyReady().then(scene => {
+  window.previewBodyKind = scene ? 'generated GLB' : 'procedural fallback';
+  requestAnimationFrame(() => { window.previewBodyReady = true; });
+});

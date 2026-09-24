@@ -21,8 +21,10 @@ def main():
     a = ap.parse_args()
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     tmp = pathlib.Path(tempfile.mkdtemp())
-    # the renderer loads its photo surfaces from images/, relative to the page
+    # the renderer loads its photo surfaces from images/ and the car body from models/, both relative
+    # to the page
     shutil.copytree(ROOT / 'src' / 'assets' / 'images', tmp / 'images')
+    shutil.copytree(ROOT / 'src' / 'assets' / 'models', tmp / 'models')
     subprocess.run([str(ROOT / 'node_modules/.bin/esbuild'), str(ROOT / 'tools/track_preview/preview.js'),
                     '--bundle', '--format=iife', f'--outfile={tmp}/p.js'], check=True, cwd=ROOT)
     (tmp / 'index.html').write_text(
@@ -52,10 +54,12 @@ def main():
         arg = 'null' if a.quality == 'auto' else repr(a.quality)
         if not pg.evaluate(f'buildTrackPreview({arg})'):
             sys.exit('race3d.create() returned null (no WebGL?)')
+        pg.wait_for_function('window.previewBodyReady === true', timeout=60000)
         for shot in a.shots.split(','):
             if not pg.evaluate(f'renderShot({shot!r})'):
                 sys.exit(f'unknown shot {shot}')
             pg.locator('#c').screenshot(path=str(out / f'{shot}.png'))
+        print('body   :', pg.evaluate('window.previewBodyKind'))
         quality = pg.evaluate('previewQuality()')
         info = pg.evaluate('previewInfo()')
         print('quality:', quality)
