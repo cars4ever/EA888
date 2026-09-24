@@ -65,7 +65,10 @@ multi-view werd **slechter** omdat er geen recht-van-voren foto is. Afgesproken 
 1. Vier foto's in **één sessie**: recht van voren, recht van achteren, links haaks, rechts haaks. Zelfde
    rijhoogte, egale achtergrond (muur/garagedeur), droog, van een afstand met een lange brandpuntsafstand.
    In `src/assets/images/` zetten en eerst door `tools/erase_plates.py`.
-2. `python3 tools/car3d/prep_inputs.py`, dan `gen_shape.py mv --port 7870 --octree 384`.
+2. `docker start hunyuan3d-2mv` (staat klaar op poort 7870 met het gepatchte multi-view model; laden duurt
+   een paar minuten, `docker logs` zegt "Models Loaded"). Let op het geheugen: met beide Hunyuan-containers
+   tegelijk zit 64 GB RAM vol — stop `hunyuan3d-21` als je hem niet nodig hebt.
+   Dan `python3 tools/car3d/prep_inputs.py` en `gen_shape.py mv --port 7870 --octree 384`.
 3. `postprocess.py` (let op `--yaw`, zie `probe.py`), `render_views.py`, vergelijken met de foto's.
 4. Pas daarna integreren in `buildScirocco()`; het procedurele model blijft fallback en ghost-auto.
 
