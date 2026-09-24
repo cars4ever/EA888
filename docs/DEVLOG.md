@@ -395,7 +395,37 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
   is spool-limited the HP stage delivers (with both turbines' back pressure); once the main turbo holds
   the target the bypass opens. Known simplification: the series pressure-ratio product and the interstage
   state are not solved, so compound does not raise the peak pressure ratio beyond either turbo.
+  (Replaced in v1.13.0, section 17.)
 - Tests: tests/test_phase8.js.
+
+## 17. Rev limits, compound from the turbo list, full-throttle burnout, the Scirocco (v1.13.0)
+
+- Rev limits: the mechanical limit is the weakest of block, crank, oiling, head and valvetrain
+  (sim.js rpmLimitChain). An over-rev names that part and its failure mode (valve float for valvetrain
+  or head, mass forces for the bottom end, oil foaming for the oiling); the advice upgrades exactly the
+  limiting part(s). The ECU is not a mechanical limit: an ECU that cannot command the set limiter caps the
+  revs (effectiveRevLimit) with a warning. The dyno sweeps up to 10 500 rpm; a full pro-mod rotating and
+  valve assembly reaches it. Part cards show each rpm limit and the weakest other link.
+- Compound: any smaller turbo from the turbo list can be fitted as the high-pressure stage
+  (selections.turboHp; kit EUR 2,600 + the turbo, +14 kg; part of the build signature; 1.12 saves
+  migrate). Turbo.matchCompound solves the series system: LP compressor -> interstage duct -> HP
+  compressor (pressure ratios multiply; the HP wheel breathes the warm, dense LP outlet air, so its
+  corrected flow is the LP flow / PR_lp x sqrt(T_interstage / T_ambient)); exhaust through the HP turbine
+  (with a bypass valve) and then the LP turbine; the LP shaft balance sets the pressure split, the HP
+  bypass regulates at the target, both rotors spool on their own power surplus and inertia, and once the
+  LP turbo alone holds the target the HP stage is bypassed. Choke, surge and shaft limits per stage; HP
+  overspeed is a failure. The solver uses a quadratic airflow fit in boost (checked to 0.4 % against the
+  engine model) for realtime speed (~0.5 ms per step on a desktop CPU).
+- Burnout: holding the button is full throttle; the pedal is never backed off and there is no clutch-in
+  re-rev any more. The revs come from the clutch/tyre physics and the rev limiter; the optional burnout
+  limiter (race setup) cuts at the set burnout rpm with the pedal flat. Still never anti-lag.
+- 3D car: src/web/scirocco.js lofts a Scirocco Mk3 body from cross-sections at production dimensions
+  (lowered), with the reference car's details (smoked corner tail lights, diffuser and oval tailpipes,
+  roof spoiler, three-piece deep-dish wheels, red calipers). tools/car_preview.py renders fixed views.
+- The owner's registration is erased everywhere: the 3D plate texture, the SVG and every photo/render
+  (tools/erase_plates.py; blank yellow NL plate); the launcher icon is regenerated.
+- Tests: tests/test_phase9.js (rpm chain and ECU cap, series-compound invariants, full-throttle burnout);
+  the burnout regression in tests/test_tyres.js now checks that the revs never fall back.
 
 ## Changelog (claude-dev)
 
@@ -418,6 +448,8 @@ copy of the player's dyno curve. Every preset ran the same 60 ft.
 - FWD launches are ~0.2-0.3 s slower over 60 ft than the best real FWD drag passes (tyre model and driver
   model are simple); trap speeds match power-to-weight.
 - The driveline has no torsional compliance (no axle hop) and one diff model per axle; no aero lift.
+- Compound: no interstage intercooler, the HP compressor is either in the flow or fully bypassed (no
+  partial bypass flow split), and the HP turbine bypass is one lumped valve.
 - Turbo: see "Known inaccuracies (turbo)" above; spool transients still use an effective inertia factor.
 - ALS combustion is a lumped energy model; flame visuals are stylised, timing/intensity are simulation-driven.
 - Engine voice: the exhaust is one waveguide with lumped turbine and muffler filters, not a 1D gas-dynamics

@@ -12,7 +12,14 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.12.0 (branch `claude-dev`) — nitrous, welded head, stroker/destroker, compound boost
+## v1.13.0 (branch `claude-dev`) — rev limits, real compound turbos, full-throttle burnout, the Scirocco
+
+- Over-rev names the part that limits the revs; with pro-mod parts the engine revs to 10 500 rpm. The ECU caps the limiter instead of breaking the engine.
+- Compound: fit a smaller turbo from the turbo list as the high-pressure stage; the two turbos work in series (pressure ratios multiply, interstage heat, two turbine stages, HP bypass).
+- Burnout: hold for full throttle, no controller backing it off; optional burnout limiter.
+- The 3D car is now a proper Scirocco Mk3; the registration is erased everywhere.
+
+## v1.12.0 — nitrous, welded head, stroker/destroker, compound boost
 
 - Nitrous kits (dry, wet, progressive, direct port) with an N2O button in the race and a bottle to refill.
 - Head lift under extreme cylinder pressure; a head welded to the block cannot lift.
