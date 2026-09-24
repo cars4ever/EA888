@@ -2,6 +2,10 @@
 // Draws only what the simulation computes: positions, speed, wheelspin, flames and the rival come from the
 // realtime physics in app.js every frame. World units are metres; the car drives towards -Z.
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildScirocco } from './scirocco.js';
 
 const LANE = 4.3;               // lane width: car half width 0.91 m + 1.22 m of allowed drift to the line
@@ -16,6 +20,30 @@ const BURNOUT_Z = 13.5, WATER_Z = 19;
 const TREE_ROWS = [['pre', 2.4], ['stage', 2.25], ['a1', 2.05], ['a2', 1.9], ['a3', 1.75], ['g', 1.55], ['r', 1.4]];
 const BULB_ON = { pre: [3.2, 2.9, 2.2], stage: [3.2, 2.9, 2.2], a1: [4, 1.9, .25], a2: [4, 1.9, .25], a3: [4, 1.9, .25], g: [.5, 4, .9], r: [4, .35, .3] };
 const BULB_OFF = { pre: 0x2a2a22, stage: 0x2a2a22, a1: 0x2e2210, a2: 0x2e2210, a3: 0x2e2210, g: 0x0f2a14, r: 0x2e1010 };
+
+// Quality tiers. Each feature is its own switch, so a phone that cannot afford bloom still gets the rest;
+// TIERS is only the default grouping. opts.quality takes a tier name or an object of overrides.
+const TIERS = {
+  high:   { bloom: 0.85, reflections: true,  litSmoke: true,  maxPixelRatio: 2.0 },
+  medium: { bloom: 0.55, reflections: false, litSmoke: true,  maxPixelRatio: 1.6 },
+  low:    { bloom: 0,    reflections: false, litSmoke: false, maxPixelRatio: 1.2 },
+};
+const TIER_ORDER = ['high', 'medium', 'low'];
+
+function defaultTier() {
+  // Conservative: only a desktop-class thread count and memory earn the top tier. The frame-time watchdog
+  // in create() steps down anyway when the device cannot hold it.
+  const mem = navigator.deviceMemory || 0, cores = navigator.hardwareConcurrency || 0;
+  if (mem >= 8 && cores >= 8) return 'high';
+  if (mem >= 4 || cores >= 6) return 'medium';
+  return 'low';
+}
+
+function resolveQuality(q) {
+  if (typeof q === 'string' && TIERS[q]) return { tier: q, ...TIERS[q] };
+  const tier = defaultTier();
+  return { tier, ...TIERS[tier], ...(q && typeof q === 'object' ? q : {}) };
+}
 
 // ---------------------------------------------------------------- helpers
 function canvasTex(w, h, draw, { repeat = null, srgb = true, aniso = 8 } = {}) {
@@ -415,7 +443,8 @@ export function create(canvas, opts = {}) {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
   } catch (e) { return null; }
-  const dpr = Math.min(window.devicePixelRatio || 1, opts.maxPixelRatio || 1.6);
+  const quality = resolveQuality(opts.quality);
+  const dpr = Math.min(window.devicePixelRatio || 1, opts.maxPixelRatio || quality.maxPixelRatio);
   renderer.setPixelRatio(dpr);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -462,15 +491,55 @@ export function create(canvas, opts = {}) {
   const fill = new THREE.DirectionalLight(0xfff0dc, 0.75);
   fill.position.set(0, 3, 8); camera.add(fill); fill.target.position.set(0, -1, -10); camera.add(fill.target);
   scene.add(camera);
+  // Bloom: the floodlights, tree bulbs, tail lights and flames are authored well above white (2..8), the
+  // clearcoat highlight on the paint peaks just over it. The threshold sits between the two, so the lamps
+  // and flames glow and a reflection sliding over the flank does not blow the car out.
+  let composer = null, bloomPass = null;
+  function buildComposer() {
+    if (composer) { composer.dispose(); composer = null; bloomPass = null; }
+    if (!quality.bloom) return;
+    const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
+    composer = new EffectComposer(renderer);
+    composer.setPixelRatio(dpr);
+    composer.setSize(w, h);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), quality.bloom, 0.55, 1.75);
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+  }
+  function draw() {
+    if (composer) composer.render();
+    else renderer.render(scene, camera);
+  }
+
+  // Frame-time watchdog: if the device cannot hold ~45 fps the tier steps down (bloom first, then the
+  // pixel ratio). Measured over a second so one slow frame does not trigger it.
+  let frameAcc = 0, frameN = 0, downgrades = 0;
+  function watchFrameCost(ms) {
+    frameAcc += ms; frameN++;
+    if (frameN < 60) return;
+    const avg = frameAcc / frameN;
+    frameAcc = 0; frameN = 0;
+    if (avg <= 22 || downgrades >= 2) return;
+    const next = TIER_ORDER[Math.min(TIER_ORDER.length - 1, TIER_ORDER.indexOf(quality.tier) + 1)];
+    if (next === quality.tier) { downgrades = 2; return; }
+    downgrades++;
+    Object.assign(quality, { tier: next, ...TIERS[next] });
+    buildComposer();
+    opts.onQuality?.({ tier: next, avgFrameMs: Math.round(avg), reason: 'frame cost' });
+  }
+
   const cam = { z: 6.2, x: 0, lagZ: 0, fov: 56 };
   const driven = opts.drivetrain === 'RWD' ? [2, 3] : opts.drivetrain === 'AWD' ? [0, 1, 2, 3] : [0, 1];
   const tmp = new THREE.Vector3();
   let last = null, time = 0, smokeAcc = 0, wheelAngle = 0, rivalWheel = 0, disposed = false;
+  buildComposer();
 
   function resize() {
     const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       renderer.setSize(w, h, false);
+      composer?.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     }
@@ -556,13 +625,14 @@ export function create(canvas, opts = {}) {
       camera.lookAt(tmp);
       if (Math.abs(camera.fov - 46) > .05) { camera.fov = 46; camera.updateProjectionMatrix(); }
     }
-    renderer.render(scene, camera);
+    draw();
     last = null;
   }
 
   // frame: { t, distanceM, lateralM, lateralVelocity, speedKmh, accelerationG, wheelspinPct, opponentDistanceM }
   function update(frame, dt) {
     if (disposed) return;
+    const frameStart = performance.now();
     resize();
     dt = Math.min(Math.max(dt || 0, 0), .1);
     time += dt;
@@ -626,7 +696,8 @@ export function create(canvas, opts = {}) {
       camera.lookAt(tmp);
       const want = mode === 'high' ? 50 : mode === 'finish' ? 34 : 42;
       if (Math.abs(camera.fov - want) > .05) { camera.fov = want; camera.updateProjectionMatrix(); }
-      renderer.render(scene, camera);
+      draw();
+      watchFrameCost(performance.now() - frameStart);
       last = { distanceM: d, opponentDistanceM: Number(frame.opponentDistanceM) || 0, oppV: frame.oppV || 0 };
       return;
     }
@@ -640,7 +711,8 @@ export function create(canvas, opts = {}) {
     camera.lookAt(tmp);
     const fov = 55 + Math.min(1, v / 85) * 13;
     if (Math.abs(fov - camera.fov) > .05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
-    renderer.render(scene, camera);
+    draw();
+    watchFrameCost(performance.now() - frameStart);
     last = { distanceM: d, opponentDistanceM: Number(frame.opponentDistanceM) || 0, oppV: frame.oppV || 0 };
   }
 
@@ -656,6 +728,7 @@ export function create(canvas, opts = {}) {
     });
     Object.values(maps).forEach(t => t.dispose());
     envMap.dispose();
+    composer?.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
   }
@@ -699,6 +772,8 @@ export function create(canvas, opts = {}) {
     renderer,
     dispose,
     scene: () => ({ mode: pre.mode || 'run', carZ: player.root.position.z, lit: litKey ? litKey.split(',') : [], smoke: smoke.active() }),
+    quality: () => ({ ...quality }),
+    setQuality: q => { Object.assign(quality, resolveQuality(q)); buildComposer(); return { ...quality }; },
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries })
   };
 }
