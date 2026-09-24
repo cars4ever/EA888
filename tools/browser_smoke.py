@@ -79,7 +79,7 @@ def click(page, selector: str, timeout: int | None = None) -> None:
     except PlaywrightTimeoutError:
         # Element screenshots can leave Chromium with transient actionability
         # geometry; a real DOM click still exercises the app handler.
-        locator.evaluate("element => element.click()", timeout=timeout)
+        locator.evaluate("element => element.click()", timeout=timeout or 40000)
     page.wait_for_timeout(80)
 
 
