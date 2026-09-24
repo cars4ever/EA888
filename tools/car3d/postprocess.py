@@ -10,7 +10,7 @@ import mathutils
 from mathutils import Vector
 
 # Real Scirocco Mk3 (see docs/HANDOFF.md): the car looks down -Z, +Y is up, x = 0 is the centreline.
-LENGTH, WIDTH, WHEELBASE, TRACK, WHEEL_R = 4.256, 1.810, 2.578, 1.57, 0.323
+LENGTH, WIDTH, HEIGHT, WHEELBASE, TRACK, WHEEL_R = 4.256, 1.810, 1.404, 2.578, 1.57, 0.323
 TARGET_TRIS = 52000
 PAINT = (0x1f / 255, 0x4f / 255, 0xd8 / 255, 1.0)
 
@@ -25,6 +25,7 @@ def argv():
     a.add_argument('--up', default='Z', choices=['X', 'Y', 'Z'])  # the glTF importer already makes Blender Z-up
     a.add_argument('--tris', type=int, default=TARGET_TRIS)
     a.add_argument('--ground', type=float, default=0.16)  # cut height above the road
+    a.add_argument('--fit', action='store_true', help='scale each axis to the real car, not just the length')
     a.add_argument('--keep-wheels', action='store_true')
     a.add_argument('--no-symmetry', action='store_true')
     return a.parse_args(sys.argv[sys.argv.index('--') + 1:])
@@ -111,12 +112,22 @@ def orient_and_scale(ob, a):
     mn, mx = world_bounds([ob])
     size = mx - mn
     # Blender is Z-up here: the car runs along Y (length), X is width, Z is height
-    bake(mathutils.Matrix.Scale(LENGTH / size.y, 4))
+    if a.fit:
+        # Length sets the overall scale, then the height is corrected on its own. A generated body can come
+        # out several per cent tall, and on a car that reads immediately. Width deliberately follows the
+        # length: forcing it to the production 1810 mm pulled the bodywork inside the track, and the
+        # procedural wheels then stood proud of the arches.
+        bake(mathutils.Matrix.Scale(LENGTH / size.y, 4))
+        mn, mx = world_bounds([ob])
+        bake(mathutils.Matrix.Scale(HEIGHT / (mx.z - mn.z), 4, mathutils.Vector((0, 0, 1))))
+        print(f'  fit: height {mx.z - mn.z:.3f} -> {HEIGHT:.3f} m, width left to follow the length')
+    else:
+        bake(mathutils.Matrix.Scale(LENGTH / size.y, 4))
     mn, mx = world_bounds([ob])
     bake(mathutils.Matrix.Translation((-(mn.x + mx.x) / 2, -(mn.y + mx.y) / 2, -mn.z)))
     mn, mx = world_bounds([ob])
-    print(f'  size after scaling: L {mx.y-mn.y:.3f} W {mx.x-mn.x:.3f} H {mx.z-mn.z:.3f} m'
-          f'  (real 4.256 x 1.810 x ~1.40)')
+    print(f'  size after scaling: L {mx.y-mn.y:.3f} W {mx.x-mn.x:.3f} (incl. mirrors) H {mx.z-mn.z:.3f} m'
+          f'  (real {LENGTH} x {WIDTH} x {HEIGHT})')
     return mx - mn
 
 

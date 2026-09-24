@@ -234,14 +234,16 @@ function buildWheel(m, side, ghost) {
 // Heights come from the body itself: a depth map over the tail (tools/car3d/probe_tail.py) shows a band
 // recessed 3-4 cm at y = 0.70..0.82 running out to the corner - the tail light line - and a second recess
 // at y = 0.50..0.58 which is the plate. The lights wrap to x = 0.93, where the corner turns away.
-// `spread` is how far a hit may sit from the patch's median depth. It is not a flatness test: the nose is
-// genuinely raked (a depth map over it runs 36 cm to 92 cm across the headlight), so the tail gets a tight
-// figure and the nose a loose one. What it does catch is a ray that slipped past the bodywork and landed a
-// metre further back on the wing, which otherwise dragged the patch out into a wedge hanging off the car.
+// `spread` is how far a hit may sit from the patch's median depth. It is not a flatness test but a guard:
+// a ray near the outer edge slips past the bodywork and lands a metre further back, which otherwise drags
+// the patch out into a wedge hanging off the car.
 const LAMPS = [
   // from/dir: where the ray starts and which way it travels; x and y span the patch, in metres
   { mat: 'tail', from: 4.0, dir: -1, x: [0.33, 0.93], y: [0.70, 0.82], spread: 0.12 },
-  { mat: 'head', from: -4.0, dir: 1, x: [0.30, 0.72], y: [0.86, 0.95], spread: 0.55 },
+  // Nothing on the nose. 1.17.0 shipped a headlight patch here and it lay flat on the bonnet as a white
+  // rectangle: this nose recedes 30-90 cm over the height a headlight occupies, so there is no band flat
+  // enough to lay a patch on, and five placements measured against the depth map all landed on the slope.
+  // The generated headlight recesses carry the shape and the floodlights catch them.
 ];
 
 function surfaceLamps(bodyScene, M) {

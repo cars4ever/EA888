@@ -71,6 +71,32 @@ for poly in ob.data.polygons:
     counts[poly.material_index] += 1
 print(f'  faces: paint {counts[0]}, trim {counts[1]}')
 
+# A height threshold on a curved sill leaves a ragged boundary - single faces flip either side of it and
+# the black band round the arches ends up looking chewed. Let every face take the majority of its
+# neighbours a few times over; the line straightens and the speckle goes.
+me = bmesh.new(); me.from_mesh(ob.data)
+me.faces.ensure_lookup_table()
+idx = [f.material_index for f in me.faces]
+for _ in range(4):
+    nxt = list(idx)
+    for f in me.faces:
+        nb = [idx[g.index] for e in f.edges for g in e.link_faces if g is not f]
+        if not nb:
+            continue
+        ones = sum(nb)
+        if ones * 2 > len(nb):
+            nxt[f.index] = 1
+        elif ones * 2 < len(nb):
+            nxt[f.index] = 0
+    idx = nxt
+for f in me.faces:
+    f.material_index = idx[f.index]
+me.to_mesh(ob.data); me.free()
+after = [0, 0]
+for poly in ob.data.polygons:
+    after[poly.material_index] += 1
+print(f'  faces after smoothing: paint {after[0]}, trim {after[1]}')
+
 # exhaust mouths: the lowest, rearmost geometry either side of the centreline
 me = bmesh.new(); me.from_mesh(ob.data)
 for side, sx in (('left', -1), ('right', 1)):
