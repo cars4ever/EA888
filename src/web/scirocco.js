@@ -483,12 +483,27 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
       // left the player with wheels and no body as soon as a rival was on the strip. Clone per car; the
       // geometry is shared, only the node tree is new.
       const scene = loaded.body.clone(true);
+      // The scan is photo-textured (one 2048 atlas over the whole car), so its own material is kept and
+      // only given the environment map and a clear coat - replacing it by name would throw the photograph
+      // away. A flat-shaded scan falls back to the materials this file already defines.
       const byName = { paint: M.paint, trim: M.black, tyre: M.tyre, rim: M.rimCentre };
+      let atlas = null;
+      const dress = m => {
+        if (!m?.map) return byName[String(m?.name || '').toLowerCase().split('.')[0]] || M.paint;
+        if (!atlas) {
+          atlas = m;
+          atlas.envMap = envMap;
+          atlas.envMapIntensity = 1.35;
+          atlas.metalness = 0.35;
+          atlas.roughness = 0.35;
+          atlas.needsUpdate = true;
+        }
+        return atlas;                                  // one material, so the atlas uploads once
+      };
       scene.traverse(o => {
         if (!o.isMesh) return;
         const named = Array.isArray(o.material) ? o.material : [o.material];
-        const pick = m => byName[String(m?.name || '').toLowerCase().split('.')[0]] || M.paint;
-        o.material = named.length === 1 ? pick(named[0]) : named.map(pick);
+        o.material = named.length === 1 ? dress(named[0]) : named.map(dress);
         o.castShadow = o.receiveShadow = false;
       });
       for (const child of [...procedural]) body.remove(child);
@@ -504,8 +519,10 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
           const w = loaded.wheel.clone(true);
           w.traverse(o => {
             if (!o.isMesh) return;
+            // the wheel ships UVs into the body's atlas and no texture of its own
             const named = Array.isArray(o.material) ? o.material : [o.material];
-            const pick = m => byName[String(m?.name || '').toLowerCase().split('.')[0]] || M.barrel;
+            // A wheel with named materials (tyre/rim) brings its own; one with bare UVs shares the atlas.
+            const pick = m => byName[String(m?.name || '').toLowerCase().split('.')[0]] || atlas || M.barrel;
             o.material = named.length === 1 ? pick(named[0]) : named.map(pick);
           });
           if (i % 2 === 1) w.rotation.y = Math.PI;     // wheels[] is [-x, +x, -x, +x]
