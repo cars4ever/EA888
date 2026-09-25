@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.17.1 (branch `claude-dev`) — headlight fix
+## v1.18.0 (branch `claude-dev`) — the owner's own scan, wheels and all
+
+- The car is a multi-view scan the owner made themselves: clean nose with grille and bumper intakes, mirrors, roof spoiler and their own wheels.
+- The wheels are cut off the scan onto the game's axle line, so they are the scan's wheels and they still spin.
+- See DEVLOG 23 for what the measurements settled and what is still soft.
+
+## v1.17.1 — headlight fix
 
 - Removes the headlight patch that 1.17.0 shipped lying flat on the bonnet as a white rectangle. See DEVLOG 22.
 

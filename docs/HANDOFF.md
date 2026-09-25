@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.17.1)
+# EA888 LAB — handoff (stand na v1.18.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–22).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–23).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.17.1 (versionCode 271)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.18.0 (versionCode 280)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke 136/136.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
@@ -56,27 +56,24 @@ ANDROID_HOME=/pad/naar/android-sdk python3 tools/build_android.py
   `ea888-lab-release.jks` + `ea888-lab-release-key.txt`; zet ze op de server buiten de repo.
 - Android SDK: `tools/setup_android_sdk.sh`.
 
-## Volgende stap: de voorkant van de auto
+## Volgende stap
 
-De auto is sinds 1.17.0 een scan van de echte Scirocco (DEVLOG 21). Wat nog niet goed is:
+De auto is sinds 1.18.0 een scan die de eigenaar zelf maakte (DEVLOG 23), inclusief zijn eigen wielen, die
+via `tools/car3d/split_car.py` op de aslijn van het spel worden afgesneden zodat ze blijven draaien.
 
-1. **Voorkant.** Geen scherpe koplamp- of grillevormen. Er is nu wél een recht-van-voren foto, en die geeft
-   de neusvormen ook echt — maar het lichaam dat eruit komt is 8 % te hoog met een bolle daklijn en leest
-   gedrongen (DEVLOG 22). De kandidaat staat buiten de repo als
-   `$EA888_CAR3D_WORK/blender/scirocco-body-nofit.glb`. Een volgende poging zou de frontfoto zwakker mee
-   moeten wegen (lagere guidance, of het front op lagere resolutie) om de neus te winnen zonder de daklijn
-   te verliezen. Let op: die frontfoto lijkt een facelift-neus, de oudere foto's een pre-facelift.
-2. **Geen panelnaden** (deuren, motorkap, tankklep) — die zou je in Blender in kunnen snijden, of laten zitten.
-3. **Wielkastrand is iets rafelig** waar `postprocess.py` de wielen wegknipt.
-4. **Rechterzijde ontbreekt nog**: nu de gespiegelde linkerkant. Voor een symmetrische auto prima, maar een
-   echte rechterfoto zou het bevestigen.
+Wat nog open staat:
 
-Werkwijze staat in `tools/car3d/README.md`. Kort: `prep_inputs.py`, `gen_shape.py mv --port 7870
---octree 512 --steps 70`, `probe.py` voor de yaw, `postprocess.py`, `materials.py`, `probe_tail.py` voor de
-lamphoogtes, `gltf-transform optimize --compress meshopt`, dan `car_preview.py` en `track_preview.py`.
+1. **Geen panelnaden** (deuren, motorkap, tankklep). In Blender in te snijden, of laten zitten.
+2. **De voorspoiler heeft een gerafelde onderlip** waar `split_car.py` hem op 0,075 m afsnijdt.
+3. **Framekosten op een echt toestel zijn nooit gemeten.** 38k driehoeken per frame op de hoogste stand
+   tegen 14,6k op de laagste (die rijdt het procedurele model). De kwaliteitsstand staat in de instellingen.
+4. **Textuur.** Alles is nu vlakke materialen (lak, donker onderwerk, band, velg). `Gen Textured Shape` in
+   de Hunyuan-UI geeft een getextureerd model; dan moeten eerst de kentekens van de invoerfoto's
+   (`tools/erase_plates.py`, vakken met het oog controleren).
 
-Valt een nieuwe poging tegen: een gekocht Scirocco Mk3-model (Sketchfab/CGTrader, €30–150, licentie moet
-app/game-gebruik toestaan) door dezelfde stappen.
+De multi-view UI staat op **http://192.168.2.72:7870/** (container `hunyuan3d-2mv`, herstart automatisch).
+Tik links de tab **MultiView Prompt** aan, anders blijven de vier invoervakken verborgen. Wat werkte:
+vier views die elkaar niet tegenspreken — één sessie, egale achtergrond — belangrijker dan hoge instellingen.
 
 ## Achtergrond: de oorspronkelijke Hunyuan3D-2-opzet (stappen 3–5 gelden nog)
 

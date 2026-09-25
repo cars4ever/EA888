@@ -635,6 +635,44 @@ The shipped body stays the 1.17.0 one. The nose detail is worth having, the stan
 comparison went to the owner to decide. The candidate is kept outside the repo as
 `$EA888_CAR3D_WORK/blender/scirocco-body-nofit.glb`.
 
+## 23. The owner's own scan, wheels and all (v1.18.0)
+
+The owner ran the multi-view model themselves, from a phone, with four views that agree: a square-on front
+against a plain background, the rear, and both sides. It beat everything generated here - and at lower
+settings (30 steps, octree 256, randomised seed) than the 512/70 this log had settled on. Consistent views
+matter more than steps. The result has a clean nose with grille and bumper intakes, mirrors, the roof
+spoiler, and complete wheels with spokes.
+
+**Wheels baked into a body cannot turn**, and a drag game shows wheelspin, so `tools/car3d/split_car.py`
+fits the scan to the game's chassis and cuts the wheels off it: measure the four contact patches, scale each
+axis so the wheelbase (2.578 m), track (1.57 m) and height (1.404 m) are the real car's, then cut on the
+game's own axle positions and write one wheel centred on its axle. `scirocco.js` hangs a copy in each of the
+four wheel groups, where it spins exactly as the procedural one did.
+
+Four things the measurements settled, each after a wrong guess:
+
+- **The scan was 24 % wide for its length** (track/length 0.457 against the real 0.369) while its wheelbase
+  was right (0.595 against 0.606). That is why scaling by overall length never looked right, here or in
+  DEVLOG 22: the error is in the width, not the length.
+- **The old wheel cut was 0.84 m across the axle.** It sliced through the sill and the floor and left the
+  torn edge in plain sight under the car - what the owner saw and called out. A tyre is 0.25 m wide; the cut
+  is 0.28 m now and its edge hides behind the tyre.
+- **Measuring the generated wheel is the wrong tool.** A circle fit over the arch region lands on the arch
+  (r = 0.57); a slab outside the axle plane catches the sill and the door (r = 1.0). Cutting on the game's
+  own radius is both simpler and exactly the alignment wanted, and the extracted wheel came out 0.65 across
+  against the ideal 0.646 - the scan's wheels were already the right size once the chassis fit was in.
+- **The per-axis fit leaves the wheel an ellipse** (9 % flat), so it is rounded again on its own before
+  export, or it would wobble as it turns.
+- Mirroring the wheel for the right-hand side with a negative scale inverts the winding and lights it from
+  the inside; it is turned half a turn about the vertical instead.
+
+The road the car stood on comes through as a thin slab welded to the underside and shows as a ragged black
+fringe along the bumpers once the wheels are gone; the near-horizontal faces low down are dropped and the
+body cut off flat at 0.075 m.
+
+Body 505 KB / 28k triangles, wheel 47 KB / 2.2k, so 37k a car against 36k before and 38k a frame on the high
+tier. Still soft: no panel gaps, and the front splitter has a torn lower lip where it is cut off.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
