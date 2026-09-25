@@ -673,6 +673,39 @@ body cut off flat at 0.075 m.
 Body 505 KB / 28k triangles, wheel 47 KB / 2.2k, so 37k a car against 36k before and 38k a frame on the high
 tier. Still soft: no panel gaps, and the front splitter has a torn lower lip where it is cut off.
 
+## 24. The photo-textured car (v1.19.0)
+
+The owner ran `Gen Textured Shape` and exported it: 40k triangles carrying a 2048 baseColor and
+metallicRoughness atlas. The car has its real paint now, with the VW badges, tinted glass, headlight and
+tail-light detail, instead of the flat materials this file had been assigning.
+
+`tools/car3d/textured_car.py` keeps the baked material and its UVs - assigning paint/trim by name would
+throw the photograph away - and does three things to it.
+
+**The registration is painted into the texture**, and it is not yellow there (the atlas reads as blue
+almost everywhere; the largest yellow blob is 66 px), so a colour search finds nothing. It is found through
+the mesh instead: the faces on each bumper where a plate sits, whose UV triangles are rasterised and filled
+with the region's own median. A bounding box over those UVs blanked a quarter of the atlas because the
+islands are scattered; per triangle it is 0.5 %. Both ends, and the band runs down to 0.18 m - on this car
+the plate is on the bumper, not up on the boot lid, and the first attempt at 0.50..0.63 m missed it
+entirely.
+
+**The photos carry their own light.** The backdrop behind the nose and the sky on the bonnet are projected
+into the texture as pale, desaturated patches that read as damage on the paint. Near-white, low-saturation
+pixels are pulled towards the colour around them (0.4 % of the atlas). Badges, lights, tyres and glass are
+untouched because they are either saturated or dark.
+
+**One atlas, uploaded once.** The wheel carries UVs into the body's atlas and ships no texture of its own;
+scirocco.js hands it the body's material. Exported with its own copy it was 233 KB; without, 10 KB.
+
+The wheels themselves come from the *untextured* scan, which is 360k triangles against the textured
+export's 40k - the textured wheels are 276 faces and read as dark blobs. So the shipped car is the textured
+body with the sharper scan's wheels on the flat tyre/rim materials.
+
+Body 393 KB with the atlas as WebP, wheel 10 KB, against 552 KB for the untextured pair; 34.7k triangles a
+frame against 38k. Still there: the front bumper keeps some pale patches the de-glare pass does not reach,
+and there are no panel gaps.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

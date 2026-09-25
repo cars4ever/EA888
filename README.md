@@ -12,7 +12,13 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.18.0 (branch `claude-dev`) — the owner's own scan, wheels and all
+## v1.19.0 (branch `claude-dev`) — the car carries its own paint
+
+- The body is photo-textured from the owner's scan: real paint, VW badges, tinted glass, headlight and tail-light detail.
+- Both registrations are blanked in the texture itself, found through the mesh rather than by colour.
+- Smaller and lighter than the flat-material version it replaces (403 KB against 552 KB, 34.7k triangles a frame against 38k).
+
+## v1.18.0 — the owner's own scan, wheels and all
 
 - The car is a multi-view scan the owner made themselves: clean nose with grille and bumper intakes, mirrors, roof spoiler and their own wheels.
 - The wheels are cut off the scan onto the game's axle line, so they are the scan's wheels and they still spin.

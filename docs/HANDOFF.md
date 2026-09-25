@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.18.0)
+# EA888 LAB — handoff (stand na v1.19.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–23).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–24).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.18.0 (versionCode 280)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.19.0 (versionCode 290)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke 136/136.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
@@ -67,9 +67,11 @@ Wat nog open staat:
 2. **De voorspoiler heeft een gerafelde onderlip** waar `split_car.py` hem op 0,075 m afsnijdt.
 3. **Framekosten op een echt toestel zijn nooit gemeten.** 38k driehoeken per frame op de hoogste stand
    tegen 14,6k op de laagste (die rijdt het procedurele model). De kwaliteitsstand staat in de instellingen.
-4. **Textuur.** Alles is nu vlakke materialen (lak, donker onderwerk, band, velg). `Gen Textured Shape` in
-   de Hunyuan-UI geeft een getextureerd model; dan moeten eerst de kentekens van de invoerfoto's
-   (`tools/erase_plates.py`, vakken met het oog controleren).
+4. ~~Textuur~~ — gedaan in 1.19.0. De carrosserie draagt nu de fototextuur (`tools/car3d/textured_car.py`).
+   Kentekens worden dáár geblankt, via de mesh (de vlakken op de bumpers) en niet op kleur — in de atlas is
+   de plaat niet geel. Wat nog blijft: bleke plekken op de voorbumper die de ontglans-stap niet haalt.
+5. **De wielen komen nog uit de ongetextureerde scan** (die is 360k tegen 40k, dus scherper). Een
+   getextureerde run op hogere octree zou ze in één model kunnen brengen.
 
 De multi-view UI staat op **http://192.168.2.72:7870/** (container `hunyuan3d-2mv`, herstart automatisch).
 Tik links de tab **MultiView Prompt** aan, anders blijven de vier invoervakken verborgen. Wat werkte:
