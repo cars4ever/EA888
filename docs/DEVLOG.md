@@ -847,9 +847,10 @@ is still far ahead of the LP turbo alone.
 
 ### Open
 
-- **The K04 hybrid at 3 bar.** The compressor map holds it to 2.44 bar gauge - 3.44 bar absolute. If the
-  owner means 3 bar absolute the model is already past it; if they mean 3 bar gauge, the map says this wheel
-  does not get there and I would rather ask than quietly widen the map.
+- **The K04 hybrid at 3 bar.** On the engine the wheel reaches 2.44 bar gauge - 3.44 bar absolute - and the
+  modelled map's own ceiling is `prTop` 3.75, which is 2.75 bar gauge. So 3 bar absolute is comfortably
+  inside it and 3 bar gauge (PR 4.0) is above it. This is a modelled map, not a vendor one, so widening it is
+  a judgement about this particular hybrid: worth asking rather than quietly doing.
 - A stock engine still scores around 47 reliability, and stock EGT sits near 980 C without responding to
   lambda enrichment. Both are modelling gaps, not balance, and neither is fixed here.
 
