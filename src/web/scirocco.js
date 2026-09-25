@@ -512,11 +512,12 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
       for (const child of [...procedural]) body.remove(child);
       body.add(scene);
       tips.forEach((anchor, i) => anchor.position.set((i === 0 ? 1 : -1) * BODY_TIPS.x, BODY_TIPS.y, BODY_TIPS.z));
-      // On a flat-shaded scan the lamps are painted on. On a photo-textured one the lenses are already
-      // there - smoked, and the scan reproduced them dark, so they need to light up rather than be
-      // replaced: the same patch, but additive, so the lens shows through the glow instead of a flat red
-      // rectangle sitting over it (which is what 1.19.0 shipped).
-      for (const lamp of surfaceLamps(scene, M, atlas ? M.tailGlow : null)) body.add(lamp);
+      // Only on a flat-shaded scan. A photo-textured body carries its lights in the texture and lights
+      // them with an emissive map built from it (tools/car3d/textured_car.py), which follows the real lens
+      // shape - where a patch, additive or not, is a rectangle laid over the panel.
+      if (!atlas) {
+        for (const lamp of surfaceLamps(scene, M)) body.add(lamp);
+      }
       if (loaded.wheel) {
         // The scan's own wheels, one copy per corner. The right-hand pair is the same mesh turned half a
         // turn about the vertical rather than mirrored: a negative scale would invert the winding and the

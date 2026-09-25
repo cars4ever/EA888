@@ -308,14 +308,110 @@ else:
 # dark. A scan of the whole 2048 atlas finds 1010 reddish pixels, scattered - there is nothing to light up.
 # scirocco.js lays an additive glow over the lenses instead.
 
+# Tail lights straight out of the texture. The studio photos put real red lenses in the atlas (53k red
+# pixels against 1k for the outdoor set), so instead of laying a rectangle over them, the red inside the
+# rear light region becomes an emissive map. The lights then glow in their own painted shape.
+TAIL_LIGHTS = dict(depth=0.42, z=(0.60, 1.02), x=(0.22, 1.20))
+
+if img:
+    W, H = img.size
+    base = np.array(img.pixels[:]).reshape(H, W, 4)
+    lamp_tris = []
+    for poly in ob.data.polygons:
+        c = sum((ob.data.vertices[i].co for i in poly.vertices), mathutils.Vector()) / len(poly.vertices)
+        if (c.y < tail_y + TAIL_LIGHTS['depth']
+                and TAIL_LIGHTS['z'][0] < c.z < TAIL_LIGHTS['z'][1]
+                and TAIL_LIGHTS['x'][0] < abs(c.x) < TAIL_LIGHTS['x'][1]):
+            uvs = [uv_layer.data[li].uv[:] for li in poly.loop_indices]
+            for i in range(1, len(uvs) - 1):
+                lamp_tris.append((uvs[0], uvs[i], uvs[i + 1]))
+    region = np.zeros((H, W), bool)
+    for tri in lamp_tris:
+        pts = np.array(tri) * [W, H]
+        x0, y0 = np.floor(pts.min(0)).astype(int)
+        x1, y1 = np.ceil(pts.max(0)).astype(int) + 1
+        x0, y0 = max(x0, 0), max(y0, 0)
+        x1, y1 = min(x1, W), min(y1, H)
+        if x1 <= x0 or y1 <= y0:
+            continue
+        yy, xx = np.mgrid[y0:y1, x0:x1]
+        p0, p1, p2 = pts
+        dd = (p1[1] - p2[1]) * (p0[0] - p2[0]) + (p2[0] - p1[0]) * (p0[1] - p2[1])
+        if abs(dd) < 1e-9:
+            continue
+        aa = ((p1[1] - p2[1]) * (xx - p2[0]) + (p2[0] - p1[0]) * (yy - p2[1])) / dd
+        bbq = ((p2[1] - p0[1]) * (xx - p2[0]) + (p0[0] - p2[0]) * (yy - p2[1])) / dd
+        region[y0:y1, x0:x1] |= (aa >= 0) & (bbq >= 0) & (aa + bbq <= 1)
+    rgb2 = base[..., :3]
+    red = ((rgb2[..., 0] > rgb2[..., 2] * 1.15) & (rgb2[..., 0] > rgb2[..., 1] * 1.15)
+           & (rgb2[..., 0] > 0.012))
+    lamp = region & red
+    print("  tail region " + str(int(region.sum())) + " px, red in it " + str(int(lamp.sum())))
+    if lamp.sum() > 200:
+        em = np.zeros((H, W, 4), np.float64)
+        em[..., 3] = 1.0
+        em[lamp, 0] = np.clip(rgb2[lamp][:, 0] * 2.6, 0, 1)
+        em[lamp, 1] = np.clip(rgb2[lamp][:, 1] * 0.7, 0, 1)
+        em[lamp, 2] = np.clip(rgb2[lamp][:, 2] * 0.7, 0, 1)
+        emimg = bpy.data.images.new('tail_emissive', W, H, alpha=True)
+        emimg.pixels[:] = em.reshape(-1).tolist()
+        for m in ob.data.materials:
+            if not m or not m.use_nodes:
+                continue
+            bsdf = next((n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+            if not bsdf:
+                continue
+            node = m.node_tree.nodes.new('ShaderNodeTexImage')
+            node.image = emimg
+            node.location = (bsdf.location.x - 500, bsdf.location.y - 600)
+            m.node_tree.links.new(node.outputs['Color'], bsdf.inputs['Emission Color'])
+            bsdf.inputs['Emission Strength'].default_value = 1.0
+        print("  tail lights: emissive map built from the texture")
+
 def decimate(o, target):
-    tris = sum(len(p.vertices) - 2 for p in o.data.polygons)
-    if tris <= target:
-        return
+    """Thin a scan the way a car body wants it.
+
+    A raw Hunyuan surface is lumpy: fine noise on panels that should be dead flat. Collapsing straight off
+    it keeps every bump and throws away the crease the bump sat on, which is what made the paint read as
+    dough. So relax the noise first, then dissolve what is already coplanar (that costs nothing and takes
+    the triangle count down where the body is flat), and only then collapse. Finally shade smooth with a
+    crease angle, so the paint reads as paint while the panel edges stay sharp.
+    """
+    tris = lambda x: sum(len(p.vertices) - 2 for p in x.data.polygons)
     bpy.context.view_layer.objects.active = o
-    d = o.modifiers.new('dec', 'DECIMATE'); d.decimate_type = 'COLLAPSE'; d.ratio = target / tris
+    bpy.ops.object.select_all(action='DESELECT')
+    o.select_set(True)
+    start = tris(o)
+
+    m = o.modifiers.new('smooth', 'CORRECTIVE_SMOOTH')
+    m.iterations = 10
+    m.factor = 0.55
+    m.smooth_type = 'LENGTH_WEIGHTED'        # keeps volume; a plain smooth shrinks the panels
+    m.use_only_smooth = True
+    bpy.ops.object.modifier_apply(modifier=m.name)
+
+    d = o.modifiers.new('planar', 'DISSOLVE' and 'DECIMATE')
+    d.decimate_type = 'DISSOLVE'
+    d.angle_limit = math.radians(1.5)
+    d.delimit = {'UV'}                       # never dissolve across a texture seam
     bpy.ops.object.modifier_apply(modifier=d.name)
-    print(f'  {o.name}: {tris} -> {sum(len(p.vertices) - 2 for p in o.data.polygons)} tris')
+    flat = tris(o)
+
+    if tris(o) > target:
+        d = o.modifiers.new('dec', 'DECIMATE')
+        d.decimate_type = 'COLLAPSE'
+        d.ratio = target / tris(o)
+        d.use_collapse_triangulate = True
+        bpy.ops.object.modifier_apply(modifier=d.name)
+
+    for p in o.data.polygons:
+        p.use_smooth = True
+    try:
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(38))
+    except AttributeError:
+        pass
+    print(f'  {o.name}: {start} -> planar {flat} -> {tris(o)} tris, shaded smooth at 38 deg')
+
 
 decimate(ob, a.tris)
 decimate(wob, a.wheel_tris)
