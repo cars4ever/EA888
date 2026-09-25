@@ -283,7 +283,9 @@ if img:
     mxc = rgb.max(2)
     mnc = rgb.min(2)
     satp = np.where(mxc > 1e-6, (mxc - mnc) / np.maximum(mxc, 1e-6), 0.0)
-    glare = (mxc > 0.55) & (satp < 0.22)
+    # A reflection of the sky on blue paint is bright AND still fairly blue, so a saturation cut alone
+    # missed the worst of it on the roof and bonnet. Take anything very bright as well, whatever its hue.
+    glare = ((mxc > 0.55) & (satp < 0.22)) | (mxc > 0.80)
     if glare.sum():
         k = 12
         blur = rgb.copy()
@@ -301,6 +303,10 @@ if img:
 
 else:
     print(f'  plate: NOT blanked - {len(plate_tris)} triangles, image {"found" if img else "NOT found"}')
+
+# No emissive tail lights from the texture: this car's lenses are smoked and the scan reproduced them
+# dark. A scan of the whole 2048 atlas finds 1010 reddish pixels, scattered - there is nothing to light up.
+# scirocco.js lays an additive glow over the lenses instead.
 
 def decimate(o, target):
     tris = sum(len(p.vertices) - 2 for p in o.data.polygons)

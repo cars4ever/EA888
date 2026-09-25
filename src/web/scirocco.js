@@ -249,7 +249,7 @@ const LAMPS = [
   // The generated headlight recesses carry the shape and the floodlights catch them.
 ];
 
-function surfaceLamps(bodyScene, M) {
+function surfaceLamps(bodyScene, M, override = null) {
   const ray = new THREE.Raycaster();
   const dir = new THREE.Vector3();
   const origin = new THREE.Vector3();
@@ -293,7 +293,7 @@ function surfaceLamps(bodyScene, M) {
         geo.index.needsUpdate = true;
       }
       geo.computeVertexNormals();
-      const lamp = new THREE.Mesh(geo, spec.mat === 'tail' ? M.tail : M.head);
+      const lamp = new THREE.Mesh(geo, override || (spec.mat === 'tail' ? M.tail : M.head));
       lamp.renderOrder = 1;
       out.push(lamp);
       if (spec.x[0] < 0.12) break;                                        // a centre bar is built once
@@ -316,6 +316,9 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
     // smoked lenses: dark, lit from inside by the bar and (when braking) the whole lamp
     tail: new THREE.MeshStandardMaterial({ color: 0x160203, emissive: 0x8a0008, emissiveIntensity: .7, roughness: .1, metalness: .2, envMap, envMapIntensity: 1.1 }),
     tailBar: new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, .15, .12) }),
+    // lit lenses over a photo-textured tail: additive, so the painted lens still reads under the glow
+    tailGlow: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, .1, .08), transparent: true,
+      opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false }),
     reflector: new THREE.MeshStandardMaterial({ color: 0x5a0508, emissive: 0x8a0006, emissiveIntensity: .8, roughness: .3 }),
     head: new THREE.MeshStandardMaterial({ color: 0x1a1d22, emissive: 0xdde8ff, emissiveIntensity: 1.4, roughness: .2 }),
     headHousing: new THREE.MeshStandardMaterial({ color: 0x14171c, metalness: .6, roughness: .2, envMap }),
@@ -509,7 +512,11 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
       for (const child of [...procedural]) body.remove(child);
       body.add(scene);
       tips.forEach((anchor, i) => anchor.position.set((i === 0 ? 1 : -1) * BODY_TIPS.x, BODY_TIPS.y, BODY_TIPS.z));
-      for (const lamp of surfaceLamps(scene, M)) body.add(lamp);
+      // On a flat-shaded scan the lamps are painted on. On a photo-textured one the lenses are already
+      // there - smoked, and the scan reproduced them dark, so they need to light up rather than be
+      // replaced: the same patch, but additive, so the lens shows through the glow instead of a flat red
+      // rectangle sitting over it (which is what 1.19.0 shipped).
+      for (const lamp of surfaceLamps(scene, M, atlas ? M.tailGlow : null)) body.add(lamp);
       if (loaded.wheel) {
         // The scan's own wheels, one copy per corner. The right-hand pair is the same mesh turned half a
         // turn about the vertical rather than mirrored: a negative scale would invert the winding and the
