@@ -17,17 +17,20 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const BODY_URL = 'models/scirocco-body.glb';
-// Where the generated body's exhaust mouths are, measured off the mesh (tools/car3d/materials.py prints it).
-const BODY_TIPS = { x: 0.539, y: 0.281, z: 2.12 };
-const BODY_HEADLIGHTS = { x: 0.56, y: 0.70, z: -2.07 };
+const WHEEL_URL = 'models/scirocco-wheel.glb';
+// Where the generated body's exhaust mouths are, measured off the mesh (tools/car3d/split_car.py prints it).
+const BODY_TIPS = { x: 0.494, y: 0.321, z: 2.094 };
 
 let bodyRequest = null;
 function loadBody() {
   if (!bodyRequest) {
     const loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);        // the GLB is meshopt-compressed (887 KB for 52k tris)
-    bodyRequest = new Promise(resolve => loader.load(
-      BODY_URL, gltf => resolve(gltf.scene), undefined, () => resolve(null)));
+    loader.setMeshoptDecoder(MeshoptDecoder);        // both GLBs are meshopt-compressed
+    const one = url => new Promise(resolve => loader.load(url, g => resolve(g.scene), undefined, () => resolve(null)));
+    // The wheel is its own model, cut out of the same scan on the game's axle line and centred on it, so
+    // it can hang in the wheel groups and turn. A wheel baked into the body would stand still.
+    bodyRequest = Promise.all([one(BODY_URL), one(WHEEL_URL)])
+      .then(([body, wheel]) => (body ? { body, wheel } : null));
   }
   return bodyRequest;
 }
@@ -231,15 +234,15 @@ function buildWheel(m, side, ghost) {
 // cut out of the mesh by position, so the crisp shapes are laid over them: a subdivided patch whose every
 // vertex is dropped onto the body by a ray along the car's axis, then lifted 4 mm clear of it. That way the
 // lamp follows the real surface (which curves round the corners) instead of floating as a flat card.
-// Heights come from the body itself: a depth map over the tail (tools/car3d/probe_tail.py) shows a band
-// recessed 3-4 cm at y = 0.70..0.82 running out to the corner - the tail light line - and a second recess
-// at y = 0.50..0.58 which is the plate. The lights wrap to x = 0.93, where the corner turns away.
+// Heights come from the body itself: a depth map over the tail (tools/car3d/probe_tail.py) shows the
+// bumper standing proudest at y = 0.65, the tail stepping back 7-9 cm above it - the tail light and hatch
+// band - and a second recess at y = 0.55..0.62 which is the plate. Past x = 0.86 the corner turns away.
 // `spread` is how far a hit may sit from the patch's median depth. It is not a flatness test but a guard:
 // a ray near the outer edge slips past the bodywork and lands a metre further back, which otherwise drags
 // the patch out into a wedge hanging off the car.
 const LAMPS = [
   // from/dir: where the ray starts and which way it travels; x and y span the patch, in metres
-  { mat: 'tail', from: 4.0, dir: -1, x: [0.33, 0.93], y: [0.70, 0.82], spread: 0.12 },
+  { mat: 'tail', from: 4.0, dir: -1, x: [0.32, 0.82], y: [0.76, 0.90], spread: 0.28 },
   // Nothing on the nose. 1.17.0 shipped a headlight patch here and it lay flat on the bonnet as a white
   // rectangle: this nose recedes 30-90 cm over the height a headlight occupies, so there is no band flat
   // enough to lay a patch on, and five placements measured against the depth map all landed on the slope.
@@ -456,14 +459,15 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
   const procedural = body.children.filter(c => !tips.includes(c));
 
   // Wheels with calipers (the wheel groups spin; the calipers stay with the body)
-  const wheels = [];
+  const wheels = [], calipers = [];
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     const w = buildWheel(M, sx, ghost);
     w.position.set(sx * DIM.track / 2, DIM.wheelR, sz * DIM.wheelbase / 2);
     root.add(w); wheels.push(w);
     if (!ghost) {
       const cal = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.09), M.caliper);
-      cal.position.set(sx * (DIM.track / 2 - 0.04), DIM.wheelR + 0.1, sz * DIM.wheelbase / 2 + 0.08); root.add(cal);
+      cal.position.set(sx * (DIM.track / 2 - 0.04), DIM.wheelR + 0.1, sz * DIM.wheelbase / 2 + 0.08);
+      root.add(cal); calipers.push(cal);
     }
   }
   if (ghost) root.traverse(o => { if (o.isMesh) o.renderOrder = 5; });
@@ -478,8 +482,8 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
       // One Object3D cannot hang in two cars: adding it to the second reparents it out of the first, which
       // left the player with wheels and no body as soon as a rival was on the strip. Clone per car; the
       // geometry is shared, only the node tree is new.
-      const scene = loaded.clone(true);
-      const byName = { paint: M.paint, trim: M.black };
+      const scene = loaded.body.clone(true);
+      const byName = { paint: M.paint, trim: M.black, tyre: M.tyre, rim: M.rimCentre };
       scene.traverse(o => {
         if (!o.isMesh) return;
         const named = Array.isArray(o.material) ? o.material : [o.material];
@@ -491,6 +495,24 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
       body.add(scene);
       tips.forEach((anchor, i) => anchor.position.set((i === 0 ? 1 : -1) * BODY_TIPS.x, BODY_TIPS.y, BODY_TIPS.z));
       for (const lamp of surfaceLamps(scene, M)) body.add(lamp);
+      if (loaded.wheel) {
+        // The scan's own wheels, one copy per corner. The right-hand pair is the same mesh turned half a
+        // turn about the vertical rather than mirrored: a negative scale would invert the winding and the
+        // wheel would light from the inside.
+        wheels.forEach((group, i) => {
+          group.clear();
+          const w = loaded.wheel.clone(true);
+          w.traverse(o => {
+            if (!o.isMesh) return;
+            const named = Array.isArray(o.material) ? o.material : [o.material];
+            const pick = m => byName[String(m?.name || '').toLowerCase().split('.')[0]] || M.barrel;
+            o.material = named.length === 1 ? pick(named[0]) : named.map(pick);
+          });
+          if (i % 2 === 1) w.rotation.y = Math.PI;     // wheels[] is [-x, +x, -x, +x]
+          group.add(w);
+        });
+        for (const cal of calipers) cal.visible = false;
+      }
 
     });
   }
