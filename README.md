@@ -12,7 +12,12 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.19.0 (branch `claude-dev`) — the car carries its own paint
+## v1.20.0 (branch `claude-dev`) — the studio-lit scan
+
+- The car is rescanned from studio-lit photos: clean paint, no baked-in sky on the roof and bonnet, and the lightest frame cost yet (30.8k triangles).
+- Tail lights sit on the actual lenses, measured off this body rather than carried over from the last one.
+
+## v1.19.0 — the car carries its own paint
 
 - The body is photo-textured from the owner's scan: real paint, VW badges, tinted glass, headlight and tail-light detail.
 - Both registrations are blanked in the texture itself, found through the mesh rather than by colour.

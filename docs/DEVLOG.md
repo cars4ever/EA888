@@ -706,6 +706,36 @@ Body 393 KB with the atlas as WebP, wheel 10 KB, against 552 KB for the untextur
 frame against 38k. Still there: the front bumper keeps some pale patches the de-glare pass does not reach,
 and there are no panel gaps.
 
+## 25. The studio-lit scan (v1.20.0)
+
+The owner reshot the car against a plain mid-grey backdrop in even light - four square-on views, dry - and
+ran both passes at octree 512 with a fixed seed: a textured export for the paint and a 1.23M triangle white
+mesh for the wheels. Same run, same bounding box, so the wheels land in the arches without adjustment.
+
+**The photographs fixed what no setting could.** The white blobs on the roof and bonnet in 1.19 were the
+sky reflecting off the paint, baked into the texture by outdoor shots; they are gone. The de-glare pass
+still runs (2.8 % of the atlas against 0.9 %, because the light backdrop bleeds at the silhouette) but it
+is no longer papering over the input. Frame cost is down as well: 30.8k triangles against 34.7k.
+
+Two things that had to be re-measured for the new body rather than carried over:
+
+- **The tail glow** was still on the previous body's band and sat half on the hatch. The depth map puts the
+  light line just above the bumper, and the reference photo puts the lenses at |x| = 0.57..0.87,
+  y = 0.71..0.91. A band is not portable between scans; each one needs `probe_tail.py`.
+- **The exhaust mouths** moved to x +/- 0.493, y 0.311, z 2.070.
+
+Also worth recording for the next time: **the texture stage always remeshes.** Both of this owner's
+textured exports came out at exactly 40,000 triangles whatever the octree, and at that budget the wheels
+are a few hundred faces and read as dark blobs. Octree buys a more accurate shape going into the remesh,
+not a denser textured mesh - which is why the shipped car is a textured body with wheels cut from the
+untextured pass.
+
+The registration is blanked in the texture as before, and checked at 4x zoom on the rear render: the recess
+is body colour, no characters, no yellow.
+
+Body 475 KB, wheel 50 KB. Still soft: the front bumper keeps some artefacts around the lower intake, and
+there are no panel gaps.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

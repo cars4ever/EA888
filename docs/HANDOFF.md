@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.19.0)
+# EA888 LAB — handoff (stand na v1.20.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–24).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–25).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.19.0 (versionCode 290)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.20.0 (versionCode 300)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke 136/136.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
@@ -72,6 +72,14 @@ Wat nog open staat:
    de plaat niet geel. Wat nog blijft: bleke plekken op de voorbumper die de ontglans-stap niet haalt.
 5. **De wielen komen nog uit de ongetextureerde scan** (die is 360k tegen 40k, dus scherper). Een
    getextureerde run op hogere octree zou ze in één model kunnen brengen.
+
+**Wat een goede scan oplevert** (gemeten, DEVLOG 25): egale middengrijze achtergrond, gelijkmatig licht of
+schaduw, droge auto, vier haakse aanzichten uit één sessie. Octree 512, ~50 stappen, guidance 5, vaste seed,
+Simplify Mesh uit. Twee runs: `Gen Textured Shape` voor de lak én `Gen Shape` voor de wielen — de
+textuurstap hermesht altijd naar 40k, en daarin zijn de wielen een paar honderd vlakken.
+
+Na elke nieuwe scan opnieuw opmeten (niet overnemen): de achterlichtband met `probe_tail.py` en de
+uitlaatmonden die `split_car.py` print.
 
 De multi-view UI staat op **http://192.168.2.72:7870/** (container `hunyuan3d-2mv`, herstart automatisch).
 Tik links de tab **MultiView Prompt** aan, anders blijven de vier invoervakken verborgen. Wat werkte:
