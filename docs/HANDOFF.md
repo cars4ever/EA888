@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.17.0)
+# EA888 LAB — handoff (stand na v1.17.1)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–21).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–22).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.17.0 (versionCode 270)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.17.1 (versionCode 271)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke 136/136.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
@@ -60,9 +60,12 @@ ANDROID_HOME=/pad/naar/android-sdk python3 tools/build_android.py
 
 De auto is sinds 1.17.0 een scan van de echte Scirocco (DEVLOG 21). Wat nog niet goed is:
 
-1. **Voorkant.** Geen scherpe koplamp- of grillevormen; de lamp is een opgelegd vlak. Er is nog steeds geen
-   recht-van-voren foto. Eén zo'n foto (op ~1,2 m hoogte, 5–8 m afstand, wielen rechtuit, egale achtergrond)
-   en de multi-view kan opnieuw met vier kloppende views.
+1. **Voorkant.** Geen scherpe koplamp- of grillevormen. Er is nu wél een recht-van-voren foto, en die geeft
+   de neusvormen ook echt — maar het lichaam dat eruit komt is 8 % te hoog met een bolle daklijn en leest
+   gedrongen (DEVLOG 22). De kandidaat staat buiten de repo als
+   `$EA888_CAR3D_WORK/blender/scirocco-body-nofit.glb`. Een volgende poging zou de frontfoto zwakker mee
+   moeten wegen (lagere guidance, of het front op lagere resolutie) om de neus te winnen zonder de daklijn
+   te verliezen. Let op: die frontfoto lijkt een facelift-neus, de oudere foto's een pre-facelift.
 2. **Geen panelnaden** (deuren, motorkap, tankklep) — die zou je in Blender in kunnen snijden, of laten zitten.
 3. **Wielkastrand is iets rafelig** waar `postprocess.py` de wielen wegknipt.
 4. **Rechterzijde ontbreekt nog**: nu de gespiegelde linkerkant. Voor een symmetrische auto prima, maar een

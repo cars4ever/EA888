@@ -606,6 +606,35 @@ mesh), the photos are not committed, and the 3D plate recess is left blank as be
 baked from these photos, the plates have to be erased first - `tools/erase_plates.py` with boxes checked by
 eye, because neither the shipped detector nor a wider one found them reliably in this set.
 
+## 22. The headlight patch, and what the front photo did (v1.17.1)
+
+**A defect in 1.17.0.** The headlight laid onto the nose lies flat on the bonnet as a white rectangle. It
+is visible in the shipped APK. The placement was measured against a depth map, but that nose recedes 30 to
+90 cm over the height a headlight occupies - there is no band flat enough to lay a patch on - and five
+placements all landed on the slope. It is removed: the generated headlight recesses carry the shape and the
+floodlights catch them. The tail lights are unaffected; the tail has a genuine 3-4 cm recess to sit in.
+
+**The square-on front photo.** The owner supplied one afterwards, which is the view the multi-view model had
+been missing. Rerun with front + rear + left + mirrored left, at octree 512 / 70 steps:
+
+| | 1.17.0 body | with the front photo |
+|---|---|---|
+| nose | soft; recesses only | headlight and grille shapes in the mesh |
+| height | 1.410 m | 1.513 m, 8 % over the production 1.404 |
+| roofline | low and long, reads as a Scirocco | domed; the car reads squat, more hatchback |
+| arches | clean | ragged lip where the wheels are cut |
+
+Correcting the height on its own (`postprocess.py --fit`) fixed the number and made the look worse: squashing
+a body that is too tall gives a squat one. Fitting the width as well was worse again - forcing it to the
+production 1810 mm pulled the bodywork inside the track and the procedural wheels stood proud of the arches,
+so `--fit` now deliberately lets the width follow the length. `materials.py` also learned to smooth the
+paint/trim boundary, which a bare height threshold leaves ragged round the arches; both are in the tools for
+the next attempt.
+
+The shipped body stays the 1.17.0 one. The nose detail is worth having, the stance is worth more, and the
+comparison went to the owner to decide. The candidate is kept outside the repo as
+`$EA888_CAR3D_WORK/blender/scirocco-body-nofit.glb`.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

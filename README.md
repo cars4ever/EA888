@@ -12,7 +12,11 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.17.0 (branch `claude-dev`) — the car is a scan of the real Scirocco
+## v1.17.1 (branch `claude-dev`) — headlight fix
+
+- Removes the headlight patch that 1.17.0 shipped lying flat on the bonnet as a white rectangle. See DEVLOG 22.
+
+## v1.17.0 — the car is a scan of the real Scirocco
 
 - The player's car is now a body generated from the owner's own photos (Hunyuan3D multi-view, cleaned up in Blender), not the procedural shell.
 - The procedural car stays as the ghost, as the fallback, and on the lowest quality setting.
