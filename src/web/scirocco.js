@@ -19,7 +19,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 const BODY_URL = 'models/scirocco-body.glb';
 const WHEEL_URL = 'models/scirocco-wheel.glb';
 // Where the generated body's exhaust mouths are, measured off the mesh (tools/car3d/split_car.py prints it).
-const BODY_TIPS = { x: 0.494, y: 0.321, z: 2.094 };
+const BODY_TIPS = { x: 0.493, y: 0.311, z: 2.070 };
 
 let bodyRequest = null;
 function loadBody() {
@@ -234,15 +234,15 @@ function buildWheel(m, side, ghost) {
 // cut out of the mesh by position, so the crisp shapes are laid over them: a subdivided patch whose every
 // vertex is dropped onto the body by a ray along the car's axis, then lifted 4 mm clear of it. That way the
 // lamp follows the real surface (which curves round the corners) instead of floating as a flat card.
-// Heights come from the body itself: a depth map over the tail (tools/car3d/probe_tail.py) shows the
-// bumper standing proudest at y = 0.65, the tail stepping back 7-9 cm above it - the tail light and hatch
-// band - and a second recess at y = 0.55..0.62 which is the plate. Past x = 0.86 the corner turns away.
+// Measured, not guessed: a depth map over the tail (tools/car3d/probe_tail.py) puts the bumper proudest
+// at y = 0.65 with the light line recessed just above it, and the reference photo puts the lenses at
+// |x| = 0.57..0.87, y = 0.71..0.91. An earlier band at |x| = 0.32..0.82 sat half on the hatch.
 // `spread` is how far a hit may sit from the patch's median depth. It is not a flatness test but a guard:
 // a ray near the outer edge slips past the bodywork and lands a metre further back, which otherwise drags
 // the patch out into a wedge hanging off the car.
 const LAMPS = [
   // from/dir: where the ray starts and which way it travels; x and y span the patch, in metres
-  { mat: 'tail', from: 4.0, dir: -1, x: [0.32, 0.82], y: [0.76, 0.90], spread: 0.28 },
+  { mat: 'tail', from: 4.0, dir: -1, x: [0.55, 0.88], y: [0.72, 0.90], spread: 0.22 },
   // Nothing on the nose. 1.17.0 shipped a headlight patch here and it lay flat on the bonnet as a white
   // rectangle: this nose recedes 30-90 cm over the height a headlight occupies, so there is no band flat
   // enough to lay a patch on, and five placements measured against the depth map all landed on the slope.
