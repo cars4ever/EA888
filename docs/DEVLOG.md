@@ -736,6 +736,123 @@ is body colour, no characters, no yellow.
 Body 475 KB, wheel 50 KB. Still soft: the front bumper keeps some artefacts around the lower intake, and
 there are no panel gaps.
 
+## 26. High-resolution geometry wearing the texture (v1.21.0)
+
+The body looked like dough because it was. Hunyuan's texture stage remeshes to 40k triangles before it lays
+the UVs down, and once the wheels and the road slab are cut out of that, the body is 21k. Too few for a car:
+the silhouette goes polygonal and the panel creases disappear. No decimation setting fixes that - there is
+nothing left to keep.
+
+`tools/car3d/hires_textured.py` takes the geometry from the 1.23M triangle shape pass and the UVs from the
+textured one. Both come out of the same run in the same space, so once each is fitted to the game's chassis
+their surfaces sit within a millimetre of one another and Blender's Data Transfer carries the UVs across by
+projection. 40k triangles instead of 21k, with the scan noise relaxed by a corrective smooth before the
+collapse rather than preserved by it.
+
+The tail lights come out of the texture as well. The studio photos put real red lenses in the atlas (53k red
+pixels, against 1k for the outdoor set), so the red inside the rear light region becomes an emissive map and
+the lights glow in their own painted shape. The rectangular patch 1.19 drew over them is gone; it was drawing
+lights on top of lights.
+
+Still soft: the front bumper keeps artefacts around the lower intake, and there are no panel gaps.
+
+## 27. What an hour of play found in the simulation (v1.22.0)
+
+The owner played a full hour and came back with four things, all of them real:
+
+1. the tuner only ever reached for fuel, boost and perhaps ignition;
+2. 500 pk at 80 reliability was unreachable, with help or without;
+3. 8000 rpm on parts rated to 8300 was taxed as if it were a stock engine, and oil got a heavier vote than
+   it deserved;
+4. compound setups did not behave like compound setups.
+
+### The tuner could see one corner of the build
+
+`MAP_PARAMS` held six entries. The optimiser therefore searched six of roughly fifteen settings that matter
+and left rail pressure, the rev limiter, cam timing, the wastegate and the ethanol blend exactly where the
+player had put them. It is now eleven, each bounded by what the hardware on the car actually allows -
+`mapParamRange()` asks the fitted pump for its maximum rail pressure, the fitted parts for their rev limit,
+and the fuel for whether a blend is even adjustable. A fixed grade like RON98 is simply not in the search.
+
+It also could not say what it had done. Every change now carries a name, a unit and both values
+(`raildruk 180 -> 205 bar`), so the map that comes back is readable instead of a price and a power figure.
+On the owner's build the tuner now moves ten settings where it moved four.
+
+### A goal between street and race
+
+There were two goals: street and race. The one the owner wanted - **as much power as will hold 80
+reliability** - was neither. `safe` is that goal, and `mapScore` now penalises missing a goal's
+`reliabilityFloor` rather than treating reliability as something to trade away freely. On the owner's own
+build the three goals come out as a ladder: street 88 reliability, safe **507 pk at exactly 80**, race 530 pk
+at 65.
+
+### The reliability score was punishing the wrong things
+
+The score is 100 minus a sum of bands, and a build could sit at 60 with nothing actually wrong - a dozen
+bands each taking five points. `tools/risk_breakdown.js` prints the terms so this could be argued from
+numbers rather than impressions. Four of them were wrong:
+
+- **Knock.** The score charged `knockIndex * 24`. But a knock controller deliberately holds spark just under
+  the limit, so every properly calibrated engine paid about 23 points for its ECU doing its job. What
+  actually matters is how much spark is being given up against MBT and whether the controller has run out of
+  authority, so the term is now three: spark deficit against MBT (bmep-weighted), how much retard the
+  controller is holding, and - sharply - the knock limit actually being exceeded.
+- **Revs.** The rev band started at 82 % of the parts' rating, so 8000 rpm on parts rated to 8300 cost
+  reliability before anything was wrong. The parts' own rating is the limit: approaching it is not a fault,
+  exceeding it is. The band now starts at 95 %. 8000 rpm costs 7 points on the owner's build where it used to
+  cost around 15, and 9200 rpm still destroys the engine.
+- **Piston speed** was judged against a fixed number and so double-counted the rev limit. It is now derived
+  from the fitted crank's own stroke and rating.
+- **Oil film** was judged absolutely - a thin film scored badly whether the engine was making 10 bar BMEP or
+  35. It is now judged against what the load actually demands (`oilFilmNeed`), and oil temperature is judged
+  against the fitted oil's own tolerance rather than a constant.
+
+Part bonuses were also doing too much of the work (a multiplier of 0.62, plus five points for the ECU), which
+let parts buy back reliability the physics said was not there. 0.34 and three.
+
+### Compound boost handed over backwards
+
+The HP turbine bypass had two faults. It was sized as a turbine nozzle rather than as a port, so wide open it
+still choked the exhaust: 3.4 bar EMP at 6000 rpm where the LP turbo alone makes 2.3, and the compound was
+slower than the single turbo everywhere above 4000. And it was scheduled open as the HP compressor approached
+choke, on the idea that the LP turbine needed the energy early - which made boost *fall away* at the
+handover (1.02 bar at 5000 rpm, 0.63 at 6000), because no boost controller gives up pressure it is still
+making.
+
+The bypass is now a port (at least 2.4x the LP turbine's own flow) and there is no schedule at all. The
+controller keeps the bypass shut unless the manifold needs relief, and separately tries it wide open, keeping
+whichever setting holds more boost. The handover then falls out of the shaft balance: the bypass opens
+exactly as fast as the HP stage stops earning its exhaust energy. On the big-turbo case the bypass goes
+22 % -> 100 % between 6000 and 7000 rpm and the stage drops to LP-only at 8000, with boost rising the whole
+way.
+
+What that costs and buys: a K03 as the HP stage on the owner's build is 59 % up on torque at 2500 rpm and
+within 6 % at 6000. An HX52 build with a PT6870 and a K04 HP stage now peaks at 614 pk against 620 for the
+PT6870 on its own - a compound should buy its bottom end with a little top end, not with a fifth of it.
+
+### Tests
+
+`tests/test_tuner.js` is new and states each of these as an invariant: the tuner must touch rail pressure,
+the rev limiter, cam timing, boost and lambda and name what it changed; it must not offer ethanol on a fixed
+grade or rail pressure past the pump; `safe` must reach 500 pk at 80 on the owner's build; the three goals
+must form a ladder; 8000 rpm on parts rated 8300 must cost at most 8 points while 9200 still costs; running
+the wrong fuel must give up more spark and cost reliability; over-boosting a maxed turbo must cost at least
+15 points; and a compound must be 30 % up at 2500 rpm while giving up little at 6000.
+
+One existing assertion in `tests/test_phase8.js` was checking the handover on a build whose LP turbo cannot
+spool at all (a PT6870 on the small K04 engine reaches 0.5 bar by 7200 rpm), so it was testing the opposite of
+what its own comment claimed. It now asks that of a build whose LP turbo does spool, and asks of the K04 build
+the thing that is actually true there: a choked HP compressor makes almost no pressure ratio but the compound
+is still far ahead of the LP turbo alone.
+
+### Open
+
+- **The K04 hybrid at 3 bar.** The compressor map holds it to 2.44 bar gauge - 3.44 bar absolute. If the
+  owner means 3 bar absolute the model is already past it; if they mean 3 bar gauge, the map says this wheel
+  does not get there and I would rather ask than quietly widen the map.
+- A stock engine still scores around 47 reliability, and stock EGT sits near 980 C without responding to
+  lambda enrichment. Both are modelling gaps, not balance, and neither is fixed here.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

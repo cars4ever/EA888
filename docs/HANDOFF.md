@@ -1,13 +1,13 @@
-# EA888 LAB — handoff (stand na v1.20.0)
+# EA888 LAB — handoff (stand na v1.22.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–25).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–27).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.20.0 (versionCode 300)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
-- Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke 136/136.
+- Laatste release: **1.22.0 (versionCode 320)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke groen.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
 
@@ -57,6 +57,24 @@ ANDROID_HOME=/pad/naar/android-sdk python3 tools/build_android.py
 - Android SDK: `tools/setup_android_sdk.sh`.
 
 ## Volgende stap
+
+De simulatie is in 1.22.0 herijkt naar wat de eigenaar na een uur spelen meldde (DEVLOG 27): de tuner zet
+elf instellingen in plaats van zes en noemt ze bij naam, er is een doel "zoveel mogelijk pk bij 80
+betrouwbaarheid" (haalt 507 pk op de eigen build), de betrouwbaarheidsscore straft een werkende klopregelaar
+en toegestane toeren niet meer af, en compound geeft de HP-trap over via de asbalans in plaats van via een
+schema.
+
+Open in de simulatie:
+
+1. **K04-hybride en 3 bar.** De compressormap houdt hem op 2,44 bar overdruk (3,44 bar absoluut). De eigenaar
+   noemde 3 bar; vraag welke van de twee bedoeld is voordat de map wordt opgerekt.
+2. **Een standaardmotor scoort ~47 betrouwbaarheid** en standaard-EGT blijft rond 980 °C zonder te reageren
+   op verrijking via lambda. Modelgaten, geen balans.
+3. `tools/risk_breakdown.js` print waar een score vandaan komt; gebruik dat bij elke verdere herijking in
+   plaats van op gevoel te schuiven.
+
+## Volgende stap (auto)
+
 
 De auto is sinds 1.18.0 een scan die de eigenaar zelf maakte (DEVLOG 23), inclusief zijn eigen wielen, die
 via `tools/car3d/split_car.py` op de aslijn van het spel worden afgesneden zodat ze blijven draaien.

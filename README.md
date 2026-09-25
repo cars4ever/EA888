@@ -12,6 +12,24 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
+## v1.22.0 (branch `claude-dev`) — the tuner reaches the whole build
+
+- The paid tuner now sets eleven things instead of six (rail pressure, the rev limiter, cam timing, the
+  wastegate and the ethanol blend included) and names every change it makes, with units and both values.
+- A third goal: **as much power as will hold 80 reliability**. On the reference build it finds 507 pk at 80.
+- The reliability score stops punishing a working knock controller, stops taxing revs the fitted parts are
+  rated for, and judges oil film against the load instead of absolutely.
+- Compound boost hands over the way it should: the bypass opens as the HP stage runs out, boost rises the
+  whole way, and a compound costs a few per cent of peak power instead of a fifth.
+- See DEVLOG 27.
+
+## v1.21.0 — the car stops looking like dough
+
+- The body carries the 1.23M triangle shape pass's geometry with the textured pass's UVs projected onto it:
+  40k triangles where the textured export alone gave 21k.
+- The tail lights glow in the shape the photographs painted, from an emissive map built out of the atlas.
+- See DEVLOG 26.
+
 ## v1.20.0 (branch `claude-dev`) — the studio-lit scan
 
 - The car is rescanned from studio-lit photos: clean paint, no baked-in sky on the roof and bonnet, and the lightest frame cost yet (30.8k triangles).

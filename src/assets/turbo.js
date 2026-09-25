@@ -347,13 +347,17 @@
   // No interstage intercooler is modeled (typical for gasoline compound kits).
   // empCapRatio: the controller keeps the manifold pressure below this multiple of the boost pressure (both
   // absolute) by opening the HP turbine bypass; a small HP turbine would otherwise choke the exhaust.
-  const COMPOUND = { interstageLossBarAtRef: 0.035, hpBypassFlowRatio: 1.4, empCapRatio: 1.9, handoverMargin: 0 };
+  const COMPOUND = { interstageLossBarAtRef: 0.035, hpBypassFlowRatio: 2.4, bypassVsLpFlow: 2.4, empCapRatio: 1.9 };
   const nozzleLaw = er => Math.sqrt(Math.max(0, 1 - 1 / (er * er)));
   function makeSeriesEvaluator(ctx, hp) {
     const lp = ctx.map, { baroBar, ambientK } = ctx, ca = ctx.chargeAir, ex = ctx.exhaust, wg = ctx.wastegate;
     const stageK = (tIn, pr, eff) => tIn * (1 + (Math.pow(pr, K_AIR) - 1) / eff);
     // the HP turbine bypass is sized for the full exhaust flow (at least the LP turbine's capacity)
-    const bypassLbMin = er => (Math.max(COMPOUND.hpBypassFlowRatio * hp.turbineFlowMax, 1.1 * lp.turbineFlowMax) * nozzleLaw(er)) / nozzleLaw(4);
+    // The bypass is a port, not a turbine nozzle: wide open it must pass the whole exhaust with little
+    // pressure drop. Sized at 1.1 x the LP turbine's flow it did not - at 6000 rpm it sat 100 % open and
+    // still left EMP at 3.4 bar where the LP turbo alone makes 2.3, so the compound lost 45 Nm up top and
+    // the setup only ever looked worse than the single turbo.
+    const bypassLbMin = er => (Math.max(COMPOUND.hpBypassFlowRatio * hp.turbineFlowMax, COMPOUND.bypassVsLpFlow * lp.turbineFlowMax) * nozzleLaw(er)) / nozzleLaw(4);
     // pressure p (bar abs) where flow(p) = lb, flow increasing in p
     // (Illinois regula falsi: the flow curves are smooth and monotonic, ~6 evaluations to 1e-5)
     const solveP = (flow, lb, pOut) => {
@@ -472,11 +476,12 @@
     const uMin = b => {
       const k = Math.round(b * 1e4);
       if (uMinMemo.has(k)) return uMinMemo.get(k);
-      // Handover schedule: as the HP compressor nears choke the bypass opens progressively, so the exhaust
-      // energy moves to the LP turbine and it is up to speed before the HP stage runs out of flow.
-      const a0 = ev.point(b, 0, 0).a;
-      const hpChokeMargin = a0.prHp > 1.0005 ? 1 - a0.wcHp / Math.max(1e-6, hpMap.chokeFlow(a0.prHp)) : 1;
-      let u = COMPOUND.handoverMargin > 0 ? clamp((COMPOUND.handoverMargin - hpChokeMargin) / COMPOUND.handoverMargin, 0, 0.85) : 0;
+      // The bypass is shut unless the manifold pressure needs relief. It used to be scheduled open as the HP
+      // compressor approached choke, on the idea that the LP turbine needed the energy early; that made boost
+      // fall away at the handover (1.02 bar at 5000 rpm, 0.63 at 6000) because no boost controller gives up
+      // pressure it is still making. The handover falls out of the shaft balance below instead: the bypass
+      // opens exactly as fast as the HP stage stops earning its exhaust energy.
+      let u = 0;
       if (!empOk(b, u)) {
         if (!empOk(b, 1)) u = 1;
         else { let lo = u, hi = 1; for (let i = 0; i < 8; i++) { const mid = 0.5 * (lo + hi); if (empOk(b, mid)) hi = mid; else lo = mid; } u = hi; }
@@ -484,12 +489,23 @@
       uMinMemo.set(k, u);
       return u;
     };
-    const works = b => { const u = uMin(b), p = ev.point(b, u, 0); return (p.lpAlone || p.hpSurplusKw >= 0) && (u < 1 || empOk(b, 1)); };
-    let B = B0, limitedBy = 'target', surge = false;
-    if (!works(B)) { B = bisectMax(0, B, works, 14); limitedBy = 'spool'; }
+    const worksAt = (b, u) => { const p = ev.point(b, u, 0); return empOk(b, u) && (p.lpAlone || p.hpSurplusKw >= 0); };
+    const works = b => worksAt(b, uMin(b));
+    let B = B0, limitedBy = 'target', surge = false, wideOpen = false;
+    if (!works(B)) {
+      // Boost controller. Shut, the HP turbine takes its share of the exhaust; once the HP compressor has run
+      // out of flow that share buys nothing and only slows the LP turbine, so the controller also tries the
+      // bypass wide open and keeps whichever setting holds the most boost. That is what makes the handover:
+      // the bypass opens as the HP stage stops earning its energy, and nothing has to schedule it.
+      const shut = bisectMax(0, B, works, 14);
+      const open = worksAt(B, 1) ? B : bisectMax(0, B, b => worksAt(b, 1), 14);
+      if (open > shut + 1e-3) { B = open; wideOpen = true; } else B = shut;
+      limitedBy = 'spool';
+    }
     // past its choke line the HP wheel loses efficiency fast (map efficiency), which the shaft balance feels;
     // only the LP compressor has a hard choke limit here
-    const chokeOk = b => { const { a } = ev.point(b, uMin(b), 0); return a.wcLp <= lpMap.chokeFlow(a.x); };
+    const uFloor = b => (wideOpen ? 1 : uMin(b));
+    const chokeOk = b => { const { a } = ev.point(b, uFloor(b), 0); return a.wcLp <= lpMap.chokeFlow(a.x); };
     if (!chokeOk(B)) { B = bisectMax(0, B, chokeOk, 14); limitedBy = 'choke'; }
     const speedOk = b => { const p = ev.point(b, 0, 0); return p.lpShaftRpm <= lpMap.maxShaftRpm * 0.98 && p.hpShaftRpm <= hpMap.maxShaftRpm * 0.98; };
     if (ctx.protectShaftSpeed && !speedOk(B)) { B = bisectMax(0, B, speedOk, 14); limitedBy = 'shaft-limit'; }
@@ -498,7 +514,7 @@
     // the LP turbo alone does better here (the series stage choked or surged): HP stage bypassed
     if (single.boostBar >= B - 1e-3) return lpOnly();
     // controller: open the HP turbine bypass until the HP shaft balances at the target
-    const u0 = uMin(B);
+    const u0 = uFloor(B);
     let uHp = u0;
     if (limitedBy === 'target') {
       if (ev.point(B, 1, 0).hpSurplusKw >= 0) uHp = 1;

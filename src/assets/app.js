@@ -2511,8 +2511,20 @@
   let mapJob = null;
   function mapStore() { if (!state.mapTunes || typeof state.mapTunes !== 'object') state.mapTunes = {}; return state.mapTunes; }
   function mapId(goal) { return `${state.lastDynoSignature || ''}|${goal}`; }
-  const MAP_KEY_LABEL = { boostLowBar: 'boost laag', boostMidBar: 'boost midden', boostHighBar: 'boost hoog', ignitionTrimDeg: 'ontstekingstrim', lambda: 'lambda', intakeCamAdvanceDeg: 'inlaat-advance' };
-  const mapFmt = (k, v) => k.startsWith('boost') ? `${num(v, 2)} bar` : k === 'lambda' ? `${num(v, 2)} λ` : `${num(v, k === 'ignitionTrimDeg' ? 1 : 0)}°`;
+  // The tuner names and formats its own changes (sim.js MAP_PARAMS), so this stays in step with what it
+  // can actually touch instead of drifting behind a copy of the list kept here.
+  const mapChangeText = c => `${c.label || c.key} ${c.fromText ?? c.from} → ${c.toText ?? c.to}`;
+  // What the tuner may touch on this build: the hardware decides (no ethanol blend on a fixed grade, no
+  // rail pressure past the pump). Asking the optimiser keeps the promise in the UI honest.
+  function mapTouchList() {
+    try {
+      const probe = C.createMapOptimizer(C.normalizeState(cloneJson(state)), 'race');
+      const names = probe.summary().touched || [];
+      return names.length ? names.join(', ') : 'laaddruk, ontsteking, lambda en nokken';
+    } catch (e) {
+      return 'laaddruk, ontsteking, lambda en nokken';
+    }
+  }
   function mapTuneBlock() {
     const goals = Object.values(C.MAP_TUNES);
     const card = g => {
@@ -2520,14 +2532,17 @@
       if (mapJob && mapJob.id === mapId(g.id)) return `<div class="map-tune running"><b>${esc(g.label)}: de tuner schrijft de map op de dyno… ${mapJob.opt.evals}/${mapJob.opt.total} pulls</b><i style="--p:${mapJob.opt.evals / mapJob.opt.total * 100}%"></i></div>`;
       if (!done) {
         const enough = Number(state.bank || 0) >= g.price;
-        return `<div class="map-tune"><div><b>${esc(g.label)}</b><small>${g.id === 'street' ? 'Ruime marges op klop, EGT, koppel, cilinderdruk en brandstof: gemaakt om lang mee te gaan.' : 'Het meeste vermogen binnen de grenzen die deze hardware net overleeft.'} Boost laag/midden/hoog, ontsteking, lambda en nokken.</small></div><button class="btn small" data-map-buy="${g.id}" ${enough && !mapJob && !adviceJob ? '' : 'disabled'}>${euro(g.price)}</button></div>`;
+        const brief = g.reliabilityFloor
+          ? `Zoekt het meeste vermogen dat <b>${g.reliabilityFloor} betrouwbaarheid</b> nog haalt. Haalt hij dat niet, dan wordt er geen map verkocht en krijg je je geld terug.`
+          : 'Zoekt het meeste vermogen dat deze hardware overleeft, zonder ondergrens aan de betrouwbaarheid.';
+        return `<div class="map-tune"><div><b>${esc(g.label)}</b><small>${brief} Hij stelt alles af wat deze build heeft: ${esc(mapTouchList())}.</small></div><button class="btn small" data-map-buy="${g.id}" ${enough && !mapJob && !adviceJob ? '' : 'disabled'}>${euro(g.price)}</button></div>`;
       }
       const d = Math.round(done.after.hp - done.before.hp);
       const overText = list => list.map(o => `${o.label} ${num(o.value, o.unit === '' ? 2 : 0)}${o.unit} (grens ${num(o.limit, o.unit === '' ? 2 : 0)}${o.unit})`).join(', ');
       if (done.outcome === 'blocked') return `<div class="map-tune done blocked"><div><b>${esc(g.label)}: niet haalbaar met deze hardware · terugbetaald</b>
         <small>Geen map haalt de marges: ${esc(overText(done.blockedBy || []))}. Dat los je op met onderdelen (zie het tuneradvies bij de diagnose), niet met de map.</small></div></div>`;
       return `<div class="map-tune done ${done.applied ? 'applied' : ''} ${done.outcome === 'safer' ? 'warn' : ''}"><div><b>${esc(g.label)}: ${Math.round(done.before.hp)} → ${Math.round(done.after.hp)} pk (${d >= 0 ? '+' : ''}${d})${done.applied ? ' · ✔ toegepast' : ''}</b>
-        <small>${done.outcome === 'safer' ? `Je huidige map zit buiten de marges van deze map (${esc(overText(done.currentOver || []))}); deze map brengt hem erbinnen en kost daarvoor vermogen.` : 'Meer of gelijk vermogen, binnen alle marges van deze map.'} ${done.changes.length ? done.changes.map(c => `${MAP_KEY_LABEL[c.key] || c.key} ${mapFmt(c.key, c.from)} → ${mapFmt(c.key, c.to)}`).join(' · ') : 'De huidige map is al optimaal.'}</small></div>
+        <small>${done.outcome === 'safer' ? `Je huidige map zit buiten de marges van deze map (${esc(overText(done.currentOver || []))}); deze map brengt hem erbinnen en kost daarvoor vermogen.` : 'Meer of gelijk vermogen, binnen alle marges van deze map.'} ${done.changes.length ? done.changes.map(mapChangeText).map(esc).join(' · ') : 'De huidige map is al optimaal.'}</small></div>
         ${done.applied || !done.changes.length ? '' : `<button class="btn small" data-map-apply="${g.id}">Toepassen</button>`}</div>`;
     };
     return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · geoptimaliseerde map</span><h3>Laat de tuner je map schrijven</h3>${goals.map(card).join('')}<small class="advice-note">Handmatig aangepaste tabellen worden vervangen door de map van de tuner (ongedaan maken kan).</small></div>`;

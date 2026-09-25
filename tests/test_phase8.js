@@ -37,11 +37,20 @@ const at = (r, rpm) => r.samples.find(p => p.rpm === rpm) || {};
   assert(at(comp, 4000).boostBar > at(single, 4000).boostBar + 0.3, `compound spools earlier (${at(comp, 4000).boostBar} vs ${at(single, 4000).boostBar} bar at 4000)`);
   assert(comp.peakHp > single.peakHp, 'and makes more power in a dyno pull');
   assert(at(comp, 4000).empBar > at(single, 4000).empBar, 'two turbines in the exhaust: more back pressure');
-  // where the main turbo is not spool-limited the HP stage is bypassed
-  const k04 = C.simulateEngine(build('k04'), { noise: false }), k04c = C.simulateEngine(build('k04', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = 'k04'; }), { noise: false });
-  const top = k04c.samples[k04c.samples.length - 1];
-  assert(top.compoundStage === 'lp' || (top.prHp < 1.3 && top.hpBypassPct > 30), `at the top the HP stage does little and is being bypassed: ${top.compoundStage} PR_hp ${top.prHp} bypass ${top.hpBypassPct}`);
-  assert(k04.samples.length > 0);
+  // Where the main turbo is not spool-limited, the HP stage hands over. This has to be asked of a build
+  // whose LP turbo really does spool on its own: on the small k04 engine a pt6870 reaches 0.5 bar by 7200
+  // rpm, so there the HP stage is still carrying the car and never hands over.
+  const handover = C.simulateEngine(build('randy', s => { s.selections.turboHp = 'k03'; }), { noise: false });
+  const top = handover.samples[handover.samples.length - 1];
+  assert(top.compoundStage === 'lp' || (top.prHp < 1.3 && top.hpBypassPct > 30),
+    `at the top the HP stage does little and is being bypassed: ${top.compoundStage} PR_hp ${top.prHp} bypass ${top.hpBypassPct}`);
+  // and on the build where the LP cannot spool, the HP stage stays in but is out of flow: it holds boost,
+  // not pressure ratio.
+  const k04c = C.simulateEngine(build('k04', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = 'k04'; }), { noise: false });
+  const k04top = k04c.samples[k04c.samples.length - 1];
+  assert(k04top.prHp < 1.3, `a choked HP compressor makes little pressure ratio (${k04top.prHp})`);
+  assert(k04top.boostBar > at(C.simulateEngine(build('k04', s => { s.selections.turbo = 'pt6870'; }), { noise: false }), k04top.rpm).boostBar + 0.4,
+    'and the compound is still far ahead of the LP turbo on its own');
 }
 
 // 4. Driver nitrous: only with the button, ramps in, costs bottle, faster pass; head lift on weak sealing.

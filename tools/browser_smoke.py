@@ -355,7 +355,11 @@ def main() -> None:
                 # the advice stays on screen after applying (marked applied) until the next pull
                 report['checks']['tuner_advice_stays_after_apply'] = page.locator('.advice-box.bought .advice-rec.applied').count() >= 1
         # Optimised map (paid tuner service): the tuner writes the map on the dyno simulation
-        report['checks']['map_tune_offered'] = page.locator('.map-tune-card [data-map-buy]').count() == 2 or page.locator('.map-tune-card .map-tune.done').count() >= 1
+        # One buy button per tuning goal the simulation defines (v1.22 added the 80-reliability goal, so a
+        # hard-coded count silently went stale here).
+        goals = page.evaluate("Object.keys(window.EA888Core.MAP_TUNES).length")
+        report['checks']['map_tune_offered'] = (page.locator('.map-tune-card [data-map-buy]').count() == goals
+                                                or page.locator('.map-tune-card .map-tune.done').count() >= 1)
         if page.locator('[data-map-buy="street"]:not([disabled])').count():
             bank_a = page.evaluate("window.__EA888_DEBUG__.career().bank")
             click(page, '[data-map-buy="street"]')
