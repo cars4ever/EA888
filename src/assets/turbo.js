@@ -226,9 +226,11 @@
     }
     // Turbine inlet pressure and shaft power for wastegate opening u (0 closed .. 1 fully open).
     function turbine(c, u) {
-      const mExh = c.massFlowKgS * (1 + 1 / (ctx.stoichAfr * ctx.lambda)) + (ctx.extraExhaustKgS || 0);
+      const mEng = c.massFlowKgS * (1 + 1 / (ctx.stoichAfr * ctx.lambda));
+      const mExtra = ctx.extraExhaustKgS || 0;
+      const mExh = mEng + mExtra;
       const lbExh = mExh * LBMIN_PER_KGS;
-      const t3 = ctx.exhaustTempK(c.boostBar) + ((ctx.extraExhaustKw || 0) * 1000) / (mExh * CP_EXH);
+      const t3 = mixExtraExhaust(ctx.exhaustTempK(c.boostBar), mEng, mExtra, ctx.extraExhaustKw || 0, ambientK);
       const p4 = baroBar + (2757 * ex.restriction * lbExh * lbExh) / Math.pow(ex.pipeMm, 4);
       const corr = p3 => p3 / TURB_REF.pBar / Math.sqrt(t3 / TURB_REF.tK);
       const flowAt = p3 => {
@@ -252,6 +254,25 @@
   }
 
   // Largest B in [lo, hi] with pred(B) true, assuming pred is true at lo.
+  // Extra exhaust energy - a nitrous spool shot, or fuel burning in the manifold under anti-lag - arrives as
+  // a gas stream with its own mass and its own temperature. It used to be poured into the engine's exhaust as
+  // pure heat divided by the total mass flow, which at low flow gives nonsense: a 250 hp spool shot at 3400
+  // rpm, off boost, read 1601 C at the turbine. The reliability score and the map optimiser both took that at
+  // face value, and the optimiser then threw away 950 pk detuning toward an EGT target it had no way to reach.
+  // Two streams mix to a mass-weighted mean, and nothing burning in air gets past its adiabatic flame
+  // temperature, so that is the backstop.
+  const ADIABATIC_CEILING_K = 2200;
+  function mixExtraExhaust(tEngK, mEngKgS, mExtraKgS, extraKw, ambientK) {
+    if (!(extraKw > 0)) return tEngK;
+    const mTot = Math.max(1e-6, mEngKgS + mExtraKgS);
+    if (mExtraKgS > 1e-6) {
+      const tExtra = Math.min(ADIABATIC_CEILING_K, (ambientK || 298) + (extraKw * 1000) / (mExtraKgS * CP_EXH));
+      return Math.min(ADIABATIC_CEILING_K, (mEngKgS * tEngK + mExtraKgS * tExtra) / mTot);
+    }
+    // no added mass (manifold burn): the energy heats the engine's own exhaust, still bounded
+    return Math.min(ADIABATIC_CEILING_K, tEngK + (extraKw * 1000) / (mTot * CP_EXH));
+  }
+
   function bisectMax(lo, hi, pred, iters = 22) {
     if (pred(hi)) return hi;
     for (let i = 0; i < iters; i++) { const mid = 0.5 * (lo + hi); if (pred(mid)) lo = mid; else hi = mid; }
@@ -408,8 +429,10 @@
     }
     // Exhaust side for the engine flow m at boost B: HP turbine (bypass uHp) into the LP turbine (wastegate uLp).
     function exhaust(B, m, uHp, uLp) {
-      const mExh = m * (1 + 1 / (ctx.stoichAfr * ctx.lambda)) + (ctx.extraExhaustKgS || 0), lbExh = mExh * LBMIN_PER_KGS;
-      const t3 = ctx.exhaustTempK(B) + ((ctx.extraExhaustKw || 0) * 1000) / (mExh * CP_EXH);
+      const mEng = m * (1 + 1 / (ctx.stoichAfr * ctx.lambda));
+      const mExtra = ctx.extraExhaustKgS || 0;
+      const mExh = mEng + mExtra, lbExh = mExh * LBMIN_PER_KGS;
+      const t3 = mixExtraExhaust(ctx.exhaustTempK(B), mEng, mExtra, ctx.extraExhaustKw || 0, ambientK);
       const p4 = baroBar + (2757 * ex.restriction * lbExh * lbExh) / Math.pow(ex.pipeMm, 4);
       const corr = (p, t) => p / TURB_REF.pBar / Math.sqrt(t / TURB_REF.tK);
       let tI = t3, pI = p4, p3 = p4, hpKw = 0, hpKgS = 0, erH = 1;

@@ -1022,6 +1022,66 @@ kleppentrein"* - and taking it lets the pull finish.
 else was the weaker link. It now shows the same for torque, so an engine rated 4200 Nm next to a crank rated
 1000 is visible when you fit it.
 
+## 30. Building the maximum by hand, and what that found (v1.24.0)
+
+The owner set a test: assemble the highest-power build the catalogue allows for every engine, by hand, and
+then check that the in-game tuner can get within 98 % of it. *"Op deze manier kom je alle problemen met
+onderdelen en manier van tuning en hoe alles berekend wordt vanzelf tegen."* That is exactly what happened,
+and the first thing it found was that the in-game tuner was making cars slower.
+
+`tools/max_builds.js` is the offline search: coordinate ascent over every part category, every turbo pairing
+and eleven tune axes, about 1500 dyno pulls per engine. It judges a candidate by the same margins the in-game
+race map is judged by, because maximising power with the margins switched off would both make 98 % of it
+unreachable by construction and produce "builds" that are grenades.
+
+### The tuner was detuning the car
+
+Asked for a race map, the optimiser took the 2500 pk compound build from 2520 pk to **1568** and then
+declared the map unsellable anyway. Three separate faults stacked up.
+
+**Extra exhaust energy was poured in as heat.** A nitrous spool shot (or fuel burning in the manifold under
+anti-lag) was added to the turbine inlet temperature as `power / (mass flow x cp)`. At 3400 rpm off boost the
+mass flow is tiny, so a 250 hp shot read **1601 °C** at the turbine. It is a gas stream with its own mass and
+its own temperature, not heat poured into the engine's exhaust: two streams mix to a mass-weighted mean, and
+nothing burning in air gets past its adiabatic flame temperature. 1601 °C became 1139.
+
+**The optimiser scored against limits no map can move.** With EGT over the goal's 1000 °C, the score is
+`-1000 - violation*100 + hp*0.01`, so power is worth a hundredth of a point and the search will trade 950 pk
+for a few degrees. It now works out which checks are out of the map's reach and reports them as hardware
+findings instead of scoring against them.
+
+**And the first attempt at that probe was wrong in an instructive way.** Winding the boost to zero looked like
+the obvious test for "can the map fix this". It is not: the spool shot is gated on the turbo not yet being up,
+so at zero boost the very hardware causing the problem switches itself off and the check reads clean. The
+probe runs at real fractions of the boost range now, and a limit counts as out of reach only when every probe
+is over it.
+
+Together: the tuner now **improves every preset in the game**, from +6 pk on the RB25 to +600 on the Steve
+Morris, and none get worse. The compound build goes 2520 → 2609 instead of 2520 → 1568.
+
+### Settings the player had paid for and could not reach
+
+`MAP_PARAMS` carried a static maximum per parameter and the hardware could only ever lower it. So dome control
+good for 10 bar could still only be asked for 4.5, and a valvetrain rated 11400 rpm could only be asked for
+11000. The static number is the fallback for a part that does not state one; the hardware sets the bound.
+
+The rev limiter had the same problem twice over: `clamp(..., 5000, 10500)`, written when nothing in the
+catalogue revved past it. Parts rated 11200 and 11400 rpm were partly unreachable. The ceiling comes from the
+catalogue now, with headroom above the strongest part on purpose - asking for more than the parts can take is
+how you break them, and the over-rev abort has to stay reachable.
+
+### "Maximum power" could sell you a grenade
+
+The race goal had no reliability floor, so the offline search happily returned an RB26 making 1764 pk at zero
+reliability. It has a floor of 35 now: street 88, safe 80, race 35 is a ladder, and every rung means a car
+that comes back.
+
+### What the search says about the parts
+
+The nitrous spool shot on the high-end presets is worth nothing: the compound build makes 2520 pk with it and
+2518 without, and with it the EGT spike condemns every map. The search drops it, which is the point of running
+the search.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

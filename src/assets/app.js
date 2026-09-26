@@ -2557,8 +2557,13 @@
       const overText = list => list.map(o => `${o.label} ${num(o.value, o.unit === '' ? 2 : 0)}${o.unit} (grens ${num(o.limit, o.unit === '' ? 2 : 0)}${o.unit})`).join(', ');
       if (done.outcome === 'blocked') return `<div class="map-tune done blocked"><div><b>${esc(g.label)}: niet haalbaar met deze hardware · terugbetaald</b>
         <small>Geen map haalt de marges: ${esc(overText(done.blockedBy || []))}. Dat los je op met onderdelen (zie het tuneradvies bij de diagnose), niet met de map.</small></div></div>`;
-      return `<div class="map-tune done ${done.applied ? 'applied' : ''} ${done.outcome === 'safer' ? 'warn' : ''}"><div><b>${esc(g.label)}: ${Math.round(done.before.hp)} → ${Math.round(done.after.hp)} pk (${d >= 0 ? '+' : ''}${d})${done.applied ? ' · ✔ toegepast' : ''}</b>
-        <small>${done.outcome === 'safer' ? `Je huidige map zit buiten de marges van deze map (${esc(overText(done.currentOver || []))}); deze map brengt hem erbinnen en kost daarvoor vermogen.` : 'Meer of gelijk vermogen, binnen alle marges van deze map.'} ${done.changes.length ? done.changes.map(mapChangeText).map(esc).join(' · ') : 'De huidige map is al optimaal.'}</small></div>
+      // 'hardware': the map is the best there is, but something no map controls sits outside the brief. Say
+      // which, because otherwise the player reads a green result next to a number that should worry them.
+      const hardwareNote = done.outcome === 'hardware'
+        ? `Dit is de beste map voor deze onderdelen, maar ${esc(overText(done.hardwareLimits || []))} ligt buiten de marges van deze map en dáár doet geen enkele map iets aan — dat zit in de bouw. `
+        : '';
+      return `<div class="map-tune done ${done.applied ? 'applied' : ''} ${done.outcome === 'safer' || done.outcome === 'hardware' ? 'warn' : ''}"><div><b>${esc(g.label)}: ${Math.round(done.before.hp)} → ${Math.round(done.after.hp)} pk (${d >= 0 ? '+' : ''}${d})${done.applied ? ' · ✔ toegepast' : ''}</b>
+        <small>${hardwareNote}${done.outcome === 'safer' ? `Je huidige map zit buiten de marges van deze map (${esc(overText(done.currentOver || []))}); deze map brengt hem erbinnen en kost daarvoor vermogen.` : done.outcome === 'hardware' ? '' : 'Meer of gelijk vermogen, binnen alle marges van deze map.'} ${done.changes.length ? done.changes.map(mapChangeText).map(esc).join(' · ') : 'De huidige map is al optimaal.'}</small></div>
         ${done.applied || !done.changes.length ? '' : `<button class="btn small" data-map-apply="${g.id}">Toepassen</button>`}</div>`;
     };
     return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · geoptimaliseerde map</span><h3>Laat de tuner je map schrijven</h3>${goals.map(card).join('')}<small class="advice-note">Handmatig aangepaste tabellen worden vervangen door de map van de tuner (ongedaan maken kan).</small></div>`;

@@ -761,9 +761,22 @@
       .sort((a, b) => a.value - b.value);
     return { weakest: parts[0], parts };
   }
+  // The highest limiter the tune may ask for. This was a constant 10500, written when nothing in the
+  // catalogue revved past it; parts rated 11200 and 11400 rpm were then partly unreachable. It comes from the
+  // catalogue now, with headroom above the strongest part on purpose - asking for more than the parts can
+  // take is how you break them, and the over-rev abort needs to be reachable.
+  let revCeilingCache = 0;
+  function revCeiling() {
+    if (!revCeilingCache) {
+      const strongest = Math.max(...['block', 'crank', 'oiling', 'head', 'valvetrain', 'ecu']
+        .flatMap(cat => CATEGORY_MAP[cat].items.map(i => Number(i.rpmLimit) || 0)));
+      revCeilingCache = Math.max(10500, Math.round((strongest * 1.1) / 100) * 100);
+    }
+    return revCeilingCache;
+  }
   // The limiter the ECU actually runs: the tune value, capped by what the ECU can command.
   function effectiveRevLimit(state) {
-    const tuneRev = clamp(Math.round(Number(state.tune.revLimitRpm || 8000) / 100) * 100, 5000, 10500);
+    const tuneRev = clamp(Math.round(Number(state.tune.revLimitRpm || 8000) / 100) * 100, 5000, revCeiling());
     const ecuMax = Number(getPart(state, 'ecu').rpmLimit) || Infinity;
     return Math.min(tuneRev, Math.floor(ecuMax / 100) * 100);
   }
@@ -1081,7 +1094,7 @@
   }
   // Boost targets from the quick-setup points (low/mid/high and the gear percentages).
   function legacyBoostRow(tune, gearPct) {
-    const rev = clamp(Math.round(Number(tune.revLimitRpm || 8000) / 100) * 100, 5000, 10500);
+    const rev = clamp(Math.round(Number(tune.revLimitRpm || 8000) / 100) * 100, 5000, revCeiling());
     return ECU_RPM_AXIS.map(rpm => round(Math.max(0, requestedBoostAt(tune, rpm, rev) * gearPct), 3));
   }
   function legacyBoostTable(tune) {
@@ -3416,7 +3429,10 @@
   const MAP_TUNES = {
     street: { id: 'street', label: 'Straatmap (ruime marges)', price: 450, reliabilityFloor: 88, knockMax: 0.9, egtMaxC: 940, fuelDutyMax: 88, turboLoadMax: 94, torqueFrac: 0.88, clampFrac: 0.85, hpFrac: 0.9, budget: 60 },
     safe: { id: 'safe', label: 'Zoveel mogelijk pk bij 80 betrouwbaarheid', price: 700, reliabilityFloor: 80, knockMax: 1.0, egtMaxC: 985, fuelDutyMax: 97, turboLoadMax: 100, torqueFrac: 1.0, clampFrac: 1.0, hpFrac: 1.0, budget: 75 },
-    race: { id: 'race', label: 'Racemap (maximaal vermogen)', price: 950, knockMax: 1.05, egtMaxC: 1000, fuelDutyMax: 99, turboLoadMax: 102, torqueFrac: 1.0, clampFrac: 1.0, hpFrac: 1.05, budget: 70 }
+    // A race map buys power with reliability, but "maximum power" still has to mean a car that comes back.
+    // Without a floor the optimiser would sell a map scoring zero, and an offline search for the most power
+    // this catalogue allows came back with an RB26 making 1764 pk at zero reliability.
+    race: { id: 'race', label: 'Racemap (maximaal vermogen)', price: 950, reliabilityFloor: 35, knockMax: 1.05, egtMaxC: 1000, fuelDutyMax: 99, turboLoadMax: 102, torqueFrac: 1.0, clampFrac: 1.0, hpFrac: 1.05, budget: 70 }
   };
   // Everything the tuner is allowed to touch, with the name it reports back. Until 1.22 this was boost,
   // lambda, ignition and cam only - so the tuner could not reach for rail pressure (which is what buys
@@ -3439,11 +3455,15 @@
   function mapParamRange(state, p) {
     const lo = p.min;
     let hi = p.max;
-    if (p.bound === 'boost') hi = Math.min(hi, Number(getPart(state, 'boostControl').boostHardwareMaxBar) || 4.5);
-    if (p.bound === 'rail') hi = Math.min(hi, Number(getPart(state, 'fuelSystem').maxRailBar) || 250);
+    // A hardware-bounded parameter is bounded by the hardware, not by the static number: `max` is only the
+    // fallback for a part that does not state one. It used to be a ceiling as well, so dome control good for
+    // 10 bar could still only be asked for 4.5, and a valvetrain rated 11400 rpm could only be asked for
+    // 11000 - the tuner could not reach settings the player had already paid for.
+    if (p.bound === 'boost') hi = Number(getPart(state, 'boostControl').boostHardwareMaxBar) || hi;
+    if (p.bound === 'rail') hi = Number(getPart(state, 'fuelSystem').maxRailBar) || hi;
     if (p.bound === 'rev') {
       const parts = ['block', 'crank', 'oiling', 'head', 'valvetrain', 'ecu'].map(c => getPart(state, c));
-      hi = Math.min(hi, minPositive(...parts.map(x => x.rpmLimit)) || 8000);
+      hi = Math.min(minPositive(...parts.map(x => x.rpmLimit)) || hi, revCeiling());
     }
     if (p.bound === 'flex') {
       // Only a flex fuel takes a blend; on a fixed grade the number is decoration and must not be tuned.
@@ -3464,15 +3484,19 @@
       clampBmep: Number(getPart(state, 'sealing').headClampBmep) || 60
     };
   }
-  function mapScore(r, goal, lim) {
+  // `outOfReach` names checks no map can satisfy on this hardware (see createMapOptimizer). Scoring against
+  // them makes the optimiser wreck the map chasing something it does not control.
+  function mapScore(r, goal, lim, outOfReach = null) {
     const done = r.status === DYNO_STATUS.COMPLETED;
     const checks = [
       ['torque', 'koppel', r.peakTorqueNm, lim.torqueNm * goal.torqueFrac, 5, ' Nm'], ['power', 'vermogen', r.peakHp, lim.hp * goal.hpFrac, 5, ' pk'],
       ['bmep', 'cilinderdruk (BMEP)', r.maxBmepBar, lim.clampBmep * goal.clampFrac, 5, ' bar'], ['knock', 'klopindex', r.maxKnockRisk, goal.knockMax, 5, ''],
       ['egt', 'EGT', r.maxEgtC, goal.egtMaxC, 5, ' °C'], ['fuel', 'brandstofduty', r.maxFuelDuty, goal.fuelDutyMax, 3, ' %'], ['turbo', 'turbo-load', r.maxTurboLoad, goal.turboLoadMax, 3, ' %']
     ];
-    const over = checks.filter(c => Number(c[2] || 0) > c[3] * 1.0005).map(c => ({ key: c[0], label: c[1], value: Number(c[2] || 0), limit: c[3], unit: c[5] }));
-    let viol = (done ? 0 : 3) + checks.reduce((a, c) => a + Math.max(0, Number(c[2] || 0) / c[3] - 1) * c[4], 0);
+    const reachable = c => !(outOfReach && outOfReach.has(c[0]));
+    const over = checks.filter(c => reachable(c) && Number(c[2] || 0) > c[3] * 1.0005).map(c => ({ key: c[0], label: c[1], value: Number(c[2] || 0), limit: c[3], unit: c[5] }));
+    const hardware = checks.filter(c => !reachable(c) && Number(c[2] || 0) > c[3] * 1.0005).map(c => ({ key: c[0], label: c[1], value: Number(c[2] || 0), limit: c[3], unit: c[5] }));
+    let viol = (done ? 0 : 3) + checks.reduce((a, c) => a + (reachable(c) ? Math.max(0, Number(c[2] || 0) / c[3] - 1) * c[4] : 0), 0);
     // A reliability floor is a margin like any other: miss it and the map is not sold.
     if (goal.reliabilityFloor) {
       const rel = Number(r.reliabilityScore ?? 0);
@@ -3483,7 +3507,7 @@
     }
     const hp = Number(r.peakHp || 0), top = (r.samples || []).filter(p => p.rpm >= 3500);
     const area = top.length ? top.reduce((a, p) => a + p.hp, 0) / top.length : 0;
-    return { ok: viol === 0, score: viol === 0 ? hp * 0.6 + area * 0.4 : -1000 - viol * 100 + hp * 0.01, hp, viol, over };
+    return { ok: viol === 0, score: viol === 0 ? hp * 0.6 + area * 0.4 : -1000 - viol * 100 + hp * 0.01, hp, viol, over, hardware };
   }
   // Stepwise optimiser for the app (one dyno simulation per step()): { step() -> done, best, evals, total }
   function createMapOptimizer(inputState, goalId, opts = {}) {
@@ -3496,7 +3520,24 @@
     const pick = t => Object.fromEntries(active.map(p => [p.key, Number(t[p.key])]));
     const start = pick(base.tune);
     const baseRes = simulateEngine(base, { noise: false, soakK }), lim = mapLimits(base);
-    let best = { tune: start, result: run(start) }; best.s = mapScore(best.result, goal, lim);
+    // Which limits are out of the map's reach. A map sets boost, spark, lambda, cam timing, rail pressure and
+    // the limiter; it cannot remove a nitrous spool shot or fit a larger turbine. Scoring against something
+    // the map cannot move only makes the search destroy the map: on the 2500 pk compound build the race goal
+    // detuned 2520 pk to 1568 chasing an EGT the spool shot was making, and still missed it by 100 degrees.
+    //
+    // The probe has to be a map that still runs the car. Winding the boost all the way to zero looked like
+    // the obvious test and was wrong: the spool shot is gated on the turbo not being up yet, so at zero boost
+    // the very hardware causing the problem switches itself off and the check reads clean. So probe at a
+    // couple of real fractions of the boost range, and call a limit out of reach only when every one of them
+    // is over it.
+    const probeAt = frac => {
+      const t = { ...start };
+      for (const p of active) if (p.bound === 'boost') t[p.key] = p.range.lo + (p.range.hi - p.range.lo) * frac;
+      return mapScore(run(t), goal, lim).over.filter(o => !o.below).map(o => o.key);
+    };
+    const probes = [probeAt(0.15), probeAt(0.4)];
+    const outOfReach = new Set(probes[0].filter(k => probes.every(list => list.includes(k))));
+    let best = { tune: start, result: run(start) }; best.s = mapScore(best.result, goal, lim, outOfReach);
     const steps = Object.fromEntries(active.map(p => [p.key, p.step]));
     const queue = [];
     let evals = 1, improvedRound = false, rounds = 0;
@@ -3522,7 +3563,7 @@
         const tune = { ...start };
         for (const k of ['boostLowBar', 'boostMidBar', 'boostHighBar']) tune[k] = round(Math.max(0, start[k] * f), 3);
         const result = run(tune); evals++;
-        const sc = mapScore(result, goal, lim);
+        const sc = mapScore(result, goal, lim, outOfReach);
         if (sc.score > best.s.score) best = { tune, result, s: sc };
         if (sc.ok) scales.length = 0;
         return evals >= goal.budget;
@@ -3532,7 +3573,7 @@
         const tune = { ...best.tune, railTargetBar: round(railParam.range.hi, 3) };
         if (tune.railTargetBar !== best.tune.railTargetBar) {
           const result = run(tune); evals++;
-          const sc = mapScore(result, goal, lim);
+          const sc = mapScore(result, goal, lim, outOfReach);
           if (sc.score > best.s.score) { best = { tune, result, s: sc }; improvedRound = true; }
           return evals >= goal.budget;
         }
@@ -3544,17 +3585,25 @@
       const tune = { ...best.tune, [p.key]: v };
       const result = run(tune);
       evals++;
-      const sc = mapScore(result, goal, lim);
+      const sc = mapScore(result, goal, lim, outOfReach);
       if (sc.score > best.s.score + 0.2) { best = { tune, result, s: sc }; improvedRound = true; queue.unshift([p, dir]); }
       return evals >= goal.budget;
     }
     function summary() {
-      const b0 = mapScore(baseRes, goal, lim);
+      const b0 = mapScore(baseRes, goal, lim, outOfReach);
       // Honest outcome: 'better' (more power within the margins), 'safer' (the current map was outside the
       // margins; this one is inside, at some cost in power), 'blocked' (the hardware cannot meet the margins:
       // no map is sold; the blocking margins are named).
-      const outcome = !best.s.ok ? 'blocked' : best.result.peakHp >= baseRes.peakHp - 0.5 ? 'better' : 'safer';
-      return { goal: goal.id, label: goal.label, price: goal.price, ok: best.s.ok, outcome, blockedBy: best.s.ok ? [] : best.s.over, currentOver: b0.over, evals, before: { hp: baseRes.peakHp, reliability: baseRes.reliabilityScore, ok: b0.ok },
+      // 'hardware' when the best map is the best map, but something no map controls is outside the brief:
+      // the player needs to hear that it is the build, not the tune.
+      const hardware = best.s.hardware || [];
+      const outcome = !best.s.ok ? 'blocked'
+        : hardware.length ? 'hardware'
+        : best.result.peakHp >= baseRes.peakHp - 0.5 ? 'better' : 'safer';
+      return { goal: goal.id, label: goal.label, price: goal.price, ok: best.s.ok, outcome, blockedBy: best.s.ok ? [] : best.s.over, currentOver: b0.over,
+        // Margins no map can meet on this hardware: named so the tuner can say so instead of pretending the
+        // map is at fault or quietly detuning the car to chase them.
+        hardwareLimits: best.s.hardware || [], evals, before: { hp: baseRes.peakHp, reliability: baseRes.reliabilityScore, ok: b0.ok },
         after: { hp: best.result.peakHp, reliability: best.result.reliabilityScore, knock: best.result.maxKnockRisk, egtC: best.result.maxEgtC },
         tune: best.tune,
         // Named, so the tuner can say what it did instead of handing over a table of numbers.
@@ -3894,6 +3943,12 @@
     mergeAdvice,
     MAP_TUNES,
     createMapOptimizer,
+    // exported for tooling and tests: the reference-build search and the tuner-versus-reference check need
+    // to judge a build by exactly the margins the game judges a map by
+    mapLimits,
+    mapScore,
+    MAP_PARAMS,
+    mapParamRange,
     applyPreset,
     totalPartsPrice,
     evaluateChallenges,
