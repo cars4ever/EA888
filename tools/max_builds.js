@@ -58,17 +58,34 @@ function score(state) {
   return { hp: r.peakHp, r };
 }
 
-// Wind the boost down until the margins are met, the way a tuner does and the way the in-game optimiser
-// does. Without this a search that starts outside the margins scores -1 everywhere and never moves.
-function intoMargins(state) {
-  if (score(state).hp > 0) return state;
-  for (const f of [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.12]) {
+// Put the build on its best rung of the boost ladder. This used only to wind the boost *down* until the
+// margins were met, which is half the problem: on a compound build the two stages only start working
+// together well above the middle of the range, so a search that starts low and steps carefully never sees
+// the hill at all. It picked a single turbo making 1317 pk for an engine that makes 2520 on two stages.
+// So sweep the whole range, not just downwards, and keep the best rung that is inside the margins.
+function bestBoost(state) {
+  const cap = Number(C.getPart(state, 'boostControl').boostHardwareMaxBar) || 4.5;
+  let best = state, bestHp = score(state).hp;
+  for (const f of [0.12, 0.25, 0.4, 0.55, 0.7, 0.85, 1.0]) {
     const s = clone(state);
-    for (const k of ['boostLowBar', 'boostMidBar', 'boostHighBar']) s.tune[k] = Math.max(0, state.tune[k] * f);
-    if (score(s).hp > 0) return s;
+    const hi = cap * f;
+    s.tune.boostHighBar = hi;
+    s.tune.boostMidBar = hi * 0.75;
+    s.tune.boostLowBar = hi * 0.3;
+    const got = score(s);
+    if (got.hp > bestHp) { best = s; bestHp = got.hp; }
   }
-  return state;
+  // Nothing inside the margins at any rung: fall back to winding the current map down until something is.
+  if (bestHp <= 0) {
+    for (const f of [0.9, 0.7, 0.5, 0.3, 0.15]) {
+      const s = clone(state);
+      for (const k of ['boostLowBar', 'boostMidBar', 'boostHighBar']) s.tune[k] = Math.max(0, state.tune[k] * f);
+      if (score(s).hp > 0) return s;
+    }
+  }
+  return best;
 }
+const intoMargins = bestBoost;
 
 function best(state, tries) {
   let top = score(state), bestState = state;

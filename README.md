@@ -12,7 +12,21 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.23.1 (branch `claude-dev`) — the limit names itself
+## v1.26.0 (branch `claude-dev`) — traction, gearing and reading the timeslip back
+
+- A 2500 pk build was slipping its **clutch**, not its tyres: the compound and Lenco gearboxes had no
+  driveline entry, so they ran the OEM clutch rated 430 Nm. 18.3 s at 108 km/h becomes 11.07 s at 233.
+- Big drag rubber (Mega drag radial 315, Pro Mod slick 34x17), a drag four-wheel-drive, and a **throttle
+  slider** in the race with the percentage on the HUD.
+- **Traction control** is a strategy now — a slip target against the tyre's own peak and an aggression
+  setting — and only on ECUs that have the inputs for it.
+- **Gearing**: every ratio, the final drive and a close/wide spread knob, all tunable, all read from one
+  place by the dyno, the race and the shift-point model.
+- The tuner masters the gearing too, tunes for the grip your last pass measured using virtual runs that
+  cost the engine nothing, and **reads your timeslip back as advice**.
+- See DEVLOG 31.
+
+## v1.23.1 — the limit names itself
 
 - A torque or power abort now says which part is the limit, what it is rated for and what the engine actually
   made, instead of "engine or transmission".

@@ -1082,6 +1082,87 @@ The nitrous spool shot on the high-end presets is worth nothing: the compound bu
 2518 without, and with it the EGT spike condemns every map. The search drops it, which is the point of running
 the search.
 
+## 31. Traction, gearing, and reading the timeslip back (v1.25.0 – v1.26.0)
+
+The owner played a pass and reported three things: the best tyres on a prepared track gave nothing but
+wheelspin, the timeslip said 2 % where it plainly was not, and there were no traction-control settings
+although the pro ECUs support it. Then a fourth: no gear ratios or final drive, and no advice after a run.
+
+### The clutch was the thing slipping
+
+The driveline table is looked up by gearbox id with an OEM fallback, and the compound and Lenco gearboxes
+added in 1.23 had no entry. So a 2500 pk build ran on the **OEM clutch rated 430 Nm**: it heated to 1228 °C,
+dropped to half capacity and slipped for the whole quarter. The engine sat on the limiter in fifth at 74
+km/h while the car crawled to 18.3 s at 108 km/h - and the wheelspin meter read 0.7 %, correctly, because
+the tyres were not what was slipping.
+
+| | before | after |
+|---|---|---|
+| quarter | 18.28 s @ 108 km/h | **11.07 s @ 233 km/h** |
+| clutch peak | 1228 °C | 245 °C |
+| reported wheelspin | 0.7 % | 67 % (front-drive) |
+
+On the drag four-wheel-drive with Pro Mod slicks the same car runs 7.77 s at 324 km/h. `test_parts_data.js`
+now covers the driveline table; that guard has caught three of these.
+
+### Rubber, drive and the driver's foot
+
+A Mega drag radial 315 and a Pro Mod slick 34x17, both taking nearly all their grip from the prep as they do
+in life - the slick's much higher peak slip is why it is driven *through* slip rather than away from it. A
+drag four-wheel-drive with a dog-engaged transfer case, lighter than the street system because it drops the
+viscous centre and the heavy shafts. Making it worth having meant wiring up `tractionUse`, which had sat in
+the drivetrain table unread.
+
+A throttle slider in the race, above the shift button. It did not appear at first: everything in that scene
+is absolutely positioned, so laid out in the normal flow it landed at the top of the page over the status
+bar. And in staging, holding the launch button is now full throttle against the two-step - it used to pass
+`throttle: 0`, so the turbo saw a closed throttle however long you held it.
+
+Traction control became a strategy instead of a switch: a slip target as a percentage of the tyre's own peak
+(under 100 stays on the safe side of it, over 100 drives through slip deliberately) and an aggression
+setting. On a 2500 pk front-drive car that is 11.61 s with 100 % wheelspin against **10.91 s with 38 %**.
+ECUs declare whether they can run it; an OEM MED17 has no wheel-speed inputs, so there the switch says so
+rather than pretending.
+
+### Gearing
+
+Ratios and the final drive came straight off the gearbox part. `effectiveGearing()` is now the one place
+that decides what the car runs, read by the dyno, the race and the shift-point model alike. A Gearing panel
+gives the final drive, every ratio and the top speed each gives at your limiter, plus one spread knob for
+what you would buy as a close- or wide-ratio set - pivoting on first gear, because the launch ratio is
+chosen for grip, not for spacing.
+
+### Tuning for the grip you have
+
+`createGripOptimizer` judges a map by elapsed time in simulated runs under the conditions the last pass
+measured, and moves what decides *how* the power arrives rather than how much of it there is: launch rpm,
+first- and second-gear boost, low-rpm boost, the final drive and the spread. It finds 0.27 s on the compound
+build. Virtual runs cost the engine nothing - `simulateRaceRun` is a pure function of the state - and the
+test asserts wear and damage are untouched by a tuning session.
+
+`raceAdvice()` reads a timeslip back as findings, worst first, each saying what was measured, what it means
+and which control changes it. Wheelspin against the traction-control settings, running out of gear before
+the stripe against the final drive, time on the limiter against the spread, clutch temperature, knock, wheel
+hop, missed shifts. Where the grip optimiser can fix something itself, it says so.
+
+### What the 98 % test found
+
+The owner's test - build the best map for every engine by hand, then check the in-game tuner gets within
+98 % of it - found two more faults, both in the tuner rather than the search.
+
+**A coordinate search cannot climb a hill it cannot see the foot of.** On a compound build the two stages
+only start working together well above the middle of the boost range, so from a sensible starting map the
+search inched upward and stalled: 1054 pk of the 1518 the same RB26 hardware makes. It sweeps the boost
+range once up front now and starts from the best rung. Five pulls, and 1054 becomes 1539.
+
+**Lambda had a flat floor of 0.70 on every fuel.** An alcohol fuel is run rich for charge cooling as much as
+for mixture - a methanol race engine lives at 0.60-0.65 - and that floor cost the two-litre compound build
+over a thousand horsepower. The floor follows the blend's alcohol fraction now.
+
+The reference search is bound by the same limits the tuner keeps, which is what makes the test sharp: it was
+setting 9300 rpm on an RB26 whose parts are rated 9000, and a tuner should not ask an engine to exceed what
+its parts are rated for. A limit that is wrong now shows up as a reference the tuner cannot reach.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
