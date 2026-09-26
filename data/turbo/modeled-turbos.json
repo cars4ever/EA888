@@ -35,13 +35,13 @@
       "compressorInducerMm": 52,
       "turbineMm": 52,
       "chokeFlowLbMin": 57,
-      "prTop": 3.75,
-      "maxShaftRpm": 166000,
+      "prTop": 4.4,
+      "maxShaftRpm": 174000,
       "peakEfficiency": 0.72,
       "turbineChokeFlowLbMin": 18.6,
       "turbineEfficiency": 0.7,
       "twinScroll": true,
-      "basis": "User's hybrid rated about 500 hp. Billet 52 mm wheel in a K04 frame; flow sized to the rating."
+      "basis": "The owner's own hybrid, rated about 500 hp, which they run at 3 bar gauge. Billet 52 mm wheel in a K04 frame; flow sized to the rating. Both the shaft limit and the pressure ratio come from tip speed on a 64.5 mm exducer (inducer / 0.806, trim 65). This entry used the file's generic 560 m/s fallback, which is a cast-wheel figure: 166k rpm and a 3.75 ceiling, and on the engine that stopped at 2.87 bar with the shaft at 98 % of its limit. A billet wheel runs higher, and 590 m/s - normal for modern billet compressors - gives 174k rpm and PR = (1 + eta*psi*U^2/(cp*T1))^3.5 = 4.4 at eta 0.72, psi 0.65. That is what is used here, so the owner's 3 bar gauge sits inside the map rather than just outside it. Modelled, not a manufacturer map; the owner's statement about their own hardware is what prompted revisiting the fallback, not a measurement of this wheel."
     },
     "hx52": {
       "name": "Randy HX52 67-mm twin-scroll",

@@ -105,7 +105,38 @@ assert(nmAt(compound, 6000) > nmAt(single, 6000) * 0.94,
 assert(compound.peakHp > single.peakHp * 0.93,
   `peak power must not collapse (${Math.round(compound.peakHp)} vs ${Math.round(single.peakHp)} pk)`);
 
+// ---- the owner's K04 hybrid runs the 3 bar they say it runs ------------------------------------------
+// The map is modelled, and it used the file's generic 560 m/s tip-speed fallback - a cast-wheel figure - so
+// this billet wheel stopped at 2.87 bar with its shaft at 98 % of a limit that was itself the fallback.
+// At 590 m/s, normal for billet, the same formulas give 174k rpm and a 4.4 pressure ratio. What it still
+// takes is the hardware to hold it: boost control past 3 bar, an ignition that fires there, and the fuel.
+const atThreeBar = extra => {
+  const s = build('randy', st => {
+    Object.assign(st.selections, extra);
+    st.tune.boostMidBar = 3.0;
+    st.tune.boostHighBar = 3.0;
+  });
+  const r = run(s);
+  return { r, maxBoost: (r.samples || []).reduce((m, p) => Math.max(m, p.boostBar || 0), 0) };
+};
+const full = atThreeBar({ boostControl: 'dual_44', ignition: 'smart_coils', fuelSystem: 'di_mpi' });
+assert(full.maxBoost >= 2.99,
+  `the hybrid must reach the 3 bar gauge its owner runs (${full.maxBoost.toFixed(2)} bar)`);
+assert.strictEqual(full.r.status, 'completed', `and survive the pull (${full.r.abortReason || ''})`);
+assert(full.r.reliabilityScore >= 40, `at a usable reliability (${full.r.reliabilityScore})`);
+// Each link in that chain is required: the wastegate, the spark and the fuel.
+const onStockWastegate = atThreeBar({ ignition: 'smart_coils', fuelSystem: 'di_mpi' });
+assert(onStockWastegate.maxBoost < 2.6,
+  `an internal wastegate rated 2.35 bar cannot hold 3 (${onStockWastegate.maxBoost.toFixed(2)})`);
+const onWeakSpark = atThreeBar({ boostControl: 'dual_44', fuelSystem: 'di_mpi' });
+assert(onWeakSpark.r.status === 'aborted',
+  'coils rated 2.2 bar must break down before 3 bar, not quietly cope');
+const onSmallFuel = atThreeBar({ boostControl: 'dual_44', ignition: 'smart_coils' });
+assert(onSmallFuel.maxBoost < full.maxBoost - 0.05 && onSmallFuel.r.maxFuelDuty > 99,
+  `and the injectors must run out first (${onSmallFuel.maxBoost.toFixed(2)} bar at ${Math.round(onSmallFuel.r.maxFuelDuty)} % duty)`);
+
 module.exports = {
+  threeBarHp: Math.round(full.r.peakHp),
   goals: goals.length,
   tunerTouches: touched.length,
   safeGoal: { hp: Math.round(safe.after.hp), reliability: safe.after.reliability },

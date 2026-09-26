@@ -76,14 +76,25 @@ for (const p of randy.samples) {
   assert(p.iatC < p.compressorOutC, 'intercooler must cool the charge');
   assert(Number.isFinite(p.surgeMarginPct) && Number.isFinite(p.chokeMarginPct));
 }
-// Randy's K04 hybrid (rated ~500 hp) holds its 1.9 bar target with margin. Asked for 2.6 bar it runs into the
-// edge of its map: shaft speed near the limit and efficiency falling, then the fuel system caps the boost.
+// Randy's K04 hybrid (rated ~500 hp) holds its 1.9 bar target with margin. Asked for more, the build runs out
+// before the wheel does: on the preset's own hardware the injectors saturate and cap the boost.
 const pushed = run('randy', s => { s.tune.boostMidBar = 2.6; s.tune.boostHighBar = 2.6; });
 assert(at(randy, 7500).chokeMarginPct > 10, 'K04 hybrid should not be choked at its own 1.9 bar target');
-assert(at(pushed, 6000).shaftSpeedPct > 93, 'a 2.6 bar request must drive the K04 hybrid close to its shaft limit');
-assert(at(pushed, 6000).compressorEff < at(randy, 6000).compressorEff - 0.05, 'efficiency must fall toward the edge of the map');
 assert(pushed.samples.some(p => p.boostLimitedBy === 'fuel-protection'), 'the saturated fuel system must cap boost (lambda protection)');
 assert(pushed.peakHp > randy.peakHp, 'more boost within the map must still make more power');
+// The edge of the wheel's own map is its 3 bar gauge ceiling, and it takes the hardware to get there: boost
+// control past 3 bar, an ignition that fires at 3 bar and injectors that keep up. There the shaft really is
+// near its limit and the efficiency has fallen off. (These thresholds were written against the map's older
+// 560 m/s cast-wheel fallback, where 2.6 bar was already the edge; it is a billet wheel at 590 m/s now.)
+const atCeiling = run('randy', s => {
+  Object.assign(s.selections, { boostControl: 'dual_44', ignition: 'smart_coils', fuelSystem: 'di_mpi' });
+  s.tune.boostMidBar = 3.0;
+  s.tune.boostHighBar = 3.0;
+});
+assert(at(atCeiling, 6000).shaftSpeedPct > 93,
+  `at its 3 bar ceiling the hybrid must be near its shaft limit (${at(atCeiling, 6000).shaftSpeedPct} %)`);
+assert(at(atCeiling, 6000).compressorEff < at(randy, 6000).compressorEff - 0.05,
+  'and its efficiency must have fallen off toward the edge of the map');
 
 // A bigger turbo on the same build spools later but flows more at the top end.
 const bigger = run('randy', s => { s.selections.turbo = 'hx52'; s.selections.boostControl = 'dual_44'; });

@@ -960,6 +960,27 @@ Two hard-coded counts in the test suite and the smoke test went stale for the sa
 
 ### Open
 
+### The K04 hybrid at 3 bar
+
+The owner answered the open question from 1.22: 3 bar **gauge**. Their map is modelled, and it had taken this
+file's generic 560 m/s tip-speed fallback, which is a cast-wheel figure - 166k rpm and a 3.75 pressure-ratio
+ceiling. On the engine that stopped at 2.87 bar with the shaft at 98 % of that limit.
+
+Both numbers come out of the same formulas, so both move together. A 52 mm billet wheel has a 64.5 mm exducer
+(inducer / 0.806, trim 65), and 590 m/s - normal for modern billet compressors, where 560 is the cast figure -
+gives 174k rpm and `PR = (1 + eta*psi*U^2/(cp*T1))^3.5` = 4.4 at eta 0.72 and a work coefficient of 0.65. The
+map now uses those. It is still modelled, not measured; what the owner's statement did was prompt revisiting a
+fallback assumption that did not fit the hardware, and the entry's `basis` says exactly that.
+
+Reaching 3 bar then takes the rest of the car, and each link is a real one:
+
+| | |
+|---|---|
+| the preset as it stands | 2.44 bar — the internal wastegate is rated 2.35 and the overboost cut holds the target at 2.44 |
+| + dual 44 mm wastegates | 2.69 bar — then the coils break down; they are rated 2.2 bar |
+| + motorsport smart coils | 2.92 bar — then the injectors saturate at 105 % duty |
+| + DI/MPI staged fuel | **3.00 bar, 553 pk, 665 Nm**, shaft at 171k of 174k, reliability 47 |
+
 - **EGT on the two-litre compound reads 1523 °C** and barely moves with enrichment (1533 at lambda 0.85,
   1516 at 0.60). The cycle model is right about why - at 11 bar of exhaust manifold pressure the gas cannot
   expand, so it leaves near cylinder temperature - and the eight-cylinder with open headers sits at a healthy

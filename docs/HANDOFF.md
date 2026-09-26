@@ -90,10 +90,10 @@ schema.
 
 Open in de simulatie:
 
-1. **K04-hybride en 3 bar.** Het wiel haalt op de motor 2,44 bar overdruk (3,44 bar absoluut); de
-   gemodelleerde map zelf stopt bij `prTop` 3,75 (= 2,75 bar overdruk), zie `data/turbo/modeled-turbos.json`.
-   3 bar absoluut zit er dus ruim in, 3 bar overdruk (PR 4,0) ligt boven deze map. Vraag de eigenaar welke
-   van de twee hij bedoelt voordat `prTop` omhoog gaat — het is een gemodelleerde map, geen fabrikantsmap.
+1. ~~K04-hybride en 3 bar~~ — beantwoord: de eigenaar bedoelt 3 bar **overdruk**. De gemodelleerde map nam
+   de generieke terugval van 560 m/s tipsnelheid (een gietwiel-getal); bij 590 m/s, normaal voor billet,
+   geven dezelfde formules 174k rpm en PR 4,4. Haalbaar met dubbele 44 mm wastegates, smart coils en DI/MPI:
+   3,00 bar, 553 pk, betrouwbaarheid 47. Zie DEVLOG 28.
 2. **Een standaardmotor scoort ~47 betrouwbaarheid** en standaard-EGT blijft rond 980 °C zonder te reageren
    op verrijking via lambda. Modelgaten, geen balans.
 3. `tools/risk_breakdown.js` print waar een score vandaan komt; gebruik dat bij elke verdere herijking in

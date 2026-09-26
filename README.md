@@ -24,6 +24,9 @@ Current systems include engine parts/tuning, dyno simulation, wear/damage, servi
   as a complete package.
 - New parts for what that needs: 10 bar dome control and ignition, billet compound block/head, pneumatic
   valvetrain, a Lenco, a parallel PT9803 pair, and the fuel to feed 4000 pk.
+- The owner's K04 hybrid runs the 3 bar gauge they say it runs: its modelled map had taken a cast-wheel
+  tip-speed fallback, and it is a billet wheel. 3.00 bar and 553 pk, given the wastegates, coils and
+  injectors to hold it.
 - See DEVLOG 28.
 
 ## v1.22.0 — the tuner reaches the whole build
