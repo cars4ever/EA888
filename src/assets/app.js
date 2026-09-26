@@ -1811,6 +1811,22 @@
       const note = cat.id === 'ecu' ? 'max. aan te sturen begrenzer' : other && other.rpm < part.rpmLimit ? `zwakste andere schakel: ${esc(other.name)} ${Math.round(other.rpm)} rpm` : 'dit onderdeel is dan de zwakste schakel';
       rpmMeta = `<div class="part-meter"><span>Toerengrens · ${note}</span><b>${Math.round(part.rpmLimit)} rpm</b><i style="--fill:${clamp((part.rpmLimit - 6500) / 4500 * 100, 8, 100)}%"></i></div>`;
     }
+    // Torque limit, the same idea as the rpm meter. Without it you can fit an engine rated 4200 Nm to a build
+    // whose crank is rated 1000 and only find out when the pull ends at 3200 rpm.
+    let tqMeta = '';
+    const TQ_CATS = { block: 'torqueLimit', crank: 'torqueLimit', oiling: 'torqueLimit', head: 'torqueLimit',
+      valvetrain: 'torqueLimit', ecu: 'torqueLimit', transmission: 'transTorque' };
+    if (TQ_CATS[cat.id]) {
+      const rated = Number(part[TQ_CATS[cat.id]]);
+      if (rated > 0 && rated < 9000) {
+        const ch = C.loadLimitChain(state, 'torqueLimit');
+        const other = ch.parts.filter(p => p.category !== cat.id)[0];
+        const note = other && other.value < rated
+          ? `zwakste andere schakel: ${esc(other.name)} ${Math.round(other.value)} Nm`
+          : 'dit onderdeel is dan de zwakste schakel';
+        tqMeta = `<div class="part-meter"><span>Koppelgrens · ${note}</span><b>${Math.round(rated)} Nm</b><i style="--fill:${clamp((rated - 400) / 4600 * 100, 8, 100)}%"></i></div>`;
+      }
+    }
     const turboMeta = cat.id === 'turbo' ? `<div class="part-meter"><span>Compressor</span><b>${part.compressorMm || 'OEM'} mm</b><i style="--fill:${clamp(((part.compressorMm || 45)-40)/80*100,8,100)}%"></i></div>` : '';
     return `<article class="part-card part-row ${selected ? 'selected' : ''}" data-part-row="${key}">
       <details ${openPartRows.has(key) ? 'open' : ''} data-part-details="${key}">
@@ -1819,7 +1835,7 @@
           <span class="part-row-main"><b>${esc(part.name)}${randy ? ' <em class="randy-badge">RANDY SPEC</em>' : ''}</b><small>${esc(part.specs)}</small></span>
           <span class="part-row-price">${part.price ? euro(part.price) : 'OEM'}</span>
         </summary>
-        <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${turboMeta}${hopMeta}</div>
+        <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${tqMeta}${turboMeta}${hopMeta}</div>
       </details>
       ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`}
       ${cat.id === 'turbo' ? compoundButton(part, selected) : ''}

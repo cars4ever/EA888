@@ -737,6 +737,30 @@
     const ecu = getPart(state, 'ecu');
     return { weakest: parts[0], parts, ecu: { id: ecu.id, name: ecu.name, rpm: Number(ecu.rpmLimit) || Infinity } };
   }
+  // Which part is the torque limit, and which is the power limit. Both used to be a bare minimum over six
+  // categories, so an abort could only say "engine or transmission": fitting a Steve Morris block to a build
+  // whose crank is rated 950 Nm ended the pull at 2800 rpm without naming what to change.
+  const LOAD_LIMIT_PARTS = {
+    block: 'onderblok',
+    crank: 'krukas',
+    oiling: 'oliehuishouding',
+    head: 'kop',
+    valvetrain: 'kleppentrein',
+    ecu: 'ECU',
+    transmission: 'versnellingsbak'
+  };
+  function loadLimitChain(inputState, field) {
+    const state = normalizeState(inputState);
+    const parts = Object.keys(LOAD_LIMIT_PARTS)
+      .map(cat => {
+        const p = getPart(state, cat);
+        // the transmission is rated on what it can pass, not on what the engine may make
+        const v = Number(cat === 'transmission' ? (field === 'torqueLimit' ? p.transTorque : Infinity) : p[field]);
+        return { category: cat, id: p.id, name: p.name, role: LOAD_LIMIT_PARTS[cat], value: v > 0 ? v : Infinity };
+      })
+      .sort((a, b) => a.value - b.value);
+    return { weakest: parts[0], parts };
+  }
   // The limiter the ECU actually runs: the tune value, capped by what the ECU can command.
   function effectiveRevLimit(state) {
     const tuneRev = clamp(Math.round(Number(state.tune.revLimitRpm || 8000) / 100) * 100, 5000, 10500);
@@ -767,10 +791,20 @@
     } = ctx;
     const over = (value, limit, span = 0.3) => clamp((value / Math.max(1e-9, limit) - 1) / span, 0, 1);
     const fail = (code, system, reason, severity) => ({ code, system, reason, severity: clamp(severity, 0, 1) });
-    if (point.hp > mechanicalHpLimit * 1.18)
-      return fail('mechanical_power', 'engine', 'Onderblok/krukas overschreed de mechanische vermogensmarge.', over(point.hp, mechanicalHpLimit * 1.18));
-    if (point.torqueNm > componentTorqueLimit * 1.18)
-      return fail('torque', 'engine', 'Koppelpiek overschreed de grens van motor of transmissie.', over(point.torqueNm, componentTorqueLimit * 1.18));
+    if (point.hp > mechanicalHpLimit * 1.18) {
+      const w = ctx.hpLimiter;
+      return fail('mechanical_power', 'engine',
+        w ? `De ${w.role} (${w.name}) is gemaakt voor ${Math.round(w.value)} pk; de motor maakte er ${Math.round(point.hp)}.`
+          : 'Onderblok/krukas overschreed de mechanische vermogensmarge.',
+        over(point.hp, mechanicalHpLimit * 1.18));
+    }
+    if (point.torqueNm > componentTorqueLimit * 1.18) {
+      const w = ctx.torqueLimiter;
+      return fail('torque', 'engine',
+        w ? `De ${w.role} (${w.name}) houdt ${Math.round(w.value)} Nm; er kwam ${Math.round(point.torqueNm)} Nm op bij ${point.rpm} rpm.`
+          : 'Koppelpiek overschreed de grens van motor of transmissie.',
+        over(point.torqueNm, componentTorqueLimit * 1.18));
+    }
     if (point.rpm > componentRpmLimit * 1.04) {
       const w = rpmLimiter || { category: 'valvetrain', name: 'kleppentrein', rpm: componentRpmLimit };
       const ev = fail('overrev', 'engine', `${RPM_LIMIT_PARTS[w.category](Math.round(w.rpm))} Begrenzer: ${w.name}.`, over(point.rpm, componentRpmLimit * 1.04, 0.1));
@@ -1229,7 +1263,9 @@
         ecu.torqueLimit,
         trans.transTorque
       ),
-      componentRpmLimit = rpmChain.weakest.rpm;
+      componentRpmLimit = rpmChain.weakest.rpm,
+      torqueLimiter = loadLimitChain(state, 'torqueLimit').weakest,
+      hpLimiter = loadLimitChain(state, 'hpLimit').weakest;
     const wearTotal = state.wear.engine * 0.72 + state.wear.turbo * 0.18 + state.damage.engine * 0.9 + state.damage.turbo * 0.35,
       wearFactor = 1 - clamp(wearTotal / 230, 0, 0.32),
       health = oilHealth(state),
@@ -1496,6 +1532,8 @@
         componentTorqueLimit,
         componentRpmLimit,
         rpmLimiter: rpmChain.weakest,
+        torqueLimiter,
+        hpLimiter,
         sealing,
         ignition,
         oiling,
@@ -3241,7 +3279,45 @@
     else if (code === 'lean_out') list = [...groups.fuel(), toggle('railPressureCut', 'Raildrukcut')];
     else if (code === 'turbo_overspeed') list = groups.turbo();
     else if (code.startsWith('oil')) list = groups.oil();
-    else if (code === 'mechanical_power' || code === 'torque') list = [boost(-0.2), boost(-0.4), ...nextParts('block', 2), ...nextParts('crank', 1), ...(code === 'torque' ? nextParts('transmission', 1, (i, c) => i.transTorque > c.transTorque) : [])];
+    else if (code === 'mechanical_power' || code === 'torque') {
+      // Upgrade what is actually the limit, the way the over-rev advice does. This used to offer the next
+      // block, crank and gearbox regardless of which of the seven load-bearing categories was the low one,
+      // so fitting a big engine to a build whose crank is rated 1000 Nm produced advice about the block -
+      // and nothing that would let the pull finish.
+      const torque = code === 'torque';
+      const chain = loadLimitChain(state, torque ? 'torqueLimit' : 'hpLimit');
+      const dyno = state.lastDyno || {};
+      const seen = Number(torque ? dyno.peakTorqueNm : dyno.peakHp) || 0;
+      const need = seen > 0 ? seen : chain.weakest.value * 1.25;
+      const rating = (i, cat) => Number(torque ? (cat === 'transmission' ? i.transTorque : i.torqueLimit) : i.hpLimit) || 0;
+      // Every category that is under what the engine actually made, weakest first.
+      const short = chain.parts.filter(p => p.value * 1.18 < need);
+      const up = cat => nextParts(cat, 1, (i, cur) => rating(i, cat) > need && rating(i, cat) > rating(cur, cat));
+      list = [boost(-0.2), boost(-0.4)];
+      const cats = (short.length ? short : [chain.weakest]).map(p => p.category);
+      // One entry that lifts every one of them at once: partial upgrades still end the pull.
+      if (cats.length > 1) {
+        const combo = cats.map(c => up(c)[0]).filter(Boolean);
+        if (combo.length === cats.length) list.push({ id: `loadset:${combo.map(x => x.id).join('+')}`, kind: 'part', cost: combo.reduce((a, x) => a + x.cost, 0),
+          label: combo.map(x => x.label).join(' + '), patch: { selections: Object.assign({}, ...combo.map(x => x.patch.selections)) } });
+      }
+      for (const c of cats) list.push(...up(c));
+      // A swapped engine is a deliberate choice of how much the build has to take, so offer the whole set at
+      // once as well: fixing one wall at a time walks you from gearbox to crank to valvetrain, three aborted
+      // pulls to learn what the block told you on the day you fitted it.
+      const block = getPart(state, 'block');
+      if (block.swapEngine) {
+        const rated = rating(block, 'block');
+        const behind = chain.parts.filter(p => p.category !== 'block' && p.value < rated);
+        const set = behind.map(p => nextParts(p.category, 1, (i, cur) => rating(i, p.category) >= rated && rating(i, p.category) > rating(cur, p.category))[0]).filter(Boolean);
+        if (set.length && set.length === behind.length) {
+          const id = `engineset:${set.map(x => x.id).join('+')}`;
+          if (!list.some(x => x && x.id === id)) list.push({ id, kind: 'part', cost: set.reduce((a, x) => a + x.cost, 0),
+            label: `Bouw op de motor afstemmen (${block.name}, ${Math.round(rated)} ${torque ? 'Nm' : 'pk'}): ` + set.map(x => x.label.replace(/^Monteer /, '')).join(' + '),
+            patch: { selections: Object.assign({}, ...set.map(x => x.patch.selections)) } });
+        }
+      }
+    }
     else if (code === 'overrev') {
       // Upgrade the part that actually set the limit (and the next weakest if it sits close behind).
       const chain = rpmLimitChain(state), rev = effectiveRevLimit(state);
@@ -3804,6 +3880,7 @@
     interpolateCurve,
     diagnoseDyno,
     rpmLimitChain,
+    loadLimitChain,
     effectiveRevLimit,
     COMPOUND_KIT,
     compoundHp,

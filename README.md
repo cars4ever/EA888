@@ -12,7 +12,16 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.23.0 (branch `claude-dev`) — compound that stacks, and engine swaps
+## v1.23.1 (branch `claude-dev`) — the limit names itself
+
+- A torque or power abort now says which part is the limit, what it is rated for and what the engine actually
+  made, instead of "engine or transmission".
+- The tuner upgrades the part that is actually the limit, and for a swapped engine offers one entry that
+  lifts everything below it at once rather than walking you from wall to wall.
+- The part picker shows each part's torque limit and whether something else is the weaker link.
+- See DEVLOG 29.
+
+## v1.23.0 — compound that stacks, and engine swaps
 
 - Compound boost now multiplies pressure ratio instead of only helping a turbo spool: **2533 pk from two
   litres** (`compound2500`), and 2640 pk on the full-stroke two litre.

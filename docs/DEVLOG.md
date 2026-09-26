@@ -992,6 +992,36 @@ Reaching 3 bar then takes the rest of the car, and each link is a real one:
   exist.
 - The 3D car is still the Scirocco shell whatever is under the bonnet.
 
+## 29. Naming the limit, not just hitting it (v1.23.1)
+
+Reported straight from play: a Steve Morris block with the most expensive gearbox, and the pull ends at 2800
+rpm on *"Koppelpiek overschreed de grens van motor of transmissie"* - 516 pk and 1294 Nm observed, no
+reliability score - and the tuner has nothing to offer.
+
+Both halves of that were my gap, and both were avoidable.
+
+**The limit could not name itself.** `componentTorqueLimit` was a bare minimum over seven categories, and so
+was the mechanical power limit, so the abort could only say "engine or transmission". The rpm abort has named
+its part for a long time (`rpmLimitChain`); torque and power now have the same thing, `loadLimitChain`, and
+the messages read:
+
+> De versnellingsbak (Randy versterkte O2Q + Quaife) houdt 840 Nm; er kwam 1008 Nm op bij 3000 rpm.
+
+**The advice was reaching for the wrong parts.** For a torque or power abort it offered the next block, the
+next crank and the next gearbox regardless of which category was actually low - so fitting a big engine to a
+build whose crank is rated 1000 Nm produced advice about the block, and nothing that would let the pull
+finish. It now upgrades what is the limit, the way the over-rev advice already did.
+
+**And fixing one wall at a time is not advice.** On that build the gearbox goes first at 840 Nm, then the
+crank at 1000, then the valvetrain at 1520: three aborted pulls to learn what the block said on the day it
+was fitted. A swapped engine is a deliberate choice about how much the build has to take, so the advice now
+also offers the whole set at once - *"Bouw op de motor afstemmen (SMX 540, 4200 Nm): Lenco + SMX krukas + SMX
+kleppentrein"* - and taking it lets the pull finish.
+
+**Before the pull, not after.** The part picker already showed each part's rpm limit and whether something
+else was the weaker link. It now shows the same for torque, so an engine rated 4200 Nm next to a crank rated
+1000 is visible when you fit it.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

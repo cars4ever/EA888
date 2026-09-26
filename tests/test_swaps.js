@@ -97,6 +97,47 @@ const flames = preset => {
 assert(flames('smx4000').quarter > 0 && flames('rotary_swap').quarter > 0,
   'an eight-cylinder and a two-rotor must both get through a race with anti-lag');
 
+
+// ---- fitting a big engine to a small build must say so, not just stop -------------------------------
+// Reported from play: a Steve Morris block with the most expensive gearbox ended the pull at 2800 rpm on
+// "torque peak exceeded the limit of engine or transmission", and the tuner had nothing to offer. The limit
+// was a bare minimum over seven categories, so it could not name which one, and the advice offered the next
+// block and crank regardless of which category was actually low.
+{
+  const mismatched = () => {
+    const s = build('smx4000');
+    Object.assign(s.selections, { crank: 'randy_balanced_crank', transmission: 'randy_o2q', valvetrain: 'randy_ferrea' });
+    return s;
+  };
+  const s = mismatched();
+  const r = run(s);
+  assert.strictEqual(r.abortCode, 'torque', 'this build must still end on torque');
+  // The reason names the part, its rating and what was actually made.
+  assert(/versnellingsbak|krukas|kleppentrein/.test(r.abortReason), `the abort must name the part: "${r.abortReason}"`);
+  assert(/\d+ Nm/.test(r.abortReason), `and its rating: "${r.abortReason}"`);
+
+  // The chain itself is readable, weakest first.
+  const chain = C.loadLimitChain(s, 'torqueLimit');
+  assert.strictEqual(chain.weakest.category, 'transmission', 'the O2Q is the weakest link here');
+  assert(chain.parts.every((p, i, a) => i === 0 || p.value >= a[i - 1].value), 'the chain must be ordered weakest first');
+
+  // And the tuner has something to say: the part that is the limit, and one entry that matches the whole
+  // build to the engine rather than walking the player from wall to wall.
+  s.lastDyno = r;
+  const advice = C.adviceCandidates(s, 'abort:torque');
+  assert(advice.some(a => a && /versnellingsbak/i.test(a.label)),
+    `the advice must reach for the part that is the limit: ${advice.map(a => a && a.label).join(' | ')}`);
+  const set = advice.find(a => a && /op de motor afstemmen/i.test(a.label));
+  assert(set, 'a swapped engine must offer one entry that lifts every part below it');
+  for (const cat of ['transmission', 'crank', 'valvetrain']) {
+    assert(set.patch.selections[cat], `that entry must cover the ${cat}`);
+  }
+  // Applying it must let the pull finish.
+  const fixed = mismatched();
+  Object.assign(fixed.selections, set.patch.selections);
+  assert.strictEqual(run(fixed).status, 'completed', 'and taking the advice must let the pull finish');
+}
+
 module.exports = {
   swaps: Object.keys(EXPECT).length,
   power: Object.fromEntries(Object.keys(EXPECT).map(k => [k, Math.round(run(build(k)).peakHp)]))
