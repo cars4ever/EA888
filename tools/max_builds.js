@@ -17,14 +17,20 @@ const C = require('../src/assets/sim.js');
 
 // engine id -> the block and head it must run, and a starting point
 const ENGINES = {
-  ea888_20:  { block: 'compound_billet',  head: 'compound_billet_head',  from: 'compound2500', label: 'EA888 2.0 (billet compound)' },
+  // `seeds`: extra starting points. A greedy search needs both the right turbo pair and the boost that makes
+  // it work at the same time, and it will not stumble on that from a single starting map - it picked a lone
+  // PT8685 making 1793 pk for an engine that makes 2500 on two stages. The shipped presets already know
+  // those combinations, so the search starts from each of them too and keeps the best. The reference is then
+  // never worse than something already in the game, which is the least it should be.
+  ea888_20:  { block: 'compound_billet',  head: 'compound_billet_head',  from: 'compound2500', label: 'EA888 2.0 (billet compound)',
+               seeds: ['unlimited', 'outlaw106', 'pro98'] },
   vr6_32:    { block: 'swap_vr6_32',      head: 'head_vr6_32',           from: 'vr6_swap',     label: 'VW VR6 3.2' },
   daza_25:   { block: 'swap_daza_25',     head: 'head_daza_25',          from: 'daza_swap',    label: '2.5 TFSI DAZA' },
   rb25_neo:  { block: 'swap_rb25_neo',    head: 'head_rb25_neo',         from: 'rb25_swap',    label: 'RB25DET Neo' },
   rb26:      { block: 'swap_rb26',        head: 'head_rb26',             from: 'rb26_swap',    label: 'RB26DETT' },
   jz_vvti:   { block: 'swap_2jz_vvti',    head: 'head_2jz_vvti',         from: 'jz_swap',      label: '2JZ-GTE VVTi' },
   rotary_13b:{ block: 'swap_13b_rew',     head: 'head_13b_rew',          from: 'rotary_swap',  label: '13B-REW bridgeport' },
-  smx_540:   { block: 'swap_smx_540',     head: 'head_smx_540',          from: 'smx4000',      label: 'Steve Morris SMX 540' }
+  smx_540:   { block: 'swap_smx_540',     head: 'head_smx_540',          from: 'smx4000',      label: 'Steve Morris SMX 540', seeds: ['compound2500'] }
 };
 
 // Categories the search is allowed to change. block and head are the engine; fuel and service come with it.
@@ -206,7 +212,18 @@ function perfectAssembly(state) {
 
 function maxBuild(id) {
   const e = ENGINES[id];
-  let s = C.applyPreset(C.blankState(), e.from);
+  const seeds = [e.from, ...(e.seeds || [])];
+  let best = null;
+  for (const seed of seeds) {
+    const got = maxBuildFrom(id, seed);
+    if (!best || got.hp > best.hp) best = got;
+  }
+  return best;
+}
+
+function maxBuildFrom(id, seedPreset) {
+  const e = ENGINES[id];
+  let s = C.applyPreset(C.blankState(), seedPreset);
   s.selections.block = e.block;
   s.selections.head = e.head;
   s.tune.ecu = null;
@@ -215,7 +232,7 @@ function maxBuild(id) {
   s.damage = { engine: 0, turbo: 0 };
   perfectAssembly(s);
   // parts, turbos, tune - then round again, because a bigger turbo changes which parts are worth having
-  const tick = phase => { if (process.env.EA888_QUIET !== '1') process.stderr.write(`    ${id} ${phase}: ${Math.round(score(s).hp)} pk (${pulls} pulls)\n`); };
+  const tick = phase => { if (process.env.EA888_QUIET !== '1') process.stderr.write(`    ${id}/${seedPreset} ${phase}: ${Math.round(score(s).hp)} pk (${pulls} pulls)\n`); };
   s = intoMargins(s); tick('start');
   for (let i = 0; i < 2; i++) {
     s = sweepParts(s); tick('parts');
