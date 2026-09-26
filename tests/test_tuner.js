@@ -135,6 +135,21 @@ const onSmallFuel = atThreeBar({ boostControl: 'dual_44', ignition: 'smart_coils
 assert(onSmallFuel.maxBoost < full.maxBoost - 0.05 && onSmallFuel.r.maxFuelDuty > 99,
   `and the injectors must run out first (${onSmallFuel.maxBoost.toFixed(2)} bar at ${Math.round(onSmallFuel.r.maxFuelDuty)} % duty)`);
 
+// ---- how rich the tuner may go depends on what it is burning --------------------------------------
+// A flat floor of lambda 0.70 applied to petrol and to methanol alike. An alcohol fuel is run rich for
+// charge cooling as much as for mixture - a methanol race engine lives at 0.60-0.65 - and that floor put it
+// out of reach: on the two-litre compound build it cost over a thousand horsepower, because the fuel that
+// makes the power was not allowed to do the cooling that lets it.
+{
+  const lam = C.MAP_PARAMS.find(p => p.key === 'lambda');
+  const rangeOn = fuel => C.mapParamRange(build('randy', s => { s.selections.fuel = fuel; }), lam);
+  const petrol = rangeOn('ron98'), e85 = rangeOn('e85'), meth = rangeOn('methanol');
+  assert(meth.lo < 0.62, `methanol must be tunable rich enough to cool the charge (floor ${meth.lo})`);
+  assert(e85.lo < petrol.lo - 0.05, 'E85 takes more enrichment than petrol');
+  assert(petrol.lo > 0.66 && petrol.lo <= 0.7, `and petrol must not be dumped in (floor ${petrol.lo})`);
+  assert(meth.hi >= 0.9, 'and the lean side is the same for all of them');
+}
+
 module.exports = {
   threeBarHp: Math.round(full.r.peakHp),
   goals: goals.length,

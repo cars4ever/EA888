@@ -3498,7 +3498,7 @@
     { key: 'boostHighBar', label: 'laaddruk hoog', unit: ' bar', step: 0.15, min: 0, max: 4.5, decimals: 2, bound: 'boost' },
     { key: 'boostLowBar', label: 'laaddruk laag', unit: ' bar', step: 0.15, min: 0, max: 4.2, decimals: 2, bound: 'boost' },
     { key: 'ignitionTrimDeg', label: 'ontstekingstrim', unit: '\u00b0', step: 1, min: -8, max: 7, decimals: 1 },
-    { key: 'lambda', label: 'lambda', unit: '', step: 0.02, min: 0.7, max: 0.9, decimals: 2 },
+    { key: 'lambda', label: 'lambda', unit: '', step: 0.02, min: 0.7, max: 0.95, decimals: 2, bound: 'lambda' },
     { key: 'intakeCamAdvanceDeg', label: 'inlaatnok', unit: '\u00b0', step: 4, min: -5, max: 30, decimals: 0 },
     { key: 'railTargetBar', label: 'raildruk', unit: ' bar', step: 10, min: 110, max: 250, decimals: 0, bound: 'rail' },
     { key: 'exhaustTdcLiftMm', label: 'uitlaatklep op TDC', unit: ' mm', step: 0.15, min: 0.1, max: 2.0, decimals: 2 },
@@ -3519,6 +3519,15 @@
     if (p.bound === 'rev') {
       const parts = ['block', 'crank', 'oiling', 'head', 'valvetrain', 'ecu'].map(c => getPart(state, c));
       hi = Math.min(minPositive(...parts.map(x => x.rpmLimit)) || hi, revCeiling());
+    }
+    // How rich the tuner may go depends on what it is burning. An alcohol fuel is run rich for charge
+    // cooling as much as for mixture - a methanol race engine lives at 0.60-0.65 - and a flat floor of 0.70
+    // put that out of reach: on the two-litre compound build it cost over a thousand horsepower, because the
+    // fuel that makes the power was not allowed to do the cooling that lets it.
+    if (p.bound === 'lambda') {
+      const grade = Engine.DATA.fuelGrades[state.selections.fuel];
+      const alcohol = grade ? Number(Engine.fuelBlend(grade).alcoholMassFrac) || 0 : 0;
+      return { lo: round(p.min - 0.12 * alcohol, 3), hi: p.max };
     }
     if (p.bound === 'flex') {
       // Only a flex fuel takes a blend; on a fixed grade the number is decoration and must not be tuned.
