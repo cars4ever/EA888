@@ -33,11 +33,19 @@ const PART_CATS = ['crank', 'oiling', 'crankcase', 'valvetrain', 'boostControl',
 
 let pulls = 0;
 const clone = s => JSON.parse(JSON.stringify(s));
+// The yardstick has to be the one the game uses, or the comparison is rigged. The in-game race map is the
+// most power that stays inside the margins the game will sell a map at, so the hand-built maximum is judged
+// by exactly those margins. Maximising power with them switched off makes 98 % of it unreachable by
+// construction, and produces "builds" that are grenades: an early run of this search, before this check was
+// in, came back with an RB26 making 1764 pk at zero reliability.
+const RACE = C.MAP_TUNES.race;
 function score(state) {
   pulls++;
   const r = C.simulateEngine(state, { noise: false });
   // An aborted pull is not a result: the figure it shows is the highest seen before it stopped.
   if (r.status !== 'completed') return { hp: -1, r };
+  const sc = C.mapScore(r, RACE, C.mapLimits(state));
+  if (!sc.ok) return { hp: -1, r, over: sc.over };
   return { hp: r.peakHp, r };
 }
 
