@@ -12,7 +12,21 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.22.0 (branch `claude-dev`) — the tuner reaches the whole build
+## v1.23.0 (branch `claude-dev`) — compound that stacks, and engine swaps
+
+- Compound boost now multiplies pressure ratio instead of only helping a turbo spool: **2533 pk from two
+  litres** (`compound2500`), and 2640 pk on the full-stroke two litre.
+- Surge was treated as a ceiling on boost and searched for backwards, so the biggest turbo in the catalogue
+  made 350 pk. It is a flow floor; the first stage now has a wastegate controller that holds it right of its
+  own line.
+- Seven engine swaps, each a block with its own cylinder count, bore, stroke and head: **VR6 3.2, 2.5 TFSI
+  DAZA, RB25DET Neo, RB26DETT, 2JZ-GTE VVTi, 13B-REW bridgeport** and the **Steve Morris SMX 540 at 4019 pk**
+  as a complete package.
+- New parts for what that needs: 10 bar dome control and ignition, billet compound block/head, pneumatic
+  valvetrain, a Lenco, a parallel PT9803 pair, and the fuel to feed 4000 pk.
+- See DEVLOG 28.
+
+## v1.22.0 — the tuner reaches the whole build
 
 - The paid tuner now sets eleven things instead of six (rail pressure, the rev limiter, cam timing, the
   wastegate and the ethanol blend included) and names every change it makes, with units and both values.

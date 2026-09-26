@@ -495,12 +495,11 @@
       return { ...single, empBarAbs: single.empBarAbs + extraEmp, expansionRatio: single.expansionRatio, compoundStage: 'lp', hpShaftRpm: 0, hpShaftPct: 0,
         hpBypassPct: 100, prLp: single.pressureRatio, prHp: 1, interstageBarAbs: null, interstageC: null };
     };
-    // The HP stage is bypassed only when the LP turbo already reaches the target on its own. It used to be
-    // bypassed whenever the LP turbo was not spool-limited, which made a compound a spool aid and nothing
-    // else: a turbo held back by its own shaft speed or map got no help from a second stage, so two
-    // compressors in series could not reach a pressure ratio one of them could not. That is the whole point
-    // of compounding.
-    if (single.boostBar >= B0 - 1e-3) return lpOnly();
+    // The HP stage used to be bypassed whenever the LP turbo was not spool-limited, which made a compound a
+    // spool aid and nothing else: a turbo held back by its own shaft speed or map got no help from a second
+    // stage, so two compressors in series could not reach a pressure ratio one of them cannot. That is the
+    // whole point of compounding. The series solution is worked out below and compared with the LP-only one
+    // on what actually comes out.
     // Smallest HP bypass opening that keeps the manifold pressure under the cap (EMP / MAP, absolute).
     const empOk = (b, u) => ev.point(b, u, 0).e.p3 <= COMPOUND.empCapRatio * (ctx.baroBar + b);
     const uMinMemo = new Map();
@@ -552,8 +551,14 @@
       if (!withinLines(B)) B = bisectMax(0, B, withinLines, 14);
       limitedBy = 'surge';
     }
-    // the LP turbo alone does better here (the series stage choked or surged): HP stage bypassed
-    if (single.boostBar >= B - 1e-3) return lpOnly();
+    // The LP-only answer is kept only when it is genuinely the better one. Reaching the same boost is not the
+    // same thing as being the same: with both stages sharing the ratio the LP runs lower on its map, nearer
+    // its best efficiency, so the charge can be cooler and denser for the same manifold pressure - but a
+    // small HP wheel past its choke line does the opposite, restricting the intake for nothing. Which of the
+    // two it is, is decided below on the mass flow each actually delivers, once the series point is known.
+    // Deciding it on "could the LP have coped" alone put a cliff in the map: on one 8.9 L build 2.97 bar gave
+    // 3961 pk LP-only and 2.98 bar gave 4398 in series, off the same hardware.
+    if (single.boostBar > B + 1e-3) return lpOnly();
     // controller: open the HP turbine bypass until the HP shaft balances at the target
     const u0 = uFloor(B);
     let uHp = u0;
@@ -566,6 +571,12 @@
       }
     }
     let P = ev.point(B, uHp, 0), a = P.a, nLp = P.lpShaftRpm, nHp = P.hpShaftRpm, transient = false;
+    // Same boost, so what separates the two is charge temperature: at a given manifold pressure the cooler
+    // charge is the denser one and makes the power. Two stages sharing the ratio each run lower on their
+    // maps and can come out cooler than one stage doing all of it; a small HP wheel past its choke line does
+    // the opposite and heats the charge for nothing. The mass flows cannot be compared directly here - the
+    // single and the series evaluator are built on different airflow fits - but the temperatures can.
+    if (single.boostBar >= B - 1e-3 && single.manifoldC + 273.15 <= P.tMan) return lpOnly();
     // rotor inertia: both rotors accelerate on their own surplus from their previous speeds
     const pL = target.prevShaftRpm, pH = target.prevHpShaftRpm;
     if (Number.isFinite(pL) && target.dtS > 0 && (pL < nLp - 1 || (Number.isFinite(pH) && pH < nHp - 1))) {

@@ -14,7 +14,10 @@ function presetResult(id, mutate) {
 
 // Catalogue depth and explicit big-turbo support.
 assert.strictEqual(C.CATEGORIES.length, 21, 'expected 21 component categories (compound = a second turbo from the turbo list, not a category)');
-assert.strictEqual(C.CATEGORY_MAP.turbo.items.length, 17, 'expected 17 turbo choices');
+// A floor, not an exact count: this went stale the moment a turbo was added, and what the test means is
+// that the catalogue has depth, not that it has exactly one particular size.
+assert(C.CATEGORY_MAP.turbo.items.length >= 18, `expected at least 18 turbo choices, got ${C.CATEGORY_MAP.turbo.items.length}`);
+assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'twin_pt9803'), 'the parallel pair for big-displacement swaps is missing');
 assert.strictEqual(Math.max(...C.CATEGORY_MAP.turbo.items.map(x => x.compressorMm || 0)), 106, 'largest Precision (106 mm) missing');
 assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'pt9803' && x.compressorMm === 98), '98-mm turbo missing');
 assert(C.CATEGORY_MAP.turbo.items.some(x => x.id === 'pt10603' && x.compressorMm === 106), '106-mm turbo missing');
@@ -199,6 +202,7 @@ const physicsAudit = require('./test_physics_audit.js');
 const tunerSuite = require('./test_tuner.js');
 const compoundSuite = require('./test_compound.js');
 const partsDataSuite = require('./test_parts_data.js');
+const swapSuite = require('./test_swaps.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -229,7 +233,8 @@ const report = {
   physicsAudit,
   tuner: tunerSuite,
   compound: compoundSuite,
-  partsData: partsDataSuite
+  partsData: partsDataSuite,
+  swaps: swapSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

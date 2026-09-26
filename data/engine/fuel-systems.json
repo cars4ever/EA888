@@ -1,32 +1,160 @@
 {
   "_about": "Fuel delivery hardware per catalogue fuel-system option. DI capacity = min(high-pressure pump delivery, injector flow within the injection window). Pump delivery = displacement per crank revolution x rpm x volumetric efficiency (falls with rail pressure). Injector flow scales with the square root of the pressure difference. Port (MPI) injectors and the low-pressure pump add capacity. Flow numbers are modeled so the OEM system saturates near 280-300 PS on 98 RON and the upgrades land near their commonly quoted capability; they are not vendor flow sheets (mapType 'modeled').",
   "injectors": {
-    "oem_di": { "type": "di", "ccMinAt100Bar": 930, "mapType": "modeled", "note": "EA888 Gen 1 HDEV5 class" },
-    "hdev5_cal": { "type": "di", "ccMinAt100Bar": 1250, "mapType": "modeled", "note": "calibrated high-flow HDEV5" },
-    "rsx_di": { "type": "di", "ccMinAt100Bar": 1450, "mapType": "modeled", "note": "Bar-Tek/RSX-style upgraded DI (user's reference build)" },
-    "race_di": { "type": "di", "ccMinAt100Bar": 1650, "mapType": "modeled" },
-    "mpi_1000": { "type": "mpi", "ccMinAt3Bar": 1000, "mapType": "modeled" },
-    "mpi_1600": { "type": "mpi", "ccMinAt3Bar": 1600, "mapType": "modeled" },
-    "meth_2400": { "type": "mpi", "ccMinAt3Bar": 2400, "mapType": "modeled", "note": "methanol nozzle, flow at the mechanical-pump pressure" }
+    "oem_di": {
+      "type": "di",
+      "ccMinAt100Bar": 930,
+      "mapType": "modeled",
+      "note": "EA888 Gen 1 HDEV5 class"
+    },
+    "hdev5_cal": {
+      "type": "di",
+      "ccMinAt100Bar": 1250,
+      "mapType": "modeled",
+      "note": "calibrated high-flow HDEV5"
+    },
+    "rsx_di": {
+      "type": "di",
+      "ccMinAt100Bar": 1450,
+      "mapType": "modeled",
+      "note": "Bar-Tek/RSX-style upgraded DI (user's reference build)"
+    },
+    "race_di": {
+      "type": "di",
+      "ccMinAt100Bar": 1650,
+      "mapType": "modeled"
+    },
+    "mpi_1000": {
+      "type": "mpi",
+      "ccMinAt3Bar": 1000,
+      "mapType": "modeled"
+    },
+    "mpi_1600": {
+      "type": "mpi",
+      "ccMinAt3Bar": 1600,
+      "mapType": "modeled"
+    },
+    "meth_2400": {
+      "type": "mpi",
+      "ccMinAt3Bar": 2400,
+      "mapType": "modeled",
+      "note": "methanol nozzle, flow at the mechanical-pump pressure"
+    }
   },
   "pumps": {
-    "oem_hpfp": { "type": "hpfp", "ccPerRev": 0.33, "maxRailBar": 150, "mapType": "modeled", "note": "cam-driven single-piston pump, two strokes per crank revolution" },
-    "hpfp_internals": { "type": "hpfp", "ccPerRev": 0.44, "maxRailBar": 170, "mapType": "modeled" },
-    "nostrum_hpfp": { "type": "hpfp", "ccPerRev": 0.62, "maxRailBar": 200, "mapType": "modeled", "note": "Nostrum-type high-flow HPFP (user's reference build)" },
-    "race_hpfp": { "type": "hpfp", "ccPerRev": 0.72, "maxRailBar": 220, "mapType": "modeled" },
-    "oem_lpfp": { "type": "lpfp", "lphAt5Bar": 150, "mapType": "modeled" },
-    "uprated_lpfp": { "type": "lpfp", "lphAt5Bar": 280, "mapType": "modeled" },
-    "dual_brushless": { "type": "lpfp", "lphAt5Bar": 900, "mapType": "modeled" },
-    "mech_meth": { "type": "mechanical", "lphPer1000Rpm": 190, "mapType": "modeled", "note": "belt/cam-driven methanol pump, delivery proportional to rpm" }
+    "oem_hpfp": {
+      "type": "hpfp",
+      "ccPerRev": 0.33,
+      "maxRailBar": 150,
+      "mapType": "modeled",
+      "note": "cam-driven single-piston pump, two strokes per crank revolution"
+    },
+    "hpfp_internals": {
+      "type": "hpfp",
+      "ccPerRev": 0.44,
+      "maxRailBar": 170,
+      "mapType": "modeled"
+    },
+    "nostrum_hpfp": {
+      "type": "hpfp",
+      "ccPerRev": 0.62,
+      "maxRailBar": 200,
+      "mapType": "modeled",
+      "note": "Nostrum-type high-flow HPFP (user's reference build)"
+    },
+    "race_hpfp": {
+      "type": "hpfp",
+      "ccPerRev": 0.72,
+      "maxRailBar": 220,
+      "mapType": "modeled"
+    },
+    "oem_lpfp": {
+      "type": "lpfp",
+      "lphAt5Bar": 150,
+      "mapType": "modeled"
+    },
+    "uprated_lpfp": {
+      "type": "lpfp",
+      "lphAt5Bar": 280,
+      "mapType": "modeled"
+    },
+    "dual_brushless": {
+      "type": "lpfp",
+      "lphAt5Bar": 900,
+      "mapType": "modeled"
+    },
+    "mech_meth": {
+      "type": "mechanical",
+      "lphPer1000Rpm": 190,
+      "mapType": "modeled",
+      "note": "belt/cam-driven methanol pump, delivery proportional to rpm"
+    }
   },
   "systems": {
-    "oem_fuel": { "hpfp": "oem_hpfp", "di": "oem_di", "lpfp": "oem_lpfp", "injectionWindowDeg": 230 },
-    "hpfp": { "hpfp": "hpfp_internals", "di": "oem_di", "lpfp": "oem_lpfp", "injectionWindowDeg": 240 },
-    "randy_nostrum_rsx": { "hpfp": "nostrum_hpfp", "di": "rsx_di", "lpfp": "uprated_lpfp", "injectionWindowDeg": 260 },
-    "nostrum": { "hpfp": "nostrum_hpfp", "di": "hdev5_cal", "lpfp": "uprated_lpfp", "injectionWindowDeg": 250 },
-    "di_mpi": { "hpfp": "hpfp_internals", "di": "hdev5_cal", "lpfp": "uprated_lpfp", "mpi": "mpi_1000", "mpiCount": 4, "mpiPressureBar": 4, "injectionWindowDeg": 250 },
-    "race_fuel": { "hpfp": "race_hpfp", "di": "race_di", "lpfp": "dual_brushless", "mpi": "mpi_1600", "mpiCount": 8, "mpiPressureBar": 5, "injectionWindowDeg": 270 },
-    "methanol_fuel": { "mechanical": "mech_meth", "mpi": "meth_2400", "mpiCount": 16, "mpiPressureBar": 8, "injectionWindowDeg": 0 },
-    "promod_methanol_fuel": { "mechanical": "mech_meth", "mechanicalScale": 1.6, "mpi": "meth_2400", "mpiCount": 24, "mpiPressureBar": 9, "injectionWindowDeg": 0 }
+    "oem_fuel": {
+      "hpfp": "oem_hpfp",
+      "di": "oem_di",
+      "lpfp": "oem_lpfp",
+      "injectionWindowDeg": 230
+    },
+    "hpfp": {
+      "hpfp": "hpfp_internals",
+      "di": "oem_di",
+      "lpfp": "oem_lpfp",
+      "injectionWindowDeg": 240
+    },
+    "randy_nostrum_rsx": {
+      "hpfp": "nostrum_hpfp",
+      "di": "rsx_di",
+      "lpfp": "uprated_lpfp",
+      "injectionWindowDeg": 260
+    },
+    "nostrum": {
+      "hpfp": "nostrum_hpfp",
+      "di": "hdev5_cal",
+      "lpfp": "uprated_lpfp",
+      "injectionWindowDeg": 250
+    },
+    "di_mpi": {
+      "hpfp": "hpfp_internals",
+      "di": "hdev5_cal",
+      "lpfp": "uprated_lpfp",
+      "mpi": "mpi_1000",
+      "mpiCount": 4,
+      "mpiPressureBar": 4,
+      "injectionWindowDeg": 250
+    },
+    "race_fuel": {
+      "hpfp": "race_hpfp",
+      "di": "race_di",
+      "lpfp": "dual_brushless",
+      "mpi": "mpi_1600",
+      "mpiCount": 8,
+      "mpiPressureBar": 5,
+      "injectionWindowDeg": 270
+    },
+    "methanol_fuel": {
+      "mechanical": "mech_meth",
+      "mpi": "meth_2400",
+      "mpiCount": 16,
+      "mpiPressureBar": 8,
+      "injectionWindowDeg": 0
+    },
+    "promod_methanol_fuel": {
+      "mechanical": "mech_meth",
+      "mechanicalScale": 1.6,
+      "mpi": "meth_2400",
+      "mpiCount": 24,
+      "mpiPressureBar": 9,
+      "injectionWindowDeg": 0
+    },
+    "smx_methanol_fuel": {
+      "mechanical": "mech_meth",
+      "mechanicalScale": 3.0,
+      "mpi": "meth_2400",
+      "mpiCount": 32,
+      "mpiPressureBar": 12,
+      "injectionWindowDeg": 0
+    }
   }
 }

@@ -55,6 +55,19 @@
       "turbineEfficiency": 0.72,
       "twinScroll": true,
       "basis": "Holset HX52 reference; no official Cummins map is published, so it is modeled."
+    },
+    "twin_pt9803": {
+      "name": "Twin PT9803 (2×)",
+      "compressorInducerMm": 98,
+      "turbineMm": 113.6,
+      "chokeFlowLbMin": 436,
+      "prTop": 5.36,
+      "maxShaftRpm": 90785,
+      "peakEfficiency": 0.76,
+      "turbineChokeFlowLbMin": 178,
+      "turbineEfficiency": 0.74,
+      "twinScroll": false,
+      "basis": "Two Precision PT9803 in parallel on one engine, the way a 4000 hp V8 is fed. Identical wheels side by side pass twice the flow at the same pressure ratio and the same shaft speed, so the single's capacity is scaled on flow alone and the pressure ratio, shaft limit and efficiency are unchanged. Each rotor still only has to spin itself, so the inertia stays that of one. MODELED, not a manufacturer map."
     }
   }
 }

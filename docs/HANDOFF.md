@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.22.0)
+# EA888 LAB — handoff (stand na v1.23.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–27).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–28).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.22.0 (versionCode 320)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.23.0 (versionCode 330)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke groen.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
@@ -57,6 +57,30 @@ ANDROID_HOME=/pad/naar/android-sdk python3 tools/build_android.py
 - Android SDK: `tools/setup_android_sdk.sh`.
 
 ## Volgende stap
+
+In 1.23.0 stapelt compound eindelijk drukverhouding (DEVLOG 28): de HP-trap werd uitgeschakeld zodra de
+LP-turbo niet spooling-gelimiteerd was, surge werd als bovengrens op laaddruk behandeld en de eerste trap had
+geen wastegateregeling. Daarmee haalt `compound2500` 2533 pk uit twee liter. Er zijn zeven motorswaps, elk een
+blok met eigen cilinderaantal, boring, slag en kop; `swapEngine: true` laat het blok zijn eigen slag houden.
+
+Open in de simulatie, op volgorde van hoe erg:
+
+1. **EGT reageert niet op verrijking.** Op de tweeliter-compound staat hij op 1523 °C en beweegt nauwelijks
+   tussen lambda 0,85 en 0,60. Het cyclusmodel heeft daar een reden voor (bij 11 bar tegendruk kan het gas
+   niet uitzetten) en de V8 met open headers zit gezond op 800-860 °C, maar verrijking hoort de belangrijkste
+   EGT-knop te zijn, en niets in het model zegt dat een turbinewiel bij 1050 °C smelt.
+2. **Een standaardmotor scoort ~47 betrouwbaarheid.**
+3. **De swaps gebruiken de EA888-ladders voor krukas, kleppentrein en afdichting** als "voorbereidingsniveau",
+   niet als onderdelen die er echt op passen. De presets kiezen verstandig; een speler kan nog iets bouwen dat
+   niet kan bestaan.
+4. `tools/risk_breakdown.js` print waar een betrouwbaarheidsscore vandaan komt, en `tests/test_parts_data.js`
+   vangt onderdelen die stilzwijgend op OEM-fysica terugvallen. Gebruik beide bij elke verdere wijziging.
+5. Onderdelen toevoegen gaat via `tools/parts_edit.py`, niet met tekstvervanging in de JSON-regel van
+   `sim.js`. Vier categorieën (head, air, exhaust, boostControl) hebben óók een entry nodig in
+   `data/engine/heads.json` of `data/turbo/charge-system.json`, plus `node tools/build_engine_data.js` /
+   `node tools/build_turbo_data.js`.
+
+## Eerder: de simulatiebijstelling van 1.22.0
 
 De simulatie is in 1.22.0 herijkt naar wat de eigenaar na een uur spelen meldde (DEVLOG 27): de tuner zet
 elf instellingen in plaats van zes en noemt ze bij naam, er is een doel "zoveel mogelijk pk bij 80

@@ -854,6 +854,123 @@ is still far ahead of the LP turbo alone.
 - A stock engine still scores around 47 reliability, and stock EGT sits near 980 C without responding to
   lambda enrichment. Both are modelling gaps, not balance, and neither is fixed here.
 
+## 28. Compound that stacks, 2500 pk from two litres, and engine swaps (v1.23.0)
+
+Two requests, and the first one turned out to be blocked by the simulation rather than by the catalogue.
+
+### Compound boost was never doing what compounding is for
+
+`matchCompound` bypassed the HP stage whenever the LP turbo was not spool-limited. So a compound helped a
+turbo that could not spool, and did nothing at all for a turbo held back by its own shaft speed or its own
+map. Adding any HP turbo to the `unlimited` build moved its peak by under one per cent - 1536 to 1542 pk
+against 1552 without. Two compressors in series reaching a pressure ratio that neither can reach alone is the
+whole point, and the model could not express it. The HP stage is now bypassed only when the LP turbo reaches
+the target on its own *and* does it at least as well.
+
+**Surge was upside down.** The surge line is a minimum flow at a given pressure ratio. It was searched for
+with `bisectMax`, which assumes a predicate true at low boost and false at high, so the solver drove boost
+*down* into surge: a PT10603 came back at 0.80 bar with the surge flag set, where at full flow it sits 18 %
+to the right of its own line. Worse, one surging sample low down poisoned the whole pull through the
+rotor-inertia chain, which is why the biggest turbo in the catalogue made 350 pk. What surge actually costs
+is pressure - in surge the flow breaks down and the compressor cannot hold more than its own line allows at
+the flow it has. That is a ceiling on pressure ratio, it does fall with boost, and it bisects honestly. The
+compressor map now inverts its surge line (`surgePr`).
+
+**The first stage had no wastegate control at all.** It took every pressure ratio its turbine could drive, so
+a compressor sized for 2500 pk of airflow sat deep in surge at 5000 rpm. Its corrected flow is set by the
+engine's mass flow and its inlet pressure, not by how the ratio is split between stages, so the highest ratio
+it can hold is the surge line read at that flow. The controller holds it there and the HP stage makes up the
+rest - which is exactly what a compound is for.
+
+Asking for more boost no longer gives less power. On one build the 7/8/9/10 bar ladder read
+2110/1569/2198/1573 pk; it now rises monotonically.
+
+**And the handover had a cliff.** Bypassing the HP stage the moment the LP could just manage alone made 2.97
+bar give 3961 pk and 2.98 bar give 4398, off the same hardware: past the threshold the two stages shared the
+ratio, each ran lower on its map, and the charge came out cooler and denser at the same manifold pressure.
+The decision is now made on that - the charge temperature each setup delivers - rather than on whether the LP
+could have coped. A small HP wheel past its choke line heats the charge for nothing and is still bypassed
+(the street K03 compound is +58 % torque at 2500 rpm and 3 % down at 6000); a big first stage sharing the
+ratio with a fast second one is kept.
+
+### 2500 pk from two litres
+
+With the physics working, the rest was hardware. About 200 lb/min of air at 8-9 bar, which is a big first
+stage with a fast second one, dome control that can set two stages apart, an ignition that will fire at 10
+bar, a port past the promod head and structure for 120 bar BMEP. Added: `triple_60_compound` (10 bar),
+`magneto_cdi` (10 bar), `open_headers_5`, `compound_billet`, `compound_billet_head`,
+`pneumatic_valvetrain`, `compound_ecu`, `compound_drysump`, `compound_4speed`, `compound_destroke_crank`.
+
+The `compound2500` preset makes **2533 pk at 45 reliability** on a PT10603 with a PT6466 as the high-pressure
+stage, and **2640 pk on the full two litres** with the standard-stroke promod crank (the destroked crank is
+1796 cc, which is what real Pro Mod fours do and why it scores better).
+
+`open_headers_5` is deliberately not simply better: a compound wants some back pressure to drive its LP
+turbine, so on this engine the freest exhaust costs power (2303 against 2575 pk). On the eight-cylinder it is
+the other way round. That is real and it stays.
+
+### Engine swaps
+
+The cycle model was already written for any cylinder count - `engine.js` takes it from the geometry - but
+`sim.js` hard-coded four in three places: `engineGeometry`, the cycle-model call and the compression test.
+Cylinder count, bore, stroke and rod length now come from the block, so **an engine swap is a block**. A
+swapped block also keeps its own stroke: a 100 mm VW stroker crank means nothing inside an RB26.
+
+| swap | | preset makes |
+|---|---|---|
+| VW VR6 3.2 (R32) | 3189 cc, 6 cyl, 84,0 × 95,9 | 784 pk, 861 Nm |
+| 2.5 TFSI DAZA (EA855 evo) | 2480 cc, 5 cyl, 82,5 × 92,8 | 868 pk, 766 Nm |
+| Nissan RB25DET Neo | 2498 cc, 6 cyl, 86,0 × 71,7 | 738 pk, 686 Nm |
+| Nissan RB26DETT | 2568 cc, 6 cyl, 86,0 × 73,7 | 1002 pk, 803 Nm |
+| Toyota 2JZ-GTE VVTi | 2997 cc, 6 cyl, 86,0 × 86,0 | 1090 pk, 934 Nm |
+| Mazda 13B-REW bridgeport | 2× 654 cc, 2 rotors | 592 pk, 589 Nm |
+| Steve Morris SMX 540 | 8861 cc, V8, 114,3 × 108,0 | **4019 pk, 3136 Nm** |
+
+Each swap brings its own head, because an EA888 head on an RB26 is nonsense; the heads carry their own port
+and cam data in `data/engine/heads.json`.
+
+**The Wankel** is the one that does not fit a piston model, and the compromise is stated rather than hidden.
+A 13B passes both its 654 cc chambers every revolution of the eccentric shaft, where a four-stroke swallows
+half its displacement per crank revolution, so its breathing equivalent is 2616 cc - and it is modelled as
+two chambers of 1308 cc with the equivalent bore and stroke that give exactly that. The equivalent bore of
+120 mm is an artefact of treating a chamber as a cylinder, so the port equivalent is scaled the same way (a
+bridgeport intake of roughly 45 × 55 mm per rotor reads as two 56 mm valves against that bore), or the inlet
+Mach index sees a restriction that is not there. A rotor does not reciprocate, so the block states its own
+equivalent stroke for the piston-speed term: what limits a Wankel is seals and heat, which is its rpm limit.
+Real capacity is reported separately from the breathing equivalent.
+
+**The Steve Morris package** is a package: 4000 pk needs its own crank, valvetrain, oiling, engine
+management, a Lenco with a three-disc clutch, a methanol system nearly twice the promod one, and two PT9803
+in parallel. The pair is a modelled map, marked as such: identical wheels side by side pass twice the flow at
+the same pressure ratio and the same shaft speed, and each rotor only has to spin itself, so the single's
+capacity is scaled on flow alone and its pressure ratio, shaft limit, efficiency and inertia are unchanged.
+The package also needs a boost ramp - at 3.7 bar from 4000 rpm it makes 4470 Nm and breaks its own torque
+limit before it ever reaches peak power.
+
+### A guard, because this bit twice
+
+Four part categories carry their physics in a separate data file, looked up by part id with an OEM fallback.
+A part added without its data entry therefore runs silently on OEM numbers instead of failing. The 5-inch
+exhaust breathed through the OEM 63.5 mm pipe (2575 down to 968 pk) and the billet compound head ran the OEM
+port (2690 down to 2150). `tests/test_parts_data.js` now checks every part in those categories, and caught a
+third case immediately - the compound wastegate. `tools/parts_edit.py` reads and writes the parts table that
+`sim.js` carries as one 100 KB JSON line, so adding parts is no longer text replacement inside a literal.
+
+Two hard-coded counts in the test suite and the smoke test went stale for the same reason and are now floors.
+
+### Open
+
+- **EGT on the two-litre compound reads 1523 °C** and barely moves with enrichment (1533 at lambda 0.85,
+  1516 at 0.60). The cycle model is right about why - at 11 bar of exhaust manifold pressure the gas cannot
+  expand, so it leaves near cylinder temperature - and the eight-cylinder with open headers sits at a healthy
+  800-860 °C. But nothing in the model says a turbine wheel melts at 1050 °C, and enrichment should be the
+  main EGT control. Both are gaps, not balance.
+- A stock engine still scores about 47 reliability.
+- The swap engines use the EA888's crank, valvetrain and sealing ladders as "preparation level" rather than
+  parts that physically fit. The presets choose sensibly; a player can still build something that could not
+  exist.
+- The 3D car is still the Scirocco shell whatever is under the bonnet.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
