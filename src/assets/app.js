@@ -2473,6 +2473,7 @@
       <div class="section-head small diagnostic-title"><div><span class="eyebrow">Automatische diagnose</span><h3>${completed ? 'Wat begrenst deze combinatie?' : 'Waarom stopte de pull?'}</h3></div></div>
       <div class="diagnostic-grid">${diagnostics.map(d => `<article class="diagnostic-card ${d.severity}"><span>${esc(d.system)}</span><b>${esc(d.observation)}</b><p>${esc(d.action)}</p>${d.key && d.key !== 'run' && (clean || adviceStore()[adviceId(d.key)]) ? adviceBlock(d.key) : ''}</article>`).join('')}</div>
       ${completed && r === state.lastDyno ? mapTuneBlock() : ''}
+      ${completed && r === state.lastDyno ? gripTuneCard() : ''}
       ${warnings ? `<div class="warning-list">${warnings}</div>` : completed ? '<div class="notice success"><strong>Geen extra hoofdwaarschuwingen.</strong> De run bleef binnen de gemodelleerde systeemgrenzen.</div>' : ''}
     </div>`;
   }
@@ -2591,6 +2592,54 @@
         ${done.applied || !done.changes.length ? '' : `<button class="btn small" data-map-apply="${g.id}">Toepassen</button>`}</div>`;
     };
     return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · geoptimaliseerde map</span><h3>Laat de tuner je map schrijven</h3>${goals.map(card).join('')}<small class="advice-note">Handmatig aangepaste tabellen worden vervangen door de map van de tuner (ongedaan maken kan).</small></div>`;
+  }
+  // ---- Grip tuning (sim.js createGripOptimizer): the tuner drives simulated runs under the conditions the
+  // last pass measured and shapes how the power arrives. Free, because the engine never turns: a virtual run
+  // is a pure function of the state, so it costs no wear, no heat and no damage.
+  let gripJob = null;
+  function gripId() { return `grip|${state.lastDynoSignature || ''}|${state.vehicle.tireCompound}|${state.vehicle.drivetrain}|${state.vehicle.preparedTrack ? 'prep' : 'street'}`; }
+  function runGripTune() {
+    if (gripJob || mapJob || adviceJob || !state.lastDrag) return;
+    const snapshot = C.normalizeState(cloneJson(state));
+    const job = gripJob = { id: gripId(), opt: C.createGripOptimizer(snapshot, { lastRun: state.lastDrag, budget: 48 }) };
+    render();
+    const next = () => {
+      if (gripJob !== job) return;
+      let done = false;
+      try { done = job.opt.step(); } catch (e) { logAppError('grip', e); done = true; }
+      if (!done) { if (activeTab === 'dyno' || activeTab === 'drag') render(); setTimeout(next, 16); return; }
+      const sum = job.opt.summary();
+      if (!state.gripTunes || typeof state.gripTunes !== 'object') state.gripTunes = {};
+      state.gripTunes[job.id] = { ...sum, at: new Date().toISOString(), applied: false };
+      const ids = Object.keys(state.gripTunes); if (ids.length > 6) delete state.gripTunes[ids[0]];
+      gripJob = null; saveState(); render();
+      showToast(sum.gainedS > 0.004 ? `Gripmap klaar: ${sum.gainedS.toFixed(3)} s sneller.` : 'Gripmap klaar: je huidige afstelling was al de beste.');
+    };
+    setTimeout(next, 30);
+  }
+  function applyGripTune() {
+    const done = (state.gripTunes || {})[gripId()];
+    if (!done || done.applied) return;
+    const paths = Object.keys(done.patch.tune).map(k => ['tune', k]);
+    const announce = offerUndo(paths, 'Gripmap toegepast. Rijd een nieuwe pass om hem te bevestigen.');
+    state = C.applyAdvicePatch(state, done.patch);
+    done.applied = true;
+    saveState(); render(); announce();
+  }
+  function gripTuneCard() {
+    if (!state.lastDrag) return '';
+    const done = (state.gripTunes || {})[gripId()];
+    const busy = !!gripJob;
+    const tyre = (C.TIRE_COMPOUNDS.find(t => t.id === state.vehicle.tireCompound) || {}).name || state.vehicle.tireCompound;
+    const cond = `${esc(tyre)} · ${state.vehicle.preparedTrack ? 'geprepareerde baan' : 'kale baan'} · ${esc(state.vehicle.drivetrain)}`;
+    const body = busy
+      ? `<div class="map-tune"><div><b>Gripmap bezig…</b><small>${gripJob.opt.evals} van ${gripJob.opt.total} virtuele runs. De motor draait hier niet: dit kost geen slijtage.</small></div></div>`
+      : done
+        ? `<div class="map-tune done ${done.applied ? 'applied' : ''}"><div><b>Gripmap: ${Number(done.before.quarter).toFixed(3)} → ${Number(done.after.quarter).toFixed(3)} s${done.applied ? ' · ✔ toegepast' : ''}</b>
+            <small>60 ft ${Number(done.before.sixtyFt).toFixed(3)} → ${Number(done.after.sixtyFt).toFixed(3)} s · wielspin ${Math.round(done.before.wheelspinPct)}% → ${Math.round(done.after.wheelspinPct)}%. ${done.changes.length ? done.changes.map(mapChangeText).map(esc).join(' · ') : 'Je afstelling was al de beste voor deze grip.'}</small></div>
+            ${done.applied || !done.changes.length ? '' : '<button class="btn small" data-grip-apply="1">Toepassen</button>'}</div>`
+        : `<div class="map-tune"><div><b>Stem af op de grip die je nu hebt</b><small>De tuner rijdt virtuele runs op ${cond} en zoekt de snelste combinatie van launch-toerental en laaddruk per versnelling. Gratis en zonder slijtage.</small></div><button class="btn small" data-grip-run="1" ${mapJob || adviceJob ? 'disabled' : ''}>Afstemmen</button></div>`;
+    return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · gripafstemming</span><h3>Map op de baan afstemmen</h3>${body}<small class="advice-note">Gebaseerd op je laatste pass. Rijd opnieuw en stem opnieuw af: elke ronde vertrekt van wat er gemeten is.</small></div>`;
   }
   function buyMapTune(goal) {
     const g = C.MAP_TUNES[goal];
@@ -6026,6 +6075,8 @@
     if (btn.dataset.adviceApply) return applyAdvice(btn.dataset.adviceApply, btn.dataset.adviceRec);
     if (btn.dataset.advicePick) return pickAdvice(btn.dataset.advicePick, btn.dataset.adviceRec);
     if (btn.dataset.adviceCombo) return evaluateAdviceCombo(btn.dataset.adviceCombo);
+    if (btn.dataset.gripRun) return runGripTune();
+    if (btn.dataset.gripApply) return applyGripTune();
     if (btn.dataset.mapBuy) return buyMapTune(btn.dataset.mapBuy);
     if (btn.dataset.mapApply) return applyMapTune(btn.dataset.mapApply);
     if (btn.dataset.dynoCorrection) {
