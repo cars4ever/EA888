@@ -1887,6 +1887,25 @@
     </div>`;
   }
 
+  // Traction control is a strategy, not a switch: what slip it aims to hold, and how hard it pulls torque to
+  // hold it. A big slick is meant to be driven through slip, so a target above 100 % of the tyre's own peak
+  // is a real choice, not a mistake.
+  function tcSettings() {
+    if (state.tune.tractionControl === false) return '';
+    const slip = Math.round(Number(state.tune.tcSlipPct ?? 125));
+    const agg = Math.round(Number(state.tune.tcAggressionPct ?? 60));
+    const tyre = (C.TIRE_COMPOUNDS.find(t => t.id === state.vehicle.tireCompound) || {}).name || '';
+    return `<div class="tc-settings">
+      <label class="field-label">Doelslip <b>${slip}%</b> van de piekslip van de band
+        <input type="range" min="50" max="200" step="5" value="${slip}" data-tune-range="tcSlipPct">
+        <small>Onder 100 % blijft hij aan de veilige kant van de piek; erboven laat hij de band bewust doorslippen — waar een grote slick voor gemaakt is (${esc(tyre)}).</small>
+      </label>
+      <label class="field-label">Agressie <b>${agg}%</b>
+        <input type="range" min="10" max="100" step="5" value="${agg}" data-tune-range="tcAggressionPct">
+        <small>Hoe hard hij koppel wegneemt zodra je over het doel zit. Hoog is stabiel maar traag terug; laag laat meer lopen.</small>
+      </label>
+    </div>`;
+  }
   function switchRow(name, label, detail, target = 'tune') {
     const on = !!state[target][name];
     const attr = target === 'vehicle' ? 'data-vehicle-switch' : target === 'settings' ? 'data-setting-switch' : 'data-switch';
@@ -2329,7 +2348,10 @@
           ${switchRow('methFailsafe', 'WMI-failsafe', 'Alleen zinvol met echte flow- of druksensorbewaking.')}
           ${switchRow('oilPressureProtection', 'Oliedrukbeveiliging', 'RPM-afhankelijke minimumdruk met koppelreductie of motorcut.')}
           ${switchRow('overboostCut', 'Overboostcut', 'Beschermt turbo en motor wanneer wastegate of regeling de vraag niet beheerst.')}
-          ${switchRow('tractionControl', 'Tractiecontrole (ASR/TC)', 'Neemt koppel terug zodra de aangedreven banden voorbij hun piekslip gaan. Uit: jij en de banden, niets ertussen.')}
+          ${switchRow('tractionControl', 'Tractiecontrole (ASR/TC)', ecu.tractionControl
+            ? 'Neemt koppel terug zodra de aangedreven banden voorbij hun piekslip gaan. Uit: jij en de banden, niets ertussen.'
+            : `${ecu.name} heeft geen wielsnelheidsingangen: deze schakelaar doet hier niets. Een Syvecs of motorsport-ECU wel.`)}
+          ${ecu.tractionControl ? tcSettings() : ''}
         </div>
         <div class="card safety-readout">
           <span class="eyebrow">Controleketen</span><h2>${esc(ecu.name)}</h2>
@@ -3373,6 +3395,7 @@
           <div><span class="eyebrow">Raceweekend</span><h3>${headsUp ? 'Heads-up duel' : 'Solo testpass'}</h3><p>${headsUp ? `Tegen ${esc(rival.name)} · ${esc(rival.description)}` : 'Rijd zonder tegenstander en focus volledig op setup, schakelen en rijlijn.'}</p></div>
           <div class="v12-mode-toggle"><button class="${!headsUp?'active':''}" data-race-mode="solo">SOLO</button><button class="${headsUp?'active':''}" data-race-mode="heads_up">HEADS-UP</button></div>
         </div>
+        ${gripTuneCard()}
         <div class="v12-rival-picker ${headsUp?'':'disabled'}">
           ${Object.values(RIVALS).map(r=>`<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${esc(rivalSpec(r))} · RT ${r.reactionMin.toFixed(3)}–${r.reactionMax.toFixed(3)} · winst ${euro(r.reward)}</small></button>`).join('')}
         </div>
@@ -6240,6 +6263,14 @@
 
   document.addEventListener('input', event => {
     const el = event.target;
+    if (el.dataset && el.dataset.tuneRange) {
+      const key = el.dataset.tuneRange;
+      state.tune[key] = Number(el.value);
+      const out = el.closest('.field-label')?.querySelector('b');
+      if (out) out.textContent = `${Math.round(Number(el.value))}%`;
+      saveState();
+      return;
+    }
     // The throttle slider drives the race directly: no re-render, the runtime reads it on the next frame.
     if (el.id === 'v7-throttle-slider') {
       if (raceGame) raceGame.pedal = clamp(Number(el.value) / 100, 0, 1);

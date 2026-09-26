@@ -121,7 +121,11 @@ const build = (preset, mutate) => { const s = C.applyPreset(C.blankState(), pres
   assert.strictEqual(C.compoundHp(wrong).valid, false);
   const rw = C.simulateEngine(wrong, { noise: false });
   assert(rw.warnings.some(w => /HP-trap moet de kleinere turbo/.test(w.text)), 'the refusal is explained');
-  assert.strictEqual(rw.peakHp, small.peakHp, 'an invalid compound changes nothing');
+  // The compound does no work - but the turbo is still bolted to the car, so its 23 kg still count, and mass
+  // moves the roller's drivetrain loss. That is the design (the next assertions check price and mass are
+  // counted), so this asks that the engine is unaffected rather than that the numbers are bit-identical.
+  assert(Math.abs(rw.peakHp - small.peakHp) < 0.1,
+    `an invalid compound must do no work (${rw.peakHp} vs ${small.peakHp})`);
 
   // one canonical build: the HP turbo is part of the selections, price, mass and the dyno signature
   const one = build('hx52', s => { s.selections.turbo = 'pt6870'; s.selections.turboHp = ''; });

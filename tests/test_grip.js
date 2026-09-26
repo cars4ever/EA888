@@ -92,4 +92,36 @@ const race = (s, cfg = {}) => C.simulateRaceRun(s, { reactionTime: 0, tyreTempC:
     'tuning on virtual runs must not wear or damage the engine');
 }
 
+
+// ---- 7. traction control is a strategy, and only where the ECU can run one --------------------------
+// Reported from play: no traction control settings at all, though the pro ECUs support it. It was a bare
+// switch that always aimed at 125 % of peak slip, on every ECU including an OEM MED17.
+{
+  const car = ecu => build('compound2500', st => {
+    st.vehicle.tireCompound = 'pro_radial';
+    st.vehicle.preparedTrack = true;
+    st.vehicle.drivetrain = 'FWD';
+    if (ecu) st.selections.ecu = ecu;
+  });
+  const tc = (slip, agg, on = true) => {
+    const s = car();
+    Object.assign(s.tune, { tractionControl: on, tcSlipPct: slip, tcAggressionPct: agg });
+    return race(s);
+  };
+  const off = tc(125, 60, false), tight = tc(90, 70), loose = tc(180, 40);
+  assert(off.wheelspinPct > tight.wheelspinPct + 30,
+    `traction control must cut the wheelspin (${Math.round(off.wheelspinPct)} % vs ${Math.round(tight.wheelspinPct)} %)`);
+  assert(tight.quarter < off.quarter - 0.3, 'and win real time where the car cannot hook up');
+  assert(Math.abs(tight.quarter - loose.quarter) > 0.05,
+    `the settings must matter, not just the switch (${tight.quarter.toFixed(3)} vs ${loose.quarter.toFixed(3)})`);
+
+  // An ECU without wheel-speed inputs cannot do it, and the switch must be inert rather than pretending.
+  const capable = C.CATEGORY_MAP.ecu.items.filter(i => i.tractionControl).map(i => i.id);
+  assert(capable.includes('promod_ecu') && !capable.includes('med17'),
+    'the pro ECUs run traction control, the OEM one does not');
+  const dumb = s => { const st = car('med17'); Object.assign(st.tune, { tractionControl: s }); return race(st); };
+  assert.strictEqual(dumb(true).quarter, dumb(false).quarter,
+    'on an ECU that cannot run it, the switch must change nothing at all');
+}
+
 module.exports = { tyres: C.TIRE_COMPOUNDS.length, drivetrains: Object.keys(C.DRIVETRAINS).length };

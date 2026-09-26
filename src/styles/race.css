@@ -658,6 +658,25 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .v9-lane-status.warn > b { color:var(--lane-warn); }
 .v9-lane-status.bad { border-color:var(--lane-bad); box-shadow:0 0 20px rgba(255,64,83,.35); }
 .v9-lane-status.bad > b { color:var(--lane-bad); }
+/* Throttle slider: the driver's right foot, directly above the shift button where the thumb already is.
+   Everything in this scene is absolutely positioned, so this has to be too - laid out in the normal flow it
+   landed at the top of the page, over the status bar. */
+.v15-throttle-dock {
+  position:absolute; z-index:53; left:3%; right:3%; bottom:calc(66px + 94px + 8px + var(--safe-bottom));
+}
+.v15-throttle {
+  position:relative; display:grid; grid-template-columns:auto 1fr; align-items:center; gap:2px 10px;
+  padding:6px 12px 8px; border-radius:16px;
+  background:linear-gradient(145deg,rgba(18,26,37,.96),rgba(5,9,14,.96));
+  border:2px solid #526173; box-shadow:0 9px 25px rgba(0,0,0,.45);
+}
+.v15-throttle > span { font-size:9px; letter-spacing:.14em; color:#9fb0c4; }
+.v15-throttle > b { justify-self:end; font-size:15px; font-weight:900; font-variant-numeric:tabular-nums; color:var(--v8-orange); }
+.v15-throttle > input[type="range"] { grid-column:1/-1; width:100%; margin:0; height:34px; touch-action:none; accent-color:var(--v8-orange); }
+.v15-throttle > i {
+  grid-column:1/-1; height:4px; border-radius:3px; margin-top:-5px; pointer-events:none;
+  background:linear-gradient(90deg,var(--v8-orange) var(--fill,100%),rgba(255,255,255,.12) var(--fill,100%));
+}
 .v9-drive-controls {
   position:absolute; z-index:52; left:3%; right:3%; bottom:calc(66px + var(--safe-bottom)); height:94px;
   display:grid; grid-template-columns:minmax(92px,1fr) minmax(126px,1.35fr) minmax(92px,1fr); gap:9px;
