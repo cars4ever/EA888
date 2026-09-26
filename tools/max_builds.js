@@ -139,6 +139,16 @@ const TUNE_AXES = [
   { key: 'ethanolPct', steps: [-15, -5, 5, 15], min: 0, max: 100 }
 ];
 
+// The reference has to live inside the same bounds the in-game tuner does, or 98 % of it is unreachable by
+// construction. That bit: the search was free to set 9300 rpm on an RB26 whose parts are rated 9000, and the
+// tuner - correctly - will not ask an engine to exceed what its parts are rated for, so it could only ever
+// reach 69 % of a reference built by breaking that rule.
+function tunerBound(state, key) {
+  const p = (C.MAP_PARAMS || []).find(x => x.key === key);
+  if (!p) return null;
+  try { return C.mapParamRange(state, p); } catch (e) { return null; }
+}
+
 function sweepTune(state, rounds = 3) {
   let cur = intoMargins(clone(state)), curHp = score(cur).hp;
   for (let round = 0; round < rounds; round++) {
@@ -147,8 +157,11 @@ function sweepTune(state, rounds = 3) {
       const base = Number(cur.tune[ax.key]);
       if (!Number.isFinite(base)) continue;
       const scale = round === 0 ? 1 : round === 1 ? 0.5 : 0.25;
+      const b = tunerBound(cur, ax.key);
+      const lo = b ? Math.max(ax.min, b.lo) : ax.min;
+      const hi = b ? Math.min(ax.max, b.hi) : ax.max;
       const got = best(cur, ax.steps.map(d => s => {
-        s.tune[ax.key] = Math.min(ax.max, Math.max(ax.min, base + d * scale));
+        s.tune[ax.key] = Math.min(hi, Math.max(lo, base + d * scale));
       }));
       if (got.hp > curHp + 0.3) { cur = got.state; curHp = got.hp; moved = true; }
     }

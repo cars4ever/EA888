@@ -1913,12 +1913,13 @@
   }
 
   function tuneTabs() {
-    return `<div class="segment-control tune-segments six">
+    return `<div class="segment-control tune-segments seven">
       <button class="${tunePanel === 'boost' ? 'active' : ''}" data-tune-panel="boost">Boost</button>
       <button class="${tunePanel === 'tables' ? 'active' : ''}" data-tune-panel="tables">Tabellen</button>
       <button class="${tunePanel === 'als' ? 'active' : ''}" data-tune-panel="als">Anti-lag</button>
       <button class="${tunePanel === 'fuel' ? 'active' : ''}" data-tune-panel="fuel">Brandstof</button>
       <button class="${tunePanel === 'cams' ? 'active' : ''}" data-tune-panel="cams">Nokken</button>
+      <button class="${tunePanel === 'gearing' ? 'active' : ''}" data-tune-panel="gearing">Gearing</button>
       <button class="${tunePanel === 'safety' ? 'active' : ''}" data-tune-panel="safety">Failsafes</button>
     </div>`;
   }
@@ -2262,6 +2263,38 @@
     const boostHeadroom = boostHardware.boostHardwareMaxBar - requestedPeak;
     let content = '';
 
+    if (tunePanel === 'gearing') {
+      const g = C.effectiveGearing(state);
+      const trans = C.getPart(state, 'transmission');
+      const revLimit = C.effectiveRevLimit(state);
+      const radius = 0.323;
+      const kmhAt = (ratio, rpm) => (rpm / (ratio * g.finalDrive)) * 2 * Math.PI * radius * 60 / 1000;
+      const rows = g.gears.map((ratio, i) => {
+        const base = g.base[i];
+        const top = kmhAt(ratio, revLimit);
+        return `<tr><td>${i + 1}</td>
+          <td><input type="number" step="0.01" min="0.3" max="6.5" value="${ratio.toFixed(2)}" data-gear-ratio="${i}"></td>
+          <td class="muted">${base.toFixed(2)}</td>
+          <td>${Math.round(top)} km/u</td></tr>`;
+      }).join('');
+      return `<div class="tune-panel gearing-panel">
+        <div class="card">
+          <div class="section-head"><div><span class="eyebrow">Tandwielen & eindoverbrenging</span><h2>Gearing</h2>
+            <p>De bak levert de set; wat je hier zet is wat de auto rijdt. De snelheid per versnelling is bij je begrenzer van ${revLimit} rpm.</p></div>
+            ${g.stock ? '' : '<button class="btn small ghost" data-gear-reset="1">Terug naar de bak</button>'}</div>
+          <label class="field-label">Eindoverbrenging <b>${g.finalDrive.toFixed(2)}</b>
+            <input type="range" min="2.4" max="6.5" step="0.05" value="${g.finalDrive.toFixed(2)}" data-tune-range-num="finalDrive">
+            <small>Standaard op deze bak ${g.baseFinalDrive.toFixed(2)}. Korter (hoger getal) trekt harder maar is eerder door de bak heen.</small>
+          </label>
+          <label class="field-label">Tandwielspreiding <b>${Math.round(g.spread * 100)}%</b>
+            <input type="range" min="75" max="130" step="1" value="${Math.round(g.spread * 100)}" data-tune-range="gearSpreadPct">
+            <small>Één knop voor wat je als close- of wide-ratio set zou kopen. Draait om de 1e versnelling: die kies je op grip, niet op spreiding.</small>
+          </label>
+          <table class="gear-table"><thead><tr><th>Bak</th><th>Verhouding</th><th>Standaard</th><th>Top bij begrenzer</th></tr></thead><tbody>${rows}</tbody></table>
+          <small class="advice-note">${esc(trans.name)} · ${g.gears.length} versnellingen. De gripafstemming na een pass stelt de eindoverbrenging en de spreiding zelf af op de grip die je hebt.</small>
+        </div>
+      </div>`;
+    }
     if (tunePanel === 'boost') {
       content = `<div class="tune-layout">
         <div class="card tune-card">
@@ -2647,6 +2680,23 @@
     state = C.applyAdvicePatch(state, done.patch);
     done.applied = true;
     saveState(); render(); announce();
+  }
+  // What the last pass showed, read as advice. The grip optimiser fixes part of it by itself; the rest is
+  // hardware or driving, and saying which is the whole value of a timeslip.
+  function raceAdviceCard() {
+    if (!state.lastDrag) return '';
+    let a;
+    try { a = C.raceAdvice(state, state.lastDrag); } catch (e) { logAppError('advice', e); return ''; }
+    if (!a.ok) return '';
+    const run = a.run;
+    const head = `${Number(run.quarter || 0).toFixed(3)} s · ${Math.round(run.trapKmh || 0)} km/u · 60 ft ${Number(run.sixtyFt || 0).toFixed(3)} s`;
+    const body = a.findings.length
+      ? a.findings.map(f => `<div class="run-finding ${f.severity}"><b>${esc(f.title)}</b><small>${esc(f.detail)}</small><em>${esc(f.fix)}</em></div>`).join('')
+      : `<div class="run-finding ok"><b>Schone pass</b><small>Niets in deze run kostte noemenswaardig tijd.</small><em>Zoek het in de build of in de gripafstemming hieronder.</em></div>`;
+    return `<div class="card run-advice-card"><span class="eyebrow">Na je run · uit de data van deze pass</span>
+      <h3>${esc(head)}</h3>
+      <p class="muted">${esc(run.tireName || '')} · ${esc(run.drivetrain || '')} · wielspin ${Math.round(run.wheelspinPct || 0)}%</p>
+      ${body}</div>`;
   }
   function gripTuneCard() {
     if (!state.lastDrag) return '';
@@ -3395,6 +3445,7 @@
           <div><span class="eyebrow">Raceweekend</span><h3>${headsUp ? 'Heads-up duel' : 'Solo testpass'}</h3><p>${headsUp ? `Tegen ${esc(rival.name)} · ${esc(rival.description)}` : 'Rijd zonder tegenstander en focus volledig op setup, schakelen en rijlijn.'}</p></div>
           <div class="v12-mode-toggle"><button class="${!headsUp?'active':''}" data-race-mode="solo">SOLO</button><button class="${headsUp?'active':''}" data-race-mode="heads_up">HEADS-UP</button></div>
         </div>
+        ${raceAdviceCard()}
         ${gripTuneCard()}
         <div class="v12-rival-picker ${headsUp?'':'disabled'}">
           ${Object.values(RIVALS).map(r=>`<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${esc(rivalSpec(r))} · RT ${r.reactionMin.toFixed(3)}–${r.reactionMax.toFixed(3)} · winst ${euro(r.reward)}</small></button>`).join('')}
@@ -6098,6 +6149,7 @@
     if (btn.dataset.adviceApply) return applyAdvice(btn.dataset.adviceApply, btn.dataset.adviceRec);
     if (btn.dataset.advicePick) return pickAdvice(btn.dataset.advicePick, btn.dataset.adviceRec);
     if (btn.dataset.adviceCombo) return evaluateAdviceCombo(btn.dataset.adviceCombo);
+    if (btn.dataset.gearReset) { state.tune.gearRatios = null; state.tune.finalDrive = null; state.tune.gearSpreadPct = 100; saveState(); render(); showToast('Gearing terug naar de bak.'); return; }
     if (btn.dataset.gripRun) return runGripTune();
     if (btn.dataset.gripApply) return applyGripTune();
     if (btn.dataset.mapBuy) return buyMapTune(btn.dataset.mapBuy);
@@ -6263,6 +6315,22 @@
 
   document.addEventListener('input', event => {
     const el = event.target;
+    if (el.dataset && el.dataset.tuneRangeNum) {
+      state.tune[el.dataset.tuneRangeNum] = Number(el.value);
+      const out = el.closest('.field-label')?.querySelector('b');
+      if (out) out.textContent = Number(el.value).toFixed(2);
+      saveState();
+      return;
+    }
+    if (el.dataset && el.dataset.gearRatio !== undefined) {
+      const i = Number(el.dataset.gearRatio);
+      const g = C.effectiveGearing(state);
+      const list = Array.isArray(state.tune.gearRatios) && state.tune.gearRatios.length === g.base.length
+        ? state.tune.gearRatios.slice() : g.base.slice();
+      const v = Number(el.value);
+      if (Number.isFinite(v) && v > 0.15 && v < 8) { list[i] = v; state.tune.gearRatios = list; saveState(); render(); }
+      return;
+    }
     if (el.dataset && el.dataset.tuneRange) {
       const key = el.dataset.tuneRange;
       state.tune[key] = Number(el.value);

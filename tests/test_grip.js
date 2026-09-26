@@ -124,4 +124,68 @@ const race = (s, cfg = {}) => C.simulateRaceRun(s, { reactionTime: 0, tyreTempC:
     'on an ECU that cannot run it, the switch must change nothing at all');
 }
 
+
+// ---- 8. gearing is a tune setting, and the tuner masters it -------------------------------------------
+// Reported as missing: gear ratios and final drive. They came straight off the gearbox part with no way to
+// change them, and the tuner could not touch the biggest lever on elapsed time after grip.
+{
+  const car = f => build('compound2500', st => {
+    st.vehicle.tireCompound = 'promod_slick';
+    st.vehicle.preparedTrack = true;
+    st.vehicle.drivetrain = 'AWD_DRAG';
+    if (f) f(st);
+  });
+  const stock = C.effectiveGearing(car());
+  assert(stock.stock, 'an untouched build runs what the gearbox came with');
+
+  // The final drive must actually reach the road.
+  const fd = v => race(car(st => { st.tune.finalDrive = v; })).quarter;
+  assert(Math.abs(fd(3.2) - fd(5.2)) > 0.1, `the final drive must change the run (${fd(3.2).toFixed(3)} vs ${fd(5.2).toFixed(3)})`);
+
+  // The spread pivots on first gear and pulls the rest in or out.
+  const close = C.effectiveGearing(car(st => { st.tune.gearSpreadPct = 85 })).gears;
+  const wide = C.effectiveGearing(car(st => { st.tune.gearSpreadPct = 115 })).gears;
+  assert.strictEqual(close[0], wide[0], 'first gear is chosen for grip, so the spread leaves it alone');
+  assert(close[close.length - 1] > wide[wide.length - 1], 'a closer set keeps the top gear shorter');
+
+  // Individual ratios win outright - and only a set that matches the gearbox counts, so a six-speed list
+  // cannot be smuggled into a five-speed box.
+  const mine = stock.base.slice(); mine[2] = 1.7;
+  const own = car(st => { st.tune.gearRatios = mine; });
+  assert.strictEqual(C.effectiveGearing(own).gears[2], 1.7, 'a ratio the player sets is what the car runs');
+  const wrongCount = car(st => { st.tune.gearRatios = [3.1, 2.2, 1.7]; });
+  assert.deepStrictEqual(C.effectiveGearing(wrongCount).gears, stock.base,
+    'a set that does not fit the gearbox is ignored, not half-applied');
+
+  // And the tuner reaches for it.
+  const opt = C.createGripOptimizer(car(), { budget: 60 });
+  let n = 0; while (!opt.step() && n < 100) n++;
+  const m = opt.summary();
+  assert(m.touched.includes('eindoverbrenging') && m.touched.includes('tandwielspreiding'),
+    `the tuner must be allowed to set the gearing (it lists: ${m.touched.join(', ')})`);
+  assert(m.after.quarter < m.before.quarter, 'and it must find time with it');
+}
+
+// ---- 9. the timeslip is read back as advice ----------------------------------------------------------
+{
+  const spun = build('compound2500', st => {
+    st.vehicle.tireCompound = 'pro_radial'; st.vehicle.preparedTrack = true; st.vehicle.drivetrain = 'FWD';
+    st.tune.tractionControl = false;
+  });
+  const r = race(spun);
+  const a = C.raceAdvice(spun, r);
+  assert(a.ok && a.findings.length, 'a run with 60 % wheelspin must produce findings');
+  const spin = a.findings.find(f => /Wielspin/.test(f.title));
+  assert(spin, `the wheelspin must be named: ${a.findings.map(f => f.title).join(', ')}`);
+  assert(spin.severity === 'bad' && /tractiecontrole/i.test(spin.fix),
+    'and with traction control switched off, that is the fix it points at');
+  for (const f of a.findings) {
+    assert(f.title && f.detail && f.fix, `finding ${f.title} must say what, why and what to change`);
+  }
+  // A clean run says so rather than inventing something.
+  const clean = build('randy', st => { st.vehicle.tireCompound = 'drag_radial'; st.vehicle.preparedTrack = true; });
+  const ca = C.raceAdvice(clean, race(clean));
+  assert(ca.ok, 'a clean run still reads back');
+}
+
 module.exports = { tyres: C.TIRE_COMPOUNDS.length, drivetrains: Object.keys(C.DRIVETRAINS).length };

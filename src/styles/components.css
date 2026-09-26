@@ -314,3 +314,17 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .map-tune.running { display: block; }
 .map-tune.running i { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: linear-gradient(90deg, var(--c-accent) var(--p), rgba(255,255,255,.1) var(--p)); }
 .map-tune.blocked { border-left-color: var(--c-bad); }
+
+/* A timeslip read as advice: what cost time, what it means, and which control changes it. */
+.run-advice-card .run-finding { display:grid; gap:2px; padding:9px 11px; border-radius:11px; margin-top:8px; border-left:3px solid var(--muted); background:rgba(255,255,255,.03); }
+.run-advice-card .run-finding.bad { border-left-color:#ff5f6d; }
+.run-advice-card .run-finding.warn { border-left-color:#f4c66d; }
+.run-advice-card .run-finding.ok { border-left-color:#5fd38d; }
+.run-advice-card .run-finding b { font-size:.9rem; }
+.run-advice-card .run-finding small { color:var(--muted); }
+.run-advice-card .run-finding em { font-style:normal; color:var(--accent); font-size:.82rem; }
+.gear-table { width:100%; border-collapse:collapse; margin-top:10px; font-variant-numeric:tabular-nums; }
+.gear-table th, .gear-table td { padding:5px 6px; text-align:left; border-bottom:1px solid rgba(255,255,255,.07); font-size:.85rem; }
+.gear-table th { color:var(--muted); font-weight:600; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
+.gear-table input[type="number"] { width:5.2rem; }
+.tune-segments.seven { grid-template-columns:repeat(7,minmax(0,1fr)); }
