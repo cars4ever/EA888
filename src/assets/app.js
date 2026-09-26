@@ -1604,13 +1604,7 @@
 
       <div class="section-head presets-head"><div><span class="eyebrow">Referentiebuilds</span><h2>Van OEM tot Unlimited</h2></div></div>
       <div class="preset-strip v4-preset-strip">
-        ${presetCard('stock', 'OEM CAWB', 'Straatbasis', 'K03 · OEM internals')}
-        ${presetCard('k04', 'K04 straat', 'Snelle respons', 'Rods · FMIC · 3-inch')}
-        ${presetCard('randy', 'Randy exact', 'Jouw motorbasis', 'JE83 · Cat Cams · Syvecs', true)}
-        ${presetCard('hx52', 'Randy HX52', '67-mm twin-scroll', '11 cm² · dual 44 mm WG')}
-        ${presetCard('pro98', 'Precision 9803', 'Pro Mod drag', 'Dry-sump · methanol · 1.4k+')}
-        ${presetCard('outlaw106', 'Precision 10603', 'Outlaw · smalle band', 'Promod support · staged spool')}
-        ${presetCard('unlimited', 'PT10603 Unlimited', 'Extreme workbench', 'Full Promod support · 2k+')}
+        ${presetStrip()}
       </div>
 
       <div class="card build-summary-card">
@@ -1645,6 +1639,36 @@
     </article>`;
   }
 
+  // Hand-written copy for the builds that have it; everything else gets a card generated from the preset
+  // itself. The strip used to be seven hard-coded lines, so the engine swaps added in 1.23 never appeared in
+  // the garage at all - a player could not load them.
+  const PRESET_COPY = {
+    stock: ['OEM CAWB', 'Straatbasis', 'K03 · OEM internals'],
+    k04: ['K04 straat', 'Snelle respons', 'Rods · FMIC · 3-inch'],
+    randy: ['Randy exact', 'Jouw motorbasis', 'JE83 · Cat Cams · Syvecs', true],
+    hx52: ['Randy HX52', '67-mm twin-scroll', '11 cm² · dual 44 mm WG'],
+    pro98: ['Precision 9803', 'Pro Mod drag', 'Dry-sump · methanol · 1.4k+'],
+    outlaw106: ['Precision 10603', 'Outlaw · smalle band', 'Promod support · staged spool'],
+    unlimited: ['PT10603 Unlimited', 'Extreme workbench', 'Full Promod support · 2k+']
+  };
+  function presetStrip() {
+    const ids = Object.keys(C.PRESETS);
+    return ids.map(id => {
+      const copy = PRESET_COPY[id];
+      if (copy) return presetCard(id, copy[0], copy[1], copy[2], copy[3]);
+      const pre = C.PRESETS[id];
+      // Derived copy: what engine it is, and what feeds it.
+      const probe = C.applyPreset(C.blankState(), id);
+      const g = C.engineGeometry(probe);
+      const arch = { i4: 'viercilinder', i5: 'vijfcilinder', i6: 'zescilinder', vr6: 'VR6', v8: 'V8', rotary: 'wankel' }[g.architecture] || `${g.cylinders} cil`;
+      const turbo = C.getPart(probe, 'turbo');
+      const hp = probe.selections.turboHp ? C.CATEGORY_MAP.turbo.items.find(i => i.id === probe.selections.turboHp) : null;
+      const fuel = C.getPart(probe, 'fuel');
+      const sub = `${arch} · ${(g.realDisplacementCc / 1000).toFixed(1)} L`;
+      const detail = `${turbo.name}${hp ? ' + ' + hp.name : ''} · ${fuel.name}`;
+      return presetCard(id, pre.name, sub, detail);
+    }).join('\n        ');
+  }
   function presetCard(id, title, subtitle, detail, highlighted = false) {
     return `<article class="preset-card ${highlighted ? 'highlighted' : ''}">
       ${highlighted ? '<span class="randy-badge">RANDY SPEC</span>' : ''}
@@ -3827,6 +3851,7 @@
         <section class="v8-stage-hud">
           ${v7TachMarkup('v7-stage', s.rpm, 1)}
           <div class="v8-round-gauge"><span>BOOST</span><b id="v8-stage-boost">0.00</b><small>bar</small><i></i></div>
+          <div class="v8-round-gauge v15-throttle-gauge"><span>GAS</span><b id="v7-stage-throttle">0</b><small>%</small></div>
         </section>
         <div class="v13-turbo-hud" id="v13-stage-turbo"><span>TURBO<b id="v13-stage-shaft">0k</b></span><span>EGT<b id="v13-stage-egt">—</b></span><span>ALS<b id="v13-stage-als">${raceGame?.alsInfo?.enabled ? 'GEREED' : 'UIT'}</b></span><span>SLIJTAGE<b id="v13-stage-wear">+0.000%</b></span><span>BAND<b id="v13-stage-tyre">—</b></span></div>
         <div class="v8-tree-wrap"><div class="v8-tree-copy"><span>PRE-STAGE</span><span>STAGE</span></div>${v7TreeMarkup(false)}</div>
@@ -3873,6 +3898,7 @@
           ${v7TachMarkup('v7-run', point.rpm, point.gear)}
           <div class="v8-round-gauge v10-boost"><span>BOOST</span><b id="v7-run-boost">0.00</b><small>bar</small><i id="v7-run-boost-bar"></i></div>
           <div class="v8-speed-card v10-speed"><span>SNELHEID</span><b id="v7-run-speed">0</b><small>km/u</small></div>
+          <div class="v8-round-gauge v15-throttle-gauge"><span>GAS</span><b id="v7-run-throttle">100</b><small>%</small></div>
           <div class="v8-timer-card v10-timer"><span>TIJD</span><b id="v7-run-et">0.000</b><small>s</small></div>
         </section>
         <div class="v8-split-board v9-split-board v10-split-board"><span><i id="v8-split-60"></i>60 FT <b id="v8-time-60">—</b></span><span><i id="v8-split-330"></i>330 FT <b id="v8-time-330">—</b></span><span><i id="v8-split-8"></i>1/8 MIJL <b id="v8-time-8">—</b></span><span><i id="v8-split-4"></i>1/4 MIJL <b id="v8-time-4">—</b></span></div>
@@ -3882,6 +3908,13 @@
         <div class="v8-run-progress v9-run-progress v10-run-progress"><i id="v7-run-progress"></i><span id="v7-run-distance">0 m</span><b id="v7-run-split">LAUNCH</b><em>402 m</em></div>
         <div class="v9-lane-status v10-lane-status" id="v9-lane-status"><span>LIJNPOSITIE</span><b>IN LIJN</b><div><i id="v9-lane-marker"></i></div></div>
         <div class="v7-shift-feedback v9-shift-feedback v10-shift-feedback" id="v7-shift-feedback">HOUD HEM TUSSEN DE LIJNEN</div>
+        <div class="v15-throttle-dock">
+          <label class="v15-throttle" for="v7-throttle-slider">
+            <span>GAS</span><b id="v7-throttle-read">100%</b>
+            <input id="v7-throttle-slider" type="range" min="0" max="100" step="1" value="100" aria-label="Gaspedaal">
+            <i id="v7-throttle-fill"></i>
+          </label>
+        </div>
         <div class="v9-drive-controls v10-drive-controls">
           <button class="v9-steer-button v10-steer-button left" data-v7-control="steerLeft"><span>◀</span><b>LINKS</b></button>
           ${shiftControl}
@@ -4266,7 +4299,10 @@
       s.stagedSince = 0;
     }
 
-    const snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: 0, twoStep: throttle && s.staged, alsRequest: alsHeld }) : null;
+    // Holding the launch button is full throttle against the two-step: that is what builds the boost you
+    // leave on. It used to pass throttle: 0, so the turbo saw a closed throttle however long you held it.
+    const stagePedal = racePedal();
+    const snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: stagePedal, twoStep: throttle && s.staged, alsRequest: alsHeld }) : null;
     raceGame.turboSnap = snap;
     // the tyres cool while rolling to the line and waiting on the tree
     if (raceGame.tyreThermal) { const pr = burnoutProfile(); C.tyreThermalStep(raceGame.tyreThermal, dt, { speedMs: creep ? 1.2 : 0, ambientC: pr.ambientC, trackC: pr.trackC }); }
@@ -4321,6 +4357,7 @@
       if (hint) hint.textContent = !ready ? 'rij eerst volledig in stage' : pedal ? 'geen two-step: launch vanaf huidig toerental' : s.treeStarted ? 'release bepaalt je reactietijd' : 'tree start vanzelf (0,5–5 s) · vasthouden = two-step';
     }
 
+    const stageThr = $('#v7-stage-throttle'); if (stageThr) stageThr.textContent = Math.round(racePedal() * 100);
     const rpmNumber = $('#v8-stage-rpm-number');
     if (rpmNumber) rpmNumber.textContent = Math.round(s.rpm);
     const rpmFill = $('#v8-stage-rpm-fill');
@@ -4612,7 +4649,7 @@
       const h = Math.min(maxStep, remaining);
       remaining -= h;
       // Longitudinal physics: the shared vehicle model (engine, turbo, clutch, tyres, shifts).
-      const p = run.rt.step(h, { flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: !!raceGame.n2oArmed || (run.driverAssist && run.gearIndex >= 1) });
+      const p = run.rt.step(h, { pedal: racePedal(), flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: !!raceGame.n2oArmed || (run.driverAssist && run.gearIndex >= 1) });
       run.t = p.t;
       run.x = p.distanceM; run.v = p.v; run.a = p.a; run.rpm = p.rpm; run.gearIndex = p.gearIndex;
       run.wheelspin = clamp(p.slipRatio, 0, .95);
@@ -5126,6 +5163,8 @@
     updateV7Tach('v7-run', point.rpm, point.gear);
 
     const speed = $('#v7-run-speed'); if (speed) speed.textContent = Math.round(point.speedKmh);
+    const thr = $('#v7-run-throttle'); if (thr) thr.textContent = Math.round(racePedal() * 100);
+    updateThrottleHud();
     const dist = $('#v7-run-distance'); if (dist) dist.textContent = `${Math.round(point.distanceM)} m`;
     const distCopy = $('#v8-run-distance-copy'); if (distCopy) distCopy.textContent = `${Math.round(point.distanceM)} / 402 m`;
     const boostNode = $('#v7-run-boost'); if (boostNode) boostNode.textContent = Number(point.boostBar || 0).toFixed(2);
@@ -5904,6 +5943,24 @@
     startBurnout(event.pointerId);
   }, { passive: false });
 
+  // The driver's right foot. A build that spins its tyres off the line cannot be driven with an on/off
+  // pedal, so the race gets a throttle slider: full travel by default, and whatever the driver leaves it at
+  // while the car is hooking up. In staging, holding the launch button is simply 100 %.
+  function racePedal() {
+    if (raceGame?.phase === 'stage') return raceGamePointer.throttle ? 1 : 0;
+    const v = Number(raceGame?.pedal);
+    return Number.isFinite(v) ? clamp(v, 0, 1) : 1;
+  }
+  function updateThrottleHud() {
+    const pct = Math.round(racePedal() * 100);
+    const read = $('#v7-throttle-read');
+    if (read) read.textContent = `${pct}%`;
+    const fill = $('#v7-throttle-fill');
+    if (fill) fill.style.setProperty('--fill', `${pct}%`);
+    const slider = $('#v7-throttle-slider');
+    if (slider && document.activeElement !== slider && Number(slider.value) !== pct) slider.value = String(pct);
+  }
+
   function releaseRaceGamePointer(event) {
     const name = raceGamePointerMap.get(event.pointerId);
     if (!name) return '';
@@ -6132,6 +6189,12 @@
 
   document.addEventListener('input', event => {
     const el = event.target;
+    // The throttle slider drives the race directly: no re-render, the runtime reads it on the next frame.
+    if (el.id === 'v7-throttle-slider') {
+      if (raceGame) raceGame.pedal = clamp(Number(el.value) / 100, 0, 1);
+      updateThrottleHud();
+      return;
+    }
     if (el.id === 'part-search') {
       partSearch = el.value;
       const cards = $$('.part-card');

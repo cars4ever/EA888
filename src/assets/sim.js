@@ -138,10 +138,10 @@
   const FILTERS = [{"id":"oem","name":"OEM kwaliteitsfilter","flow":0.94,"capture":0.96,"price":16},{"id":"highflow","name":"High-flow performancefilter","flow":1,"capture":0.93,"price":24},{"id":"motorsport","name":"Motorsportfilter + magneetplug","flow":1.04,"capture":0.98,"price":42}];
   const FILTER_MAP = Object.fromEntries(FILTERS.map(f => [f.id, f]));
   // prettier-ignore
-  const TIRE_COMPOUNDS = [{"id":"street","name":"Straatband","mu":0.98,"rolling":0.014,"optimumBar":2.35,"heat":0.93},{"id":"uhp","name":"UHP zomerband","mu":1.12,"rolling":0.013,"optimumBar":2.2,"heat":0.98},{"id":"semislick","name":"Semi-slick","mu":1.28,"rolling":0.015,"optimumBar":1.95,"heat":1.02},{"id":"drag_radial","name":"Drag radial","mu":1.49,"rolling":0.019,"optimumBar":1.35,"heat":1.06},{"id":"slick","name":"Bias-ply slick","mu":1.65,"rolling":0.022,"optimumBar":0.85,"heat":1.08},{"id":"pro_radial","name":"Pro drag radial","mu":1.76,"rolling":0.021,"optimumBar":1.05,"heat":1.1}];
+  const TIRE_COMPOUNDS = [{"id": "street", "name": "Straatband", "mu": 0.98, "rolling": 0.014, "optimumBar": 2.35, "heat": 0.93}, {"id": "uhp", "name": "UHP zomerband", "mu": 1.12, "rolling": 0.013, "optimumBar": 2.2, "heat": 0.98}, {"id": "semislick", "name": "Semi-slick", "mu": 1.28, "rolling": 0.015, "optimumBar": 1.95, "heat": 1.02}, {"id": "drag_radial", "name": "Drag radial", "mu": 1.49, "rolling": 0.019, "optimumBar": 1.35, "heat": 1.06}, {"id": "slick", "name": "Bias-ply slick", "mu": 1.65, "rolling": 0.022, "optimumBar": 0.85, "heat": 1.08}, {"id": "pro_radial", "name": "Pro drag radial", "mu": 1.76, "rolling": 0.021, "optimumBar": 1.05, "heat": 1.1}, {"id": "big_radial", "name": "Mega drag radial 315", "mu": 1.9, "rolling": 0.023, "optimumBar": 0.95, "heat": 1.12}, {"id": "promod_slick", "name": "Pro Mod slick 34x17", "mu": 1.8, "rolling": 0.028, "optimumBar": 0.5, "heat": 1.14}];
   const TIRE_MAP = Object.fromEntries(TIRE_COMPOUNDS.map(t => [t.id, t]));
   // prettier-ignore
-  const DRIVETRAINS = {"FWD":{"name":"FWD","frontStatic":0.63,"loss":0.1,"mass":0,"tractionUse":1},"RWD":{"name":"RWD swap","frontStatic":0.51,"loss":0.13,"mass":35,"tractionUse":1},"AWD":{"name":"AWD","frontStatic":0.56,"loss":0.17,"mass":95,"tractionUse":0.92}};
+  const DRIVETRAINS = {"FWD":{"name":"FWD","frontStatic":0.63,"loss":0.1,"mass":0,"tractionUse":1},"RWD":{"name":"RWD swap","frontStatic":0.51,"loss":0.13,"mass":35,"tractionUse":1},"AWD":{"name":"AWD","frontStatic":0.56,"loss":0.17,"mass":95,"tractionUse":0.92},"AWD_DRAG":{"name":"AWD drag","frontStatic":0.48,"loss":0.11,"mass":62,"tractionUse":1}};
   // prettier-ignore
   const PRESETS = {"stock":{"name":"OEM CAWB 200","selections":{"block":"oem_block","crank":"oem_crank","oiling":"wet_sump","head":"oem_head","valvetrain":"oem_valves","turbo":"k03","air":"oem_air","fuelSystem":"oem_fuel","fuel":"ron98","exhaust":"oem_exhaust","ecu":"med17","ignition":"oem_ignition","sealing":"oem_bolts","transmission":"oem_6mt","spool":"none","crankcase":"oem_pcv","boostControl":"oem_internal","manifold":"oem_manifold","sensors":"oem_sensors"},"tune":{"boostLowBar":1.0,"boostMidBar":1.0,"boostHighBar":0.74,"lambda":0.82,"ignitionTrimDeg":0,"revLimitRpm":6500,"railTargetBar":150,"intakeCamAdvanceDeg":18,"launchRpm":3000,"firstGearBoostPct":76,"secondGearBoostPct":90}},"k04":{"name":"K04 straat","selections":{"block":"rods","crank":"fluidampr","oiling":"baffled","head":"mild_cams","valvetrain":"springs","turbo":"k04","air":"fmic","fuelSystem":"nostrum","fuel":"ron98","exhaust":"catted_3","ecu":"custom_med17","ignition":"fresh_coils","sealing":"studs","transmission":"built_6mt","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"street_sensor_pack"},"tune":{"boostLowBar":1.15,"boostMidBar":1.7,"boostHighBar":1.25,"lambda":0.8,"ignitionTrimDeg":-0.5,"revLimitRpm":7200,"railTargetBar":170,"intakeCamAdvanceDeg":12,"launchRpm":3800,"firstGearBoostPct":62,"secondGearBoostPct":82}},"randy":{"name":"Randy CAWB JE83 K04","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"k04_hybrid","air":"wmi","fuelSystem":"randy_nostrum_rsx","fuel":"blend_wmi","exhaust":"race_3","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"randy_cometic_arp","transmission":"randy_o2q","spool":"none","crankcase":"catch_can","boostControl":"uprated_internal","manifold":"ported_oem","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.95,"boostMidBar":1.88,"boostHighBar":1.72,"lambda":0.79,"ignitionTrimDeg":-0.5,"revLimitRpm":8000,"railTargetBar":175,"intakeCamAdvanceDeg":8,"exhaustTdcLiftMm":0.85,"intakeTdcLiftMm":0.25,"vvtEnabled":true,"launchRpm":4200,"firstGearBoostPct":55,"secondGearBoostPct":78,"knockControl":true,"railPressureCut":true,"lambdaProtection":true,"methFailsafe":true,"oilPressureProtection":true,"overboostCut":true}},"hx52":{"name":"HX52 high-rpm","selections":{"block":"randy_je83","crank":"randy_balanced_crank","oiling":"baffled","head":"randy_catcams","valvetrain":"randy_ferrea","turbo":"hx52","air":"wmi","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"randy_syvecs","ignition":"fresh_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vented_can","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.3,"boostMidBar":1.1,"boostHighBar":2.2,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8400,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5000,"firstGearBoostPct":48,"secondGearBoostPct":72}},"pro98":{"name":"Pro Mod 2.0 · PT8685 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8685","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.6,"boostMidBar":1.6,"boostHighBar":3.6,"lambda":0.74,"ignitionTrimDeg":-2,"revLimitRpm":9500,"railTargetBar":225,"intakeCamAdvanceDeg":0,"launchRpm":6800,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.56,"secondRingGapMm":0.62,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.52,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"outlaw106":{"name":"Outlaw 2.0 · PT8085 methanol","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","head":"ported_head","valvetrain":"solid_lifter","turbo":"pt8085","air":"ice_tank","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_150","crankcase":"vacuum_pump","boostControl":"dual_60_co2","manifold":"sheetmetal_105","sensors":"pro_instrumentation"},"tune":{"boostLowBar":0.7,"boostMidBar":1.9,"boostHighBar":3.3,"lambda":0.74,"ignitionTrimDeg":-2.5,"revLimitRpm":9200,"railTargetBar":225,"intakeCamAdvanceDeg":-1,"launchRpm":7200,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0},"assembly":{"topRingGapMm":0.57,"secondRingGapMm":0.63,"rodClearanceMm":0.06,"mainClearanceMm":0.058,"sparkGapMm":0.5,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true}},"unlimited":{"name":"Unlimited 2.0 · PT8685 + promod head","selections":{"block":"promod_block","crank":"promod_crank","oiling":"promod_drysump","crankcase":"vacuum_pump","head":"promod_head","valvetrain":"promod_valvetrain","turbo":"pt8685","boostControl":"dual_60_co2","air":"promod_ice_system","manifold":"billet_120","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"promod_ecu","sensors":"pro_instrumentation","ignition":"dual_cdi","sealing":"receiver_ring_extreme","transmission":"promod_5speed","spool":"n2o_250"},"tune":{"boostLowBar":0.6,"boostMidBar":1.8,"boostHighBar":4.2,"lambda":0.72,"ignitionTrimDeg":-3.0,"revLimitRpm":10000,"railTargetBar":225,"intakeCamAdvanceDeg":-2,"launchRpm":7800,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"assembly":{"topRingGapMm":0.58,"secondRingGapMm":0.64,"rodClearanceMm":0.062,"mainClearanceMm":0.06,"sparkGapMm":0.49,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0}},"compound2500":{"name":"Compound 2500 · PT10603 + PT6466","selections":{"block":"compound_billet","crank":"compound_destroke_crank","oiling":"compound_drysump","crankcase":"vacuum_pump","head":"compound_billet_head","valvetrain":"pneumatic_valvetrain","turbo":"pt10603","boostControl":"triple_60_compound","air":"promod_ice_system","manifold":"billet_120","fuelSystem":"promod_methanol_fuel","fuel":"methanol","exhaust":"hood_4","ecu":"compound_ecu","sensors":"pro_instrumentation","ignition":"magneto_cdi","sealing":"welded_head","transmission":"compound_4speed","spool":"n2o_250","turboHp":"pt6466"},"tune":{"boostLowBar":0.8,"boostMidBar":2.4,"boostHighBar":9.0,"lambda":0.72,"ignitionTrimDeg":-3.0,"revLimitRpm":11000,"railTargetBar":225,"intakeCamAdvanceDeg":-2,"launchRpm":8200,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"assembly":{"topRingGapMm":0.58,"secondRingGapMm":0.64,"rodClearanceMm":0.062,"mainClearanceMm":0.06,"sparkGapMm":0.49,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0}},"vr6_swap":{"name":"VR6 3.2 swap · G30-770","selections":{"block":"swap_vr6_32","crank":"billet_crank","oiling":"promod_drysump","head":"head_vr6_32","valvetrain":"solid_lifter","turbo":"g30","air":"ice_tank","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"promod_ecu","ignition":"smart_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vacuum_pump","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.6,"boostMidBar":1.6,"boostHighBar":1.9,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":7600,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":4200,"firstGearBoostPct":48,"secondGearBoostPct":72}},"daza_swap":{"name":"2.5 TFSI DAZA swap · PT6062","selections":{"block":"swap_daza_25","crank":"billet_crank","oiling":"promod_drysump","head":"head_daza_25","valvetrain":"solid_lifter","turbo":"pt6062","air":"ice_tank","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"promod_ecu","ignition":"smart_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vacuum_pump","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.6,"boostMidBar":1.7,"boostHighBar":2.1,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8200,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":4600,"firstGearBoostPct":48,"secondGearBoostPct":72}},"rb25_swap":{"name":"RB25DET Neo swap · G30-770","selections":{"block":"swap_rb25_neo","crank":"billet_crank","oiling":"promod_drysump","head":"head_rb25_neo","valvetrain":"solid_lifter","turbo":"g30","air":"ice_tank","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"promod_ecu","ignition":"smart_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vacuum_pump","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.5,"boostMidBar":1.5,"boostHighBar":2.0,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8200,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":4800,"firstGearBoostPct":48,"secondGearBoostPct":72}},"rb26_swap":{"name":"RB26DETT swap · PT6466","selections":{"block":"swap_rb26","crank":"billet_crank","oiling":"promod_drysump","head":"head_rb26","valvetrain":"solid_lifter","turbo":"pt6466","air":"ice_tank","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"promod_ecu","ignition":"smart_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vacuum_pump","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.5,"boostMidBar":1.6,"boostHighBar":2.4,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":9000,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5200,"firstGearBoostPct":48,"secondGearBoostPct":72}},"jz_swap":{"name":"2JZ-GTE VVTi swap · PT6870","selections":{"block":"swap_2jz_vvti","crank":"billet_crank","oiling":"promod_drysump","head":"head_2jz_vvti","valvetrain":"solid_lifter","turbo":"pt6870","air":"ice_tank","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"promod_ecu","ignition":"smart_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vacuum_pump","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.5,"boostMidBar":1.7,"boostHighBar":2.5,"lambda":0.78,"ignitionTrimDeg":-1,"revLimitRpm":8500,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5000,"firstGearBoostPct":48,"secondGearBoostPct":72}},"rotary_swap":{"name":"13B-REW bridgeport swap · G25-660","selections":{"block":"swap_13b_rew","crank":"billet_crank","oiling":"promod_drysump","head":"head_13b_rew","valvetrain":"solid_lifter","turbo":"g25","air":"ice_tank","fuelSystem":"race_fuel","fuel":"e85","exhaust":"side_35","ecu":"promod_ecu","ignition":"smart_coils","sealing":"fire_ring","transmission":"sequential","spool":"mild_als","crankcase":"vacuum_pump","boostControl":"dual_44","manifold":"cast_plenum","sensors":"motorsport_sensors"},"tune":{"boostLowBar":0.5,"boostMidBar":1.4,"boostHighBar":1.9,"lambda":0.8,"ignitionTrimDeg":-1,"revLimitRpm":9000,"railTargetBar":185,"intakeCamAdvanceDeg":4,"launchRpm":5400,"firstGearBoostPct":48,"secondGearBoostPct":72}},"smx4000":{"name":"Steve Morris SMX 540 · 4000 pk","selections":{"block":"swap_smx_540","crank":"smx_crank","oiling":"smx_oiling","crankcase":"vacuum_pump","head":"head_smx_540","valvetrain":"smx_valvetrain","turbo":"twin_pt9803","boostControl":"triple_60_compound","air":"promod_ice_system","manifold":"billet_120","fuelSystem":"smx_methanol_fuel","fuel":"methanol","exhaust":"open_headers_5","ecu":"smx_ecu","sensors":"pro_instrumentation","ignition":"magneto_cdi","sealing":"welded_head","transmission":"lenco_5speed","spool":"n2o_250","turboHp":"pt9103"},"tune":{"boostLowBar":0.4,"boostMidBar":1.1,"boostHighBar":2.7,"lambda":0.78,"ignitionTrimDeg":-3.0,"revLimitRpm":9000,"railTargetBar":225,"intakeCamAdvanceDeg":-2,"launchRpm":6200,"firstGearBoostPct":72,"secondGearBoostPct":88,"als":{"mode":"drag"}},"assembly":{"topRingGapMm":0.58,"secondRingGapMm":0.64,"rodClearanceMm":0.062,"mainClearanceMm":0.06,"sparkGapMm":0.49,"balanceQualityPct":100,"deckSealQualityPct":100,"fastenerProcedurePct":100,"oilPrimed":true},"service":{"oilId":"10w60_race","liters":5.0,"filterId":"motorsport","oilAgeKm":0,"oilRuns":0}}};
 
@@ -2490,7 +2490,12 @@
     dq250: { type: 'dsg', clutchNm: 820, clutchKg: 7.0, engageS: 0.08, launchDumpS: 0.35 },
     sequential: { type: 'sequential', clutchNm: 1150, clutchKg: 5.0, engageS: 0.05, launchDumpS: 0.12 },
     liberty: { type: 'dog', clutchNm: 1700, clutchKg: 6.5, engageS: 0.04, launchDumpS: 0.1 },
-    promod_5speed: { type: 'dog', clutchNm: 2500, clutchKg: 7.5, engageS: 0.035, launchDumpS: 0.1 }
+    promod_5speed: { type: 'dog', clutchNm: 2500, clutchKg: 7.5, engageS: 0.035, launchDumpS: 0.1 },
+    // The gearboxes added for the compound and swap engines. Without these two the lookup fell back to the
+    // OEM clutch at 430 Nm behind a 2500 pk engine: the clutch burned to 1228 C and slipped for the whole
+    // quarter, which read as a 18-second run at 110 km/h with the wheelspin meter showing 0.7 %.
+    compound_4speed: { type: 'dog', clutchNm: 3200, clutchKg: 8.5, engageS: 0.03, launchDumpS: 0.09 },
+    lenco_5speed: { type: 'dog', clutchNm: 5200, clutchKg: 11.0, engageS: 0.025, launchDumpS: 0.08 }
   });
   // Peak friction coefficient (dry asphalt / prepared drag strip), slip ratio at the peak and
   // optimum grip temperature (tyreGripTempC) per compound. Drag compounds work best at ~50-65 C at the
@@ -2501,7 +2506,13 @@
     semislick: { mu: 1.22, muPrep: 1.52, peakSlip: 0.1, optC: 60, windowC: 52, relaxM: 0.3 },
     drag_radial: { mu: 1.25, muPrep: 1.95, peakSlip: 0.12, optC: 55, windowC: 45, relaxM: 0.3 },
     slick: { mu: 1.2, muPrep: 2.25, peakSlip: 0.15, optC: 60, windowC: 40, relaxM: 0.35 },
-    pro_radial: { mu: 1.3, muPrep: 2.1, peakSlip: 0.12, optC: 58, windowC: 42, relaxM: 0.3 }
+    pro_radial: { mu: 1.3, muPrep: 2.1, peakSlip: 0.12, optC: 58, windowC: 42, relaxM: 0.3 },
+    // The big drag rubber. On an unprepared surface a huge soft tyre is not much better than a good radial -
+    // it is the glue that makes the difference - so these gain almost all of their grip from muPrep. A
+    // 34x17 Pro Mod slick wrinkles and grows on the launch, which is why its peak slip is so much higher
+    // than a radial's: it is meant to be driven through slip, not away from it.
+    big_radial: { mu: 1.38, muPrep: 2.62, peakSlip: 0.14, optC: 60, windowC: 40, relaxM: 0.3 },
+    promod_slick: { mu: 1.32, muPrep: 3.15, peakSlip: 0.22, optC: 62, windowC: 38, relaxM: 0.42 }
   });
   const ENGINE_INERTIA = 0.19; // kg m^2, crank + flywheel + clutch
   // Wheel hop (OEM parts): the drive shafts (~14 kNm/rad together) in series with the engine/gearbox roll
@@ -2775,7 +2786,10 @@
       const slipV = s.ww * r - s.v;
       s.kappa += ((slipV - Math.abs(s.v) * s.kappa) / ty.relaxM) * h;
       s.kappa = clamp(s.kappa, -1, 3);
-      const mu = tyreMu(ty, s.tyreC, fz / fzStatic);
+      // tractionUse: what the coupling actually puts through the contact patches. A street four-wheel-drive
+      // loses part of it in the centre viscous unit; a dog-engaged drag case does not. It sat in the
+      // drivetrain table unread until now, which made a purpose-built drag AWD no better than a street one.
+      const mu = tyreMu(ty, s.tyreC, fz / fzStatic) * (Number(drive.tractionUse) || 1);
       let fx = mu * fz * magicFormula(s.kappa, ty.peakSlip);
       if (s.launched) {
         const vRef = Math.max(s.v, 0.5), d = 0.01;
@@ -3509,6 +3523,96 @@
     const area = top.length ? top.reduce((a, p) => a + p.hp, 0) / top.length : 0;
     return { ok: viol === 0, score: viol === 0 ? hp * 0.6 + area * 0.4 : -1000 - viol * 100 + hp * 0.01, hp, viol, over, hardware };
   }
+  // ---- grip tuning -------------------------------------------------------------------------------------
+  // What the dyno optimiser cannot see: a map that makes the most power is not the map that runs the
+  // quickest quarter. Off the line the limit is what the tyres will take, and that depends on the rubber,
+  // the prep and how hot the tyres were - all of which the last run measured. So this optimiser judges a map
+  // by elapsed time in a simulated run under the conditions the last run actually saw, and it moves the four
+  // settings that decide how the power arrives rather than how much of it there is.
+  //
+  // It costs nothing to run: simulateRaceRun is a pure function of the state, so a virtual pass adds no wear,
+  // no heat and no damage to the engine. That is the whole point of doing it here instead of on the track.
+  const GRIP_PARAMS = [
+    { key: 'launchRpm', label: 'launch-toerental', unit: ' rpm', step: 300, min: 1800, max: 11000, decimals: 0, bound: 'launch' },
+    { key: 'firstGearBoostPct', label: 'laaddruk 1e versnelling', unit: ' %', step: 6, min: 15, max: 100, decimals: 0 },
+    { key: 'secondGearBoostPct', label: 'laaddruk 2e versnelling', unit: ' %', step: 6, min: 25, max: 100, decimals: 0 },
+    { key: 'boostLowBar', label: 'laaddruk laag', unit: ' bar', step: 0.2, min: 0, max: 12, decimals: 2, bound: 'boost' }
+  ];
+  function gripParamRange(state, p) {
+    if (p.bound === 'boost') return { lo: p.min, hi: Number(getPart(state, 'boostControl').boostHardwareMaxBar) || p.max };
+    if (p.bound === 'launch') return { lo: p.min, hi: Math.max(p.min + 500, effectiveRevLimit(state) - 300) };
+    return { lo: p.min, hi: p.max };
+  }
+  // The conditions to tune for: what the last run measured, or sensible strip conditions if there is none.
+  function gripConditions(state, last) {
+    const l = last || state.lastDrag || null;
+    return {
+      tyreTempC: Number(l?.launchTyreC) || Number(l?.tyreTempC) || 55,
+      reactionTime: 0,
+      // A tune is judged on the car, not on the driver: no reaction time, no steering mistakes.
+      shiftRpms: null
+    };
+  }
+  // Stepwise, like createMapOptimizer: one simulated run per step().
+  function createGripOptimizer(inputState, opts = {}) {
+    const base = normalizeState(inputState);
+    const cond = gripConditions(base, opts.lastRun);
+    const budget = Math.max(12, Math.round(Number(opts.budget) || 48));
+    const active = GRIP_PARAMS.map(p => ({ ...p, range: gripParamRange(base, p) })).filter(p => p.range && p.range.hi > p.range.lo);
+    const pick = t => Object.fromEntries(active.map(p => [p.key, Number(t[p.key])]));
+    const start = pick(base.tune);
+    const run = tune => {
+      const st = applyAdvicePatch(base, { tune: { ...tune, ecu: null } });
+      return simulateRaceRun(st, { tyreTempC: cond.tyreTempC, reactionTime: 0 });
+    };
+    // Lower is better; an invalid run is no result at all.
+    const et = r => (r && r.valid !== false && Number.isFinite(r.quarter) && r.quarter > 0 ? r.quarter : Infinity);
+    const baseRes = run(start);
+    let best = { tune: { ...start }, result: baseRes, et: et(baseRes) };
+    const steps = Object.fromEntries(active.map(p => [p.key, p.step]));
+    let evals = 1, queue = [], improved = true, rounds = 0;
+    const refill = () => {
+      rounds++;
+      if (!improved) for (const k of Object.keys(steps)) steps[k] /= 2;
+      improved = false;
+      for (const p of active) for (const dir of [1, -1]) queue.push([p, dir]);
+    };
+    refill();
+    function step() {
+      if (evals >= budget) return true;
+      if (!queue.length) { if (rounds >= 6) return true; refill(); }
+      const [p, dir] = queue.shift();
+      const v = clamp(best.tune[p.key] + dir * steps[p.key], p.range.lo, p.range.hi);
+      if (Math.abs(v - best.tune[p.key]) < 1e-9) return evals >= budget;
+      const tune = { ...best.tune, [p.key]: round(v, 4) };
+      const result = run(tune); evals++;
+      const e = et(result);
+      if (e < best.et - 0.002) { best = { tune, result, et: e }; improved = true; }
+      return evals >= budget;
+    }
+    function summary() {
+      const gained = et(baseRes) - best.et;
+      return {
+        goal: 'grip', label: 'Gripmap (op basis van je laatste run)',
+        ok: Number.isFinite(best.et),
+        conditions: cond,
+        evals,
+        before: { quarter: baseRes.quarter, sixtyFt: baseRes.sixtyFt, trapKmh: baseRes.trapKmh, wheelspinPct: baseRes.wheelspinPct },
+        after: { quarter: best.result.quarter, sixtyFt: best.result.sixtyFt, trapKmh: best.result.trapKmh, wheelspinPct: best.result.wheelspinPct },
+        gainedS: round(gained, 3),
+        changes: active.filter(p => Math.abs(best.tune[p.key] - start[p.key]) > 1e-6).map(p => ({
+          key: p.key, label: p.label, unit: p.unit || '',
+          from: start[p.key], to: best.tune[p.key],
+          fromText: formatMapValue(p, start[p.key]), toText: formatMapValue(p, best.tune[p.key]),
+          direction: best.tune[p.key] > start[p.key] ? 'up' : 'down'
+        })),
+        touched: active.map(p => p.label),
+        patch: { tune: { ...best.tune } }
+      };
+    }
+    return { step, summary, get evals() { return evals; }, total: budget };
+  }
+
   // Stepwise optimiser for the app (one dyno simulation per step()): { step() -> done, best, evals, total }
   function createMapOptimizer(inputState, goalId, opts = {}) {
     const goal = MAP_TUNES[goalId] || MAP_TUNES.street;
@@ -3943,6 +4047,8 @@
     mergeAdvice,
     MAP_TUNES,
     createMapOptimizer,
+    createGripOptimizer,
+    GRIP_PARAMS,
     // exported for tooling and tests: the reference-build search and the tuner-versus-reference check need
     // to judge a build by exactly the margins the game judges a map by
     mapLimits,

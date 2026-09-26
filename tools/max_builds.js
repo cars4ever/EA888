@@ -38,7 +38,16 @@ const clone = s => JSON.parse(JSON.stringify(s));
 // by exactly those margins. Maximising power with them switched off makes 98 % of it unreachable by
 // construction, and produces "builds" that are grenades: an early run of this search, before this check was
 // in, came back with an RB26 making 1764 pk at zero reliability.
-const RACE = C.MAP_TUNES.race;
+// A shade inside the race margins, not exactly on them. A search that optimises right up to a limit
+// produces a reference that the smallest model change tips over: four of the eight did exactly that between
+// one run and the next. One per cent of headroom costs almost nothing and makes the reference stable.
+const RACE = (() => {
+  const g = { ...C.MAP_TUNES.race };
+  for (const k of ['hpFrac', 'torqueFrac', 'clampFrac']) if (g[k]) g[k] *= 0.99;
+  for (const k of ['knockMax', 'egtMaxC', 'fuelDutyMax', 'turboLoadMax']) if (g[k]) g[k] *= 0.99;
+  if (g.reliabilityFloor) g.reliabilityFloor += 2;
+  return g;
+})();
 function score(state) {
   pulls++;
   const r = C.simulateEngine(state, { noise: false });

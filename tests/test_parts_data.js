@@ -13,6 +13,10 @@ const LINKED = [
   ['air', () => Turbo.DATA.chargeAir, 'data/turbo/charge-system.json'],
   ['exhaust', () => Turbo.DATA.exhaust, 'data/turbo/charge-system.json'],
   ['boostControl', () => Turbo.DATA.wastegate, 'data/turbo/charge-system.json'],
+  // The driveline table is the same trap and the worst one yet: a gearbox without an entry fell back to the
+  // OEM clutch at 430 Nm, so a 2500 pk compound build slipped its clutch to 1228 C for the whole quarter -
+  // an 18-second run at 110 km/h that read as 0.7 % wheelspin, because the tyres were not the thing slipping.
+  ['transmission', () => C.DRIVELINE, 'the DRIVELINE table in sim.js'],
 ];
 
 const missing = [];

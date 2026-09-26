@@ -1,0 +1,17 @@
+
+/* Throttle slider in the race: the driver's right foot. A car that spins its tyres off the line cannot be
+   driven with an on/off pedal, so this sits directly above the shift button where the thumb already is. */
+.v15-throttle-dock { padding: 0 var(--gap-s); margin-bottom: 6px; }
+.v15-throttle {
+  position: relative; display: grid; grid-template-columns: auto 1fr; align-items: center;
+  gap: 4px 10px; padding: 8px 12px 10px; border-radius: 14px;
+  background: rgba(10, 12, 16, .78); border: 1px solid rgba(255, 255, 255, .1);
+}
+.v15-throttle > span { font-size: .68rem; letter-spacing: .12em; color: var(--muted); }
+.v15-throttle > b { justify-self: end; font-size: 1.05rem; font-variant-numeric: tabular-nums; color: var(--accent); }
+.v15-throttle > input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 0; height: 30px; touch-action: none; }
+.v15-throttle > i {
+  grid-column: 1 / -1; height: 4px; border-radius: 3px; margin-top: -4px;
+  background: linear-gradient(90deg, var(--accent) var(--fill, 100%), rgba(255, 255, 255, .12) var(--fill, 100%));
+}
+.v15-throttle-gauge > b { font-variant-numeric: tabular-nums; }

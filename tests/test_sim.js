@@ -203,6 +203,7 @@ const tunerSuite = require('./test_tuner.js');
 const compoundSuite = require('./test_compound.js');
 const partsDataSuite = require('./test_parts_data.js');
 const swapSuite = require('./test_swaps.js');
+const gripSuite = require('./test_grip.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -234,7 +235,8 @@ const report = {
   tuner: tunerSuite,
   compound: compoundSuite,
   partsData: partsDataSuite,
-  swaps: swapSuite
+  swaps: swapSuite,
+  grip: gripSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));
