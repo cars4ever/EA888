@@ -74,6 +74,10 @@
     const c0 = chokeSorted[0], c1 = chokeSorted[1];
     const chokeSlope = (c1[1] - c0[1]) / Math.max(1e-6, c1[0] - c0[0]);
     const surgeFlow = pr => interp1(surgeByPr, pr);
+    // The surge line read the other way: the highest pressure ratio this flow can hold stably. The line is
+    // single-valued and rising in both directions, so the same table inverts.
+    const surgeByFlow = surgeByPr.map(([pr, w]) => [w, pr]).sort((a, b) => a[0] - b[0]);
+    const surgePr = w => interp1(surgeByFlow, w);
     const chokeFlow = pr => (pr < c0[0] ? Math.max(c0[1] * 0.3, c0[1] - chokeSlope * (c0[0] - pr)) : interp1(chokeSorted, pr));
     const lines = src.speedLines.slice().sort((a, b) => a.rpm - b.rpm);
     const lineN = norm(src.surgeLine), chokeN = norm(src.chokeLine);
@@ -151,6 +155,7 @@
       maxShaftRpm: src.maxShaftRpm,
       peakEfficiency: src.peakEfficiency,
       surgeFlow,
+      surgePr,
       chokeFlow,
       shaftRpm: (w, pr) => Math.max(0, w > wHi || pr > prHi ? shaftRaw(w, pr) : grid(gN, w, pr)),
       efficiency: (w, pr) => clamp(w > wHi || pr > prHi ? effRaw(w, pr) : grid(gE, w, pr), 0.4, src.peakEfficiency),
@@ -269,10 +274,24 @@
     // 3. shaft speed limit, when the controller can see it (or the tune enforces it)
     const underSpeed = b => ev.compressor(b).shaftRpm <= nMax * 0.98;
     if (ctx.protectShaftSpeed && !underSpeed(B)) { B = bisectMax(0, B, underSpeed); limitedBy = 'shaft-limit'; }
-    // 4. surge: the compressor cannot hold a PR left of the surge line
+    // 4. surge. The surge line is a minimum flow at a given pressure ratio, so a compressor that surges at
+    // the target does not get better by being asked for less boost - the flow falls with it and the margin
+    // gets worse. bisectMax assumes a predicate that is true low and false high, so it used to drive the
+    // boost down to where the compressor genuinely surged: a PT10603 on this engine came back at 0.80 bar
+    // with the surge flag set, where at full flow it sits 18 % to the right of its own surge line. One
+    // surging sample low down then poisoned the whole pull through the rotor-inertia chain, which is why an
+    // oversized turbo made 350 pk instead of spooling late and pulling hard.
+    // What surge does cost is pressure: in surge the flow breaks down and the compressor cannot hold more
+    // than its own surge line allows at the flow it has. That is a ceiling on PR, which does fall with b,
+    // so it can be bisected honestly.
     const stable = b => { const c = ev.compressor(b); return c.correctedFlowLbMin >= c.surgeFlowLbMin; };
-    let surge = false;
-    if (!stable(B)) { surge = true; B = bisectMax(0, B, stable); limitedBy = 'surge'; }
+    let surge = !stable(B);
+    if (surge) {
+      const prCap = map.surgePr(ev.compressor(B).correctedFlowLbMin);
+      const withinLine = b => ev.compressor(b).pressureRatio <= prCap;
+      if (!withinLine(B)) B = bisectMax(0, B, withinLine, 14);
+      limitedBy = 'surge';
+    }
     // 5. wastegate creep: even fully open the turbine over-drives the compressor
     if (limitedBy === 'target' && ev.surplus(B, 1) > 0) {
       const creep = bisectMax(B, B + 2.5, b => ev.surplus(b, 1) > 0 && choked(b) && (!ctx.protectShaftSpeed || underSpeed(b)));
@@ -416,12 +435,19 @@
         const m = Math.max(1e-4, ctx.airflowAt(B, tMan));
         e = exhaust(B, m, uHp, uLp);
         const avail = MECH_EFF * e.lpKw, full = air(B, m, null);
-        if (avail >= full.lpKw) { a = full; lpAlone = true; }
+        // The first stage is held to the right of its own surge line. Its corrected flow is set by the
+        // engine's mass flow and its inlet pressure, not by how the ratio is split, so the highest ratio it
+        // can hold stably is simply the surge line read at that flow. Without this the LP took every ratio
+        // its turbine could drive, so a compressor sized for 2500 pk of airflow sat deep in surge at 5000
+        // rpm and the solver answered with nonsense. The controller opens the LP wastegate instead, and the
+        // HP stage makes up the rest of the ratio - which is the whole reason for a second stage.
+        const xCap = Math.max(1.0001, Math.min(full.xFull, lp.surgePr(full.wcLp)));
+        if (avail >= full.lpKw && full.xFull <= xCap + 1e-6) { a = full; lpAlone = true; }
         else {
           // LP pressure ratio its turbine power can drive: x^k = 1 + P eff / (m cp T), eff from the map
-          let x = Math.max(1.0001, Math.min(full.xFull, full.x));
+          let x = Math.max(1.0001, Math.min(xCap, full.x));
           const wr = (m * CP_AIR * ambientK) / 1000;
-          for (let i = 0; i < 4; i++) x = clamp(Math.pow(1 + (avail * air(B, m, x).effLp) / wr, 1 / K_AIR), 1, full.xFull);
+          for (let i = 0; i < 4; i++) x = clamp(Math.pow(1 + (avail * air(B, m, x).effLp) / wr, 1 / K_AIR), 1, xCap);
           a = air(B, m, x); lpAlone = false;
         }
         tMan = ctx.chargeCooling(a.t2, a.lb);
@@ -435,7 +461,7 @@
     function atSpeeds(B, nLp, nHp) {
       const m = Math.max(1e-4, ctx.airflowAt(B, ambientK + 25));
       const full = air(B, m, null);
-      let lo = 1, hi = full.xFull;
+      let lo = 1, hi = Math.max(1.0001, Math.min(full.xFull, lp.surgePr(full.wcLp)));
       for (let i = 0; i < 14; i++) { const mid = 0.5 * (lo + hi); if (lp.shaftRpm(full.wcLp, mid) <= nLp) lo = mid; else hi = mid; }
       const a = air(B, m, lo);
       return { a, ok: a.prHp <= 1.0005 || hp.shaftRpm(a.wcHp, a.prHp) <= nHp, m };
@@ -469,7 +495,12 @@
       return { ...single, empBarAbs: single.empBarAbs + extraEmp, expansionRatio: single.expansionRatio, compoundStage: 'lp', hpShaftRpm: 0, hpShaftPct: 0,
         hpBypassPct: 100, prLp: single.pressureRatio, prHp: 1, interstageBarAbs: null, interstageC: null };
     };
-    if (single.limitedBy !== 'spool' && single.limitedBy !== 'spool-transient') return lpOnly();
+    // The HP stage is bypassed only when the LP turbo already reaches the target on its own. It used to be
+    // bypassed whenever the LP turbo was not spool-limited, which made a compound a spool aid and nothing
+    // else: a turbo held back by its own shaft speed or map got no help from a second stage, so two
+    // compressors in series could not reach a pressure ratio one of them could not. That is the whole point
+    // of compounding.
+    if (single.boostBar >= B0 - 1e-3) return lpOnly();
     // Smallest HP bypass opening that keeps the manifold pressure under the cap (EMP / MAP, absolute).
     const empOk = (b, u) => ev.point(b, u, 0).e.p3 <= COMPOUND.empCapRatio * (ctx.baroBar + b);
     const uMinMemo = new Map();
@@ -510,7 +541,17 @@
     const speedOk = b => { const p = ev.point(b, 0, 0); return p.lpShaftRpm <= lpMap.maxShaftRpm * 0.98 && p.hpShaftRpm <= hpMap.maxShaftRpm * 0.98; };
     if (ctx.protectShaftSpeed && !speedOk(B)) { B = bisectMax(0, B, speedOk, 14); limitedBy = 'shaft-limit'; }
     const stableOk = b => { const { a } = ev.point(b, 0, 0); return a.wcLp >= lpMap.surgeFlow(a.x) && (a.prHp <= 1.0005 || a.wcHp >= hpMap.surgeFlow(a.prHp)); };
-    if (!stableOk(B)) { surge = true; B = bisectMax(0, B, stableOk, 14); limitedBy = 'surge'; }
+    if (!stableOk(B)) {
+      // Same as matchEngine step 4: surge is a flow floor. Cap each stage at the PR its own surge line
+      // allows at the flow it has, instead of searching downwards for a boost that surges harder.
+      surge = true;
+      const a0 = ev.point(B, uFloor(B), 0).a;
+      const prCapLp = lpMap.surgePr(a0.wcLp);
+      const prCapHp = a0.prHp > 1.0005 ? hpMap.surgePr(a0.wcHp) : Infinity;
+      const withinLines = b => { const { a } = ev.point(b, uFloor(b), 0); return a.prLp <= prCapLp && (a.prHp <= 1.0005 || a.prHp <= prCapHp); };
+      if (!withinLines(B)) B = bisectMax(0, B, withinLines, 14);
+      limitedBy = 'surge';
+    }
     // the LP turbo alone does better here (the series stage choked or surged): HP stage bypassed
     if (single.boostBar >= B - 1e-3) return lpOnly();
     // controller: open the HP turbine bypass until the HP shaft balances at the target

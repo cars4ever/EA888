@@ -197,6 +197,8 @@ const phase9Suite = require('./test_phase9.js');
 const phase10Suite = require('./test_phase10.js');
 const physicsAudit = require('./test_physics_audit.js');
 const tunerSuite = require('./test_tuner.js');
+const compoundSuite = require('./test_compound.js');
+const partsDataSuite = require('./test_parts_data.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -225,7 +227,9 @@ const report = {
   phase9: phase9Suite,
   phase10: phase10Suite,
   physicsAudit,
-  tuner: tunerSuite
+  tuner: tunerSuite,
+  compound: compoundSuite,
+  partsData: partsDataSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

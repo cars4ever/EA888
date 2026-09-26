@@ -99,6 +99,22 @@
       "evoBbdcDeg": 60,
       "burnFactor": 0.97,
       "mapType": "modeled"
+    },
+    "compound_billet_head": {
+      "intakeValveMm": 37.5,
+      "exhaustValveMm": 31.5,
+      "intakeValves": 2,
+      "ci": 0.5,
+      "vePeak": 1.06,
+      "tuneRpm": 7600,
+      "kLow": 0.44,
+      "kHigh": 0.24,
+      "camRefDeg": 10,
+      "overlap": 0.85,
+      "ivcAbdcDeg": 70,
+      "evoBbdcDeg": 60,
+      "burnFactor": 0.97,
+      "mapType": "modeled"
     }
   }
 }
