@@ -429,6 +429,16 @@
     for (const [k, v] of Object.entries(obj || {})) out[k] = typeof v === 'number' ? round(v, decimals) : v;
     return out;
   }
+  // Tune keys a wide-open-throttle dyno pull cannot see. Kept as one list so the signature and anything
+  // else that asks "does this change the measurement" agree.
+  // The per-gear boost trims are deliberately NOT here: the dyno pulls in one gear (dynoConfig.gear,
+  // fourth by default), but the ECU calibration is built from all the gear rows and the trims still move
+  // the measured figure - by about a horsepower, but measurably. Excluding them would make the signature
+  // claim something the model does not do.
+  const RACE_ONLY_TUNE = Object.freeze({
+    als: undefined, tractionControl: undefined, tcSlipPct: undefined, tcAggressionPct: undefined,
+    gearRatios: undefined, finalDrive: undefined, gearSpreadPct: undefined, launchRpm: undefined
+  });
   function engineSignature(inputState) {
     const s = normalizeState(inputState),
       t = s.tune;
@@ -437,9 +447,13 @@
     return JSON.stringify({
       model: ENGINE_MODEL_VERSION,
       selections: s.selections,
-      // Anti-lag only acts off-throttle / on the two-step, never in a WOT dyno pull.
-      // Anti-lag and traction control act only in the race, never in a WOT dyno pull.
-      tune: { ...compactObject({ ...t, als: undefined, tractionControl: undefined }, 3), revLimitRpm: Math.round(t.revLimitRpm) },
+      // What a dyno pull measures is what the engine makes at full throttle. Settings that change that -
+      // boost, mixture, spark, cams, rail pressure, the limiter, the fuel - make the last pull historical.
+      // Settings that only shape how that power reaches the road do not: the gearing, the launch, the
+      // per-gear boost trims, traction control and anti-lag are all invisible to a WOT pull in one gear, so
+      // touching them must not send the player back to the rollers. Re-measuring after every tweak is not
+      // what anyone does, and during a race it is not even possible.
+      tune: { ...compactObject({ ...t, ...RACE_ONLY_TUNE }, 3), revLimitRpm: Math.round(t.revLimitRpm) },
       assembly: compactObject(s.assembly, 3),
       oil: { id: s.service.oilId, liters: round(s.service.liters, 2), filter: s.service.filterId },
       dyno: compactObject(s.dynoConfig, 2)
@@ -4126,6 +4140,7 @@
     createInitialState,
     getPart,
     engineSignature,
+    RACE_ONLY_TUNE,
     benchSignature,
     engineGeometry,
     camTimingHealth,

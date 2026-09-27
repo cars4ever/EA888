@@ -1890,6 +1890,22 @@
   // Traction control is a strategy, not a switch: what slip it aims to hold, and how hard it pulls torque to
   // hold it. A big slick is meant to be driven through slip, so a target above 100 % of the tyre's own peak
   // is a real choice, not a mistake.
+  // Redraw the ratios and the speed each gives, in place. A full re-render would fight the slider the
+  // player is dragging.
+  function redrawGearTable() {
+    const body = $('.gear-table tbody');
+    if (!body) return;
+    const g = C.effectiveGearing(state);
+    const tyre = C.tireGeometry(state.vehicle);
+    const revLimit = C.effectiveRevLimit(state);
+    body.innerHTML = g.gears.map((ratio, i) => {
+      const top = (revLimit / (ratio * g.finalDrive)) * tyre.circumferenceM * 60 / 1000;
+      return `<tr><td>${i + 1}</td>
+        <td><input type="number" step="0.01" min="0.3" max="6.5" value="${ratio.toFixed(2)}" data-gear-ratio="${i}"></td>
+        <td class="muted">${g.base[i].toFixed(2)}</td>
+        <td>${Math.round(top)} km/u</td></tr>`;
+    }).join('');
+  }
   function tcSettings() {
     if (state.tune.tractionControl === false) return '';
     const slip = Math.round(Number(state.tune.tcSlipPct ?? 125));
@@ -2267,8 +2283,9 @@
       const g = C.effectiveGearing(state);
       const trans = C.getPart(state, 'transmission');
       const revLimit = C.effectiveRevLimit(state);
-      const radius = 0.323;
-      const kmhAt = (ratio, rpm) => (rpm / (ratio * g.finalDrive)) * 2 * Math.PI * radius * 60 / 1000;
+      // The wheel the car actually runs, not a constant: rim, sidewall and section all move this.
+      const tyre = C.tireGeometry(state.vehicle);
+      const kmhAt = (ratio, rpm) => (rpm / (ratio * g.finalDrive)) * tyre.circumferenceM * 60 / 1000;
       const rows = g.gears.map((ratio, i) => {
         const base = g.base[i];
         const top = kmhAt(ratio, revLimit);
@@ -2280,7 +2297,7 @@
       return `<div class="tune-panel gearing-panel">
         <div class="card">
           <div class="section-head"><div><span class="eyebrow">Tandwielen & eindoverbrenging</span><h2>Gearing</h2>
-            <p>De bak levert de set; wat je hier zet is wat de auto rijdt. De snelheid per versnelling is bij je begrenzer van ${revLimit} rpm.</p></div>
+            <p>De bak levert de set; wat je hier zet is wat de auto rijdt. De snelheid is wielsnelheid bij je begrenzer van ${revLimit} rpm op ${tyre.diameterMm.toFixed(0)} mm band — op de baan ligt hij iets lager door slip en luchtweerstand.</p></div>
             ${g.stock ? '' : '<button class="btn small ghost" data-gear-reset="1">Terug naar de bak</button>'}</div>
           <label class="field-label">Eindoverbrenging <b>${g.finalDrive.toFixed(2)}</b>
             <input type="range" min="2.4" max="6.5" step="0.05" value="${g.finalDrive.toFixed(2)}" data-tune-range-num="finalDrive">
@@ -6320,6 +6337,9 @@
       const out = el.closest('.field-label')?.querySelector('b');
       if (out) out.textContent = Number(el.value).toFixed(2);
       saveState();
+      // The speed-per-gear table is computed from this: leaving it stale showed the top speed of the
+      // gearing you had before you moved the slider.
+      if (tunePanel === 'gearing') redrawGearTable();
       return;
     }
     if (el.dataset && el.dataset.gearRatio !== undefined) {
@@ -6337,6 +6357,7 @@
       const out = el.closest('.field-label')?.querySelector('b');
       if (out) out.textContent = `${Math.round(Number(el.value))}%`;
       saveState();
+      if (key === 'gearSpreadPct' && tunePanel === 'gearing') redrawGearTable();
       return;
     }
     // The throttle slider drives the race directly: no re-render, the runtime reads it on the next frame.

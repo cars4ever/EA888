@@ -188,4 +188,44 @@ const race = (s, cfg = {}) => C.simulateRaceRun(s, { reactionTime: 0, tyreTempC:
   assert(ca.ok, 'a clean run still reads back');
 }
 
+
+// ---- 10. the dyno is not an obligation after every tweak ---------------------------------------------
+// Reported from play: "de dyno moet niet een verplichting zijn na elke wijziging. Wel als je een nieuw blok
+// neemt of nieuwe turbo etc. Tijdens de race is dyno sowieso geen optie." What a pull measures is what the
+// engine makes at wide-open throttle in one gear. Settings that only shape how that power reaches the road
+// cannot change that measurement, so they must not send the player back to the rollers.
+{
+  const base = build('randy');
+  const sig = C.engineSignature(base);
+  const after = (patch) => { const s = build('randy'); Object.assign(s.tune, patch); return s; };
+
+  const raceOnly = [
+    ['finalDrive', 4.6], ['gearSpreadPct', 88], ['launchRpm', 5200],
+    ['tcSlipPct', 95], ['tcAggressionPct', 80], ['tractionControl', false]
+  ];
+  const hp = C.simulateEngine(base, { noise: false }).peakHp;
+  for (const [key, value] of raceOnly) {
+    const s = after({ [key]: value });
+    assert.strictEqual(C.engineSignature(s), sig, `${key} does not change a dyno pull, so it must not invalidate one`);
+    // and the claim has to be true, not just asserted
+    assert.strictEqual(C.simulateEngine(s, { noise: false }).peakHp, hp,
+      `${key} is excluded from the signature, so it must genuinely leave the measurement alone`);
+  }
+  {
+    const s = build('randy');
+    s.tune.gearRatios = [3.1, 2.2, 1.7, 1.3, 1.0, 0.8];
+    assert.strictEqual(C.engineSignature(s), sig, 'gear ratios do not change a dyno pull either');
+  }
+
+  // What does change the measurement still invalidates it - hardware first of all.
+  for (const [key, value] of [['boostHighBar', 2.6], ['lambda', 0.72], ['revLimitRpm', 8600], ['railTargetBar', 210]]) {
+    assert.notStrictEqual(C.engineSignature(after({ [key]: value })), sig,
+      `${key} changes what the engine makes, so the pull becomes historical`);
+  }
+  for (const [cat, id] of [['turbo', 'hx52'], ['block', 'closed_deck'], ['fuel', 'e85']]) {
+    const s = build('randy'); s.selections[cat] = id;
+    assert.notStrictEqual(C.engineSignature(s), sig, `a new ${cat} means the old pull no longer describes this engine`);
+  }
+}
+
 module.exports = { tyres: C.TIRE_COMPOUNDS.length, drivetrains: Object.keys(C.DRIVETRAINS).length };
