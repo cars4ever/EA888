@@ -228,4 +228,56 @@ const race = (s, cfg = {}) => C.simulateRaceRun(s, { reactionTime: 0, tyreTempC:
   }
 }
 
+
+// ---- 11. a compound is sold in the sizes it is sold in ------------------------------------------------
+// Reported: "Als we bepaalde banden kiezen hebben ze vaste maten en moet die andere wielmaat niks doen."
+// Street, UHP and semi-slick cover the whole catalogue; the drag compounds come in a handful of real sizes
+// and a 34x17 Pro Mod slick in exactly one.
+{
+  for (const id of ['street', 'uhp', 'semislick']) {
+    assert(C.tireSizing(id).free, `${id} must stay freely adjustable`);
+    assert.strictEqual(C.tireSizeRange(id, 'rimDiameterIn'), null, `${id} has no size restriction`);
+  }
+  for (const id of ['drag_radial', 'slick', 'pro_radial', 'big_radial', 'promod_slick']) {
+    assert(!C.tireSizing(id).free, `${id} is not sold in every size`);
+    const r = C.tireSizeRange(id, 'rimDiameterIn');
+    assert(r && r.hi <= 18, `${id} does not come on a 22 inch rim (${r && r.hi})`);
+  }
+  // The one-size tyres report themselves as fixed, and the width really is one number.
+  const w = C.tireSizeRange('promod_slick', 'tireWidthMm');
+  assert(w.fixed, 'a 34x17 Pro Mod slick comes in one size');
+  assert.strictEqual(C.tireSizeRange('big_radial', 'tireWidthMm').lo, 315, 'a 315 drag radial is 315 wide');
+
+  // Whatever is stored, normalising snaps it into what the fitted compound allows - so the size shown is
+  // always a size that exists, and switching compound cannot leave a 195/65 R15 Pro Mod slick behind.
+  const silly = C.blankState();
+  Object.assign(silly.vehicle, { tireCompound: 'promod_slick', rimDiameterIn: 22, rimWidthIn: 7, tireWidthMm: 195, aspectRatio: 25 });
+  const v = C.normalizeState(silly).vehicle;
+  assert.strictEqual(v.rimDiameterIn, 16, 'the rim snaps to what the slick is made for');
+  assert.strictEqual(v.tireWidthMm, 430, 'and so does the section');
+  const dia = C.tireGeometry(v).diameterMm;
+  assert(dia > 840 && dia < 890, `a 34 inch slick is about 864 mm over the tread (${dia.toFixed(0)})`);
+
+  // A free compound is left alone.
+  const street = C.blankState();
+  Object.assign(street.vehicle, { tireCompound: 'uhp', rimDiameterIn: 19, tireWidthMm: 245, aspectRatio: 35 });
+  const sv = C.normalizeState(street).vehicle;
+  assert.strictEqual(sv.rimDiameterIn, 19, 'a UHP tyre takes the size you give it');
+  assert.strictEqual(sv.tireWidthMm, 245, 'including the section');
+}
+
+// ---- 12. anti-lag at maximum ---------------------------------------------------------------------------
+{
+  const modes = C.ANTI_LAG_MODES || [];
+  assert(modes.includes('max'), 'there must be a maximum anti-lag setting');
+  const on = preset => { const s = build(preset); s.tune.als = { mode: 'max' }; return C.resolveAntiLag(s); };
+  const street = on('randy'), dome = on('compound2500');
+  assert(dome.params.targetBoostBar > street.params.targetBoostBar,
+    'anti-lag cannot hold more boost than the wastegates control, so dome control must allow more');
+  assert(dome.params.retardDeg >= 40 && dome.params.extraFuelPct >= 30, 'max means max');
+  const drag = (() => { const s = build('compound2500'); s.tune.als = { mode: 'drag' }; return C.resolveAntiLag(s); })();
+  assert(dome.params.targetBoostBar > drag.params.targetBoostBar, 'and more than the drag setting');
+  assert(dome.params.maxEgtC > drag.params.maxEgtC, 'which it pays for in exhaust temperature');
+}
+
 module.exports = { tyres: C.TIRE_COMPOUNDS.length, drivetrains: Object.keys(C.DRIVETRAINS).length };

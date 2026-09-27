@@ -1940,7 +1940,7 @@
     </div>`;
   }
 
-  const ALS_MODE_LABELS = { off: ['Uit', 'geen anti-lag'], mild: ['Mild', 'kort, koel'], street: ['Street', 'launch-hulp'], rally: ['Rally', 'boost vasthouden'], drag: ['Drag', 'agressief'], custom: ['Custom', 'eigen waarden'] };
+  const ALS_MODE_LABELS = { off: ['Uit', 'geen anti-lag'], mild: ['Mild', 'kort, koel'], street: ['Street', 'launch-hulp'], rally: ['Rally', 'boost vasthouden'], drag: ['Drag', 'agressief'], max: ['Max', 'alles wat de hardware pakt'], custom: ['Custom', 'eigen waarden'] };
   let alsTestResult = null;
   function alsSlider(key, label, min, max, step, value, unit, decimals, hint) {
     return `<div class="control">
@@ -2294,7 +2294,7 @@
           <td class="muted">${base.toFixed(2)}</td>
           <td>${Math.round(top)} km/u</td></tr>`;
       }).join('');
-      return `<div class="tune-panel gearing-panel">
+      content = `<div class="tune-panel gearing-panel">
         <div class="card">
           <div class="section-head"><div><span class="eyebrow">Tandwielen & eindoverbrenging</span><h2>Gearing</h2>
             <p>De bak levert de set; wat je hier zet is wat de auto rijdt. De snelheid is wielsnelheid bij je begrenzer van ${revLimit} rpm op ${tyre.diameterMm.toFixed(0)} mm band — op de baan ligt hij iets lager door slip en luchtweerstand.</p></div>
@@ -3219,6 +3219,29 @@
     render();
   }
 
+  // A compound is sold in the sizes it is sold in. Street, UHP and semi-slick take the whole catalogue; a
+  // drag radial comes in a handful of real sizes and a 34x17 Pro Mod slick in exactly one. Showing a free
+  // slider for a size that cannot be bought is worse than showing none.
+  const WHEEL_FIELDS = [
+    ['rimDiameterIn', 'Velgdiameter', 15, 22, 1, '″', 0],
+    ['rimWidthIn', 'Velgbreedte', 6.5, 13, .5, '″', 1],
+    ['tireWidthMm', 'Bandbreedte', 185, 355, 5, ' mm', 0],
+    ['aspectRatio', 'Hoogteverhouding', 20, 65, 5, '%', 0]
+  ];
+  function wheelSizeControls(v) {
+    const tyre = C.TIRE_COMPOUNDS.find(t => t.id === v.tireCompound) || {};
+    const rows = WHEEL_FIELDS.map(([key, label, min, max, step, unit, dec]) => {
+      const r = C.tireSizeRange(v.tireCompound, key);
+      if (!r) return vehicleRange(key, label, min, max, step, v[key], unit, dec);
+      if (r.fixed) return `<div class="wheel-fixed"><span>${esc(label)}</span><b>${num(v[key], dec)}${esc(unit)}</b><small>vast op deze band</small></div>`;
+      return vehicleRange(key, label, r.lo, r.hi, r.step, v[key], unit, dec);
+    }).join('');
+    const sz = C.tireSizing(v.tireCompound);
+    const note = sz.free
+      ? ''
+      : `<small class="advice-note">${esc(tyre.name || '')} wordt in een beperkt aantal maten gemaakt; alleen die staan hier. Kies een straat-, UHP- of semi-slickband om vrij te kiezen.</small>`;
+    return rows + note;
+  }
   function vehicleRange(name, label, min, max, step, value, unit, decimals = 0, hint = '') {
     return `<div class="control compact-control"><div class="control-head"><div><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</div><output class="value-edit" tabindex="0" role="button" aria-label="Waarde intypen" data-value-for="vehicle.${name}">${Number(value).toFixed(decimals)}${esc(unit)}</output></div><div class="range-row"><button type="button" class="step-btn" data-step="-1" aria-label="Lager">−</button><input type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-vehicle="${name}" data-unit="${esc(unit)}" data-decimals="${decimals}"><button type="button" class="step-btn" data-step="1" aria-label="Hoger">+</button></div></div>`;
   }
@@ -3478,10 +3501,7 @@
           </div>
           <div class="card">
             <span class="eyebrow">Wielen</span><h3>Maat & roterende massa</h3>
-            ${vehicleRange('rimDiameterIn', 'Velgdiameter', 15, 22, 1, v.rimDiameterIn, '″', 0)}
-            ${vehicleRange('rimWidthIn', 'Velgbreedte', 6.5, 13, .5, v.rimWidthIn, '″', 1)}
-            ${vehicleRange('tireWidthMm', 'Bandbreedte', 185, 355, 5, v.tireWidthMm, ' mm', 0)}
-            ${vehicleRange('aspectRatio', 'Hoogteverhouding', 20, 65, 5, v.aspectRatio, '%', 0)}
+            ${wheelSizeControls(v)}
             ${vehicleRange('wheelMassKg', 'Massa per wiel', 6, 22, .2, v.wheelMassKg, ' kg', 1)}
           </div>
           <div class="card">
@@ -5444,7 +5464,9 @@
       drivetrain: state.vehicle.drivetrain,
       tireName: C.TIRE_MAP[state.vehicle.tireCompound]?.name || state.vehicle.tireCompound,
       tireSize: `${state.vehicle.tireWidthMm}/${state.vehicle.aspectRatio} R${state.vehicle.rimDiameterIn}`,
-      wheelSpec: `${Number(state.vehicle.rimWidthIn || 0).toFixed(1)}Jx${state.vehicle.rimDiameterIn}`,
+      // just the rim width: the diameter is already in tireSize ("430/53 R16"), and printing it twice read
+      // as a duplicated size on the timeslip
+      wheelSpec: `${Number(state.vehicle.rimWidthIn || 0).toFixed(1)}J`,
       tireDiameterMm: C.wheelFitment(state.vehicle).diameterMm,
       transmissionId: run.transInfo.id,
       transmissionMode: run.autoShift ? 'DSG AUTO' : 'HANDMATIG',

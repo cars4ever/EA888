@@ -88,7 +88,11 @@ for (const dt of ['FWD', 'AWD', 'RWD']) for (const [lp, hp] of [['pt8685', ''], 
   const rt = C.createBurnoutRuntime(st, { startC: 28 });
   let min = 1e9, slipped = false, p;
   for (let i = 0; i < 100; i++) { p = rt.step(0.05, { throttle: true }); if (p.t > 1.0) min = Math.min(min, p.rpm); if (p.clutchSlipping) slipped = true; assert(p.pedal > 0.97 || p.t < 0.4, 'pedal flat'); }
-  assert(min > 0.75 * rt.targetRpm, `${dt} ${lp}+${hp || '-'}: no bog (min ${Math.round(min)} rpm, dump ${rt.targetRpm})`);
+  // 0.70 rather than 0.75: a real 315/60 R15 drag radial is 759 mm over the tread against ~654 for the road
+  // tyre this was written with, which lengthens first gear by a fifth, so the engine sits a little lower for
+  // the same clutch work. What is guarded here is that it does not bog - the 1.14.0 regression dropped it to
+  // ~1000 rpm - and 3.6k of a 5k dump is the driver holding it in the band, not bogging.
+  assert(min > 0.70 * rt.targetRpm, `${dt} ${lp}+${hp || '-'}: no bog (min ${Math.round(min)} rpm, dump ${rt.targetRpm})`);
   if (slipped) assert(p.clutchKj > 0, 'a slipping clutch takes the energy');
 }
 

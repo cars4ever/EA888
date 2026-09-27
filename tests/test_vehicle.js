@@ -28,9 +28,25 @@ for (const [preset, mutate] of [['stock', null], ['randy', s => { s.vehicle.tire
 const randyStreet = pass(build('randy', s => { s.vehicle.tireCompound = 'uhp'; s.vehicle.preparedTrack = false; }));
 const randyDrag = pass(build('randy', s => { s.vehicle.tireCompound = 'drag_radial'; s.vehicle.preparedTrack = true; }));
 assert(randyDrag.sixtyFt < randyStreet.sixtyFt - 0.15, `drag radials on prep must launch harder (${randyDrag.sixtyFt} vs ${randyStreet.sixtyFt})`);
-const bigFwd = pass(build('pro98', s => { s.vehicle.drivetrain = 'FWD'; s.vehicle.tireCompound = 'pro_radial'; s.vehicle.preparedTrack = true; }));
-const bigAwd = pass(build('pro98', s => { s.vehicle.drivetrain = 'AWD'; s.vehicle.tireCompound = 'pro_radial'; s.vehicle.preparedTrack = true; }));
+// Where traction is the limit, four driven wheels win and it is not close.
+const bigFwd = pass(build('pro98', s => { s.vehicle.drivetrain = 'FWD'; s.vehicle.tireCompound = 'semislick'; s.vehicle.preparedTrack = true; }));
+const bigAwd = pass(build('pro98', s => { s.vehicle.drivetrain = 'AWD'; s.vehicle.tireCompound = 'semislick'; s.vehicle.preparedTrack = true; }));
 assert(bigAwd.sixtyFt < bigFwd.sixtyFt && bigAwd.quarter < bigFwd.quarter, 'AWD must put ~1000 pk down better than FWD');
+
+// On a proper drag tyre the limit moves. A 315/60 R15 is 759 mm over the tread against about 630 for a
+// road tyre, which lengthens every ratio by a fifth: on the stock final drive the AWD launch becomes
+// gearing-limited rather than grip-limited and the lighter front-drive car actually gets away better.
+// Bring the final drive with the tyre and the traction advantage returns, decisively. That interaction is
+// the reason the gearing is tunable at all, so it is worth asserting rather than tuning away.
+const dragTyre = (dt, finalDrive) => pass(build('pro98', s => {
+  s.vehicle.drivetrain = dt; s.vehicle.tireCompound = 'pro_radial'; s.vehicle.preparedTrack = true;
+  if (finalDrive) s.tune.finalDrive = finalDrive;
+}));
+const tallStock = dragTyre('AWD', null), tallGeared = dragTyre('AWD', 4.8);
+assert(tallGeared.sixtyFt < tallStock.sixtyFt - 0.2,
+  `a taller tyre needs a shorter final drive (${tallGeared.sixtyFt} vs ${tallStock.sixtyFt})`);
+assert(tallGeared.sixtyFt < dragTyre('FWD', 4.8).sixtyFt,
+  'and once it is geared for the tyre, four driven wheels win again');
 const rt = C.createRaceRuntime(build('randy'), {});
 for (let i = 0; i < 50; i++) rt.step(0.02, {});
 rt.launch();

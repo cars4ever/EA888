@@ -138,7 +138,7 @@
   const FILTERS = [{"id":"oem","name":"OEM kwaliteitsfilter","flow":0.94,"capture":0.96,"price":16},{"id":"highflow","name":"High-flow performancefilter","flow":1,"capture":0.93,"price":24},{"id":"motorsport","name":"Motorsportfilter + magneetplug","flow":1.04,"capture":0.98,"price":42}];
   const FILTER_MAP = Object.fromEntries(FILTERS.map(f => [f.id, f]));
   // prettier-ignore
-  const TIRE_COMPOUNDS = [{"id": "street", "name": "Straatband", "mu": 0.98, "rolling": 0.014, "optimumBar": 2.35, "heat": 0.93}, {"id": "uhp", "name": "UHP zomerband", "mu": 1.12, "rolling": 0.013, "optimumBar": 2.2, "heat": 0.98}, {"id": "semislick", "name": "Semi-slick", "mu": 1.28, "rolling": 0.015, "optimumBar": 1.95, "heat": 1.02}, {"id": "drag_radial", "name": "Drag radial", "mu": 1.49, "rolling": 0.019, "optimumBar": 1.35, "heat": 1.06}, {"id": "slick", "name": "Bias-ply slick", "mu": 1.65, "rolling": 0.022, "optimumBar": 0.85, "heat": 1.08}, {"id": "pro_radial", "name": "Pro drag radial", "mu": 1.76, "rolling": 0.021, "optimumBar": 1.05, "heat": 1.1}, {"id": "big_radial", "name": "Mega drag radial 315", "mu": 1.9, "rolling": 0.023, "optimumBar": 0.95, "heat": 1.12}, {"id": "promod_slick", "name": "Pro Mod slick 34x17", "mu": 1.8, "rolling": 0.028, "optimumBar": 0.5, "heat": 1.14}];
+  const TIRE_COMPOUNDS = [{"id": "street", "name": "Straatband", "mu": 0.98, "rolling": 0.014, "optimumBar": 2.35, "heat": 0.93, "sizing": {"free": true}}, {"id": "uhp", "name": "UHP zomerband", "mu": 1.12, "rolling": 0.013, "optimumBar": 2.2, "heat": 0.98, "sizing": {"free": true}}, {"id": "semislick", "name": "Semi-slick", "mu": 1.28, "rolling": 0.015, "optimumBar": 1.95, "heat": 1.02, "sizing": {"free": true}}, {"id": "drag_radial", "name": "Drag radial", "mu": 1.49, "rolling": 0.019, "optimumBar": 1.35, "heat": 1.06, "sizing": {"rimDiameterIn": [15, 18, 1], "rimWidthIn": [8, 11, 0.5], "tireWidthMm": [245, 325, 10], "aspectRatio": [45, 60, 5], "default": {"rimDiameterIn": 15, "rimWidthIn": 10, "tireWidthMm": 315, "aspectRatio": 60}}}, {"id": "slick", "name": "Bias-ply slick", "mu": 1.65, "rolling": 0.022, "optimumBar": 0.85, "heat": 1.08, "sizing": {"rimDiameterIn": [15, 16, 1], "rimWidthIn": [8, 12, 0.5], "tireWidthMm": [255, 330, 15], "aspectRatio": [55, 75, 5], "default": {"rimDiameterIn": 15, "rimWidthIn": 10, "tireWidthMm": 300, "aspectRatio": 65}}}, {"id": "pro_radial", "name": "Pro drag radial", "mu": 1.76, "rolling": 0.021, "optimumBar": 1.05, "heat": 1.1, "sizing": {"rimDiameterIn": [15, 17, 1], "rimWidthIn": [9, 12, 0.5], "tireWidthMm": [275, 325, 10], "aspectRatio": [50, 60, 5], "default": {"rimDiameterIn": 15, "rimWidthIn": 11, "tireWidthMm": 315, "aspectRatio": 60}}}, {"id": "big_radial", "name": "Mega drag radial 315", "mu": 1.9, "rolling": 0.023, "optimumBar": 0.95, "heat": 1.12, "sizing": {"rimDiameterIn": [15, 16, 1], "rimWidthIn": [10, 12, 0.5], "tireWidthMm": [315, 315, 5], "aspectRatio": [55, 60, 5], "default": {"rimDiameterIn": 15, "rimWidthIn": 11, "tireWidthMm": 315, "aspectRatio": 60}}}, {"id": "promod_slick", "name": "Pro Mod slick 34x17", "mu": 1.8, "rolling": 0.028, "optimumBar": 0.5, "heat": 1.14, "sizing": {"rimDiameterIn": [16, 16, 1], "rimWidthIn": [16, 16, 0.5], "tireWidthMm": [430, 430, 5], "aspectRatio": [53, 53, 1], "default": {"rimDiameterIn": 16, "rimWidthIn": 16, "tireWidthMm": 430, "aspectRatio": 53}}}];
   const TIRE_MAP = Object.fromEntries(TIRE_COMPOUNDS.map(t => [t.id, t]));
   // prettier-ignore
   const DRIVETRAINS = {"FWD":{"name":"FWD","frontStatic":0.63,"loss":0.1,"mass":0,"tractionUse":1},"RWD":{"name":"RWD swap","frontStatic":0.51,"loss":0.13,"mass":35,"tractionUse":1},"AWD":{"name":"AWD","frontStatic":0.56,"loss":0.17,"mass":95,"tractionUse":0.92},"AWD_DRAG":{"name":"AWD drag","frontStatic":0.48,"loss":0.11,"mass":62,"tractionUse":1}};
@@ -400,6 +400,8 @@
     if (!OIL_MAP[s.service.oilId]) s.service.oilId = base.service.oilId;
     if (!FILTER_MAP[s.service.filterId]) s.service.filterId = base.service.filterId;
     if (!TIRE_MAP[s.vehicle.tireCompound]) s.vehicle.tireCompound = base.vehicle.tireCompound;
+    // Whatever was stored, the fitted compound decides what sizes exist.
+    clampWheelToCompound(s.vehicle);
     if (!DRIVETRAINS[s.vehicle.drivetrain]) s.vehicle.drivetrain = base.vehicle.drivetrain;
     return opts.noEcu ? s : withEcu(s);
   }
@@ -713,6 +715,43 @@
     };
   }
 
+  // A compound is sold in the sizes it is sold in. Street, UHP and semi-slick cover the whole catalogue;
+  // a drag radial comes in a handful of real sizes and a 34x17 Pro Mod slick comes in exactly one. This
+  // snaps the vehicle's wheel settings into what the fitted compound allows, so the size shown is always a
+  // size that exists.
+  const WHEEL_KEYS = ['rimDiameterIn', 'rimWidthIn', 'tireWidthMm', 'aspectRatio'];
+  function tireSizing(compoundId) {
+    const t = TIRE_MAP[compoundId] || TIRE_MAP.uhp;
+    return t.sizing || { free: true };
+  }
+  function tireSizeRange(compoundId, key) {
+    const sz = tireSizing(compoundId);
+    if (sz.free || !sz[key]) return null;
+    const [lo, hi, step] = sz[key];
+    return { lo, hi, step, fixed: hi - lo < step * 0.5 };
+  }
+  function clampWheelToCompound(vehicle) {
+    const sz = tireSizing(vehicle.tireCompound);
+    if (sz.free) return vehicle;
+    // Is the fitted size one this compound comes in at all? If not, the player has switched compound, and
+    // the right answer is the size it is normally bought in - not the smallest one that happens to be
+    // legal, which is how a Pro drag radial ended up on the narrowest tyre in its range.
+    const fits = WHEEL_KEYS.every(key => {
+      const r = tireSizeRange(vehicle.tireCompound, key);
+      if (!r) return true;
+      const v = Number(vehicle[key]);
+      return v >= r.lo - 1e-6 && v <= r.hi + 1e-6;
+    });
+    if (!fits && sz.default) for (const key of WHEEL_KEYS) if (sz.default[key] != null) vehicle[key] = sz.default[key];
+    for (const key of WHEEL_KEYS) {
+      const r = tireSizeRange(vehicle.tireCompound, key);
+      if (!r) continue;
+      // snap relative to the low end, so the smallest size on offer is itself on the grid
+      const snapped = r.lo + Math.round((clamp(Number(vehicle[key]), r.lo, r.hi) - r.lo) / r.step) * r.step;
+      vehicle[key] = round(clamp(snapped, r.lo, r.hi), 2);
+    }
+    return vehicle;
+  }
   function tireGeometry(vehicle) {
     const rimMm = Number(vehicle.rimDiameterIn) * 25.4,
       sidewallMm = (Number(vehicle.tireWidthMm) * Number(vehicle.aspectRatio)) / 100,
@@ -2181,12 +2220,17 @@
     mild: { targetRpm: 3800, targetBoostBar: 0.5, retardDeg: 12, extraFuelPct: 6, bypassPct: 6, aggressiveness: 25, maxEgtC: 950, maxShaftPct: 88, timeoutS: 2.5, cooldownS: 6 },
     street: { targetRpm: 4000, targetBoostBar: 0.9, retardDeg: 18, extraFuelPct: 10, bypassPct: 10, aggressiveness: 40, maxEgtC: 980, maxShaftPct: 90, timeoutS: 4, cooldownS: 6 },
     rally: { targetRpm: 4300, targetBoostBar: 1.3, retardDeg: 28, extraFuelPct: 18, bypassPct: 18, aggressiveness: 70, maxEgtC: 1050, maxShaftPct: 94, timeoutS: 30, cooldownS: 5 },
-    drag: { targetRpm: 4600, targetBoostBar: 1.8, retardDeg: 34, extraFuelPct: 24, bypassPct: 24, aggressiveness: 90, maxEgtC: 1100, maxShaftPct: 97, timeoutS: 15, cooldownS: 8 }
+    drag: { targetRpm: 4600, targetBoostBar: 1.8, retardDeg: 34, extraFuelPct: 24, bypassPct: 24, aggressiveness: 90, maxEgtC: 1100, maxShaftPct: 97, timeoutS: 15, cooldownS: 8 },
+    // Everything the hardware will take, held on the two-step: the whole fuel charge burning in the
+    // manifold, spark thrown away, the wastegate shut. It makes the boost you leave on and it eats the
+    // turbine, the manifold and the valves while it does. Target boost follows the boost control's own
+    // ceiling rather than a constant, so on dome control it really is max.
+    max: { targetRpm: 5200, targetBoostBar: 3.4, retardDeg: 44, extraFuelPct: 38, bypassPct: 38, aggressiveness: 100, maxEgtC: 1200, maxShaftPct: 100, timeoutS: 10, cooldownS: 12 }
   });
-  const ANTI_LAG_MODES = ['off', 'mild', 'street', 'rally', 'drag', 'custom'];
+  const ANTI_LAG_MODES = ['off', 'mild', 'street', 'rally', 'drag', 'max', 'custom'];
   const ANTI_LAG_LIMITS = Object.freeze({
     targetRpm: [2500, 7000],
-    targetBoostBar: [0, 3.5],
+    targetBoostBar: [0, 12],   // the fitted boost control caps this in resolveAntiLag; see alsBoostCeiling
     retardDeg: [0, 45],
     extraFuelPct: [0, 40],
     bypassPct: [0, 40],
@@ -2217,6 +2261,12 @@
     const raw = mode === 'custom' ? cfg : mode === 'off' ? cfg : ANTI_LAG_PRESETS[mode];
     const params = {};
     for (const [k, [lo, hi]] of Object.entries(ANTI_LAG_LIMITS)) params[k] = clamp(Number(raw[k] ?? defaultAntiLag()[k]), lo, hi);
+    // Anti-lag cannot hold more boost than the wastegates can control, any more than a map can.
+    const alsBoostCeiling = Number(getPart(s, 'boostControl').boostHardwareMaxBar) || 3.5;
+    if (params.targetBoostBar > alsBoostCeiling) {
+      params.targetBoostBar = round(alsBoostCeiling, 2);
+      notes.push(`Doeldruk begrensd tot ${params.targetBoostBar.toFixed(1)} bar door ${getPart(s, 'boostControl').name}.`);
+    }
     if (params.bypassPct > cap.bypassMaxPct) {
       params.bypassPct = cap.bypassMaxPct;
       notes.push(`Bypass begrensd tot ${cap.bypassMaxPct}% door de luchtbypass-hardware.`);
@@ -3035,7 +3085,14 @@
         // the tyres break loose. The slip energy goes into the clutch.
         const floor = Math.min(targetRpm, cutRpm - 150) * 0.8;
         if (!s.dumped) s.engage = 0;
-        else if (rpm() < floor) { s.engage = Math.max(0, (s.engage || 0) - h / 0.2); s.clutchSlipping = true; }
+        // The further under the floor it falls, the faster the foot comes off: a driver reacts to how hard
+        // the revs are dropping, not only to the fact that they are. A fixed release could not keep up once
+        // a much taller drag tyre lengthened first gear by a fifth, and the engine went through the floor.
+        else if (rpm() < floor) {
+          const deficit = clamp((floor - rpm()) / Math.max(1, floor), 0, 1);
+          s.engage = Math.max(0, (s.engage || 0) - (h / 0.2) * (1 + 3 * deficit));
+          s.clutchSlipping = true;
+        }
         else if (!s.clutchSlipping || rpm() > floor * 1.06) { s.engage = Math.min(1, (s.engage || 0) + h / (s.clutchSlipping ? 0.4 : 0.15)); if (s.engage >= 1) s.clutchSlipping = false; }
         const mu = tyreMu(ty, tyreGripTempC(th), 1) * streetGrip * (0.8 - 0.35 * s.water);
         const vSlip = s.ww * r;
@@ -4150,6 +4207,9 @@
     benchConfidence,
     isDynoCurrent,
     tireGeometry,
+    tireSizing,
+    tireSizeRange,
+    clampWheelToCompound,
     wheelFitment,
     gripFactor,
     buildMassKg,
