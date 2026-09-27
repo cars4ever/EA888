@@ -1163,6 +1163,65 @@ The reference search is bound by the same limits the tuner keeps, which is what 
 setting 9300 rpm on an RB26 whose parts are rated 9000, and a tuner should not ask an engine to exceed what
 its parts are rated for. A limit that is wrong now shows up as a reference the tuner cannot reach.
 
+## 32. The reference builds, and what measuring against them found (v1.27.0)
+
+The owner's test: build the best map for every engine by hand, then check the in-game tuner gets within
+98 % of it on the same parts. *"Op deze manier kom je alle problemen met onderdelen en manier van tuning en
+hoe alles berekend wordt vanzelf tegen."* It did, repeatedly, and almost everything it found was in the
+tuner rather than in the search.
+
+`tools/max_builds.js` searches offline - every part category, every turbo pairing, eleven tune axes, about
+3000 dyno pulls per engine - and `tools/import_max_builds.js` writes the result as the `max_*` presets and
+as the fixture `tests/test_max_builds.js` measures against. The import re-checks every build under the code
+as it stands before writing it anywhere, because the search runs for over an hour and the model can move
+underneath it.
+
+| engine | reference | the tuner reaches |
+|---|---|---|
+| EA888 2.0 billet compound | 2435 pk | **101 %** |
+| VW VR6 3.2 | 985 pk | 99 % |
+| 2.5 TFSI DAZA | 1331 pk | 99 % |
+| RB25DET Neo | 935 pk | 99 % |
+| RB26DETT | 1465 pk | 98 % |
+| 2JZ-GTE VVTi | 1407 pk | 96 % |
+| 13B-REW bridgeport | 786 pk | 96 % |
+| Steve Morris SMX 540 | 4574 pk | 100 % |
+
+### What the comparison found
+
+**A coordinate search cannot climb a hill it cannot see the foot of.** On a compound build the two stages
+only start working together well above the middle of the boost range, so from a sensible starting map the
+search inched upward and stalled at 1054 pk of the 1518 the same RB26 hardware makes. It sweeps the boost
+range once up front now, in three shapes - flat, ramped and steeply ramped, because drag maps come in three
+and setting all three boost points to the same level biased it toward flat curves. On the RB26 it found
+2.13/2.65/2.35 bar where the best map is 0.68/2.41/2.63, and gave up 150 pk to the shape alone.
+
+**Lambda had a flat floor of 0.70 on every fuel.** An alcohol fuel is run rich for charge cooling as much as
+for mixture - a methanol race engine lives at 0.60-0.65 - and that floor cost the two-litre compound build
+over a thousand horsepower. It follows the blend's alcohol fraction now.
+
+**The rungs have to reach the bottom of the range too.** Dome control good for 10 bar on an engine whose best
+map is 2.3 put every rung above the answer; the lowest was 3.5 bar.
+
+### What it found in the search, which is the same lesson twice
+
+The offline search was breaking a rule the tuner keeps: it set 9300 rpm on an RB26 whose parts are rated
+9000. A tuner should not ask an engine to exceed what its parts are rated for, so the reference is now built
+inside exactly the bounds the tuner works in - which is what makes the comparison sharp, because a bound that
+is wrong shows up as a reference the tuner cannot reach.
+
+And the search had the same blindness it had just exposed in the tuner: it picked a lone PT8685 making 1317
+pk for an engine that makes 2435 on two stages. It got the same boost ladder, and it now also starts from
+each shipped preset, so the reference is never worse than something already in the game.
+
+### The remaining gap
+
+Three engines sit at 96-98 % rather than at 98 %. That is not a budget problem: measured at 140, 220 and 320
+pulls the three give identical figures, so the coordinate search is settling in a local optimum, not running
+out of room. Closing it needs a better search - a restart from several starting points, or a pattern search
+that can move two axes at once - not a longer one. The test guards 96 % so a regression still shows, and
+reports which engines are below the 98 % goal.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)

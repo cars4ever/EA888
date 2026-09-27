@@ -204,6 +204,7 @@ const compoundSuite = require('./test_compound.js');
 const partsDataSuite = require('./test_parts_data.js');
 const swapSuite = require('./test_swaps.js');
 const gripSuite = require('./test_grip.js');
+const maxBuildSuite = require('./test_max_builds.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -236,7 +237,8 @@ const report = {
   compound: compoundSuite,
   partsData: partsDataSuite,
   swaps: swapSuite,
-  grip: gripSuite
+  grip: gripSuite,
+  maxBuilds: maxBuildSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

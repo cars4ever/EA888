@@ -12,7 +12,17 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## v1.26.0 (branch `claude-dev`) — traction, gearing and reading the timeslip back
+## v1.27.0 (branch `claude-dev`) — reference builds for every engine
+
+- A `max_*` preset per engine: the best build the catalogue allows, searched offline over every part,
+  every turbo pairing and eleven tune axes — from 786 pk (13B bridgeport) to 4574 pk (Steve Morris SMX).
+- The in-game tuner is measured against them: it reaches 98 % or better on five of the eight, and beats
+  the reference outright on the two-litre compound.
+- Getting there fixed three things in the tuner: it now sweeps the boost range up front in three shapes,
+  its lambda floor follows the fuel, and its rungs reach the bottom of the range as well as the top.
+- See DEVLOG 32.
+
+## v1.26.0 — traction, gearing and reading the timeslip back
 
 - A 2500 pk build was slipping its **clutch**, not its tyres: the compound and Lenco gearboxes had no
   driveline entry, so they ran the OEM clutch rated 430 Nm. 18.3 s at 108 km/h becomes 11.07 s at 233.

@@ -1,12 +1,12 @@
-# EA888 LAB — handoff (stand na v1.26.0)
+# EA888 LAB — handoff (stand na v1.27.0)
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–31).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–32).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.26.0 (versionCode 360)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste release: **1.27.0 (versionCode 370)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke groen.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
