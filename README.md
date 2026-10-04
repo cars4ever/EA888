@@ -12,6 +12,20 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
+## Unreleased (after v1.28.0) — phase 2: buy parts, buy real cars, race them
+
+- **Buying parts (career mode, default).** Fitting a part you do not own buys it at its price; parts you own swap
+  back for free; presets and build slots pay for their missing parts first (refused with the shortfall). A save
+  from before keeps everything its build and slots use. The remanufactured PT7675 from the videos can be bought
+  used at its real price. 'Vrij bouwen' (Service → settings) is the sandbox where nothing costs anything.
+- **Buying real cars.** The garage on the home page sells the roster cars whose cost the research gives (the
+  hatchback's budget board; purchase plus listed spending for the nitrous coupe and the turbo ute). The others
+  are not for sale.
+- **Racing them.** Pick the race car in the garage: the Scirocco, or a car you own. Burnout, staging and the run
+  use its own engine curve, converter, automatic gearbox, weight, tyres and nitrous controller. Its passes go to
+  its own record by the same wear rule as every car; worn through it needs a rebuild you pay for. Career rules
+  judge the car that races. Motor, tune and dyno stay the Scirocco project's.
+
 ## Unreleased (after v1.28.0) — real cars from the YouTube research, and a drag model calibrated on them
 
 - **Real cars as opponents.** 20 cars from the research roster (`data/roster`, every value with its video and

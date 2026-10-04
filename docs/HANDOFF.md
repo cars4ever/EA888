@@ -10,8 +10,9 @@ Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.m
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke groen.
 - **Echte auto's en prijzen** uit het YouTube-onderzoek: `data/roster/` (zie de README daar), import met
   `tools/import_roster.py`, bundel met `tools/build_roster_data.js`. Kalibratie tegen echte runs:
-  `docs/CALIBRATION.md` en `node tools/roster_calibration.js [--before]`. Fase 2 (auto's speelbaar/koopbaar,
-  onderdelen echt kopen) staat nog open.
+  `docs/CALIBRATION.md` en `node tools/roster_calibration.js [--before]`.
+- **Fase 2 (gedaan):** onderdelen kopen (carrièremodus, 'Vrij bouwen' als sandbox), echte auto's kopen in de garage
+  en er zelf mee racen (DEVLOG §34). Nog open: verkopen, een eigen 3D-model en V8-geluid voor roster-auto's.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
 

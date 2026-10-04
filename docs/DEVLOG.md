@@ -1259,6 +1259,30 @@ through it too (`applyRosterRun`), with the service interval the research gives 
 the next race". A curve engine cannot fail mid-run (no combustion model), so an opponent cannot break during a
 pass yet; McFlurry's blown head gasket at 36 psi is in the data but not reproducible for the same reason.
 
+## 34. Phase 2: buying parts, buying real cars, racing them
+
+**Parts.** `state.owned` holds what the player owns (`category:partId`, the compound kit as one key). A save
+without it inherits its fitted build and its build slots, so nobody loses a car on update. `buildCost` lists the
+parts a set of selections needs and does not own; `purchaseBuild` pays them or refuses with the shortfall;
+`purchaseUsedOffer` buys a part through its catalogue offer at the real dollar price at the game rate. The app
+pays before fitting a part, a compound HP stage, a preset or a build slot. Undo restores the selection but does not
+refund. `settings.freeBuild` is the old sandbox.
+
+**Cars.** `tools/import_roster.py` writes `price` per usable car: the budget board where the team kept one
+(stated), else purchase plus the listed spending (modeled, itemised), leaving out lines that came with the car,
+spares and probable duplicates (one by hand: the ute's "Turbo #1" is the PT7675 reman at the same price). No price,
+not for sale. `state.garage` holds the owned cars and the active one.
+
+**Racing a roster car.** `raceCarState()` in the app is the Scirocco, or `rosterState(id)` on the strip's weather
+and prep. The race game keeps it as `raceGame.carState` and uses it for the turbo (the dyno-curve runtime, which
+now carries every field the screens read), the burnout (`createBurnoutRuntime` handles curve engines and does the
+converter burnout on the line lock), staging (launch rpm, rev limit), the live run (engine map, gearbox: a
+converter box shifts itself, nitrous on its controller) and the timeslip. A roster car's pass goes to its record
+(`applyOwnedCarRun`: the shared wear rule, its own best); the Scirocco's wear, records and ghost are not touched.
+A car that is out cannot race until `rebuildOwnedCar` (the game's rebuild cost). Career eligibility and event
+entry judge the racing car; for a roster car unknowns count against it (a V8 is over 2.1 L, unnamed fuel is not
+pump fuel).
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
@@ -1271,6 +1295,8 @@ pass yet; McFlurry's blown head gasket at 36 psi is in the data but not reproduc
 
 ## Remaining known inaccuracies
 
+- Phase 2: no selling of parts or cars yet; the player's roster car is drawn with the Scirocco model and voiced by
+  the EA888 four-cylinder; achievements count passes in a bought car too.
 - Roster cars (see `docs/CALIBRATION.md`): no aero downforce and no lock-up converter (the 3,500 hp radial car is
   ~1.8 s slow), the engine voice is the EA888 four-cylinder for every car (V8 firing not synthesized), the 3D rival
   is the generic rival model, opponents cannot break mid-pass (curve engines have no combustion model).
