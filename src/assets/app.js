@@ -149,7 +149,7 @@
     const dyno = C.simulateEngine(rs, { noise: false });
     // rivals do a good burnout: their tyres are at the compound's optimum at the launch
     const pass = C.simulateRaceRun(rs, { reactionTime: 0, driverSkill: profile.skill, tyreTempC: (C.TYRE[profile.tire] || C.TYRE.uhp).optC });
-    const entry = { quarter: pass.quarter, trapKmh: pass.trapKmh, sixtyFt: pass.sixtyFt, eighth: pass.eighth, trace: pass.trace, peakHp: dyno.peakHp, peakTorqueNm: dyno.peakTorqueNm, massKg: pass.totalMassKg };
+    const entry = { quarter: pass.quarter, trapKmh: pass.trapKmh, sixtyFt: pass.sixtyFt, eighth: pass.eighth, launchToFinishS: pass.launchToFinishS, rolloutS: pass.rolloutS, trace: pass.trace, peakHp: dyno.peakHp, peakTorqueNm: dyno.peakTorqueNm, massKg: pass.totalMassKg };
     rivalCache.set(key, entry);
     try {
       const stored = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}');
@@ -182,7 +182,8 @@
       const trace = (pass.trace || []).map(p => ({ ...p, time: p.time * k }));
       const quarter = pass.quarter * k, reactionTime = round.plan.reactionTime;
       const startOffset = round.format === 'bracket' ? round.dialIn - round.plan.dialIn : 0;
-      return { profile, reactionTime, startOffset, result: { ...pass, quarter, trace, reactionTime, finishTotalTime: startOffset + reactionTime + quarter }, trace,
+      const launchToFinish = Number(pass.launchToFinishS ?? pass.quarter) * k;
+      return { profile, reactionTime, startOffset, result: { ...pass, quarter, trace, reactionTime, finishTotalTime: startOffset + reactionTime + launchToFinish }, trace,
         current: { time: 0, distanceM: 0, speedKmh: 0, rpm: 900, gear: 1 }, finished: false };
     }
     if (!raceIsHeadsUp() || !currentCompletedDyno()) return null;
@@ -191,7 +192,7 @@
     const runNumber = (state.dragRuns?.length || 0) + 1;
     const u = deterministicUnit(`${profile.id}|${runNumber}|${Math.round(state.lastDyno.peakHp || 0)}|${state.vehicle.drivetrain}`);
     const reactionTime = profile.reactionMin + (profile.reactionMax - profile.reactionMin) * u;
-    const result = { ...pass, reactionTime, finishTotalTime: pass.quarter + reactionTime };
+    const result = { ...pass, reactionTime, finishTotalTime: Number(pass.launchToFinishS ?? pass.quarter) + reactionTime };
     return {
       profile,
       reactionTime,
@@ -3593,6 +3594,7 @@
       `1/8      ${f(r.eighth)} s  @ ${f(r.eighthKmh,1)} km/u\n` +
       `1000 ft  ${f(r.thousandFt)} s\n` +
       `1/4      ${f(r.quarter)} s  @ ${f(r.trapKmh,1)} km/u\n` +
+      `Rollout  ${f(r.rolloutS || 0)} s (klok start na ~11,5 in)\n` +
       `Totaal   ${f(r.finishTotalTime)} s incl. reactie\n` +
       `0–100    ${f(r.zeroTo100)} s${duel}\n` +
       `Wheelspin ${f(r.wheelspinPct,0)}% · ${shiftLine}\n` +
@@ -4691,7 +4693,7 @@
       transEff: transInfo.efficiency * (1 - Number(drive.loss || .1) * .34),
       headwind: Math.max(-20, Number(state.vehicle.headwindKmh || 0)) / 3.6,
       transferScale: clamp(.55 + Number(state.vehicle.suspensionTransferPct || 60) / 100 * .85, .55, 1.40),
-      milestones: {}, trace: [], lastTraceT: -.1,
+      milestones: {}, timing: C.createTimingSystem(), trace: [], lastTraceT: -.1,
       feedback: 'LAUNCH', feedbackUntil: 0, point: null,
       finished: false, finishReason: '', startMs: performance.now(),
       timeScale: auto ? (state.settings?.reducedMotion ? 6.0 : 2.15) : 1,
@@ -4787,17 +4789,10 @@
     return true;
   }
 
+  // The strip's beams (sim.js timing system): splits from the rollout, trap speeds over the last 66 ft.
   function recordRealtimeMilestones(run) {
-    const defs = [
-      ['sixtyFt', 18.288], ['threeThirty', 100.584], ['eighth', 201.168], ['thousandFt', 304.8], ['quarter', 402.336]
-    ];
-    for (const [key, meters] of defs) {
-      if (run.milestones[key] == null && run.x >= meters) {
-        run.milestones[key] = run.t;
-        if (key === 'eighth') run.milestones.eighthKmh = run.v * 3.6;
-        if (key === 'quarter') run.milestones.trapKmh = run.v * 3.6;
-      }
-    }
+    run.timing.observe(run.t, run.x);
+    for (const [key, value] of Object.entries(run.timing.slip())) if (value != null) run.milestones[key] = value;
     if (run.zeroTo100 == null && run.v >= 27.7778) run.zeroTo100 = run.t;
   }
 
@@ -5428,7 +5423,8 @@
   function buildRealtimeResult(run) {
     const fallback = run.t;
     const quarter = Number(run.milestones.quarter ?? fallback);
-    const playerFinishTotal = quarter + Math.max(0, Number(run.reactionTime || 0));
+    // green to finish beam = reaction + rollout + ET (the timer only starts once the tyre leaves the beam)
+    const playerFinishTotal = Number(run.milestones.launchToFinishS ?? fallback) + Math.max(0, Number(run.reactionTime || 0));
     const opponentFinishTotal = run.opponent ? Number(run.opponent.result.finishTotalTime || 99) : null;
     const playerValid = !!run.valid && !run.redLight && !run.laneDnf && run.x >= 402.336;
     const won = run.opponent ? playerValid && playerFinishTotal < opponentFinishTotal : null;
@@ -5446,6 +5442,7 @@
       thousandFt: Number(run.milestones.thousandFt ?? fallback),
       quarter,
       trapKmh: Number(run.milestones.trapKmh || run.v * 3.6),
+      rolloutS: Number(run.milestones.rolloutS ?? 0),
       zeroTo100: Number(run.zeroTo100 ?? fallback),
       wheelspinPct: Math.round(run.peakWheelspin * 1000) / 10,
       finishTotalTime: playerFinishTotal,

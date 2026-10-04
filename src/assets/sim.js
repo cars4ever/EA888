@@ -972,7 +972,7 @@
   // 5.0: physical engine model (engine.js), ECU tables, fuel-system hardware; power is quoted in pk (PS).
   const ENGINE_MODEL_VERSION = '5.0';
   // Vehicle model revision (tyres, burnout): part of the rival pass cache key, not of the dyno signature.
-  const VEHICLE_MODEL_VERSION = '2';
+  const VEHICLE_MODEL_VERSION = '3';
   const DYNO_START_RPM = 1500;
   const DYNO_STEP_RPM = 100;
   // Below this many samples (400 rpm of data) a partial peak is not quoted.
@@ -3261,6 +3261,37 @@
     }
     return out;
   }
+  // ---- Timing system: what the strip's beams measure ---------------------------------------------------
+  // The clock starts when the front tyre rolls out of the stage beam (rollout, ~11.5 in), so every split and
+  // the ET count from there and not from the first movement; the speed at the 1/8 and at the finish is the
+  // average over the 66 ft before that line (the speed trap), not the speed on the line. Distances are from
+  // the car's start position; crossing times are interpolated between simulation steps. The total from the
+  // green light to the finish is unchanged: reaction + rollout + ET.
+  const TIMING = Object.freeze({
+    rolloutM: 0.2921, trapM: 20.1168,
+    splits: Object.freeze([['sixtyFt', 18.288], ['threeThirty', 100.584], ['eighth', 201.168], ['thousandFt', 304.8], ['quarter', 402.336]])
+  });
+  function createTimingSystem() {
+    const marks = [['start', TIMING.rolloutM], ...TIMING.splits, ['eighthTrap', 201.168 - TIMING.trapM], ['quarterTrap', 402.336 - TIMING.trapM]];
+    const at = {};
+    let lastT = 0, lastX = 0;
+    function observe(t, x) {
+      for (const [k, d] of marks) {
+        if (at[k] == null && x >= d) at[k] = x > lastX ? lastT + ((t - lastT) * (d - lastX)) / (x - lastX) : t;
+      }
+      lastT = t; lastX = x;
+    }
+    function slip() {
+      const t0 = at.start, out = { rolloutS: t0 ?? null };
+      for (const [k] of TIMING.splits) out[k] = t0 != null && at[k] != null ? at[k] - t0 : null;
+      out.eighthKmh = at.eighth != null && at.eighthTrap != null ? (TIMING.trapM / Math.max(1e-6, at.eighth - at.eighthTrap)) * 3.6 : null;
+      out.trapKmh = at.quarter != null && at.quarterTrap != null ? (TIMING.trapM / Math.max(1e-6, at.quarter - at.quarterTrap)) * 3.6 : null;
+      // launch to the finish beam: what a heads-up race is decided on, after each driver's reaction
+      out.launchToFinishS = at.quarter ?? null;
+      return out;
+    }
+    return { observe, slip, at };
+  }
   // Headless quarter mile with a driver model (rival, tests, auto run): same runtime as the player.
   function simulateRaceRun(inputState, cfg = {}) {
     const state = normalizeState(inputState);
@@ -3274,7 +3305,7 @@
     for (let i = 0; i < 75; i++) rt.step(0.02, { launchAls });
     rt.state.t = 0;
     rt.launch();
-    const dist = [['sixtyFt', 18.288], ['threeThirty', 100.584], ['eighth', 201.168], ['thousandFt', 304.8], ['quarter', 402.336]];
+    const timing = createTimingSystem();
     let traceClock = 0, zero100 = null, pedal = 1;
     const skill = clamp(Number(cfg.driverSkill ?? 0.85), 0, 1);
     while (rt.state.t < 30 && rt.state.x < 402.336) {
@@ -3284,17 +3315,19 @@
       // the auto driver fires the nitrous from second gear (the tyres cannot take it earlier)
       const p = rt.step(0.01, { flatShift: !!cfg.flatShift, clutchDumpS: cfg.clutchDumpS, pedal, nitrous: cfg.nitrous !== false && rt.state.gear >= 1 });
       if (!rt.state.shift && p.gearIndex < rt.gears.length - 1 && p.rpm >= shiftRpm[p.gearIndex]) rt.requestShift();
-      for (const [k, d] of dist) if (milestones[k] == null && p.distanceM >= d) { milestones[k] = p.t; if (k === 'eighth') milestones.eighthKmh = p.speedKmh; if (k === 'quarter') milestones.trapKmh = p.speedKmh; }
+      timing.observe(p.t, p.distanceM);
       if (zero100 == null && p.speedKmh >= 100) zero100 = p.t;
       traceClock += 0.01;
       if (traceClock >= 0.04 - 1e-9) { traceClock = 0; trace.push({ time: p.t, distanceM: p.distanceM, speedKmh: p.speedKmh, gear: p.gear, rpm: p.rpm, accelerationG: p.accelerationG, boostBar: p.boostBar, wheelspinPct: p.wheelspinPct }); }
     }
+    Object.assign(milestones, timing.slip());
     if (milestones.quarter == null) throw new Error('De combinatie bereikte de finish niet binnen 30 seconden.');
     return {
       valid: reaction >= 0, redLight: reaction < 0, reactionTime: reaction,
       sixtyFt: milestones.sixtyFt, threeThirty: milestones.threeThirty, eighth: milestones.eighth, eighthKmh: milestones.eighthKmh,
       thousandFt: milestones.thousandFt, quarter: milestones.quarter, trapKmh: milestones.trapKmh, zeroTo100: zero100,
-      finishTotalTime: milestones.quarter + Math.max(0, reaction), wheelspinPct: rt.state.maxWheelspin * 100, shifts: rt.state.shiftLog.length,
+      rolloutS: milestones.rolloutS, launchToFinishS: milestones.launchToFinishS,
+      finishTotalTime: milestones.launchToFinishS + Math.max(0, reaction), wheelspinPct: rt.state.maxWheelspin * 100, shifts: rt.state.shiftLog.length,
       totalMassKg: rt.massKg, trace, shiftRpms: shiftRpm, maxClutchTempC: rt.state.clutchC, limiterTimeS: rt.state.limiterS,
       knockEvents: rt.state.knockEvents, kcMaxRetardDeg: rt.state.kcMaxDeg, knockDamagePct: rt.state.knockDamage,
       headLiftS: rt.state.headLiftS, n2oShotS: rt.state.n2oShotS, n2oMaxHp: rt.state.n2oMaxHp, n2oUsedKg: (rt.state.bottleStartKg ?? 0) - rt.state.bottleKg, n2oLeanS: rt.state.n2oLeanS,
@@ -4331,6 +4364,8 @@
     DRIVELINE,
     converterTorques,
     converterSpec,
+    TIMING,
+    createTimingSystem,
     transmissionFor,
     drivelineFor,
     TYRE,

@@ -209,6 +209,8 @@ const maxBuildSuite = require('./test_max_builds.js');
 const rosterDataSuite = require('./test_roster_data.js');
 // Torque converter and planetary automatics on the shared race runtime.
 const converterSuite = require('./test_converter.js');
+// What the strip's beams measure: rollout, 66-ft speed traps.
+const timingSuite = require('./test_timing.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -244,7 +246,8 @@ const report = {
   grip: gripSuite,
   maxBuilds: maxBuildSuite,
   rosterData: rosterDataSuite,
-  converter: converterSuite
+  converter: converterSuite,
+  timing: timingSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));
