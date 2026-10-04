@@ -844,6 +844,34 @@ def main() -> None:
         report['checks']['dyno_completed_after_abort'] = page.evaluate("() => __EA888_DEBUG__.dyno().status") == 'completed'
         print('CHECKPOINT dyno abort done', flush=True)
 
+        # Phase 2: buy a roster car in the garage, race it (its own curve, converter and automatic), and go back
+        # to the Scirocco. Its pass goes to its own record; the Scirocco's wear is not touched.
+        click(page, '[data-nav="bank"]')
+        bank_before_car = page.evaluate("() => __EA888_DEBUG__.career().bank")
+        wear_before = page.evaluate("() => __EA888_DEBUG__.stateWear()")
+        click(page, '[data-buy-car="crc12_jackstand_240"]')
+        click(page, '[data-drive-car="crc12_jackstand_240"]')
+        garage = page.evaluate("() => __EA888_DEBUG__.garage()")
+        report['checks']['roster_car_bought'] = 'crc12_jackstand_240' in garage['cars'] and garage['active'] == 'crc12_jackstand_240' and page.evaluate("() => __EA888_DEBUG__.career().bank") < bank_before_car
+        click(page, '[data-nav="drag"]')
+        click(page, '[data-action="auto-drag-game"]')
+        page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=90000)
+        page.evaluate("window.__EA888_DEBUG__.holdFinishForTest(true)")
+        page.wait_for_selector('#race-game-root .v8-finish-game', state='attached', timeout=90000)
+        roster_drag = page.evaluate("window.__EA888_DEBUG__.lastDrag()")
+        report['roster_car_pass'] = {k: roster_drag.get(k) for k in ('rosterId', 'carName', 'quarter', 'trapKmh', 'sixtyFt', 'transmissionMode', 'tireName')}
+        garage = page.evaluate("() => __EA888_DEBUG__.garage()")
+        report['checks']['roster_car_raced'] = roster_drag.get('rosterId') == 'crc12_jackstand_240' and roster_drag.get('transmissionMode') == 'AUTOMAAT' and 7 < roster_drag.get('quarter', 0) < 20 \
+            and garage['cars']['crc12_jackstand_240']['record']['runs'] >= 1
+        report['checks']['scirocco_wear_untouched_by_roster_car'] = page.evaluate("() => __EA888_DEBUG__.stateWear()") == wear_before
+        click(page, '[data-action="finish-to-overview"]')
+        page.evaluate("window.__EA888_DEBUG__.holdFinishForTest(false)")
+        page.wait_for_selector('#race-game-root .v8-game', state='detached', timeout=30000)
+        click(page, '[data-nav="bank"]')
+        click(page, '[data-drive-car="scirocco"]')
+        report['checks']['back_to_scirocco'] = page.evaluate("() => __EA888_DEBUG__.garage().active") == 'scirocco'
+        print('CHECKPOINT roster car done', flush=True)
+
         # Explicitly confirm the navigation does not overlap the main content area.
         overlap = page.evaluate("""
           () => {

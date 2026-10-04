@@ -1245,3 +1245,15 @@ body {
 .roster-card em { font-style: normal; color: var(--muted); font-size: .92em; }
 .v12-roster-head { margin-top: 14px; }
 .v12-roster-picker button small { white-space: normal; }
+.garage-cars-card .garage-car { align-items: center; }
+.garage-cars-card .garage-car.active { border-color: rgba(255, 173, 32, .45); }
+.garage-cars-card .garage-car.muted b { opacity: .7; }
+.garage-cars-card details summary { cursor: pointer; font-size: 11px; color: var(--muted); padding: 4px 0; }
+.garage-cars-card .garage-car > div small { white-space: normal; line-height: 1.45; }
+.garage-cars-card .run-row.garage-car { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.garage-cars-card .run-row.garage-car > span:first-child { width: auto; height: auto; min-height: 28px; padding: 4px 6px; text-align: center; font-size: 9px; line-height: 1.25; letter-spacing: .03em; white-space: normal; overflow-wrap: normal; }
+.garage-cars-card .run-row.garage-car > .btn, .garage-cars-card .run-row.garage-car > .part-row-mounted { justify-self: end; white-space: nowrap; }
+@media (max-width: 420px) {
+  .garage-cars-card .run-row.garage-car { grid-template-columns: 56px minmax(0, 1fr); }
+  .garage-cars-card .run-row.garage-car > .btn, .garage-cars-card .run-row.garage-car > .part-row-mounted { grid-column: 2; justify-self: start; }
+}

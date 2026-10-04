@@ -220,6 +220,8 @@ const rosterOpponentSuite = require('./test_roster_opponents.js');
 const partsCatalogSuite = require('./test_parts_catalog.js');
 // Buying parts: ownership, build cost, used offers.
 const economySuite = require('./test_economy.js');
+// The garage: buying and racing roster cars.
+const garageSuite = require('./test_garage.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -261,7 +263,8 @@ const report = {
   rosterCalibration: rosterCalibrationSuite,
   rosterOpponents: rosterOpponentSuite,
   partsCatalog: partsCatalogSuite,
-  economy: economySuite
+  economy: economySuite,
+  garage: garageSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

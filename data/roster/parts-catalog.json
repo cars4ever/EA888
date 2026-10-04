@@ -1768,6 +1768,8 @@
    "fromBudgetBoard": false,
    "slot": null,
    "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "possibleDuplicateOf": "Precision 7675 remanufactured turbo, T4, 1.15 divided",
+   "duplicateNote": "same car, same price; the roster names the PT7675 reman as this car's turbo",
    "id": "p093"
   },
   {

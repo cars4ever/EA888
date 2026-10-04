@@ -173,7 +173,8 @@
     "notes": [
      "power derived from the trap speed: trap mph is not a test for this car"
     ]
-   }
+   },
+   "price": null
   },
   {
    "id": "leroy",
@@ -422,7 +423,8 @@
      "build: TX2K26 (2026)"
     ],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "mullet",
@@ -722,7 +724,8 @@
      "approximate: the World Cup pass \"stopped accelerating late\" (thumb on the transbrake button pulled timing); the trap speed understates the power, and the power would have to come from that trap speed"
     ],
     "reason": null
-   }
+   },
+   "price": null
   },
   {
    "id": "mcflurry",
@@ -1037,7 +1040,8 @@
      "approximate: dyno 1,394 whp at 31 psi; the 7.12 pass ran 36-37 psi peak and 33 psi at the trap: different boost"
     ],
     "reason": null
-   }
+   },
+   "price": null
   },
   {
    "id": "ruby",
@@ -1281,7 +1285,8 @@
      "build: Texas Speed 427"
     ],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "blazer",
@@ -1379,7 +1384,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "toast",
@@ -1449,7 +1455,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "crown_vic_gt500",
@@ -1536,7 +1543,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "marauder",
@@ -1615,7 +1623,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "galaxie_cummins",
@@ -1692,7 +1701,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "lumberjack",
@@ -1847,6 +1857,78 @@
      "approximate: dyno 900 hp at 26 psi; for the 9.30 pass the boost was raised +5 (29.4 psi peak): different boost"
     ],
     "reason": null
+   },
+   "price": {
+    "totalUsd": {
+     "value": 7335,
+     "unit": "USD",
+     "kind": "modeled",
+     "source": null,
+     "reason": "aankoop plus alle uitgaven die in de video's voor deze auto genoemd zijn (deels marktwaarde, zoals het team telde); regels die bij de aankoop zaten, reserves en vermoedelijke dubbelen niet meegeteld",
+     "derivedFrom": {
+      "purchaseUsd": 5350,
+      "items": 6
+     }
+    },
+    "purchase": {
+     "value": 5350,
+     "unit": "USD",
+     "kind": "stated",
+     "source": {
+      "video": "SAwRbNvp22c",
+      "t": null
+     }
+    },
+    "items": [
+     {
+      "item": "Precision 7675 remanufactured turbo, T4, 1.15 divided",
+      "priceUsd": 700.0,
+      "source": {
+       "video": "SAwRbNvp22c",
+       "t": "45:31-48:04"
+      }
+     },
+     {
+      "item": "Turbo #2 reman upgrade (plus trade-in of #1)",
+      "priceUsd": 400.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "18:25"
+      }
+     },
+     {
+      "item": "Turbo drain line",
+      "priceUsd": 25.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "18:25"
+      }
+     },
+     {
+      "item": "Hose and 90 fitting",
+      "priceUsd": 100.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "20:24"
+      }
+     },
+     {
+      "item": "Wheel studs + lug nuts (~10 used)",
+      "priceUsd": 60.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "20:24"
+      }
+     },
+     {
+      "item": "Aeromotive 5.0 brushless fuel pump (rebuilt, valued half new)",
+      "priceUsd": 700.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "37:01-37:31"
+      }
+     }
+    ]
    }
   },
   {
@@ -2072,6 +2154,175 @@
      "basis": "unknown"
     },
     "notes": []
+   },
+   "price": {
+    "totalUsd": {
+     "value": 13590,
+     "unit": "USD",
+     "kind": "modeled",
+     "source": null,
+     "reason": "aankoop plus alle uitgaven die in de video's voor deze auto genoemd zijn (deels marktwaarde, zoals het team telde); regels die bij de aankoop zaten, reserves en vermoedelijke dubbelen niet meegeteld",
+     "derivedFrom": {
+      "purchaseUsd": 7000,
+      "items": 18
+     }
+    },
+    "purchase": {
+     "value": 7000,
+     "unit": "USD",
+     "kind": "stated",
+     "source": {
+      "video": "SAwRbNvp22c",
+      "t": null
+     },
+     "note": "delivered with LS, carb, nitrous, Powerglide"
+    },
+    "items": [
+     {
+      "item": "Oil pressure sending unit",
+      "priceUsd": 50.0,
+      "source": {
+       "video": "SAwRbNvp22c",
+       "t": "42:57"
+      }
+     },
+     {
+      "item": "Motion Raceworks shifter kit (scratch-and-dent, bought for $100, valued at fair market)",
+      "priceUsd": 400.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "11:42-13:58"
+      }
+     },
+     {
+      "item": "Axles",
+      "priceUsd": 100.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "14:25"
+      }
+     },
+     {
+      "item": "Fluids (Walmart)",
+      "priceUsd": 120.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "14:25"
+      }
+     },
+     {
+      "item": "Replacement hose after one melted",
+      "priceUsd": 125.0,
+      "source": {
+       "video": "B9BPtlgCxy8",
+       "t": "14:56"
+      }
+     },
+     {
+      "item": "Carburetor upgrade (TRC custom vs Quick Fuel Brawler 950)",
+      "priceUsd": 475.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "7:35, 25:22-25:58"
+      }
+     },
+     {
+      "item": "Header modification material",
+      "priceUsd": 137.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "25:22"
+      }
+     },
+     {
+      "item": "Texas Speed rotating assembly + PRC 237 heads (sponsored, half of $6,251 retail)",
+      "priceUsd": 3125.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "27:36-28:18"
+      }
+     },
+     {
+      "item": "Used camshaft",
+      "priceUsd": 150.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "29:01"
+      }
+     },
+     {
+      "item": "Used lifters",
+      "priceUsd": 100.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "29:01"
+      }
+     },
+     {
+      "item": "Used head studs + main studs",
+      "priceUsd": 300.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "30:16-31:01"
+      }
+     },
+     {
+      "item": "Stock rockers with trunnion upgrade",
+      "priceUsd": 100.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "31:01"
+      }
+     },
+     {
+      "item": "Used pushrods",
+      "priceUsd": 50.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "31:21"
+      }
+     },
+     {
+      "item": "Covers (stock valley cover etc.)",
+      "priceUsd": 125.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "32:23"
+      }
+     },
+     {
+      "item": "Timing component kit (used)",
+      "priceUsd": 75.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "34:10"
+      }
+     },
+     {
+      "item": "6.0 L block (fair market)",
+      "priceUsd": 600.0,
+      "source": {
+       "video": "PSGvE8jkSoc",
+       "t": "32:48-34:33"
+      }
+     },
+     {
+      "item": "Air cleaner",
+      "priceUsd": 18.0,
+      "source": {
+       "video": "-dDkkIHyQRM",
+       "t": "2:29"
+      }
+     },
+     {
+      "item": "Motion Raceworks valve covers (paid $100; retail $540 without fittings)",
+      "priceUsd": 540.0,
+      "source": {
+       "video": "-dDkkIHyQRM",
+       "t": "21:28-21:53"
+      }
+     }
+    ]
    }
   },
   {
@@ -2162,7 +2413,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "crc12_tom_bailey_camaro",
@@ -2262,7 +2514,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "crc3_gen1_s10",
@@ -2363,7 +2616,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "crc3_95_mustang",
@@ -2454,7 +2708,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "crc3_240sx_hatch",
@@ -2591,6 +2846,19 @@
     },
     "notes": [],
     "reason": null
+   },
+   "price": {
+    "totalUsd": {
+     "value": 10374,
+     "unit": "USD",
+     "kind": "stated",
+     "source": {
+      "video": "JguV0Y7ZbD0",
+      "t": null
+     },
+     "note": "sum of listed items"
+    },
+    "items": []
    }
   },
   {
@@ -2706,7 +2974,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   },
   {
    "id": "giveaway_zr1_sep",
@@ -2903,7 +3172,8 @@
     "notes": [
      "weight derived from the trap speed: trap mph is not a test for this car"
     ]
-   }
+   },
+   "price": null
   },
   {
    "id": "cleetus_c8_zr1",
@@ -3006,7 +3276,8 @@
     },
     "notes": [],
     "reason": "weight and power not both known or derivable"
-   }
+   },
+   "price": null
   }
  ]
 }

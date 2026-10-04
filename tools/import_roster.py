@@ -409,6 +409,15 @@ GROUPS = [
 ]
 
 
+# Lines that are probably one part seen twice, beyond what the automatic check finds, with why.
+DUPLICATE_HINTS = [
+    ('lumberjack', 'Turbo #1', 'Precision 7675 remanufactured turbo, T4, 1.15 divided',
+     'same car, same price; the roster names the PT7675 reman as this car\'s turbo'),
+]
+# Lines of a car's spending that are not extra cost on top of its purchase price.
+NOT_EXTRA = r'installed by seller|came with car|spare, not installed|not installed|to be sold'
+
+
 def words(t):
     return {w for w in re.findall(r'[a-z0-9]+', (t or '').lower()) if len(w) > 2}
 
@@ -478,9 +487,34 @@ def build_catalog(cal):
                 'overig': 'geen passend onderdeelslot',
             }[group]
         parts.append(entry)
+    for car_id, item, of, why in DUPLICATE_HINTS:
+        for e in parts:
+            if e['carId'] == car_id and e['item'] == item and not e.get('possibleDuplicateOf'):
+                e['possibleDuplicateOf'] = of
+                e['duplicateNote'] = why
     for i, e in enumerate(parts):
         e['id'] = f"p{i + 1:03d}"
     return parts, apart, merged
+
+
+def car_price(car, parts):
+    """What the car cost, as far as the research says: the budget board's total when the team kept one, else the
+    purchase plus every listed spend on that car (lines included in the purchase, spares and probable duplicates
+    left out). None when neither is known: such a car is not for sale."""
+    b, p = car.get('budgetSpentUsd'), car.get('purchaseUsd')
+    if b and b.get('value'):
+        return {'totalUsd': val(b['value'], 'USD', b.get('kind') or 'stated', (b.get('source') or {}).get('video'), None,
+                                b.get('note') or 'sum of the budget board'), 'items': []}
+    if p and p.get('value'):
+        items = [{'item': e['item'], 'priceUsd': e['priceUsd'], 'source': e['source']} for e in parts
+                 if e['carId'] == car['id'] and not e.get('possibleDuplicateOf') and not re.search(NOT_EXTRA, e['item'], re.I)]
+        total = p['value'] + sum(i['priceUsd'] for i in items)
+        return {'totalUsd': val(round(total), 'USD', 'modeled', None, None, None,
+                                reason='aankoop plus alle uitgaven die in de video\'s voor deze auto genoemd zijn (deels marktwaarde, zoals het team telde); '
+                                       'regels die bij de aankoop zaten, reserves en vermoedelijke dubbelen niet meegeteld',
+                                derivedFrom={'purchaseUsd': p['value'], 'items': len(items)}),
+                'purchase': p, 'items': items}
+    return None
 
 
 def main():
@@ -550,17 +584,19 @@ def main():
                            'reason': None if usable else 'weight and power not both known or derivable'}
 
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / 'cars.json').write_text(json.dumps({'schemaVersion': 1, 'source': source, 'about': roster.get('about'),
-                                               'kinds': kinds, 'cars': cars}, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
     (OUT / 'calibration.json').write_text(json.dumps({'schemaVersion': 1, 'source': source,
                                                       'points': points, 'excluded': excluded}, indent=1, ensure_ascii=False) + '\n',
                                           encoding='utf-8')
     parts, apart, merged = build_catalog(cal)
+    for car in cars:
+        car['price'] = car_price(car, parts) if car['opponent']['usable'] else None
     (OUT / 'parts-catalog.json').write_text(json.dumps({
         'schemaVersion': 1, 'source': source, 'currency': 'USD',
         'about': 'Onderdelen met prijs uit de video\'s (meest tweedehands). priceUsd = betaald of door het team gewaardeerd; '
                  'condition uit de beschrijving (used / new / scratch_and_dent / sponsored / remanufactured; null = niet gezegd).',
         'parts': parts, 'notInCatalog': apart, 'mergedDuplicates': merged}, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+    (OUT / 'cars.json').write_text(json.dumps({'schemaVersion': 1, 'source': source, 'about': roster.get('about'),
+                                               'kinds': kinds, 'cars': cars}, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
     names_path = OUT / 'display-names.json'
     names = json.loads(names_path.read_text(encoding='utf-8')) if names_path.exists() else {}
     names.setdefault('_about', 'Weergavenamen in het spel. Pas ze vrij aan; een nieuwe import overschrijft ze niet.')

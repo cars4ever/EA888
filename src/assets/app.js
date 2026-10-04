@@ -211,7 +211,7 @@
   }
   function buildRivalSimulation() {
     const round = raceGame?.careerRound;
-    if (round && currentCompletedDyno()) {
+    if (round && raceReady().ok) {
       // Career round: the planned rival with its own reaction and consistency; in a bracket the lanes start
       // apart by the dial difference (the slower dial goes first).
       const profile = RIVALS[round.plan.rivalId] || RIVALS.street;
@@ -223,7 +223,7 @@
       return { profile, reactionTime, startOffset, result: { ...pass, quarter, trace, reactionTime, finishTotalTime: startOffset + reactionTime + launchToFinish }, trace,
         current: { time: 0, distanceM: 0, speedKmh: 0, rpm: 900, gear: 1 }, finished: false };
     }
-    if (!raceIsHeadsUp() || !currentCompletedDyno()) return null;
+    if (!raceIsHeadsUp() || !raceReady().ok) return null;
     const profile = selectedRival();
     const pass = rivalPass(profile);
     const runNumber = (state.dragRuns?.length || 0) + 1;
@@ -1155,6 +1155,28 @@
   function currentDyno() { return C.isDynoCurrent(state); }
   // Only a current AND completed pull may be presented as the build's result.
   function currentCompletedDyno() { return currentDyno() && C.isCompletedDyno(state.lastDyno); }
+  // The car you race: the Scirocco project, or a roster car from your garage (its own engine curve, gearbox,
+  // converter, weight and tyres, on this strip's weather and prep). Motor, tune and dyno stay the Scirocco's.
+  function activeRosterId() { const g = C.garageOf(state); return g.active !== 'scirocco' ? g.active : null; }
+  function rosterName(id) { return C.rosterCarData(id)?.displayName || id; }
+  function raceCarState() {
+    const id = activeRosterId();
+    if (!id) return state;
+    const v = state.vehicle, cond = {};
+    for (const k of ['ambientTempC', 'trackTempC', 'altitudeM', 'humidityPct', 'headwindKmh', 'preparedTrack', 'raceMode', 'rivalLevel',
+      'burnoutRpm', 'burnoutLimiter', 'steeringAssistPct', 'steeringSensitivityPct']) if (v[k] != null) cond[k] = v[k];
+    return C.rosterState(id, cond);
+  }
+  // Can the active car race? The Scirocco needs a completed pull of its current build; a roster car runs on its
+  // measured curve, but not once it is worn through until it is rebuilt.
+  function raceReady() {
+    const id = activeRosterId();
+    if (id) {
+      const car = C.garageOf(state).cars[id];
+      return car?.record?.out ? { ok: false, why: `${rosterName(id)} is kapot: eerst reviseren in de garage.` } : { ok: true };
+    }
+    return currentCompletedDyno() ? { ok: true } : { ok: false, why: 'Voer eerst een volledige, geldige dynopull uit.' };
+  }
   function dynoIsPartial(r) { return !!r && !C.isCompletedDyno(r); }
   // Measured value text: completed runs show the value, aborted runs the
   // highest value observed before the abort (labelled), otherwise '—'.
@@ -1634,6 +1656,7 @@
         <button data-go="drag"><span>${icon('race')}</span><b>Race</b><small>Tree, setup en timeslip</small></button>
       </div>
 
+      ${garageCarsCard()}
       <div class="section-head"><div><span class="eyebrow">Build slots</span><h2>Drie projecten naast elkaar</h2></div></div>
       <div class="build-slots">${[0,1,2].map(i => buildSlotCard(i, state.buildSlots?.[i])).join('')}</div>
 
@@ -1660,6 +1683,33 @@
     </section>`;
   }
 
+  // The garage: the Scirocco project and the roster cars you can buy and race. A car is for sale only when the
+  // research gives what it cost; the price says whether it is the team's own total or summed from their spending.
+  function garageCarsCard() {
+    const g = C.garageOf(state), active = g.active, bank = Number(state.bank || 0);
+    const kind = x => KIND_LABEL[x?.kind] || '';
+    const order = o => (g.cars[o.id] ? 0 : C.rosterCarPrice(o.id) ? 1 : 2);
+    const rows = C.rosterOpponents().slice().sort((a, b) => order(a) - order(b)).map(o => {
+      const car = C.rosterCarData(o.id), mine = g.cars[o.id], price = C.rosterCarPrice(o.id), bp = car.bestPass;
+      const real = bp?.et?.value ? `echt ${bp.et.value.toFixed(2)} s${bp.mph?.value ? ` @ ${bp.mph.value} mph` : ''}` : 'geen echte run';
+      if (mine) {
+        const rec = mine.record || {};
+        const best = mine.best ? `jouw beste ${mine.best.quarter.toFixed(3)} s @ ${Math.round(mine.best.trapKmh)} km/u` : 'nog geen pass';
+        const actions = rec.out
+          ? `<button class="btn small" data-rebuild-car="${o.id}" ${bank >= C.REBUILD_BASE_EUR ? '' : 'disabled'}>Reviseren · ${euro(C.REBUILD_BASE_EUR)}</button>`
+          : active === o.id ? '<span class="part-row-mounted">Rijdt</span>' : `<button class="btn small" data-drive-car="${o.id}">Rijden met deze auto</button>`;
+        return `<div class="run-row garage-car ${active === o.id ? 'active' : ''}"><span>IN BEZIT</span><div><b>${esc(o.displayName)}</b><small>${best} · ${real} · ${rec.runs || 0} runs · slijtage motor ${Math.round(rec.wear?.engine || 0)}% / bak ${Math.round(rec.wear?.transmission || 0)}%${rec.out ? ' · <b>kapot</b>' : ''}</small></div>${actions}</div>`;
+      }
+      if (!price) return `<div class="run-row garage-car muted"><span>NIET TE KOOP</span><div><b>${esc(o.displayName)}</b><small>${real} · niet te koop: het onderzoek noemt geen prijs</small></div></div>`;
+      const items = price.items.length ? `<details><summary>${price.items.length} uitgaven bovenop de aankoop van $${Math.round(price.value.derivedFrom?.purchaseUsd || 0)}</summary>${price.items.map(i => `<small>$${Math.round(i.priceUsd)} · ${esc(i.item)}</small>`).join('<br>')}</details>` : '';
+      return `<div class="run-row garage-car"><span>TE KOOP</span><div><b>${esc(o.displayName)}</b><small>${real} · $${Math.round(price.usd)} ${kind(price.value)} (≈ ${euro(price.eur)})${price.value.kind === 'modeled' ? ' · som van de genoemde uitgaven' : ' · budgetbord van het team'}</small>${items}</div><button class="btn small" data-buy-car="${o.id}" ${bank >= price.eur ? '' : 'disabled'}>Kopen · ${euro(price.eur)}</button></div>`;
+    }).join('');
+    return `<div class="card garage-cars-card"><div class="section-head small"><div><span class="eyebrow">Garage · racewagen: ${esc(active === 'scirocco' ? state.buildName : rosterName(active))}</span><h2>Je auto's</h2><p class="muted">Motor, tune en dyno zijn van je Scirocco-project; de race rijdt met de auto die je hier kiest. Een echte auto rijdt op zijn gemeten kromme, met zijn eigen bak, converter, gewicht en banden.</p></div></div>
+      <div class="run-table">
+        <div class="run-row garage-car ${active === 'scirocco' ? 'active' : ''}"><span>PROJECT</span><div><b>${esc(state.buildName)}</b><small>EA888-build · motor, tune en dyno in de app</small></div>${active === 'scirocco' ? '<span class="part-row-mounted">Rijdt</span>' : '<button class="btn small" data-drive-car="scirocco">Rijden met deze auto</button>'}</div>
+        ${rows}
+      </div></div>`;
+  }
   function buildSlotCard(index, slot) {
     if (!slot) return `<article class="build-slot empty"><span>0${index + 1}</span><div><b>Leeg buildslot</b><small>Sla de huidige hardware, tune, montage en voertuigsetup op.</small></div><button class="btn small" data-save-slot="${index}">Opslaan</button></article>`;
     const turboId = slot.selections?.turbo;
@@ -3309,7 +3359,8 @@
   // "caution" where the grip has fallen ~12 % from overheating. heatPerLevel is the slope of the stored-
   // warmth setup slider (gripFactor); heatRate only feeds the legacy quick burnout.
   function burnoutProfile() {
-    const id = state.vehicle.tireCompound;
+    // the tyres of the car that races (a roster car brings its own)
+    const id = (raceGame?.carState || (activeRosterId() ? raceCarState() : state)).vehicle.tireCompound;
     const t = C.TYRE[id] || C.TYRE.uhp;
     const heatPerLevel = { street: .28, uhp: .42, semislick: .55 }[id] ?? .72;
     const heatRate = { street: 9.5, uhp: 11.5, semislick: 13.5, drag_radial: 16.5, slick: 17.5 }[id] ?? 18.5;
@@ -3416,7 +3467,7 @@
         ${Number.isFinite(run.hopS) ? `<div class="v12-analysis-card ${run.hopS > .2 ? 'loss' : ''}"><span>WHEEL HOP</span><b>${run.hopS > .05 ? `${run.hopS.toFixed(1)} s` : 'geen'}</b><small>${run.hopS > .2 ? 'steunen/bussen (Bouw → Steunen) of TC dempen het' : `${esc(C.getPart(state, 'mounts').name)}`}</small></div>` : ''}
         ${Number.isFinite(run.knockEvents) ? `<div class="v12-analysis-card ${run.knockDamagePct > 0 ? 'loss' : ''}"><span>KLOP</span><b>${run.knockEvents} cycli</b><small>${run.knockDamagePct > 0 ? `zonder knock control · schade +${run.knockDamagePct.toFixed(2)}%` : run.kcMaxRetardDeg > .05 ? `knock control max −${run.kcMaxRetardDeg.toFixed(1)}°` : 'geen klop'}</small></div>` : ''}
         <div class="v12-analysis-card"><span>RIJLIJN</span><b>${Number(maxLane || 0).toFixed(2)} m</b><small>${run.lineTouches || 0} correcties · ${run.laneDnf ? 'run ongeldig' : 'binnen de strip'}</small></div>
-        <div class="v12-analysis-card"><span>AANDRIJFLIJN</span><b>${Number(run.maxClutchTempC || 0).toFixed(0)}°C koppeling</b><small>${Number(run.maxGearboxTempC || 0).toFixed(0)}°C bak · stress ${Number(run.drivelineStress || 0).toFixed(0)}%</small></div>
+        <div class="v12-analysis-card"><span>AANDRIJFLIJN</span><b>${Number(run.maxClutchTempC || 0).toFixed(0)}°C ${run.converter ? 'converterolie' : 'koppeling'}</b><small>${Number(run.maxGearboxTempC || 0).toFixed(0)}°C bak · stress ${Number(run.drivelineStress || 0).toFixed(0)}%</small></div>
         <div class="v12-analysis-card"><span>BEGRENZER</span><b>${Number(run.limiterTimeS || 0).toFixed(2)} s</b><small>Schakelscore ${run.shiftScore || 0}/100 · ${run.transmissionMode || '—'}</small></div>
       </div>
       <div class="log-actions"><small>Alle racekanalen (snelheid, rpm, boost, slip, koppeling, koppel, EGT, rijlijn) per 35 ms.</small><button class="btn ghost small" data-action="export-race-log">Racelog (CSV)</button></div>
@@ -3461,7 +3512,7 @@
     return Math.round((mean + 0.04) * 100) / 100;
   }
   function renderCareerPanel() {
-    const c = state.career || C.defaultCareer(), a = c.active, ready = currentCompletedDyno();
+    const c = state.career || C.defaultCareer(), a = c.active, ready = raceReady().ok;
     const bank = euro(state.bank);
     let activeCard = '';
     if (a) {
@@ -3525,7 +3576,7 @@
   }
 
   function renderDrag() {
-    const ready = currentCompletedDyno();
+    const ready = raceReady().ok;
     const v = state.vehicle;
     const fit = C.wheelFitment(v);
     const last = state.lastDrag;
@@ -3541,7 +3592,7 @@
       panel = `<div class="race-setup-panel v7-setup-panel">
         <div class="section-head"><div><span class="eyebrow">Chassis & banden</span><h2>Dragsetup</h2><p>Wielmaat, druk, massa, temperatuur en aandrijving worden rechtstreeks in de kwartmijlsimulatie gebruikt.</p></div><div class="setup-badge"><span>DENSITY ALTITUDE</span><b>${Math.round(da)} m</b></div></div>
         <div class="v12-race-weekend-card">
-          <div><span class="eyebrow">Raceweekend</span><h3>${headsUp ? 'Heads-up duel' : 'Solo testpass'}</h3><p>${headsUp ? `Tegen ${esc(rival.name)} · ${esc(rival.description)}` : 'Rijd zonder tegenstander en focus volledig op setup, schakelen en rijlijn.'}</p></div>
+          <div><span class="eyebrow">Raceweekend · racewagen ${esc(activeRosterId() ? rosterName(activeRosterId()) : state.buildName)}</span><h3>${headsUp ? 'Heads-up duel' : 'Solo testpass'}</h3>${activeRosterId() && !state.vehicle.preparedTrack ? '<p class="muted">Een echte dragauto op een niet-geprepareerde baan: zijn drag radials grijpen hier slecht, verwacht wielspin. Zet de baan op geprepareerd voor een strip zoals in de video\'s.</p>' : ''}<p>${headsUp ? `Tegen ${esc(rival.name)} · ${esc(rival.description)}` : 'Rijd zonder tegenstander en focus volledig op setup, schakelen en rijlijn.'}</p></div>
           <div class="v12-mode-toggle"><button class="${!headsUp?'active':''}" data-race-mode="solo">SOLO</button><button class="${headsUp?'active':''}" data-race-mode="heads_up">HEADS-UP</button></div>
         </div>
         ${raceAdviceCard()}
@@ -3661,7 +3712,7 @@
       `0–100    ${f(r.zeroTo100)} s${duel}\n` +
       `Wheelspin ${f(r.wheelspinPct,0)}% · ${shiftLine}\n` +
       `Rijlijn  ${f(r.maxLaneOffsetM,2)} m max · ${r.lineTouches || 0} correcties\n` +
-      `Driveline ${f(r.maxClutchTempC,0)}°C clutch · ${f(r.maxGearboxTempC,0)}°C bak · ${f(r.drivelineStress,0)}% stress\n` +
+      `Driveline ${f(r.maxClutchTempC,0)}°C ${r.converter ? 'converter' : 'clutch'} · ${f(r.maxGearboxTempC,0)}°C bak · ${f(r.drivelineStress,0)}% stress\n` +
       `Limiter  ${f(r.limiterTimeS,2)} s\n` +
       (r.turbo ? `Turbo    as max ${f(r.turbo.maxShaftPct,0)}% · EGT max ${f(r.turbo.maxEgtC,0)}°C · EMP ${f(r.turbo.maxEmpBar,2)} bar\nALS      ${f(r.turbo.alsSeconds,1)} s · brandstof ${f(r.turbo.fuelUsedG,0)} g · ${r.flames || 0} vlammen\n` : '') +
       `${r.drivetrain || state.vehicle.drivetrain} · ${r.tireName || C.TIRE_MAP[state.vehicle.tireCompound]?.name}\n${r.tireSize || ''} op ${r.wheelSpec || ''} · Ø ${f(r.tireDiameterMm,0)} mm`;
@@ -3745,7 +3796,7 @@
 
   function startBurnout(pointerId = null) {
     if (activeTab !== 'drag' || racePanel !== 'tree') return;
-    if (!currentCompletedDyno()) return showToast('Voer eerst een volledige, geldige dynopull uit.');
+    if (!raceReady().ok) return showToast(raceReady().why);
     if (racePhase === 'running') return;
     clearTreeTimers(); resetTreeBulbs();
     if (dragAnimation) { cancelAnimationFrame(dragAnimation); dragAnimation = null; }
@@ -3849,7 +3900,7 @@
   function bulbs(names, on = true) { names.forEach(n => $(`[data-bulb="${n}"]`)?.classList.toggle('on', on)); }
 
   function stageTree(auto = false) {
-    if (!currentCompletedDyno()) return showToast('Voer eerst een volledige, geldige dynopull uit.');
+    if (!raceReady().ok) return showToast(raceReady().why);
     if (auto) idealBurnout();
     else stopBurnout({ silent: true });
     clearTreeTimers(); resetTreeBulbs(); haptic(18);
@@ -4021,9 +4072,12 @@
   }
 
   function v7GameHeader(label, step, hint = '') {
-    const dyno = currentCompletedDyno() ? state.lastDyno : null;
-    const hp = dyno ? Math.round(dyno.peakHp) : '?';
-    const nm = dyno ? Math.round(dyno.peakTorqueNm) : '?';
+    const rc = raceGame?.carState?.rosterCar;
+    const spec = rc ? C.rosterSpec(rc.id) : null;
+    const dyno = !rc && currentCompletedDyno() ? state.lastDyno : null;
+    // a roster car shows its quoted power (crank) and the curve's peak torque, not the Scirocco's dyno
+    const hp = spec ? Math.round(spec.values.enginePowerHp.value) : dyno ? Math.round(dyno.peakHp) : '?';
+    const nm = spec ? Math.round(spec.engine.peakTorqueNm) : dyno ? Math.round(dyno.peakTorqueNm) : '?';
     return `<header class="v8-game-header">
       <div class="v8-game-brand"><strong>EA888 <em>LAB</em></strong><small>BOUW · MEET · OVERLEEF · RACE</small></div>
       <div class="v8-game-output"><span>${hp} pk</span><span>${nm} Nm</span></div>
@@ -4173,7 +4227,7 @@
           <h2>${r ? r.trapKmh.toFixed(1) : '—'} km/u</h2>
           ${r?.career ? `<div class="career-round-line ${r.career.won ? 'win' : 'loss'}"><b>Ronde ${r.career.round} · ${r.career.won ? 'door' : 'uitgeschakeld'}</b><span>${esc(r.career.reason)}${r.career.format === 'bracket' ? ` · dial ${r.career.dialIn.toFixed(2)} / ET ${r.quarter.toFixed(3)}` : ''}</span></div>` : ''}
           ${headsUp ? `<div class="v12-duel-result"><section><small>JIJ</small><b>${r.finishTotalTime.toFixed(3)} s</b><span>RT ${r.reactionTime.toFixed(3)} · ET ${r.quarter.toFixed(3)}</span></section><em>VS</em><section><small>${esc(r.opponentName)}</small><b>${r.opponentFinishTotalTime.toFixed(3)} s</b><span>RT ${r.opponentReactionTime.toFixed(3)} · ET ${r.opponentQuarter.toFixed(3)}</span></section></div>` : ''}
-          <div class="v12-finish-data"><b>Reactietijd</b><span>${r ? `${r.reactionTime >= 0 ? '+' : ''}${r.reactionTime.toFixed(3)} s` : '—'}</span><b>60 ft</b><span>${r ? `${r.sixtyFt.toFixed(3)} s` : '—'}</span><b>1/8 mijl</b><span>${r ? `${r.eighth.toFixed(3)} s` : '—'}</span><b>Schakelen</b><span>${esc(shiftText)}</span><b>Rijlijn</b><span>${r ? `${Number(r.maxLaneOffsetM || 0).toFixed(2)} m max · ${r.lineTouches || 0} correcties` : '—'}</span><b>Aandrijflijn</b><span>${r ? `${Number(r.maxClutchTempC||0).toFixed(0)}°C koppeling · ${Number(r.maxGearboxTempC||0).toFixed(0)}°C bak` : '—'}</span>${r?.reward ? `<b>Winstpremie</b><span class="reward">+${euro(r.reward)}</span>` : ''}</div>
+          <div class="v12-finish-data"><b>Reactietijd</b><span>${r ? `${r.reactionTime >= 0 ? '+' : ''}${r.reactionTime.toFixed(3)} s` : '—'}</span><b>60 ft</b><span>${r ? `${r.sixtyFt.toFixed(3)} s` : '—'}</span><b>1/8 mijl</b><span>${r ? `${r.eighth.toFixed(3)} s` : '—'}</span><b>Schakelen</b><span>${esc(shiftText)}</span><b>Rijlijn</b><span>${r ? `${Number(r.maxLaneOffsetM || 0).toFixed(2)} m max · ${r.lineTouches || 0} correcties` : '—'}</span><b>Aandrijflijn</b><span>${r ? `${Number(r.maxClutchTempC||0).toFixed(0)}°C ${r.converter ? 'converterolie' : 'koppeling'} · ${Number(r.maxGearboxTempC||0).toFixed(0)}°C bak` : '—'}</span>${r?.reward ? `<b>Winstpremie</b><span class="reward">+${euro(r.reward)}</span>` : ''}</div>
           <div class="v13-finish-actions">
             ${replayAvailable() ? '<button class="v8-finish-button secondary" data-action="finish-replay">BEKIJK REPLAY</button>' : ''}
             <button class="v8-finish-button" data-action="finish-to-overview">NAAR RACEOVERZICHT</button>
@@ -4237,7 +4291,10 @@
     return true;
   }
   function makeRaceTurbo() {
-    try { return C.createTurboRuntime(state); } catch (e) { return null; }
+    try {
+      const rs = raceGame?.carState || raceCarState();
+      return rs.rosterCar ? C.rosterTurboRuntime(rs.rosterCar.engine) : C.createTurboRuntime(state);
+    } catch (e) { return null; }
   }
   // Continuous ALS pops at the simulated pop rate while ALS fires.
   // Sustained ALS flame: bangs that follow each other faster than a flame dies out overlap into one
@@ -4286,12 +4343,13 @@
   function applyRaceTurboWear() {
     if (!raceGame?.turbo || raceGame.turboWearApplied) return;
     raceGame.turboWearApplied = true;
+    if (raceGame.turbo.curve) return; // a roster car: no turbo model behind its dyno curve, nothing on the Scirocco
     state = C.applyRuntimeWear(state, raceGame.turbo.state);
     if (raceGame.turbo.state.alsSeconds > 0.2) pushHistory({ type: 'als', label: `Anti-lag ${raceGame.turbo.state.alsSeconds.toFixed(1)} s · EGT max ${Math.round(raceGame.turbo.state.maxEgtC)} °C` });
   }
 
   function startDragGame(auto = false) {
-    if (!currentCompletedDyno()) return showToast('Voer eerst een volledige, geldige dynopull uit.');
+    if (!raceReady().ok) return showToast(raceReady().why);
     closeDragGame({ silent:true, noRender:true });
     const profile = burnoutProfile();
     const startingTemp = clamp(profile.trackC + 2, profile.trackC, profile.targetC - 8);
@@ -4311,15 +4369,18 @@
       run:null,
       finishResult:null,
       rivalProfile:raceIsHeadsUp() ? selectedRival() : null,
-      turbo:makeRaceTurbo(),
-      alsInfo:C.resolveAntiLag(state),
+      carState:raceCarState(),
+      turbo:null,
+      alsInfo:null,
       flameLog:[],
       popClock:0,
       turboWearApplied:false
     };
+    raceGame.turbo = makeRaceTurbo();
+    raceGame.alsInfo = C.resolveAntiLag(raceGame.carState);
     // Burnout on the vehicle model; the tyres start at the track temperature (the car rolled in cold).
     try {
-      raceGame.burnRt = C.createBurnoutRuntime(state, { turbo: raceGame.turbo, targetRpm: Number(state.vehicle.burnoutRpm || 5000), startC: profile.trackC });
+      raceGame.burnRt = C.createBurnoutRuntime(raceGame.carState, { turbo: raceGame.turbo, targetRpm: Number(state.vehicle.burnoutRpm || 5000), startC: profile.trackC });
       raceGame.tyreThermal = { ...raceGame.burnRt.tyreThermal };
       Object.assign(raceGame.burn, { surfaceC: profile.trackC, bulkC: profile.trackC, tempC: predictedLaunchTyreC(raceGame.burnRt.tyreThermal) });
     } catch (e) { logAppError('burnout', e); }
@@ -4503,7 +4564,7 @@
       }
     }
     s.staged = s.progress >= 56 && s.progress <= 82 && !s.deep;
-    const target = Number(state.tune.launchRpm || 4200);
+    const target = Number((raceGame?.carState || state).tune.launchRpm || 4200);
     // Launch ALS: with anti-lag armed (Tune -> Anti-lag not off) the two-step itself fires the ALS, as on a
     // Syvecs-style launch strategy. HOLD ANTILAG additionally builds boost without the two-step.
     const launchAls = !!raceGame.alsInfo?.enabled && throttle && s.staged;
@@ -4512,7 +4573,7 @@
     const targetRpm = throttle && s.staged ? target : alsHeld ? raceGame.alsInfo.params.targetRpm * .92 : 900;
     s.rpm += (targetRpm - s.rpm) * Math.min(1, dt * (throttle ? 4.25 : 5.2));
     s.rpm += throttle && s.staged ? Math.sin(now * .017) * 42 : 0;
-    s.rpm = clamp(s.rpm, 850, Number(state.tune.revLimitRpm || 8000));
+    s.rpm = clamp(s.rpm, 850, Number((raceGame?.carState || state).rosterCar?.engine?.revLimit || state.tune.revLimitRpm || 8000));
 
     // Auto-start system (as at the strip): once fully staged the tree activates after a random 0.5-5 s,
     // whether or not the driver is on the two-step. Rolling out of stage or going deep resets it.
@@ -4548,7 +4609,7 @@
   function updateV7StageDom() {
     if (!raceGame?.stage) return;
     const s = raceGame.stage;
-    const target = Number(state.tune.launchRpm || 4200);
+    const target = Number((raceGame?.carState || state).tune.launchRpm || 4200);
     updateV7Tach('v7-stage', s.rpm, 1);
 
     const marker = $('#v7-stage-marker');
@@ -4676,12 +4737,14 @@
     startV7Run(reactionTime,auto);
   }
 
-  function raceTransmissionInfo() {
-    const part = selectedTransmission();
+  function raceTransmissionInfo(rs = state) {
+    const part = rs.rosterCar ? C.transmissionFor(rs) : selectedTransmission();
+    const id = rs.rosterCar ? part.id : selectedTransmissionId();
     return {
-      id: selectedTransmissionId(),
+      id,
       part,
-      isDsg: selectedTransmissionId() === 'dq250',
+      // a planetary automatic (Powerglide, TH400, a factory box) shifts itself, like the DSG
+      isDsg: id === 'dq250' || C.drivelineFor(rs, part).type === 'converter',
       gears: Array.isArray(part.gearRatios) ? part.gearRatios.slice() : [3.36,2.09,1.47,1.10,.86,.72],
       finalDrive: Number(part.finalDrive || 3.94),
       shiftSeconds: Math.max(.035, Number(part.shiftSeconds || .25)),
@@ -4715,29 +4778,30 @@
   }
 
   function createRealtimeRun(reactionTime, auto = false) {
-    const transInfo = raceTransmissionInfo();
-    const drive = C.DRIVETRAINS[state.vehicle.drivetrain];
-    const grip = C.gripFactor(state.vehicle);
+    const rs = raceGame?.carState || state;
+    const transInfo = raceTransmissionInfo(rs);
+    const drive = C.DRIVETRAINS[rs.vehicle.drivetrain];
+    const grip = C.gripFactor(rs.vehicle);
     const geometry = C.engineGeometry(state);
-    const mass = C.buildMassKg(state);
-    const rho = C.airDensity(state.vehicle);
+    const mass = C.buildMassKg(rs);
+    const rho = C.airDensity(rs.vehicle);
     const dynoRho = Number(state.lastDyno?.airDensityKgM3 || 1.204);
     const burnout = burnoutAssessment(raceGame.burn.tempC);
     const actualTempFactor = clamp(.80 + (raceGame.burn.score || burnout.score) / 100 * .24, .76, 1.04);
     const opponent = buildRivalSimulation();
     // One vehicle model for the whole race (sim.js): engine map from the combustion model, the staging turbo
     // runtime (shaft speed built on the two-step carries over), clutch, tyres and load transfer.
-    const engineMap = C.buildEngineMap(state);
-    const launchFromRpm = Number(raceGame.stage?.launchFromRpm || state.tune.launchRpm || 4200);
-    const eventTrack = raceGame?.careerRound ? { ...state, vehicle: { ...state.vehicle, preparedTrack: !!C.CAREER_EVENT_MAP[raceGame.careerRound.eventId]?.prep } } : state;
-    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, bottleKg: nitrousBottleKg(), launchRpm: launchFromRpm, tractionControl: state.tune.tractionControl !== false });
+    const engineMap = rs.rosterCar ? C.curveEngineMap(rs.rosterCar.engine) : C.buildEngineMap(state);
+    const launchFromRpm = Number(raceGame.stage?.launchFromRpm || rs.tune.launchRpm || 4200);
+    const eventTrack = raceGame?.careerRound ? { ...rs, vehicle: { ...rs.vehicle, preparedTrack: !!C.CAREER_EVENT_MAP[raceGame.careerRound.eventId]?.prep } } : rs;
+    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, bottleKg: rs.rosterCar ? undefined : nitrousBottleKg(), launchRpm: launchFromRpm, tractionControl: rs.tune.tractionControl !== false });
     vehicleRt.state.we = launchFromRpm * Math.PI / 30;
     vehicleRt.launch();
     const run = {
       reactionTime: Number(reactionTime || 0), redLight: Number(reactionTime || 0) < 0,
       valid: Number(reactionTime || 0) >= 0, auto: !!auto,
       transInfo, autoShift: transInfo.isDsg, driverAssist: !!auto,
-      shiftTargets: C.optimalShiftRpms(state, engineMap),
+      shiftTargets: rs.rosterCar?.shiftRpm ? transInfo.gears.slice(0, -1).map(() => rs.rosterCar.shiftRpm) : C.optimalShiftRpms(rs, engineMap),
       rt: vehicleRt,
       shiftHistory: [], perfect: 0, good: 0, early: 0, late: 0, missed: 0,
       limiterFlags: new Set(), shifting: null,
@@ -4749,9 +4813,9 @@
       mass, rho, dynoRho, airPowerFactor: clamp(Math.pow(rho / dynoRho, .35), .86, 1.05),
       drive, grip, actualTempFactor, geometry,
       radius: Math.max(.18, Number(grip.geometry.radiusM || .327)),
-      cdA: Number(state.vehicle.cdA || .68),
-      wheelbase: Number(state.vehicle.wheelbaseM || 2.58),
-      cgHeight: Number(state.vehicle.cgHeightM || .51),
+      cdA: Number(rs.vehicle.cdA || .68),
+      wheelbase: Number(rs.vehicle.wheelbaseM || 2.58),
+      cgHeight: Number(rs.vehicle.cgHeightM || .51),
       transEff: transInfo.efficiency * (1 - Number(drive.loss || .1) * .34),
       headwind: Math.max(-20, Number(state.vehicle.headwindKmh || 0)) / 3.6,
       transferScale: clamp(.55 + Number(state.vehicle.suspensionTransferPct || 60) / 100 * .85, .55, 1.40),
@@ -4866,12 +4930,17 @@
       const h = Math.min(maxStep, remaining);
       remaining -= h;
       // Longitudinal physics: the shared vehicle model (engine, turbo, clutch, tyres, shifts).
-      const p = run.rt.step(h, { pedal: racePedal(), flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: !!raceGame.n2oArmed || (run.driverAssist && run.gearIndex >= 1) });
+      // a roster car's nitrous comes in on its own controller (delay and ramp), as on the real car
+      const rosterN2o = raceGame?.carState?.rosterCar?.nitrous;
+      const n2oOn = rosterN2o ? run.t >= rosterN2o.delayS : !!raceGame.n2oArmed || (run.driverAssist && run.gearIndex >= 1);
+      const p = run.rt.step(h, { pedal: racePedal(), flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: n2oOn });
       run.t = p.t;
       run.x = p.distanceM; run.v = p.v; run.a = p.a; run.rpm = p.rpm; run.gearIndex = p.gearIndex;
       run.wheelspin = clamp(p.slipRatio, 0, .95);
       run.peakWheelspin = Math.max(run.peakWheelspin, run.wheelspin);
-      run.clutchTempC = p.clutchTempC;
+      // a converter car has no clutch: its slip heat is in the converter fluid
+      run.clutchTempC = p.converter ? p.converter.fluidC : p.clutchTempC;
+      run.converter = !!p.converter;
       run.turboSnap = run.rt.state.turboSnap;
       const snap = run.turboSnap;
       const boostBar = Math.max(0, p.boostBar), turboLoad = p.shaftPct;
@@ -5520,18 +5589,22 @@
       shiftScore: run.autoShift ? 100 : Math.round(clamp(100 + run.perfect * 3 - run.early * 12 - run.late * 14 - run.missed * 18, 0, 100)),
       shiftHistory: run.shiftHistory.slice(),
       shifts: run.shiftHistory.length,
-      drivetrain: state.vehicle.drivetrain,
-      tireName: C.TIRE_MAP[state.vehicle.tireCompound]?.name || state.vehicle.tireCompound,
-      tireSize: `${state.vehicle.tireWidthMm}/${state.vehicle.aspectRatio} R${state.vehicle.rimDiameterIn}`,
+      // the car that ran: the Scirocco or a roster car from the garage
+      rosterId: (raceGame?.carState || state).rosterCar?.id || null,
+      carName: (raceGame?.carState || state).rosterCar ? rosterName((raceGame?.carState || state).rosterCar.id) : state.buildName,
+      drivetrain: (raceGame?.carState || state).vehicle.drivetrain,
+      tireName: C.TIRE_MAP[(raceGame?.carState || state).vehicle.tireCompound]?.name || (raceGame?.carState || state).vehicle.tireCompound,
+      tireSize: `${(raceGame?.carState || state).vehicle.tireWidthMm}/${(raceGame?.carState || state).vehicle.aspectRatio} R${(raceGame?.carState || state).vehicle.rimDiameterIn}`,
       // just the rim width: the diameter is already in tireSize ("430/53 R16"), and printing it twice read
       // as a duplicated size on the timeslip
-      wheelSpec: `${Number(state.vehicle.rimWidthIn || 0).toFixed(1)}J`,
-      tireDiameterMm: C.wheelFitment(state.vehicle).diameterMm,
+      wheelSpec: `${Number((raceGame?.carState || state).vehicle.rimWidthIn || 0).toFixed(1)}J`,
+      tireDiameterMm: C.wheelFitment((raceGame?.carState || state).vehicle).diameterMm,
       transmissionId: run.transInfo.id,
-      transmissionMode: run.autoShift ? 'DSG AUTO' : 'HANDMATIG',
+      transmissionMode: run.autoShift ? ((raceGame?.carState || state).rosterCar ? 'AUTOMAAT' : 'DSG AUTO') : 'HANDMATIG',
       lineTouches: run.lineTouches,
       maxLaneOffsetM: Math.max(...run.trace.map(p => Math.abs(Number(p.lateralM || 0))), Math.abs(run.lateralM)),
       maxClutchTempC:Number(run.maxClutchTempC || run.clutchTempC || 0),
+      converter:!!run.converter,
       maxGearboxTempC:Number(run.maxGearboxTempC || run.gearboxTempC || 0),
       limiterTimeS:Number(run.limiterTime || 0),
       hopS:Number(run.rt?.state.hopS || 0), hopMax:Number(run.rt?.state.hopMaxI || 0),
@@ -5555,7 +5628,7 @@
       turbo: run.turbo ? {
         maxEgtC: Math.round(run.turbo.state.maxEgtC), maxShaftPct: Math.round(run.turbo.state.maxShaftPct),
         maxEmpBar: +run.turbo.state.maxEmpBar.toFixed(2), alsSeconds: +run.turbo.state.alsSeconds.toFixed(2),
-        fuelUsedG: Math.round(run.turbo.state.fuelUsedG), mapType: C.getPart(state, 'turbo') && window.EA888Turbo?.DATA?.turbos?.[C.getPart(state, 'turbo').id]?.mapType || null
+        fuelUsedG: Math.round(run.turbo.state.fuelUsedG), mapType: run.turbo.curve ? 'dyno-curve' : C.getPart(state, 'turbo') && window.EA888Turbo?.DATA?.turbos?.[C.getPart(state, 'turbo').id]?.mapType || null
       } : null,
       flames: (raceGame?.flameLog || []).length,
       measuredAt: new Date().toISOString()
@@ -5564,6 +5637,7 @@
   }
 
   function commitV7DragResult(result){
+    if (result.rosterId) return commitRosterCarResult(result);
     applyRaceTurboWear();
     // a roster opponent ran this pass too: its own record, same wear rule and service schedule as the player
     const opp = raceGame?.run?.opponent;
@@ -5610,6 +5684,28 @@
   }
 
   let holdFinishForTest = false;   // smoke test: keep the finish screen up (slow software WebGL)
+  // A pass in a roster car from the garage: its own record (the same wear rule as every car), its own best,
+  // no wear on the Scirocco project; the reward and the opponent's record as for any race.
+  function commitRosterCarResult(result) {
+    const opp = raceGame?.run?.opponent;
+    if (opp?.profile?.rosterId) {
+      const done = C.applyRosterRun(state, opp.profile.rosterId, { ...opp.result, missedShifts: 0, drivelineStress: 0 });
+      state.rosterOpponents = done.rosterOpponents;
+      for (const ev of done.events) pushHistory({ type: 'rival', label: `${opp.profile.name}: ${ev}` });
+    }
+    const own = C.applyOwnedCarRun(state, result.rosterId, result);
+    state.garage = own.garage;
+    for (const ev of own.events) pushHistory({ type: 'garage', label: `${result.carName}: ${ev}` });
+    state.lastDrag = result; markOnboarding('raced');
+    state.dragRuns = Array.isArray(state.dragRuns) ? state.dragRuns : []; state.dragRuns.unshift({ ...result }); state.dragRuns = state.dragRuns.slice(0, 30);
+    if (result.reward > 0) {
+      state.bank += result.reward;
+      pushHistory({ type: 'reward', label: `Heads-up winst tegen ${result.opponentName}: +${euro(result.reward)}` });
+    }
+    const raceLabel = result.redLight ? 'Rood licht' : result.laneDnf ? 'Run ongeldig: buiten de baan' : result.raceMode === 'heads_up' ? `${result.won ? 'Heads-up winst' : 'Heads-up verlies'} tegen ${result.opponentName}` : 'Solo quarter-mile pass';
+    pushHistory({ type: 'drag', label: `${result.carName}: ${raceLabel}`, et: result.quarter, trap: result.trapKmh });
+    saveState(); syncAchievements();
+  }
   function finishV7Run(){
     const run = raceGame?.run;
     if (!run || run.finished) return;
@@ -6346,6 +6442,30 @@
       render();
       return announce();
     }
+    if (btn.dataset.buyCar) {
+      if (btn.disabled) return;
+      const res = C.buyRosterCar(state, btn.dataset.buyCar);
+      if (!res.ok) return showToast(`Niet gekocht: ${res.reason}${res.shortEur ? ` (${euro(res.shortEur)} tekort)` : ''}.`);
+      state.bank = res.bank; state.garage = res.garage;
+      pushHistory({ type: 'purchase', label: `Auto gekocht: ${rosterName(btn.dataset.buyCar)} · ${euro(res.paidEur)}` });
+      saveState(); haptic([12, 25, 12]); render();
+      return showToast(`${rosterName(btn.dataset.buyCar)} staat in je garage.`);
+    }
+    if (btn.dataset.driveCar) {
+      state.garage = C.setActiveCar(state, btn.dataset.driveCar);
+      rivalCache.clear();
+      saveState(); haptic(12); render();
+      return showToast(`Racewagen: ${btn.dataset.driveCar === 'scirocco' ? state.buildName : rosterName(btn.dataset.driveCar)}.`);
+    }
+    if (btn.dataset.rebuildCar) {
+      if (btn.disabled) return;
+      const res = C.rebuildOwnedCar(state, btn.dataset.rebuildCar);
+      if (!res.ok) return showToast(`Niet gereviseerd: ${res.reason}${res.shortEur ? ` (${euro(res.shortEur)} tekort)` : ''}.`);
+      state.bank = res.bank; state.garage = res.garage;
+      pushHistory({ type: 'service', label: `${rosterName(btn.dataset.rebuildCar)} gereviseerd · ${euro(res.paidEur)}` });
+      saveState(); haptic([12, 25, 12]); render();
+      return showToast(`${rosterName(btn.dataset.rebuildCar)} is gereviseerd.`);
+    }
     if (btn.dataset.buyUsed) {
       if (btn.disabled) return;
       const [catId, partId, offerId] = btn.dataset.buyUsed.split(':');
@@ -6643,6 +6763,7 @@
     turbo: () => raceGame ? { phase: raceGame.phase, snap: raceGame.run?.turboSnap || raceGame.turboSnap || null, als: raceGame.alsInfo ? { enabled: raceGame.alsInfo.enabled, mode: raceGame.alsInfo.mode } : null, flames: (raceGame.flameLog || []).slice(-30), wear: raceGame.turbo ? cloneJson(raceGame.turbo.state.wear) : null, alsSeconds: raceGame.turbo?.state.alsSeconds || 0 } : null,
     stateWear: () => ({ wear: cloneJson(state.wear), damage: cloneJson(state.damage) }),
     owned: () => cloneJson(state.owned || {}),
+    garage: () => cloneJson(C.garageOf(state)),
     rosterRival: id => { const p = RIVALS[`roster:${id}`]; if (!p) return null; const e = rivalPass(p); return { quarter: e.quarter, trapKmh: e.trapKmh, sixtyFt: e.sixtyFt, peakHp: e.peakHp, record: C.rosterRecord(state, id) }; },
     enterStageForTest: () => { if (!raceGame?.open) return false; enterV7Stage(); return true; },
     stageState: () => raceGame?.stage ? { progress: raceGame.stage.progress, staged: raceGame.stage.staged, rpm: raceGame.stage.rpm, treeStarted: raceGame.stage.treeStarted, green: !!raceGame.stage.green, launchArmed: !!raceGame.stage.launchArmed, launched: !!raceGame.stage.launched, launchFromRpm: raceGame.stage.launchFromRpm || 0 } : null,

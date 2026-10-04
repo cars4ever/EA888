@@ -312,6 +312,8 @@
       career: defaultCareer(),
       // what the roster opponents have been through in this save (runs, wear, damage, services)
       rosterOpponents: {},
+      // the cars you own besides the Scirocco project, and which one you race
+      garage: { active: 'scirocco', cars: {} },
       // parts the player owns ('category:partId' -> how it was bought); filled from the mounted build when missing
       owned: null,
       buildSlots: [null, null, null],
@@ -405,6 +407,7 @@
     s.rosterOpponents = input.rosterOpponents && typeof input.rosterOpponents === 'object' ? { ...input.rosterOpponents } : {};
     // Ownership: a save from before parts were bought keeps everything its build and build slots use.
     s.owned = input.owned && typeof input.owned === 'object' ? { ...input.owned } : inheritedOwnership(s);
+    s.garage = garageOf(input);
     s.version = 12;
     // v1.3.0 generic turbos were replaced by the Precision catalogue: map old ids to the nearest model.
     if (LEGACY_TURBO_IDS[s.selections.turbo]) s.selections.turbo = LEGACY_TURBO_IDS[s.selections.turbo];
@@ -3164,9 +3167,11 @@
   // boils rubber off the hot skin (smoke). Boost comes from the same turbo runtime as the launch.
   function createBurnoutRuntime(inputState, opts = {}) {
     const state = normalizeState(inputState);
-    const em = opts.engineMap || buildEngineMap(state);
-    const turbo = opts.turbo || createTurboRuntime(state, { engineMap: em });
-    const trans = getPart(state, 'transmission');
+    const rc = state.rosterCar && state.rosterCar.engine ? state.rosterCar : null;
+    const em = opts.engineMap || (rc ? curveEngineMap(rc.engine) : buildEngineMap(state));
+    const turbo = opts.turbo || (rc ? curveTurboRuntime(rc.engine) : createTurboRuntime(state, { engineMap: em }));
+    const trans = transmissionFor(state);
+    const engineI = Number(rc?.engine?.inertiaKgM2) || ENGINE_INERTIA;
     const drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
     const ty = tyreFor(state);
     const r = ty.geometry.radiusM, mass = buildMassKg(state), g = 9.80665;
@@ -3175,7 +3180,8 @@
     const wheelKg = Number(state.vehicle.wheelMassKg || 12.4) + 10, wheelI = wheelKg * r * r * 0.75;
     const tyres = state.vehicle.drivetrain === 'AWD' ? 4 : 2;
     const drivenI = tyres * wheelI + 0.25;
-    const staticDriven = state.vehicle.drivetrain === 'FWD' ? drive.frontStatic : state.vehicle.drivetrain === 'RWD' ? 1 - drive.frontStatic : 1;
+    const frontStatic = rc && Number.isFinite(rc.frontStatic) ? rc.frontStatic : drive.frontStatic;
+    const staticDriven = state.vehicle.drivetrain === 'FWD' ? frontStatic : state.vehicle.drivetrain === 'RWD' ? 1 - frontStatic : 1;
     const fz = mass * g * staticDriven;
     const ambientC = Number(state.vehicle.ambientTempC ?? 20), trackC = Number(state.vehicle.trackTempC ?? 28);
     const th = opts.tyreThermal ? { ...opts.tyreThermal } : makeTyreThermal(Number.isFinite(opts.startC) ? opts.startC : trackC);
@@ -3191,7 +3197,9 @@
     // flings and boils the water off (dry after ~1 s at 60 kW of slip); a dry tyre on the burnout pad
     // grips ~80 % of dry street, heats fast and smokes.
     const streetGrip = ty.mu / ty.base;
-    const clutchNm = (DRIVELINE[trans.id] || DRIVELINE.oem_6mt).clutchNm;
+    // a converter car does its burnout on the line lock, through the converter: no clutch that can slip
+    const dlb = drivelineFor(state, trans);
+    const clutchNm = dlb.type === 'converter' ? 20000 : dlb.clutchNm;
     const s = { t: 0, water: 1, we: (900 * Math.PI) / 30, ww: 0, pedal: 0, smoke: 0, slipPowerW: 0, fx: 0, torqueNm: 0, energyJ: 0, turboSnap: null, turboClock: 1, cut: false };
     const rpm = () => (s.we * 30) / Math.PI;
     function substep(h, throttle) {
@@ -3230,14 +3238,14 @@
         const slip = s.we - R * s.ww;
         const cap = clutchNm * s.engage;
         if (s.engage > 0.5 && Math.abs(slip) < 2) {
-          const acc = (tEng * R * eta - fxRoll * r) / (drivenI + ENGINE_INERTIA * R * R);
+          const acc = (tEng * R * eta - fxRoll * r) / (drivenI + engineI * R * R);
           s.ww = Math.max(0, s.ww + acc * h);
           s.we = Math.max((900 * Math.PI) / 30, s.ww * R);
           s.fx = fxRoll;
         } else {
           const tc = Math.sign(slip || 1) * cap;
           s.clutchJ = (s.clutchJ || 0) + Math.abs(tc * slip) * h;
-          s.we = Math.max((900 * Math.PI) / 30, s.we + ((tEng - tc) / ENGINE_INERTIA) * h);
+          s.we = Math.max((900 * Math.PI) / 30, s.we + ((tEng - tc) / engineI) * h);
           // a standing tyre holds until the clutch torque at the wheels exceeds static grip
           const drive = tc * R * eta;
           const fx = s.ww * r < 0.02 && drive <= grip * r ? drive / r : fxRoll || grip;
@@ -3623,17 +3631,22 @@
   function curveTurboRuntime(engine) {
     const bc = engine.boost;
     let since = 0;
-    const snap = { boostBar: 0, targetBoostBar: 0, mapBarAbs: 1.013, manifoldK: ENGINE_MAP_REF_K, empBarAbs: 1.013, shaftPct: 0, egtC: 0,
-      alsActive: false, alsIntensity: 0, curve: true };
+    // The fields the race screens read from a turbo runtime, at rest: there is no compressor map, no ALS and no
+    // turbo wear behind a dyno curve (EGT and shaft speed are not known, so they read 0, not a made-up value).
+    const snap = { boostBar: 0, targetBoostBar: 0, mapBarAbs: 1.013, manifoldK: ENGINE_MAP_REF_K, empBarAbs: 1.013, shaftPct: 0, shaftRpm: 0, egtC: 0,
+      alsActive: false, alsIntensity: 0, alsLockoutS: 0, alsLimitedBy: '', flame: 0, flameSustain: 0, popRateHz: 0, fuelGps: 0, lambda: 0.85, curve: true };
+    const rtState = { maxEgtC: 0, maxShaftPct: 0, maxEmpBar: 0, alsSeconds: 0, fuelUsedG: 0, egtC: 0, boostBar: 0, shaftRpm: 0,
+      wear: { turbo: 0, manifold: 0, valves: 0, engine: 0 }, damage: { turbo: 0, engine: 0 }, curve: true };
     function step(dt, input = {}) {
       if (bc) {
         if (input.twoStep) since = 0; else since += Number(dt) || 0;
         const b = bc.launchBar + (bc.fullBar - bc.launchBar) * clamp(since / Math.max(0.05, bc.rampS), 0, 1);
         snap.boostBar = b; snap.targetBoostBar = b; snap.mapBarAbs = 1.013 + b; snap.empBarAbs = 1.013 + b;
+        rtState.boostBar = b;
       }
       return snap;
     }
-    return { step, state: snap, curve: true };
+    return { step, state: rtState, snap, curve: true };
   }
   // The roster cars that can race (both weight and power known or derived), with their display names.
   // Prices from the research are in US dollars; the game shows euros next to them with one fixed, editable
@@ -3682,8 +3695,14 @@
   // rebuild when it is out. Works on the save's rosterOpponents only (the player's state is not touched) and
   // returns the new map, the record and what happened (for the history).
   function applyRosterRun(inputState, id, pass) {
-    const rec = rosterRecord(inputState || {}, id), events = [];
-    if (rec.out) {
+    const { record, events } = advanceRecord(rosterRecord(inputState || {}, id), id, pass, true);
+    return { rosterOpponents: { ...((inputState && inputState.rosterOpponents) || {}), [id]: record }, record, events };
+  }
+  // One pass on a record (opponent or a car in the player's garage). A team rebuilds its own engine before the
+  // next race; the player pays for that (rebuildOwnedCar) and cannot race a car that is out.
+  function advanceRecord(rec, id, pass, teamRebuilds) {
+    const events = [];
+    if (rec.out && teamRebuilds) {
       rec.out = false; rec.wear = { engine: 0, transmission: 0 }; rec.damage = { engine: 0 }; rec.sinceService = 0; rec.services += 1;
       events.push('gereviseerd na schade');
     }
@@ -3699,7 +3718,56 @@
     }
     if (rec.wear.engine >= 100 || rec.wear.transmission >= 100 || rec.damage.engine >= 100) { rec.out = true; events.push('kapot: eerst reviseren'); }
     rec.log = [...events.map(e => ({ run: rec.runs, event: e })), ...rec.log].slice(0, 12);
-    return { rosterOpponents: { ...((inputState && inputState.rosterOpponents) || {}), [id]: rec }, record: rec, events };
+    return { record: rec, events };
+  }
+
+  // ---- Garage: roster cars the player buys and races --------------------------------------------------
+  // A roster car is for sale when the research gives its cost (data/roster: the budget board, or the purchase
+  // plus the listed spending); the price in euros is the dollar figure at the game rate. A car you own keeps its
+  // own record (same wear rule, same 'out' line as every car); rebuilding it costs what the player's rebuild
+  // costs (the game's rule, not a figure from the research).
+  const REBUILD_BASE_EUR = 6500;
+  function rosterCarPrice(id) {
+    const car = rosterCarData(id), p = car && car.price;
+    if (!p || !p.totalUsd || !(p.totalUsd.value > 0)) return null;
+    const eur = usdToEur(p.totalUsd.value);
+    return eur ? { usd: p.totalUsd.value, eur: Math.round(eur), value: p.totalUsd, items: p.items || [] } : null;
+  }
+  function garageOf(inputState) {
+    const g = (inputState && inputState.garage) || {};
+    const cars = g.cars && typeof g.cars === 'object' ? g.cars : {};
+    const active = g.active && (g.active === 'scirocco' || cars[g.active]) ? g.active : 'scirocco';
+    return { active, cars };
+  }
+  function buyRosterCar(inputState, id) {
+    const g = garageOf(inputState), price = rosterCarPrice(id);
+    if (g.cars[id]) return { ok: false, reason: 'al in je garage' };
+    if (!price) return { ok: false, reason: 'niet te koop: het onderzoek noemt geen prijs' };
+    const bank = Number(inputState.bank || 0);
+    if (price.eur > bank) return { ok: false, reason: 'budget te laag', shortEur: price.eur - bank };
+    const record = rosterRecord({}, id);
+    return { ok: true, bank: bank - price.eur, paidEur: price.eur, garage: { ...g, cars: { ...g.cars, [id]: { paidEur: price.eur, paidUsd: price.usd, record, best: null } } } };
+  }
+  function setActiveCar(inputState, id) {
+    const g = garageOf(inputState);
+    return { ...g, active: id === 'scirocco' || g.cars[id] ? id : g.active };
+  }
+  function applyOwnedCarRun(inputState, id, pass) {
+    const g = garageOf(inputState), car = g.cars[id];
+    if (!car) return { garage: g, events: [] };
+    const rec = { ...rosterRecord({ rosterOpponents: { [id]: car.record || {} } }, id) };
+    const { record, events } = advanceRecord(rec, id, pass, false);
+    const best = pass && pass.valid !== false && Number.isFinite(pass.quarter) && (!car.best || pass.quarter < car.best.quarter)
+      ? { quarter: pass.quarter, trapKmh: pass.trapKmh, sixtyFt: pass.sixtyFt } : car.best;
+    return { garage: { ...g, cars: { ...g.cars, [id]: { ...car, record, best } } }, events };
+  }
+  function rebuildOwnedCar(inputState, id) {
+    const g = garageOf(inputState), car = g.cars[id];
+    if (!car) return { ok: false, reason: 'niet in je garage' };
+    const bank = Number(inputState.bank || 0);
+    if (REBUILD_BASE_EUR > bank) return { ok: false, reason: 'budget te laag', shortEur: REBUILD_BASE_EUR - bank };
+    const record = { ...car.record, out: false, wear: { engine: 0, transmission: 0 }, damage: { engine: 0 }, sinceService: 0, services: (car.record?.services || 0) + 1 };
+    return { ok: true, bank: bank - REBUILD_BASE_EUR, paidEur: REBUILD_BASE_EUR, garage: { ...g, cars: { ...g.cars, [id]: { ...car, record } } } };
   }
 
   // Stationary ALS hold at the ALS target rpm (tune-page test), sampled every 0.1 s.
@@ -4813,6 +4881,14 @@
     rosterRecord,
     rosterServiceInterval,
     applyRosterRun,
+    rosterCarPrice,
+    garageOf,
+    buyRosterCar,
+    setActiveCar,
+    applyOwnedCarRun,
+    rebuildOwnedCar,
+    REBUILD_BASE_EUR,
+    rosterTurboRuntime: curveTurboRuntime,
     rosterOpponents,
     rosterCarData,
     curveEngineMap,
