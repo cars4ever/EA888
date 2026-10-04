@@ -1,0 +1,72 @@
+{
+  "video_id": "QHDAecxBbus",
+  "title": "We Bought an INSANE Big Block Blower Engine From Australia! Toast Is Getting 1,500+ Horsepower",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-15:24, 40 merged lines)",
+  "context": {
+    "why_change": {"fact": "Team concluded their own burnout-engine combo (Blueprint big blocks, EFI, 10-71) was the wrong approach vs. the Australian burnout recipe; needed an engine capable of ~1,500 hp, which Blueprint does not offer at that rating; parted on good terms", "t": "0:42-1:51"},
+    "engine_origin": {"fact": "Pulled from Heath's car (co-owner of Castlemaine Rod Shop; caption 'castle main rod shop'), one of three cars the Rod Shop brought to the Cleetus & Cars event (caption 'cleveland cars') along with Warbird and a car captioned 'kilby'; Heath's car captioned 'the real deal toronto' (likely a Holden Torana, low confidence). Engine removed in California before the car shipped home. Same combination as Warbird.", "t": "2:13, 5:42-6:30"},
+    "engine_state": {"fact": "fully refreshed before Summernats; car only driven around, no skids on the fresh build", "t": "6:30-6:53"},
+    "engine_builder": {"name": "Ben (caption 'ben nogas', surname low confidence) - also built Warbird's engine", "t": "6:53"},
+    "old_engine_fate": {"fact": "Blueprint big block goes into the Freedom Factory flatbed truck; Toast's old blower/hat/ECU may be reused later for an EFI blown big block, possibly in White Trash", "t": "1:34, 5:00-5:22"}
+  },
+  "cars": [
+    {
+      "car_id": "toast",
+      "build_version": "v2_castlemaine_540_14-71_mech_injection (engine just received, not installed)",
+      "nickname": "Toast",
+      "owner_driver": "McFarland / Freedom Factory crew (Ty fabrication)",
+      "base_vehicle": {"make": null, "model": null, "year": null, "note": "Camaro per caller context; not stated in this video"},
+      "previous_build": {
+        "engine": "Blueprint big block (crate)",
+        "power_adder": "10-71 supercharger",
+        "fuel_delivery": "EFI with computer",
+        "t": "0:42, 4:17, 5:00"
+      },
+      "engine": {
+        "family": "big block (Chevrolet implied, not stated)",
+        "displacement_ci": 540,
+        "crank": "Callies (caption 'cali's')",
+        "rods": "Callies (caption 'cali's')",
+        "pistons": "CP",
+        "heads": "aluminium cast heads (stated as aluminium; Warbird's said to be cast)",
+        "oiling": "dry sump",
+        "ignition": "magneto via rear mag drive with ignition box",
+        "builder": "Castlemaine Rod Shop / Ben",
+        "rated_hp": "capable of ~1,500 hp (requirement stated; title says 1,500+)",
+        "notes": "most components US-made, assembled in Australia; complete 'hat to oil pan' turnkey package incl. alternator, water pump, starter",
+        "t": "3:11-4:39, 7:09"
+      },
+      "power_adder": {"type": "Roots supercharger", "blower_size": "14-71", "boost_psi": null, "t": "3:11, 4:17"},
+      "fuel": {"type": "methanol", "delivery": "mechanical fuel injection; mechanical fuel pump driven off the cam", "note": "mechanical injection chosen for simplicity and burnout behavior after EFI proved challenging", "t": "4:17-5:00, 7:09, 10:49"},
+      "ecu": "none required for engine (mechanical injection + magneto)",
+      "transmission": {"type": "Powerglide, aftermarket case, with correct gear set", "t": "3:44, 7:31"},
+      "converter": {"fact": "converter specified for this combination included", "t": "7:31"},
+      "rear_end": null,
+      "suspension": {"plan": "considering rack-and-pinion front end conversion (replace steering box/idler/pitman) with upper/lower control arms, possibly cutting strut towers, to clear dry sump/alternator and reduce steering slop", "t": "12:42-14:26"},
+      "tires": null,
+      "weight_lb": null,
+      "install_issues": [
+        {"issue": "rear magneto hits firewall: either cut firewall (~1 full day) or move mag drive to front with a kit costing ~$600-700 (front/cam drive conflicts with cam-driven fuel pump)", "t": "7:52, 10:10-11:11"},
+        {"issue": "oil pan depth vs crossmember/core support; dry sump fittings may need 90s and longer lines", "t": "12:15-12:42"},
+        {"issue": "steering box interferes with alternator/dry-sump pump area", "t": "13:04-13:25"},
+        {"issue": "larger radiator needed", "t": "11:55"}
+      ],
+      "dyno": null,
+      "passes": [],
+      "failures": [],
+      "targets": {"hp": 1500, "use": "burnout competition", "t": "1:08"},
+      "parts": [
+        {"part": "Complete Castlemaine Rod Shop 540 / 14-71 / mech-injected / dry-sump engine + Powerglide + converter", "price_usd": null, "note": "price given privately ('gave me a number'), not stated", "t": "6:07"},
+        {"part": "Front mag drive conversion kit", "price_usd": "600-700 (estimate)", "t": "10:10"}
+      ],
+      "confidence": "high for engine spec list; low for car names/builder surname"
+    }
+  ],
+  "game_use": {
+    "blower_sizes": {"toast_old": "10-71", "toast_new": "14-71"},
+    "price_points_usd": {"front_mag_drive_kit_est": [600, 700]},
+    "engine_recipes": {"australian_burnout_540": "540ci big block, Callies crank/rods, CP pistons, alloy heads, 14-71, mechanical methanol injection, dry sump, magneto, Powerglide"}
+  }
+}

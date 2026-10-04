@@ -1,0 +1,98 @@
+{
+  "video_id": "z2E_owm9Vrs",
+  "title": "Project Eagle First Fire Up! (5,000 Horsepower Proline Hemi)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-21:35, 45 caption lines)",
+  "context": {
+    "series": "project_eagle",
+    "location": "CJRC (Cameron Johnson Race Cars) shop",
+    "event_next": {"name": "World Cup (Maryland, radial/drag event)", "notes": "Eagle to be tested the day before leaving for World Cup", "t": "8:13"},
+    "caption_corrections": [
+      {"raw": "fuel Tech", "corrected": "FuelTech (ECU)", "confidence": "high"},
+      {"raw": "Prine / croline", "corrected": "Proline", "confidence": "high"},
+      {"raw": "braille battery", "corrected": "Braille battery", "confidence": "high"},
+      {"raw": "PST", "corrected": "PST (driveshaft supplier)", "confidence": "medium"}
+    ],
+    "people": ["Omar, Romy, Reggie (wiring)", "Cameron (CJRC)", "Ryan (painter)"]
+  },
+  "cars": [
+    {
+      "car_id": "eagle",
+      "build_version": "v1 first fire-up (pre-World Cup)",
+      "nickname": "Eagle",
+      "owner_driver": "Cleetus McFarland (driver); pedals adjustable so Jackstand could also drive",
+      "base_vehicle": {"year": 1969, "make": "Chevrolet", "model": "Camaro (as stated in series)", "chassis_builder": "CJ Race Cars", "tube_chassis": true, "materials": "lots of carbon and titanium; titanium adjustable steering column; poured seat", "t": "5:10, 5:39, 10:34"},
+      "engine": {"family": "Proline billet Hemi", "displacement_ci": null, "builder": "Proline", "lubrication": {"type": "dry sump", "notes": "primed with a drill; oil pump line temporarily swapped (was backwards)", "t": "6:02, 13:38"}, "first_start_rev_limit_rpm": {"value": 2500, "t": "13:38"}, "timing_check": {"notes": "timing light check read on zero (TDC reference); '25' said - likely degrees, low confidence", "t": "12:59"}, "t": "0:40"},
+      "power_adder": {"type": "twin turbo", "brand_model": null, "turbo_size_mm": {"value": 98, "notes": "'98s on this thing' - two 98 mm turbos; one each side mounted at firewall area per caption", "t": "1:53-2:17, 4:22"}, "boost_psi": null, "turbo_speed_monitored": {"value": true, "notes": "turbo shaft speed sensor added; engine can now overspeed the 98s past efficiency", "t": "7:03-7:25"}},
+      "fuel": {"type": "methanol", "notes": "large-diameter fuel lines/feed off tank; big injectors; electric primer pump for priming fuel system", "t": "2:17, 7:50, 11:55, 14:28, 16:09"},
+      "ecu": {"brand": "FuelTech", "notes": "First FuelTech for the channel (normally Holley); chosen because Proline pairs with FuelTech; base tune supplied by Proline; small FuelTech screens in engine bay; FuelTech EGT monitoring", "t": "3:05-3:59, 6:32"},
+      "transmission": {"notes": "transmission present; converter bolts being installed", "t": "7:50"},
+      "converter": {"notes": "installed (bolts) - type not stated", "t": "7:50"},
+      "driveshaft": {"supplier": "PST (caption)", "status": "missing at fire-up; expected in 1-2 days", "t": "8:13"},
+      "rear_end": null,
+      "suspension": null,
+      "tires": null,
+      "battery": {"brand": "Braille", "weight_lb": "4-5 (claimed by Cameron)", "t": "4:43"},
+      "safety": {"burst_panel": "installed", "t": "7:50"},
+      "electrical": {"wiring_by": "Omar, Romy, Reggie", "front_end_contact_connectors": "body/headlights connect via contact plates - nothing to unplug when removing front end", "t": "1:53, 11:02"},
+      "weight_lb": null,
+      "dyno": [
+        {"value_hp": 5400, "kind": "claimed - Proline dyno (across the street from FuelTech) made ~5,400 hp with the same engine combo and same turbos (not this specific engine)", "t": "4:22"}
+      ],
+      "power_claims": [
+        {"value": "5,000 hp Camaro", "t": "15:39"},
+        {"value": "5,500 hp", "context": "rods every 30 runs at that power regardless of builder", "t": "19:17"}
+      ],
+      "passes": [],
+      "failures": [
+        {"part": "Paint", "cause": "scratch on car touched up overnight by painter Ryan (cosmetic)", "t": "1:06"},
+        {"part": "Vacuum leak", "cause": "taped temporarily; risk of high idle at first start", "t": "5:39"},
+        {"part": "Wastegate tube", "cause": "found loose after start", "t": "19:17"},
+        {"part": "Transmission plug/fluid", "cause": "transmission plug backing out, almost made a mess", "t": "17:24", "confidence": "low"}
+      ],
+      "maintenance": {"rods_every_runs": 30, "spares": "spare piston and rods; no spare engine", "t": "18:57-19:17"},
+      "parts": [
+        {"part": "FuelTech ECU + harness", "price_usd": null, "t": "3:32"},
+        {"part": "Twin 98 mm turbochargers", "price_usd": null, "t": "2:17"},
+        {"part": "Braille lightweight battery", "price_usd": null, "t": "4:43"},
+        {"part": "PST driveshaft (on order)", "price_usd": null, "t": "8:13"},
+        {"part": "Anodized billet boot connectors", "price_usd": null, "t": "5:10"}
+      ],
+      "targets": {"notes": "Test Monday, then World Cup", "t": "20:49"},
+      "confidence": "high for FuelTech/methanol/98 mm twins/dry sump; claimed only for power figures"
+    },
+    {
+      "car_id": "leroy",
+      "build_version": "pre-World Cup restructure",
+      "nickname": "Leroy",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"chassis_builder": "CJ Race Cars (rework)", "t": "8:13"},
+      "changes": [
+        {"fact": "Significant restructuring underneath", "t": "8:37"},
+        {"fact": "Doors repaired; window lips stiffened/thickened with more glass (fiberglass) laid in", "t": "8:37"},
+        {"fact": "Both weight bars can be removed", "t": "8:59"},
+        {"fact": "Suspension data showed rear ~1.5 in lower downtrack (car being pushed down)", "t": "8:59"},
+        {"fact": "Fresh Optic Armor side windows", "t": "9:48"},
+        {"fact": "Body gets front-end contact connectors for headlights like Eagle", "t": "11:02"}
+      ],
+      "passes": [
+        {"et": 6.92, "mph": null, "notes": "caption '692' as fastest ever - ambiguous (could be ET); 'if we can go 205' implies mph goal; low confidence", "t": "9:24"}
+      ],
+      "notes": [
+        {"fact": "Previous: added more power; turbo recovered about a tenth quicker on the shift in high gear", "t": "8:59-9:24"},
+        {"fact": "World Cup strategy: whether to run with body on or off kept secret", "t": "10:34"}
+      ],
+      "confidence": "medium-low (ambiguous captions)"
+    }
+  ],
+  "event_refs": [
+    {"fact": "2.4 Hours of LeMullets at Freedom Factory, November 15-16", "t": "21:11"},
+    {"fact": "Mullet to be tested that night back in Bradenton", "t": "20:49"}
+  ],
+  "game_use": {
+    "eagle_v1": {"engine": "Proline billet Hemi", "turbos": "twin 98 mm", "fuel": "methanol", "ecu": "FuelTech", "oil": "dry sump", "claimed_hp": [5000, 5500], "reference_dyno_hp_same_combo": 5400},
+    "maintenance_model": {"rod_change_runs": 30},
+    "battery_weight_lb": [4, 5]
+  }
+}

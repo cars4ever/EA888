@@ -1,0 +1,87 @@
+{
+  "video_id": "8FFwqm17Vow",
+  "title": "Testing My Modded C8 ZR1 + Cheap Car Challenge Rules Meeting",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-45:55); 0:00-16:49 track test (giveaway ZR1 + C8 ZR1), 16:49-45:55 CRC3 rules meeting",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000) rules meeting",
+    "date_stated": "giveaway ends 'tonight' April 27 (2026 implied by later CRC3 videos)",
+    "event": {"name": "Sick Summer-style drag-and-drive (caption 'six summer'); held in Michigan", "date": "around June 14, ~7 weeks after meeting", "t": "17:34, 42:29, 45:12"},
+    "previous_cars_referenced": {"fact": "Previous challenge cars: the 240, 'Lumberjack' and the Mustang; this round: new cars, new engines", "t": "17:34"},
+    "rules": [
+      {"fact": "Budget $15,000 per team (alternatives $12.5k / $30k floated and rejected); budget earlier framed as $5k car + $10k build", "t": "18:09, 22:01, 24:31"},
+      {"fact": "Free safety items: roll cage (all cars get 8.50-spec cages), driver race seat, driver seat belts; seat cushions debated; everything else costs money", "t": "18:35-19:28"},
+      {"fact": "Term 'safety equipment' narrowed to seat belts etc. after Jackstand counted head studs as safety equipment last time", "t": "18:35"},
+      {"fact": "Race director Ryan (caption 'Ryan warning') is sole judge of fair market value; if you paid less (e.g. $200 for a $500 converter) the higher FMV is charged; no arguing", "t": "19:28-20:51"},
+      {"fact": "Vehicle: any car at fair market value (even a non-running roller is valued by Ryan); must arrive unmodified - no upgrades, teams must do every upgrade themselves; stock-car / $5k-$7.5k car caps were debated but not adopted", "t": "22:01-26:42"},
+      {"fact": "Parts priced at brand-new price when new; no sponsorships of any kind (incl. wheels/tires)", "t": "25:23, 28:25, 35:17"},
+      {"fact": "No selling, bartering or trading of your own parts", "t": "26:42-27:03"},
+      {"fact": "No free spare engines; any replacement part (engine, lug nuts, wheel studs, tires) comes out of budget; you may bring a spare engine but pay for it if used", "t": "27:20-28:25, 39:04-39:40"},
+      {"fact": "Tires come out of budget (new set ~ $900 cited)", "t": "28:50-29:18"},
+      {"fact": "Costs tracked on an Excel spreadsheet", "t": "28:50"},
+      {"fact": "Machine shop work charged at the real shop labor rate", "t": "29:37-30:00"},
+      {"fact": "Own labor is free; outside help that touches the car is charged at that person's/shop labor rate (50% and 75% floated, example $110/h trans shop, $100/h Cameron)", "t": "30:18-32:37"},
+      {"fact": "Tuning: if anyone else touches your laptop or carburetor it counts as outsourced tuning, flat $500 for the week (based on Nate's quote)", "t": "33:04-34:52"},
+      {"fact": "Over-budget penalty: +0.5 s added to that day's average per $100 over", "t": "35:38-37:37"},
+      {"fact": "If the car breaks you must keep going and fix it within budget; if you are out of money, the only thing you may buy/borrow is a moped", "t": "37:37, 44:21-44:42"},
+      {"fact": "Each team gets a fuel cell (similar size within ~1 gal, no pump included) so stock tanks are not used; details to be settled when cars are bought", "t": "39:58-41:13"},
+      {"fact": "Scoring: full 5-day average ET decides; final-day shootout is bragging rights only", "t": "37:37-38:23, 43:57-44:21"},
+      {"fact": "Proposed loser penalty: losers drive their cars from Michigan back to Florida", "t": "41:59-43:33"},
+      {"fact": "Previous challenge noted: last time it was argued whether single best pass or average decided it", "t": "37:37-38:23"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "cleetus_c8_zr1",
+      "nickname": "'Batman' (C8 twin-turbo 'Batman pajama', joking)",
+      "owner_driver": "Cleetus McFarland; tuned by Matt",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette ZR1 (C8)", "year": null},
+      "power_adder": {"type": "twin turbo (factory)", "t": "9:00"},
+      "dyno": [
+        {"whp": 1180, "measured": "previously, claimed", "t": "1:10"},
+        {"note": "Overboost protection: on dyno would make ~1,003 and a limiter held it there", "t": "10:59"}
+      ],
+      "wheels_tires": {"street": "Vossen wheels with carbon-ceramic brakes", "drag": "Boost District beadlock wheels sized for ZR1 brakes, 11 in wide, Nitto drag radial 315/35R20 rear (stock rear wheels said to be 21 in); front ~295", "t": "0:47-2:26"},
+      "aero": "wing removed for passes",
+      "passes": [
+        {"run": 1, "et": 9.59, "mph": 151, "note": "pulls hard then lays over - suspected overboost protection under load", "measured": true, "t": "9:00-10:59"},
+        {"run": 2, "et": 9.42, "mph": 151, "sixty_ft": 1.56, "eighth_et": 6.19, "eighth_mph": 121, "note": "launch turned up; hot day, car parked two months", "measured": true, "t": "13:46-14:50"}
+      ],
+      "failures": [{"part": "Catalytic converter over-temperature code -> timing pulled", "cause": "tables not available when first tuned", "t": "15:13"}],
+      "targets": {"et": "8s on a street car (others already running 8s)", "t": "14:50"},
+      "notes": [{"fact": "Previously spun tires every drag strip visit on stock rubber despite strong street performance", "t": "1:10"}],
+      "confidence": "high"
+    },
+    {
+      "car_id": "giveaway_zr1_apr",
+      "nickname": null,
+      "owner_driver": "Cleetus team (giveaway car, ends April 27; package incl. new Duramax, color-matched trailer, $50,000 cash)",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette ZR1", "generation": "not stated here; supercharged ('big blower'); ZTuZc5Sp1fo refers to 'our C7 ZR1 winner'", "year": null},
+      "engine": {"cam": "big cam", "power_claim_hp": 840, "t": "6:32, 12:52"},
+      "power_adder": {"type": "supercharger", "t": "4:40, 6:32"},
+      "fuel": {"type": "93 pump gas", "note": "E85 would mean 9s per Cleetus", "t": "5:01-5:26"},
+      "transmission": {"type": "manual (clutch slipped on launch; aborted a 2nd-to-5th miss-shift)", "t": "7:20-8:12, 12:52"},
+      "passes": [
+        {"run": 1, "sixty_ft": 1.97, "note": "tire spin/hop, aborted; another 1.96 mentioned", "measured": true, "t": "6:32-8:12"},
+        {"run": 2, "et": 10.55, "mph": 137, "sixty_ft": 1.93, "eighth_mph": 106, "conditions": "~90 F, very humid", "measured": true, "t": "11:35-13:11"}
+      ],
+      "notes": [{"fact": "Spray wax claimed worth two tenths (joke, 'Talladega tested')", "t": "5:49"}],
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "rules_engine": {
+      "budget_usd": 15000,
+      "free_items": ["roll cage (8.50 spec)", "driver race seat", "driver seat belts", "fuel cell (likely)"],
+      "fmv_judge": true,
+      "outsourced_tune_flat_usd": 500,
+      "outside_labor": "charged at helper's labor rate",
+      "over_budget_penalty_s_per_100usd": 0.5,
+      "scoring": "5-day average ET",
+      "out_of_money_rule": "moped only"
+    },
+    "reference_numbers": {"c8_zr1_best_et": 9.42, "c8_zr1_mph": 151, "c8_zr1_whp_claim": 1180, "zr1_pump_gas_840hp_et": 10.55}
+  }
+}

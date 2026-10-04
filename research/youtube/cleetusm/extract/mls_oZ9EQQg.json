@@ -1,0 +1,91 @@
+{
+  "video_id": "mls_oZ9EQQg",
+  "title": "Cheap Racecar Challenge Day 5 - Sam Attempts a 9, Jackstand Goes DEEP 8's, Lumberjacks Fastest",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-25:55)",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 2 per caller labelling = Sick Summer (final day 5) of the $7,500/$10,000 challenge",
+    "edition_note": "Same cars as crc1_* from Sick Week.",
+    "event": {"name": "Sick Summer day 5", "track": "Byron Dragway (start and finish venue; downhill shutdown)", "conditions": "hottest day of the week (said for Sam's final pass); rained overnight", "t": "1:44, 23:06"},
+    "format": "Average of each team's passes across the week decides standings",
+    "future_rules_ideas": [
+      {"fact": "Next edition: less gray area, shorter prep time, a minimum weight limit (3,500 lb floated)", "t": "21:30-21:52"}
+    ],
+    "people": [{"name": "Lund Racing (caption 'London'/'John Lond Lund Racing')", "role": "tuned the Mustang and Sam's truck all week", "t": "24:11"}]
+  },
+  "cars": [
+    {
+      "car_id": "crc2_jackstand_240",
+      "nickname": "Shark / little shark",
+      "owner_driver": "Jackstand (James)",
+      "fuel": {"notes": "carb left rich for the road drive (engine stayed under ~170 F); one set of plugs whole week, cleaned periodically", "t": "2:40-3:27"},
+      "power_adder": {"type": "nitrous", "notes": "'low 9-second tune-up' mentioned before final pass (caption unclear)", "t": "7:08"},
+      "passes": [
+        {"et": 8.70, "mph": 141, "sixty_ft": 1.26, "eighth": null, "notes": "lifted around 1,000 ft; driver estimated ~5.40 1/8 (no 1/8 slip); also read as 8.70 @ 140", "track": "Byron Dragway", "kind": "measured", "t": "10:00-11:16, 13:57"}
+      ],
+      "week_results": {"passes_et": [8.89, 9.72, 9.41, 9.12, 8.70], "average_et": 9.16, "place": 1, "t": "19:53"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "crc2_lumberjack",
+      "nickname": "Lumberjack (LJ)",
+      "owner_driver": "Cleetus McFarland + Squirrel",
+      "power_adder": {"type": "single turbo", "boost_psi": "28-29 with new wastegate spring", "rev_limit_change": "+200 rpm", "t": "6:42-7:08"},
+      "suspension": {"notes": "rear uses an air-filled football as a suspension/preload aid; found nearly flat (~1 psi) after the hard launch, right tire skipped", "t": "7:08, 14:31-14:56"},
+      "spare_engine": "fully built LS carried in the bed all week (not needed)",
+      "passes": [
+        {"et": null, "mph": null, "sixty_ft": "best 60 ft of week (caption '152' unclear)", "notes": "overpowered track, wheelie, tire spin, no datalog", "kind": "measured", "t": "8:51, 13:26-14:56"},
+        {"et": 9.49, "mph": 142, "sixty_ft": null, "notes": "final pass, lane one", "track": "Byron Dragway", "kind": "measured", "t": "15:48-16:45"}
+      ],
+      "week_results": {"passes_et": [9.81, 9.89, 9.70, 9.54, 9.49], "average_et": 9.69, "place": 2, "t": "19:53-20:29"},
+      "budget": {"status": "only car in budget (from prep video)"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "crc2_tom_bailey_camaro",
+      "nickname": null,
+      "owner_driver": "Tom Bailey + Aiden",
+      "power_adder": {"type": "nitrous"},
+      "issues": [{"fact": "Engine sounded bad on the last day (suspected broken rocker)", "t": "4:11-4:49"}, {"fact": "First-day 11.2 blamed on the earlier (too tight) converter", "t": "20:29"}],
+      "passes": [
+        {"et": 9.72, "notes": "pulled chutes early", "kind": "measured", "t": "11:16-12:56"},
+        {"et": 8.97, "mph": 152, "notes": "big flame-out at the top end; also mis-heard as 8.92", "kind": "measured", "t": "18:45-19:15"}
+      ],
+      "week_results": {"passes_et": [11.2, 9.09, 9.46, 10.0, 8.97], "average_et": 9.76, "place": 3, "t": "20:29"},
+      "confidence": "high for ETs"
+    },
+    {
+      "car_id": "crc2_tye_mustang",
+      "nickname": null,
+      "owner_driver": "Zach + Tye",
+      "failures": [{"part": "engine", "cause": "blew up during the week (details not given here)", "t": "4:11, 21:02"}],
+      "tuner": "Lund Racing",
+      "week_results": {"passes_et": [9.82, 9.77, 9.53, 9.43], "average_et": 9.64, "place": null, "notes": "best average but did not finish the week due to the engine failure", "t": "20:29-21:02"},
+      "confidence": "high for ETs"
+    },
+    {
+      "car_id": "crc2_mr_sam_truck",
+      "nickname": null,
+      "in_challenge": false,
+      "owner_driver": "Mr. Sam (80 years old)",
+      "base_vehicle": {"make": null, "model": "truck", "year": null},
+      "notes": "Belt-driven setup; first belt destroyed, replaced before final pass; tuned with Lund Racing help",
+      "passes": [
+        {"et": 10.12, "mph": 130, "kind": "measured", "t": "7:37"},
+        {"et": 9.89, "mph": 138, "notes": "first 9-second pass; 60 ft slower than earlier best", "kind": "measured", "t": "23:06-25:04"}
+      ],
+      "confidence": "medium (vehicle details not stated)"
+    }
+  ],
+  "standings": [
+    {"place": 1, "car_ref": "crc2_jackstand_240", "average_et": 9.16},
+    {"place": 2, "car_ref": "crc2_lumberjack", "average_et": 9.69},
+    {"place": 3, "car_ref": "crc2_tom_bailey_camaro", "average_et": 9.76},
+    {"place": null, "car_ref": "crc2_tye_mustang", "average_et": 9.64, "note": "only 4 passes before engine failure", "t": "19:53-21:30"}
+  ],
+  "game_use": {
+    "et_refs": {"ls6.0_nitrous_240_best": [8.70, 141], "lumberjack_turbo_ls_best_final_day": [9.49, 142], "camaro_bbc_nitrous_best": [8.97, 152]}
+  }
+}

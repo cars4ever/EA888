@@ -1,0 +1,70 @@
+{
+  "video_id": "dOjDCuSFso8",
+  "title": "RUBY'S FIRST SEVEN SECOND PASS",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:10-18:36); transcript was returned inline (not saved to .ts.txt)",
+  "context": {
+    "notes": [
+      {"fact": "Event day with James's 240SX, Ruby, and Leroy; James races no-time so his ETs are withheld", "t": "0:17, 3:37"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "ruby",
+      "build_version": "Ruby - Texas Speed 427, engine #7",
+      "nickname": "Ruby",
+      "owner_driver": "Cleetus McFarland (driver); car built by James (credited)",
+      "base_vehicle": {"year": null, "make": null, "model": null},
+      "engine": {"family": "LS", "displacement_ci": 427, "note": "7th engine in Ruby, same 427 combo; new intake", "t": "12:48, 14:45"},
+      "power_adder": {"type": "single turbo", "turbo_size_mm": null, "history": "5 turbos used over the car's life (captions list ~75/76, 83, 84, 88 mm; low confidence)", "boost": {"launch_psi": 11, "first_gear_psi": 19, "peak_psi": 24.2, "note": "lower than previous 31-37 psi tune-ups (low confidence on those)"}, "t": "8:53, 12:52-14:23"},
+      "fuel": {"injector_duty_cycle_pct": 78, "note": "not fuel-limited", "t": "14:31"},
+      "transmission": {"type": "automatic with trans brake (Bluetooth trans-brake button)", "t": "4:11"},
+      "converter": null,
+      "rear_end": {"note": "one 'torque tube' mentioned in history list (low confidence)", "t": "13:08"},
+      "history": {"engines": 7, "turbos": 5, "transmissions": 2, "t": "13:04"},
+      "passes": [
+        {"run": "first hit", "result": "aborted - all power lost ~30 ft out after 2-step launch; likely kill switch bumped in pits (caption unclear)", "t": "7:03-8:35"},
+        {"run": "second hit", "et": 7.74, "sixty_ft": 1.16, "eighth_et": 4.9, "eighth_mph_or_other": "140 read off slip (unclear which field)", "mph_quarter": null, "note": "first 7-second pass, channel record, chute pulled first time", "type": "measured (timeslip)", "t": "10:55-11:51, 16:01"},
+        {"run": "previous day roll racing", "mph": 177, "type": "claimed", "t": "4:18"}
+      ],
+      "failures": [{"part": "electrical cut (first hit)", "cause": "likely someone hit the switch in the pits", "t": "7:19-8:09", "confidence": "low"}],
+      "confidence": "medium-high for 7.74/1.16/24.2 psi"
+    },
+    {
+      "car_id": "james_240sx_turbo",
+      "build_version": "240SX S13 turbo 427 (converted from nitrous)",
+      "nickname": null,
+      "owner_driver": "James (no-time racer; channel name garbled in caption)",
+      "base_vehicle": {"year": null, "make": "Nissan", "model": "240SX (S13 chassis)"},
+      "engine": {"family": "LS (Texas Speed)", "displacement_ci": 427, "heads": "PRC", "throttle_body": "very large", "builder": "Texas Speed", "t": "1:28-1:35"},
+      "previous_setup": {"fact": "~2 years on nitrous, broke many axles; moved to turbo for more power vs nitrous cost", "t": "0:49-1:08"},
+      "power_adder": {"type": "single turbo", "compressor_mm": 91, "turbine_wheel_mm": 116, "turbine_housing_ar": 1.36, "intercooler": "none", "t": "1:19-1:24"},
+      "fuel": {"type": "methanol", "pump": "mechanical pump, done by Motion (Raceworks)", "cooling": "no radiator, no water", "t": "1:40-1:50"},
+      "ecu": {"tuner": "'Dr. Tune-them-all' (caption 'dr tuna ball')", "t": "1:56"},
+      "transmission": {"type": "automatic", "t": "16:13"},
+      "rear_end": {"type": "Ford 8.8 solid axle, Mustang-style 4-link kit by Import Drag Solutions for S13 (first user)", "t": "2:34-2:46"},
+      "tires": {"size": "275", "t": "2:23"},
+      "dyno": [{"whp": 1320, "boost_psi": 15, "type": "measured (wheel, through automatic)", "t": "2:00, 16:10"}],
+      "passes": [
+        {"run": 1, "note": "too much boost/spicy, ET withheld (no-time)", "t": "5:34-7:32"},
+        {"run": 2, "launch_boost_psi": 4.5, "note": "wheelie-ish, pedaled once, 'went fast'; ET withheld", "t": "17:39-17:54"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "leroy",
+      "build_version": "Leroy twin-turbo stick",
+      "nickname": "Leroy",
+      "owner_driver": "Cleetus McFarland team",
+      "power_adder": {"type": "twin turbo", "turbo_size_mm": "68 and 70 (caption '68 70s')", "t": "15:49"},
+      "transmission": {"type": "manual (stick)", "t": "15:53"},
+      "passes": [{"et": 7.79, "type": "claimed best", "t": "15:49"}, {"note": "run as 8.0 bracket car this day; rain prevented a hit", "t": "4:36, 18:08"}],
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "turbo_specs": {"james_240_turbo": {"compressor_mm": 91, "turbine_mm": 116, "ar": 1.36}},
+    "benchmarks": {"ruby_7_74": {"sixty_ft": 1.16, "eighth": 4.9, "peak_boost_psi": 24.2}, "turbo_427_methanol_15psi_whp": 1320}
+  }
+}

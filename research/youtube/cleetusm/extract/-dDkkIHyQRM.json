@@ -1,0 +1,114 @@
+{
+  "video_id": "-dDkkIHyQRM",
+  "title": "Cheap Car Challenge Prep is OVER! Mustang Barely Starts in Time",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-55:02); 0:00-1:19 sponsor read",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 2 per caller labelling = Sick Summer leg of the $7,500/$10,000 challenge; final prep + day 0 tech",
+    "edition_note": "Same cars as crc1_*.",
+    "rules": [
+      {"fact": "Rule mentioned: car should be sellable for the max budget ($10,000)", "t": "25:34"},
+      {"fact": "Day 0 ruling: budgets 'out the window' - nobody except Lumberjack made budget; no improvements allowed from this point (run what you brung); small fixes like converter swap allowed, no major upgrades or nitrous jet changes", "t": "52:41-53:26"},
+      {"fact": "Jackstand put on probation and locked out of further changes after going over budget", "t": "21:28-22:32"}
+    ],
+    "event": {"name": "Sick Summer (live on Freedom Plus Mon-Fri)", "t": "1:19"},
+    "people": [
+      {"name": "Victor (Vic)", "role": "budget administrator"},
+      {"name": "Brett LaSala (caption 'Brett Lala'/'Brett Lasagna')", "role": "helped Mustang team with transmission/trans-brake", "confidence": "medium"},
+      {"name": "Carburetor Craig (Total Racing Components)", "role": "tuned Jackstand's carb"},
+      {"name": "Joe (Fast Forward Race Engines)", "role": "rebuilt Mustang Coyote"},
+      {"name": "'London' (= Lund Racing, per later video mls_oZ9EQQg)", "role": "Mustang tuner"},
+      {"name": "Leo (R3)", "role": "Jackstand backup driver"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc2_jackstand_240",
+      "nickname": "Sharky / old Sharky",
+      "owner_driver": "Jackstand (James); backup driver Leo from R3",
+      "engine": {"family": "GM LS 6.0 L (built, see PSGvE8jkSoc)", "notes": "old engine sold - buyer paid the remaining $1,800 on camera (total $3,300)", "t": "1:44-2:29"},
+      "power_adder": {"type": "nitrous", "nitrous_shot": "'two and a quarter' jet = ~225 hp shot (lightest, as used all race week)", "timing_pull_deg": 6, "t": "12:24-14:00"},
+      "fuel": {"carburetor": "TRC custom carb tuned by Carburetor Craig", "plug_heat_range": "10 (said slightly cold; ~9 or 8 typical for 200 hp of nitrous)", "t": "9:00, 14:24"},
+      "intake": {"air_cleaner": "$18 air cleaner bought at Innovative Racecraft, traded for a used scoop", "t": "2:29-3:30, 19:39-20:03"},
+      "transmission": {"type": "Powerglide"},
+      "dyno": [
+        {"type": "chassis dyno (car strapped down, run through gears) - wheel vs crank not stated", "run": "motor (no nitrous)", "peak_hp": 520, "peak_tq_lbft": 433, "rpm_range": "3,500-~7,500 (hit limiter)", "notes": "flat power from 6,000 up; throttle stuck once, front seal leak", "kind": "measured", "t": "11:05-11:36"},
+        {"type": "chassis dyno", "run": "nitrous ~225 shot", "peak_hp": 786, "peak_tq_lbft": 625, "rpm_range": "short pull, ended ~6,500 rpm while still climbing", "notes": "~250 hp gain; leaking nitrous solenoid replaced before pull", "kind": "measured", "t": "11:36-13:30"}
+      ],
+      "weight_lb": {"without_driver": 2408, "with_driver": 2605, "front_pct": 54, "notes": "uncut doors, power windows, all glass, all-steel body", "kind": "measured (scales)", "t": "14:42-15:15"},
+      "parts": [
+        {"part": "Interior, handbrake, stock front brakes SOLD (credit)", "price_usd": -240, "t": "19:22"},
+        {"part": "Air cleaner", "price_usd": 18, "t": "2:29"},
+        {"part": "Motion Raceworks valve covers (paid $100; retail $540 without fittings)", "price_usd": 540, "t": "21:28-21:53"},
+        {"part": "IDS front coilovers (invoice $300) - DISALLOWED, not installed", "price_usd": 300, "t": "21:02-21:28"}
+      ],
+      "budget": {"claimed_remaining_usd": 568, "ruling": "over budget once valve covers valued at retail; on probation, no further improvements; race brakes already fitted", "t": "21:28-22:53"},
+      "confidence": "high for dyno/weight, medium for budget"
+    },
+    {
+      "car_id": "crc2_lumberjack",
+      "nickname": "Lumberjack",
+      "owner_driver": "Cleetus McFarland + Squirrel",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino (doors joked as made of tank steel)", "year": null, "t": "46:58"},
+      "engine": {"family": "GM LS (turbo)", "rotating_assembly": "Texas Speed pistons + rods", "notes": "spare motor carried along strapped in the back", "t": "23:43-24:51"},
+      "transmission": {"notes": "valve body added; seals and one clutch pack replaced with factory parts; input shaft", "t": "23:43-24:29"},
+      "fuel": {"pump": "Aeromotive 5.0 pump brought but not installed; agreed value $700 if used", "t": "24:51-25:34"},
+      "parts": [
+        {"part": "Motion Raceworks catch can (safety, not counted)", "price_usd": 0, "t": "23:43"},
+        {"part": "Aeromotive 5.0 pump (spare, not installed)", "price_usd": 700, "t": "25:11"}
+      ],
+      "budget": {"status": "only car within budget", "t": "52:41"},
+      "failures": [],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc2_tye_mustang",
+      "nickname": "Burnt Lasagna (caption)",
+      "owner_driver": "Zach + Tye",
+      "engine": {
+        "family": "Ford Coyote Gen 2 (stock block, Gen 2 rods)",
+        "rotating_assembly": "rebuilt at Fast Forward (Joe) with mixed/unknown rods (I- or H-beam) and 'Diamond' pistons (claimed no-name brand); piston-to-wall clearance on the big side",
+        "notes": "old oil pan (tapped, JB-Welded) swapped; oil filter housing leak from Gen 1 housing on Gen 2 block",
+        "t": "3:30-3:55, 28:17-28:42, 32:22, 33:43"
+      },
+      "power_adder": {"type": "single turbo", "intercooler": "air-to-air intercooler with ram-air diverter", "wastegate_spring": "unknown, ~7-8 psi base", "t": "18:02, 34:25-34:49"},
+      "fuel": {"type": "E85 boost tune", "t": "34:25"},
+      "transmission": {"type": "automatic with lockup + trans-brake (model not stated)", "notes": "teardown showed missing thrust washers/heat marks - design limited around 800 hp, fine for ~400 hp stock; billet parts suggested; spare lockup trans as equal replacement; Zach rebuilt it 3 times", "t": "7:21-8:36, 32:45"},
+      "rear_end": {"notes": "differential welded by Tye after spinning one tire, losing the shootout and bending rods", "t": "5:30-6:26"},
+      "driveshaft": {"notes": "brand new driveshaft", "t": "44:35"},
+      "dyno": [
+        {"run": "first tune", "peak_hp": 593, "boost_psi": 13, "notes": "spike, sounded lean/unclean", "kind": "measured", "t": "35:13-36:11"},
+        {"run": "new tune (less fuel)", "peak_hp": 850, "boost_psi": 14, "notes": "also quoted 843 hp; lifted early", "kind": "measured", "t": "37:04-38:03"},
+        {"run": "more boost", "peak_hp": 927, "boost_psi": 22, "kind": "measured", "t": "38:31"}
+      ],
+      "race_setting": {"boost_psi": 15, "notes": "returned to old boost-controller settings for the strip; trans-brake verified holding", "t": "39:28-40:34"},
+      "budget": {"status": "over budget (acknowledged)", "t": "29:05, 31:43"},
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc2_tom_bailey_camaro",
+      "nickname": null,
+      "same_car_as": "crc1_tom_bailey_camaro",
+      "owner_driver": "Tom Bailey (+ Aiden)",
+      "base_vehicle": {"make": "Chevrolet", "model": "Camaro", "year": null},
+      "engine": {"family": "Chevy big block (swapped from small block)", "notes": "traded small block for big block + $500 merch (counted $250)", "t": "50:02-51:05"},
+      "power_adder": {"type": "nitrous", "t": "50:24"},
+      "ignition": "Holley smart coils (part of $2,500 Holley package, counted $1,250 as sponsored)",
+      "converter": {"notes": "converter too tight; considering bypass or spraying on the trans-brake", "t": "52:02-52:41"},
+      "parts": [
+        {"part": "Big block trade (net)", "price_usd": 250, "t": "51:05"},
+        {"part": "Headers (claimed)", "price_usd": 300, "t": "51:31"},
+        {"part": "Holley package (sponsored half of $2,500)", "price_usd": 1250, "t": "51:31"}
+      ],
+      "budget": {"spent_after_sick_week_usd": 4700, "untouched_usd": 2600, "t": "51:05, 52:20", "confidence": "medium"},
+      "confidence": "medium-low"
+    }
+  ],
+  "game_use": {
+    "dyno_refs": {"ls6.0_carb_na_hp": 520, "ls6.0_carb_225shot_hp": 786, "gen2_coyote_turbo_14psi_hp": 850, "gen2_coyote_turbo_22psi_hp": 927},
+    "weights_lb": {"jackstand_240_with_driver": 2605},
+    "limits_claims": {"mustang_trans_stock_rated_hp": 400, "mustang_trans_failure_around_hp": 800}
+  }
+}

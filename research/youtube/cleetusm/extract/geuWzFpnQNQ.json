@@ -1,0 +1,84 @@
+{
+  "video_id": "geuWzFpnQNQ",
+  "title": "Cheap Racecar Challenge Ep.1 - How Fast Can You Go For $15,000",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-38:08)",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "Budget is $15,000 per team", "t": "0:38"},
+      {"fact": "Roll cage is not counted in the budget; cages built by Cameron Johnson", "t": "31:15"},
+      {"fact": "No sponsorships, parts must actually be bought cheap", "t": "34:19"},
+      {"fact": "Hood required by the event (Sick Summer)", "t": "23:11"}
+    ],
+    "event": {"name": "Sick Summer (auto-caption 'Six summer')", "t": "2:00"},
+    "teams": [
+      {"team": "Cleetus + McNutt/Squirrel", "car_ref": "crc3_express_van"},
+      {"team": "Zach + Tye", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand (+ Sam)", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_express_van",
+      "nickname": null,
+      "owner_driver": "Cleetus McFarland + McNutt/Squirrel",
+      "base_vehicle": {"make": "Chevrolet", "model": "Express van", "year": null, "mileage_mi": 225000},
+      "state_at_purchase": "running, bad lifter/knock suspected, low oil pressure (~10 psi idle, ~20 revved)",
+      "purchase": {"price_usd": 675, "asking_usd": 1000, "seller": "used-car lot", "t": "7:41"},
+      "engine": {"family": "GM LS Gen 4", "displacement_l": 4.8, "notes": "lifter/knock issue; will add camshaft", "t": "6:03"},
+      "engine_plan": {"notes": "Spare 5.3 with rods+pistons in shop, valued $3,800, bartered to $3,500 as fallback; claim Gen 4 with those rods/pistons can make ~1000 hp", "t": "8:40, 31:52"},
+      "transmission": {"stock": "6L80", "plan": "Powerglide with trans brake (~$2,000 found)", "t": "7:18"},
+      "rear_end": {"type": "GM 14-bolt", "t": "32:44"},
+      "weight_lb": {"stock_claim": 5000, "target": "stock minus >1,000 (Jackstand estimate ~3,500)", "t": "2:20, 30:29"},
+      "chassis_plan": "Remove body/everything unnecessary, shorten frame to ~100 in wheelbase (dragster-style)",
+      "targets": {"et": "deep 9s, possibly 8s", "t": "0:38"},
+      "rejected_alternative": {"desc": "Express van with LS + 4L80, listed $1,400; seller wanted $1,000 + 3-person annual Freedom Factory pass; deal abandoned", "t": "4:26-5:45"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "crc3_95_mustang",
+      "nickname": null,
+      "owner_driver": "Zach + Tye",
+      "base_vehicle": {"make": "Ford", "model": "Mustang (SN95)", "year": 1995},
+      "state_at_purchase": "roller, no engine/trans, gutted dash/interior, no steering rack, wrong K-member, 7.5 rear, 4-lug",
+      "purchase": {"price_usd": 500, "asking_usd": 800, "t": "12:33-12:55"},
+      "parts": [
+        {"part": "Ford 8.8 rear end (GT)", "price_usd": 150, "t": "15:43"},
+        {"part": "Blown-up Gen 1 Coyote (donor for heads, timing, sensors, coils)", "price_usd": 500, "t": "16:27-17:15"},
+        {"part": "Turbo 400 (TH400), claimed built, no trans-brake solenoid", "price_usd": 1500, "t": "17:15-18:06"},
+        {"part": "TH400 bellhousing", "price_usd": 200, "t": "17:15"},
+        {"part": "Cowl hood", "price_usd": 100, "t": "23:31"},
+        {"part": "UPR adjustable upper hats (came with car; to be removed)", "price_usd": 0, "t": "12:33"}
+      ],
+      "engine_plan": {"family": "Ford Coyote", "notes": "Needs a short block; stock Gen 1 Coyote said to hold ~600-700 hp", "t": "16:49"},
+      "transmission": {"type": "TH400", "t": "17:15"},
+      "rear_end": {"type": "Ford 8.8", "t": "15:43"},
+      "suspension_plan": "UPR front suspension parts, axles, maybe brakes",
+      "tires": "came with skinnies",
+      "targets": {"et": "'Hail Mary' ~7.90 on last day", "t": "28:07"},
+      "confidence": "medium (auto-captions blur who bought which Mustang parts)"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "nickname": null,
+      "owner_driver": "Jackstand",
+      "base_vehicle": {"make": "Nissan", "model": "240SX hatchback", "year": "1989 or 1990 (both stated)", "mileage_mi": 97000},
+      "state_at_purchase": "all original, engine and transmission removed, clean title, factory radio",
+      "purchase": {"price_usd": 2500, "asking_usd": 3000, "t": "10:17, 25:31"},
+      "engine_plan": {"notes": "Undisclosed; teased as cheap race motor; carb + nitrous suggested by others (not confirmed)", "t": "25:59, 33:35"},
+      "confidence": "high for car/price, low for engine plan"
+    }
+  ],
+  "history_refs": [
+    {"fact": "Previous CRC: Zach's Mini Cooper (blew the supercharger)", "t": "22:03"},
+    {"fact": "Previous CRC: Zach/Tye built a Ranger from junkyard parts", "t": "20:36"},
+    {"fact": "Jackstand previously built a cheap fast 240", "t": "25:59"}
+  ],
+  "game_use": {
+    "price_points_usd": {"express_van_running_4.8_6l80": 675, "sn95_mustang_roller": 500, "240sx_hatch_roller": 2500, "ford_8.8_rear_used": 150, "gen1_coyote_blown_core": 500, "th400_built_used": 1500, "th400_bellhousing": 200, "cowl_hood": 100, "powerglide_transbrake_used": 2000, "5.3_with_forged_rods_pistons": 3500},
+    "engine_limits_claims": {"gen1_coyote_stock_bottom_end_hp": [600, 700], "gen4_ls_with_rods_pistons_hp": 1000}
+  }
+}

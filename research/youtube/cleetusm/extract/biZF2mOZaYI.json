@@ -1,0 +1,91 @@
+{
+  "video_id": "biZF2mOZaYI",
+  "title": "The Most Freedom I've EVER Heard At Once... + The Blazer Gets a BRAND NEW Engine",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-18:46); long [Music] gaps during dyno pulls mean several spoken numbers are fragmentary",
+  "context": {
+    "series": "month_of_freedom",
+    "event": {"name": "Cleetus and Cars Indy (auto-caption 'Cleveland cars Indy'), street car class + burnout contest Saturday", "t": "11:19, 13:13"},
+    "notes": [
+      {"fact": "Turbo giveaway: winner offered 64, 76 or 88 mm; 64s described as ball-bearing billet-wheel units; brand captioned 'Precision Turf ski' (likely Precision Turbo, low confidence)", "t": "0:33-1:03"},
+      {"fact": "Previous outing (Bristol) ended with the Blazer's crank breaking ('crank snapper' situation)", "t": "1:24, 3:01"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "blazer",
+      "build_version": "427 replacement after crank failure (Month of Freedom, pre-Cleetus and Cars Indy)",
+      "nickname": "Rocky",
+      "owner_driver": null,
+      "base_vehicle": {"year": 2000, "make": "Chevrolet", "model": "Blazer", "t": "9:04"},
+      "engine": {
+        "family": "GM LS-based (implied by 427 from Texas Speed; family not explicitly stated)",
+        "displacement_ci": 427,
+        "block": "caption 'Reese sleeve' (possibly a resleeved block; low confidence)",
+        "heads": null, "cam": null, "rotating_assembly": null, "compression": null,
+        "builder": "Texas Speed (fresh 427 supplied)",
+        "t": "2:08-2:28, 3:11"
+      },
+      "power_adder": {"type": "supercharger (blower)", "brand_model": null, "boost_psi": {"this_session": "14 peak on first pull, ~15-16 on later pull", "previous_setup": 25}, "t": "1:26, 8:28, 10:46-10:57"},
+      "crank_support": {"desc": "Custom crank snout support made by Ty from a small-block Chevy crank support kit (no off-the-shelf part fit the Blazer) to stop crank flex", "t": "3:14-3:33"},
+      "fuel": null,
+      "ecu": null,
+      "transmission": null, "converter": null, "rear_end": null, "suspension": null, "tires": null, "weight_lb": null,
+      "dyno": [
+        {"pull": 1, "torque_lbft": 798, "boost_psi": 14, "hp": null, "measured": true, "t": "8:23-8:32"},
+        {"pull": 2, "torque_lbft": 1037, "hp": "caption 'a thousand three' (possibly ~1,003 hp; low confidence)", "boost_psi": "15-16 (one reading '15-2', maybe 15.2)", "afr_note": "AFR readout mentioned ~15.9/15 (garbled, low confidence)", "measured": true, "t": "10:04-11:02"},
+        {"note": "Dyno type (wheel vs engine) not stated", "t": null}
+      ],
+      "passes": [],
+      "failures": [
+        {"part": "crankshaft (snapped at #1 main / snout)", "cause": "belt/pulley tension on the snout; #1 main bearing also beaten up from pulley load", "t": "1:24-2:47"},
+        {"part": "startup: ignition / cam sensor issue (backfires on first fire-up)", "cause": "cam sensor/ignition setting changed (garbled)", "t": "4:21-4:33"},
+        {"part": "possible oil leak at breather", "cause": "suspected overfilled oil; some drained", "t": "8:45-9:01"}
+      ],
+      "parts": [
+        {"part": "Texas Speed 427 (fresh/freshened)", "price_usd": null, "t": "2:25, 3:11"},
+        {"part": "Small-block Chevy crank support kit (customized)", "price_usd": null, "t": "3:20"},
+        {"part": "Old 427 (needs crank, block OK) -> to be machined as backup motor", "price_usd": null, "t": "2:30-2:53"}
+      ],
+      "targets": {"event": "Cleetus and Cars Indy street car class and burnout contest", "t": "2:57, 11:19"},
+      "confidence": "high for crank failure/427 swap; medium-low for hp number"
+    },
+    {
+      "car_id": "parker_hellcat",
+      "build_version": "Month of Freedom upgrades",
+      "nickname": null,
+      "owner_driver": "Parker",
+      "base_vehicle": {"year": null, "make": "Dodge", "model": "Challenger Hellcat", "t": "5:22-5:31"},
+      "parts": [
+        {"part": "Billet Specialties wheels (caption 'fill the Specialties')", "price_usd": null, "t": "5:25"},
+        {"part": "TBM brakes front and rear (claimed first Challenger with them; brackets now available)", "price_usd": null, "t": "5:28-5:35"}
+      ],
+      "targets": {"event": "street car class + burnout contest", "t": "5:38"},
+      "confidence": "medium"
+    },
+    {
+      "car_id": "mystery_machine",
+      "nickname": "Mystery Machine",
+      "owner_driver": null,
+      "notes": "Beat George's 'Rod Knock Rodney' in an informal drag race; no ET/MPH given",
+      "t": "12:54-14:10",
+      "confidence": "low (no build data)"
+    },
+    {
+      "car_id": "danger_ranger",
+      "nickname": "Danger Ranger",
+      "owner_driver": "Ty",
+      "parts": [{"part": "'Street rippers' tires (burnout use)", "price_usd": null, "t": "17:53"}],
+      "notes": "Going to Indy for burnouts; valve covers cleaned up",
+      "confidence": "low (no build data)"
+    }
+  ],
+  "history_refs": [
+    {"fact": "Blazer previously ran ~25 psi on the earlier setup", "t": "10:46"}
+  ],
+  "game_use": {
+    "failure_modes": {"supercharger_belt_load_crank_snout_break": "crank snaps at #1 main from pulley side-load; fix = crank snout support"},
+    "dyno_points": {"blazer_427_blower_14psi_torque_lbft": 798, "blazer_427_blower_15_16psi_torque_lbft": 1037}
+  }
+}

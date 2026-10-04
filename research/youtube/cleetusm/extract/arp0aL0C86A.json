@@ -1,0 +1,73 @@
+{
+  "video_id": "arp0aL0C86A",
+  "title": "Introducing Ruby's NEW Hand-Me-Down 1,500 Horsepower Texas Speed 7.0L",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-17:35)",
+  "context": {
+    "notes": [
+      {"fact": "Filmed during COVID distancing; work done at Cleetus's home shop", "t": "4:37"},
+      {"fact": "Side segment: a junk 'parts runner' car bought to haul parts (no price stated)", "t": "11:48-14:47"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "ruby",
+      "build_version": "Ruby - junkyard 'Old Faithful' engine (outgoing)",
+      "nickname": "Ruby",
+      "owner_driver": "Cleetus McFarland (James assisting)",
+      "base_vehicle": {"year": null, "make": null, "model": null, "note": "Corvette per series title/context; not stated in transcript"},
+      "engine": {
+        "family": "LS (junkyard block)", "displacement": null,
+        "rotating_assembly": "Texas Speed off-the-shelf pistons and rods, stock crank, aftermarket cam", "t": "10:17-10:42",
+        "head_studs": "OEM-style head studs (caption 'om head studs')", "builder": null,
+        "confidence": "medium"
+      },
+      "tune": {"timing_deg": 18, "boost_psi": 30, "note": "described as too aggressive; plan was to pull timing and add boost (friend suggested ~35 psi)", "t": "0:00-0:28"},
+      "power_adder": {"type": "single turbo", "brand_model": null, "turbo_size_mm": null, "boost_psi_max": "~30 (never above 30 in Ruby before this test)", "t": "0:28"},
+      "passes": [
+        {"et": 8.3, "note": "best on this setup, stated as 'an 8-3' (8.3x)", "type": "claimed", "t": "0:00, 10:17"},
+        {"et": null, "note": "test pass aborted: poor 60 ft, head gasket pushing coolant, temp rising", "result": "unsuccessful", "t": "1:42-2:59"}
+      ],
+      "failures": [
+        {"part": "head gasket", "cause": "blown at high boost/timing; sticky paper-like coating blown off the gasket, head not torched; block deck may be warped -> deck resurface", "t": "2:59, 9:06-10:17"},
+        {"part": "rear main seal", "cause": "leaking", "t": "11:23"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "ruby",
+      "build_version": "Ruby - Texas Speed 427 (7.0L) ex-Leroy engine (incoming)",
+      "nickname": "Ruby",
+      "owner_driver": "Cleetus McFarland (James assisting)",
+      "base_vehicle": {"year": null, "make": null, "model": null},
+      "engine": {
+        "family": "LS (Texas Speed built)",
+        "displacement_ci": 427, "displacement_l": 7.0,
+        "block": "aluminum block, sleeved by Texas Speed (caption mentions 'Dart'; exact block wording garbled, low confidence)", "t": "15:25",
+        "heads": "PRC heads from Texas Speed", "t_heads": "16:08",
+        "head_studs": "upgraded to 1/2-inch head studs (was smaller when in Leroy)", "t_studs": "5:49, 16:08",
+        "builder": "Texas Speed",
+        "history": "Leroy's original engine; claimed ~1,500 hp in Leroy; ran Leroy's first 7-second pass after blowing a head gasket, with coolant drained from the block", "t_history": "5:49, 15:25-16:08",
+        "cam": null, "compression": null,
+        "confidence": "medium"
+      },
+      "swap_notes": [
+        {"fact": "Reused Ruby's oil pan, pickup tube, windage tray, balancer, relocated coil packs; new front cover; Texas Speed valve covers later", "t": "11:04-11:48"},
+        {"fact": "Pickup-tube O-ring stressed as critical for LS oil pressure", "t": "16:32"},
+        {"fact": "Engine claimed lighter than old one and bigger in cubic inches; current turbo may be too small for 427", "t": "5:49-6:10"}
+      ],
+      "power_adder": {"type": "single turbo (carried over)", "turbo_size_mm": null, "note": "caption turbo sizes ('46', '108') garbled, not usable", "t": "6:10"},
+      "targets": {"et": "7-second pass", "t": "6:51"},
+      "parts": [
+        {"part": "Texas Speed 427 LS (used, ex-Leroy)", "price_usd": null, "t": "5:23"},
+        {"part": "1/2-inch head studs", "price_usd": null, "t": "10:17"}
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "failure_modes": ["head gasket lift at ~30 psi with 18 deg timing on junkyard LS with stock-style studs"],
+    "claims": {"texas_speed_427_hp_in_leroy": 1500, "ruby_junkyard_ls_best_et": 8.3}
+  }
+}

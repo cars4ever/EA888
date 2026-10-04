@@ -1,0 +1,81 @@
+{
+  "video_id": "forvQJqEvGg",
+  "title": null,
+  "title_note": "Title not returned by transcript tool; assigned by caller as Cheap Racecar Challenge 3 (Ep.2 per batch order, not confirmed in transcript)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-54:24). Opening 0:00-2:08 is an unrelated daily-driver segment (spark plug blown out of the head of #7 cylinder on a high-mileage car, 128,000 mi); 44:58-end is the unrelated 'Hard Park the Spark' segment. CRC content ~2:08-44:58.",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "Helping is allowed as long as the team members are working too (not standing idle)", "t": "20:44"},
+      {"fact": "Roll cage (Leroy's/old cage) is not part of the budget", "t": "32:04"}
+    ],
+    "teams": [
+      {"team": "Cleetus + McNutt/Squirrel", "car_ref": "crc3_express_van"},
+      {"team": "Zach + Tye", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand (+ Sam)", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_express_van",
+      "nickname": "man van power dragster super van (joke name)",
+      "nickname_t": "44:29",
+      "owner_driver": "Cleetus McFarland + McNutt/Squirrel",
+      "base_vehicle": {"make": "Chevrolet", "model": "Express van (1-ton chassis described)", "year": null, "t": "10:35"},
+      "budget_tracking": [{"fact": "Team says it is only $675 into the van so far, with a Gen 4 LS at minimum (with a lifter tick)", "t": "22:29"}],
+      "build_progress": [
+        {"fact": "Entire cab/body unbolted (12 body bolts) and lifted off chassis with forklift; firewall/dash/doors/windshield removed. Plan: cut firewall out and remount steering + brakes on a small plate", "t": "8:03-31:16"},
+        {"fact": "Kept radiator to avoid buying one (~couple hundred dollars)", "t": "14:27"},
+        {"fact": "Cut: heater core lines, trans cooler lines, AC lines, front bumper, exhaust (~50 lb), cab-mount area of frame; kept starter/ground/alternator wires", "t": "18:19-39:18"},
+        {"fact": "Broke two coil packs while lifting body (said to still be fine)", "t": "19:15-20:03"},
+        {"fact": "Plan to shorten frame behind trans crossmember; plan to cut/loosen a leaf in rear leaf pack; weld axle tubes", "t": "11:05-11:47, 30:35, 33:17"},
+        {"fact": "Driver to lie down between frame rails dragster-style, no window/windshield", "t": "9:18-9:45"},
+        {"fact": "Plans to sell the catalytic converters", "t": "33:57"}
+      ],
+      "engine": {"family": "GM LS Gen 4", "displacement_l": 4.8, "notes": "lifter tick; original engine kept", "t": "22:29, 43:15"},
+      "power_adder": {"type": "turbo (planned)", "brand_model": null, "notes": "'turbos'/'turbo kit' mentioned as future added weight; intercooler mentioned", "t": "22:56, 41:16"},
+      "ecu": {"plan": "Holley (used deal found on Facebook Marketplace)", "t": "15:15", "confidence": "medium (caption 'Holly')"},
+      "transmission": {"stock": "6-speed auto (6L80 per Ep.1)", "plan": "Powerglide 'coming' (caption 'power slide'), expected 50-100 lb lighter than stock", "t": "22:56, 33:35, 39:18"},
+      "rear_end": {"type": "stock heavy-duty axle ('huge', welded)", "ratio_measured": "about 2.50 (counted driveshaft turns; first guessed 2.43, then 2.55)", "plan": "Swap gear to 4.10 or 4.56; junkyard 4.10 claimed ~$150 or eBay; alternatively junkyard 10-bolt with 3.73; weld instead of spool", "t": "42:13-44:07"},
+      "suspension": {"rear": "leaf springs; plan to cut a leaf for looser launch", "t": "11:47"},
+      "weight_lb": [
+        {"value": 3050, "desc": "first stabilised scale reading, body off, with bumpers/exhaust/fuel tank still on", "measured": true, "t": "36:05"},
+        {"value": 2970, "desc": "reading kept trickling down; scale on asphalt, reliability questioned", "measured": true, "t": "35:37"},
+        {"value": 3150, "desc": "re-weigh after repositioning", "measured": true, "t": "36:26"},
+        {"value": 3021, "desc": "after front bumper/exhaust cut off; fuel tank still on (possibly full)", "measured": true, "t": "40:20"},
+        {"value": 3022.9, "desc": "final number stated for the episode", "measured": true, "t": "41:44"},
+        {"value": 3000, "desc": "team target max race weight; 'hoped for 2,700'; Jackstand-type estimate of ~4,000 with additions was joked", "measured": false, "t": "22:29, 40:50, 41:16"}
+      ],
+      "driver_weight_lb": {"value": "200-210 (Cleetus, self-stated)", "t": "41:16"},
+      "tires": {"notes": "unlimited room for a large rear tire noted", "t": "41:44"},
+      "confidence": "high for weights/gear; medium for ECU brand"
+    },
+    {
+      "car_id": "crc3_95_mustang",
+      "owner_driver": "Zach + Tye",
+      "build_progress": [
+        {"fact": "Team 'non-roller roller'; heavy weight-reduction gutting underway; brake lines present", "t": "3:33-3:54"},
+        {"fact": "Team has a second Mustang parts car (hydroboost car) for intermediate parts; still looking for a third car", "t": "4:14, 33:17"}
+      ],
+      "confidence": "low (brief mention only)"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "owner_driver": "Jackstand",
+      "purchase": {"price_usd": 2500, "t": "3:12", "note": "restated; claimed only stock example available, others were front-damaged or on coilovers"},
+      "condition": {"fact": "Has a crushed rocker / smashed corner that was repaired", "t": "3:12"},
+      "build_progress": [
+        {"fact": "Full gut / weight reduction for the cage, including removing factory crash bars; engine already out", "t": "2:31-2:51"}
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {"junkyard_4.10_gearset_or_axle_claim": 150, "radiator_avoided_cost_approx": 200},
+    "weights_lb": {"express_van_rolling_chassis_body_off": 3022.9},
+    "gearing": {"express_van_stock_ratio_approx": 2.5}
+  }
+}

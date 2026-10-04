@@ -1,0 +1,79 @@
+{
+  "video_id": "IHi9RJU_nVs",
+  "title": "McFlurry IS BACK! First Start Up & Dyno + Carbon Fiber Turbo Inlet",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-37:42, 71 merged lines)",
+  "context": {
+    "carbon_inlet_build": {
+      "fabricator": "Ty",
+      "process": "3D scan of engine bay (Revopoint MetroX scanner with reflective markers and scanning spray) -> CAD -> 3D-printed buck (two pieces, plastic welded) -> bodywork, clear, wet sand 600-1500 grit and buff -> two-piece split mold -> vacuum-bagged resin infusion (held ~28.5 inHg vacuum, leak-checked) -> clear coat -> trim to fit; part made slightly long on purpose for trimming",
+      "notes": "Ty had not done carbon work in ~5 years; part very light; replaces stock-style inlet to the turbo; rubber coupler kept at turbo",
+      "t": "0:00-18:02"
+    },
+    "people": {"tuning_help": "Brett LaLa (caption 'Brett Lola'/'Lala', called 'Coyote god'; said to have the fastest Coyote car)", "ecu_support": "Rick at Haltech", "t": "25:46, 31:24, 36:37"}
+  },
+  "cars": [
+    {
+      "car_id": "mcflurry",
+      "build_version": "v3_coyote_single_76mm_turbo",
+      "nickname": "McFlurry",
+      "owner_driver": "McFarland Racing (Cleetus driving on dyno; 'Steve' asked to drive next track outing, low confidence)",
+      "base_vehicle": {"make": "Ford", "model": "Mustang Fox body (said 'not a fox body' as a joke about power)", "year": null, "t": "33:25"},
+      "engine": {
+        "family": "Ford Coyote",
+        "notes": "same engine as before the turbo change ('it's the same engine')",
+        "valve_covers": "Motion Raceworks billet valve covers, black, very thin",
+        "intake": "Plazmaman intake (black)",
+        "t": "22:10, 24:32"
+      },
+      "power_adder": {
+        "type": "single turbo",
+        "turbo_size_mm": 76,
+        "turbo_desc": "class-legal 76 mm 'maxed out for its size' turbo; caption reads 'Ultra street 76 mm with T5 inlet VMAN discharge 139 AR' -> likely Ultra Street-class 76 mm, V-band discharge, 1.39 A/R turbine housing (inlet flange 'T5' as captioned, low confidence); brand not clearly stated; called the most expensive turbo ever in the shop; heavier than their 98 mm",
+        "class_note": "76 mm is the class limit; competitors all run similarly extreme 76 mm turbos",
+        "boost_control": "CO2 dome pressure; boost cut added after an overboost",
+        "oil_feed_restrictor": "nitrous jet used as restrictor in turbo oil feed to cure decel smoke (Coyote makes high oil pressure)",
+        "downpipe_in": 5,
+        "wastegates": "external, plural",
+        "t": "18:02-20:36, 21:20, 28:38, 30:57, 27:01"
+      },
+      "ecu": {"brand": "Haltech", "t": "25:46"},
+      "transmission": null,
+      "converter": {"fact": "new converter installed; concern it may be too loose", "t": "20:57, 26:25"},
+      "fuel_system": {"fact": "no longer the 'crazy fuel cell'; fuel level now visible", "t": "21:20"},
+      "body": {"fact": "front bumper replaced and braced after previous outing bent it under itself", "t": "21:45"},
+      "previous_outing": {"fact": "last time out it 'went 70' (likely a 7.0x pass) and bent the front bumper", "t": "21:45", "confidence": "low"},
+      "dyno": [
+        {"pull": 1, "boost_psi": 35, "result": "unintended overboost; lifted at 5,200 rpm; no number given", "measured": true, "t": "28:08"},
+        {"pull": 2, "boost_psi": 20, "dome_psi": 20, "peak_hp": 1124, "hp_note": "caption '11:24' then '1120'", "unit": "wheel (chassis dyno)", "measured": true, "t": "30:00"},
+        {"pull": 3, "dome_psi": 30, "boost_psi": "26 falling to 23 at high rpm (back-pressure suspected)", "peak_hp": 1307, "peak_tq_lbft": 1000, "rev_to_rpm": 9000, "unit": "wheel", "measured": true, "t": "31:55-33:25"},
+        {"pull": 4, "boost_psi": "31 rolling in, 29 at ~8,000 rpm (peak power rpm)", "peak_hp": 1394, "unit": "wheel ('1,400 wheel')", "timing_deg": 21, "afr_note": "rich", "measured": true, "t": "35:07-36:16"}
+      ],
+      "passes": [],
+      "failures": [
+        {"part": "boost control", "cause": "first loaded pull overboosted to 35 psi due to a setting change; boost cut added", "t": "28:08-29:09"},
+        {"part": "turbo oil seal behavior", "cause": "smoke on deceleration from excessive oil pressure to turbo; fixed with restrictor", "t": "30:57"},
+        {"part": "dash switch", "cause": "loose behind dash", "t": "28:38"}
+      ],
+      "targets": {"hp": "~1,600 on a good day plus ram air (claim)", "next": "track Monday with Brett LaLa", "t": "36:37-37:19"},
+      "parts": [
+        {"part": "76 mm class turbo (Ultra Street-style)", "price_usd": null, "t": "18:36"},
+        {"part": "Motion Raceworks billet valve covers", "price_usd": null, "t": "22:10"},
+        {"part": "Motion Raceworks quick-seal boost clamps", "price_usd": null, "t": "22:10"},
+        {"part": "Custom carbon fiber turbo inlet (in-house)", "price_usd": null, "t": "16:02"},
+        {"part": "Revopoint MetroX 3D scanner (shop tool)", "price_usd": null, "t": "1:09"}
+      ],
+      "confidence": "high for dyno numbers; low for turbo brand/flange spec"
+    }
+  ],
+  "game_use": {
+    "dyno_curve_points": [
+      {"boost_psi": 20, "whp": 1124},
+      {"boost_psi": "26->23", "whp": 1307, "tq_lbft": 1000, "rpm_limit": 9000},
+      {"boost_psi": "31->29", "whp": 1394, "peak_power_rpm": 8000, "timing_deg": 21}
+    ],
+    "behaviors": ["boost falls off at high rpm with flat dome pressure (turbine back-pressure)", "overboost risk without boost cut", "turbo oil feed needs restrictor on high-oil-pressure engines"],
+    "class_rules": {"ultra_street_turbo_limit_mm": 76}
+  }
+}

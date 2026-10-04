@@ -1,0 +1,102 @@
+{
+  "video_id": "uiyJESyt3HA",
+  "title": "Our Retired Cop Car Made 1,000 HORSEPOWER! (Boost and Nitrous GT500)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:03-42:52); heavily garbled captions (VMP captioned 'BMP'/'VFP', pulley sizes captioned 'to six/to four')",
+  "context": {
+    "notes": [
+      {"fact": "Leroy's retired parachute raffled ($10 tickets) for JMS Burn Center; chute signed 7.82 @ 176 mph from the first stick-shift GM 7-second pass", "t": "4:10-4:49"},
+      {"fact": "Car already competed in a burnout contest without issues", "t": "0:03"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crown_vic_gt500",
+      "build_version": "VMP cams + Frankenstein ported heads, stock GT500 manifolds, dyno day",
+      "nickname": "Project Neighbor",
+      "owner_driver": "Cleetus crew; tuner Jeremy (caption 'from odds news', company unclear)",
+      "base_vehicle": {"year": null, "make": "Ford", "model": "Crown Victoria (retired police car)", "t": "0:03"},
+      "engine": {
+        "family": "Ford GT500 supercharged engine (title 'GT500'; belt from 2014 GT500 5.8 mentioned)",
+        "displacement": null,
+        "block": "stock bottom end; forged from factory (stated)",
+        "heads": "stock heads ported by Frankenstein Engine Dynamics",
+        "cam": "VMP cams (caption 'BMP')",
+        "rotating_assembly": "factory",
+        "compression": null,
+        "head_gaskets": "Ford",
+        "exhaust": "stock GT500 cast-iron exhaust manifolds (called small/restrictive)",
+        "t": "1:03, 6:27-6:57, 14:01, 37:03, 38:08"
+      },
+      "power_adder": {
+        "type": "supercharger + (one-off) nitrous",
+        "blower_model": null,
+        "pulleys": "2.6 in (big) then 2.4 in (small); 2.5 also supplied by VMP; shorter belt from 2014 GT500 5.8 (~0.4 in shorter) cures belt slip",
+        "boost_psi": {"big_pulley": "16-17", "small_pulley": "19-20", "with_nitrous": 22.8},
+        "bypass": "VMP lower-vacuum bypass valve actuator received (for cammed engines)",
+        "nitrous": "bottle shot into throttle body by James, described as ~170 hp worth; not a proper kit",
+        "t": "7:51-8:19, 13:35, 19:36-20:33, 22:33, 35:13-36:03"
+      },
+      "throttle_body": "small twin/dual-blade (street, with filter) vs big single-blade (no filter, max effort)",
+      "fuel": {"type": "ethanol (target AFR 7.6 'for ethanol')", "t": "35:13"},
+      "ecu": {"brand": "Holley Dominator EFI", "notes": "closed-loop held 7.6 target within ~1-4% even through nitrous; peak timing log ~16 deg on nitrous pull", "t": "34:14-36:30, 37:41"},
+      "transmission": null, "converter": null,
+      "rear_end": {"ratio": "3.89 (now) vs earlier 3.73/3.27 - garbled, low confidence", "t": "14:32"},
+      "suspension": null, "tires": null, "weight_lb": null,
+      "dyno_history": [
+        {"setup": "stock heads/cam, big throttle body", "hp": 803, "t": "2:57"},
+        {"setup": "stock heads/cam, small throttle body", "hp": 730, "t": "2:57-3:23"},
+        {"setup": "previous max effort (big TB, no filter), VMP visit", "hp": 809, "t": "11:58, 15:03"}
+      ],
+      "dyno": [
+        {"pull": 1, "setup": "2.6 pulley, small TB w/ filter", "hp": 819, "torque_lbft": 707, "boost_psi": "16-17", "t": "10:38-11:58, 13:35"},
+        {"pull": 2, "setup": "same", "hp": 819, "torque_lbft": 712, "t": "15:03-16:28"},
+        {"pull": 3, "setup": "same, minor changes", "hp": 810, "t": "16:28"},
+        {"pull": 4, "setup": "same + timing", "hp": 844, "torque_lbft": 727, "boost_psi": 17, "t": "17:51"},
+        {"pull": 5, "setup": "2.4 pulley, small TB", "hp": 846, "torque_lbft": 761, "boost_psi": 19, "t": "21:28-22:33"},
+        {"pull": 6, "setup": "2.4 pulley, small TB", "hp": 851, "torque_lbft": 755, "boost_psi": "high 19 / 20", "t": "23:06"},
+        {"pull": 7, "setup": "2.4 pulley, big single TB, no filter", "hp": 872, "torque_lbft": 763, "t": "25:50-26:00"},
+        {"pull": 8, "setup": "same + ~10 deg more timing up top", "hp": 897, "torque_lbft": 785, "notes": "boost only, through stock cast manifolds", "t": "27:01-28:44, 38:08"},
+        {"pull": 9, "setup": "same + nitrous shot (two hits)", "hp": 1068, "torque_lbft": 967, "boost_psi": 22.8, "t": "32:14-34:14, 36:03"},
+        {"note": "Dyno whp vs crank not stated", "t": null}
+      ],
+      "summary_claims": {"street_setup_hp": 850, "max_boost_only_hp": 900, "with_nitrous_hp": 1060, "t": "42:08"},
+      "passes": [],
+      "failures": [
+        {"part": "belt (slip at track, previously duct-taped pulley)", "cause": "belt too long for 2.4 pulley; fixed with shorter 2014 GT500 belt", "t": "19:36-20:09"},
+        {"part": "spark breakup on track earlier", "cause": "fixed with fresh plugs", "t": "0:42"}
+      ],
+      "parts": [
+        {"part": "VMP camshafts", "price_usd": null, "t": "14:01"},
+        {"part": "Frankenstein Engine Dynamics head porting", "price_usd": null, "t": "14:01, 42:08"},
+        {"part": "VMP 2.4 / 2.5 / 2.6 pulleys", "price_usd": null, "t": "8:19"},
+        {"part": "VMP bypass valve actuator", "price_usd": null, "t": "7:51"},
+        {"part": "Holley Dominator ECU", "price_usd": null, "t": "35:13"}
+      ],
+      "targets": {"hp": 1000, "t": "8:43, 41:35"},
+      "confidence": "high for dyno numbers; medium for parts/brand names"
+    },
+    {
+      "car_id": "caprice_rival",
+      "build_version": "supercharged Chevy cop car, automatic",
+      "nickname": null,
+      "owner_driver": "Jeremy (tuner; also runs a 'Faster Problems' channel per caption - low confidence)",
+      "base_vehicle": {"year": null, "make": "Chevrolet", "model": "Caprice (police car)", "t": "2:03, 41:01"},
+      "engine": {"notes": "described as a tired old cop motor (mileage spoken ~78-79k, also '217,000' mentioned - unclear which); stock-piston", "t": "39:05-39:37"},
+      "power_adder": {"type": "supercharger", "blower_model": "caption '2.3' (likely 2.3L; low confidence)", "t": "38:40"},
+      "expected_hp": 850,
+      "transmission": {"current": "automatic (recently serviced)", "planned": "TR6060 manual", "t": "2:03, 39:37"},
+      "passes": [{"et": "10.1x (caption 'ten ones')", "mph": 140, "measured": true, "notes": "garbled 'Ben 10:1 at 140'", "t": "2:03, 39:37"}],
+      "targets": {"et": "9-second", "budget_usd": 20000, "budget_note": "including car purchase", "t": "40:17"},
+      "confidence": "low-medium"
+    }
+  ],
+  "history_refs": [
+    {"fact": "Leroy: 7.82 @ 176 mph, first stick-shift GM in the 7s (world record)", "t": "4:10-4:28"}
+  ],
+  "game_use": {
+    "upgrade_deltas_hp": {"cams_plus_ported_heads_same_pulley": "+~10 over prior max (with small TB), ~+100 total at max effort", "timing": 25, "2.6_to_2.4_pulley": 7, "big_TB_no_filter": 21, "more_timing_top": 25, "nitrous_shot": 171},
+    "price_points_usd": {"caprice_build_budget_incl_car": 20000, "raffle_ticket": 10}
+  }
+}

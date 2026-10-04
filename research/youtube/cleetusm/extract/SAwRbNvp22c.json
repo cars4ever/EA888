@@ -1,0 +1,118 @@
+{
+  "video_id": "SAwRbNvp22c",
+  "title": "CHEAP RACECAR BATTLE! Who Bought The Best Race Car Under $7,500?",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-1:14:28); 0:00-1:47 sponsor read",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 1 ($7,500) - Sick Week 2025",
+    "event": {"name": "Sick Week 2025 (drag-and-drive, 5 days, track to track, averaged ET); starts at South Georgia Motorsports Park; streamed on Freedom Plus", "t": "1:47-2:48, 6:43, 19:47"},
+    "rules": [
+      {"fact": "Budget $7,500 per team", "t": "2:48"},
+      {"fact": "Winner = fastest average over the week", "t": "2:26-2:48"},
+      {"fact": "Parts at fair market value; team labor (e.g. fabrication) is free and not added", "t": "6:21"},
+      {"fact": "No working on the cars until day one of Sick Week (Monday / tech day); Zach+Ty started at 3:46 a.m. on day one and built a turbo kit off-car beforehand (gray area)", "t": "20:41, 23:21, 30:42"},
+      {"fact": "'Phoning a friend' to source a car joked as a $1,000 fine (Zach+Ty bought via a friend at auction)", "t": "3:56"},
+      {"fact": "Other people working on your car questioned as disallowed on drag-and-drives", "t": "1:04:02"}
+    ],
+    "teams": [
+      {"team": "Cleetus + George", "car_ref": "crc1_el_camino"},
+      {"team": "Zach + Ty", "car_ref": "crc1_mustang"},
+      {"team": "Jackstand + Nate ('Dr. Tune', caption 'Dr tunal')", "car_ref": "crc1_240sx_coupe"},
+      {"team": "Mr. Sam (support, drives F-150 with tools/engine hoist)", "car_ref": null}
+    ],
+    "targets": {"fact": "Cleetus hopes someone runs a 9-second pass", "t": "2:48"}
+  },
+  "cars": [
+    {
+      "car_id": "crc1_el_camino",
+      "nickname": "Woody (wood-panel sides); possibly the car later called 'Lumberjack' (not stated here)",
+      "owner_driver": "Cleetus McFarland + George",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino", "year": 1973, "condition": "rust on every panel, previous owner Kyle (with daughter Alissa) did two drag-and-drives on it, never trailered; stock suspension; lifts left front", "t": "11:41-14:13, 42:42"},
+      "purchase": {"price_usd": 5350, "breakdown": "would have been $5,000; +$350 for ARP head studs the seller installed while reassembling (with new head gaskets)", "seller": "Kyle (bought the car for $250 as scrapyard rescue)", "t": "12:43, 19:27, 36:20"},
+      "engine": {"family": "GM LS Gen 4", "displacement_l": 5.3, "block": "Gen 4 5.3, never apart", "rotating_assembly": "stock rods and pistons, rings not re-gapped", "cam": "NA cam with DOD delete", "head_fasteners": "ARP head studs", "oil_pressure_psi": 65, "t": "16:13-16:37, 35:06, 46:28"},
+      "power_adder": {"type": "turbo", "previous": "7675 with 0.96 hot side (brand not stated) (a Cleetus giveaway turbo) - sold before purchase; car bought with turbo kit but no turbo", "installed": "Precision 7675 (remanufactured), T4 flange, 1.15 divided turbine housing, bought at event", "intercooler": "air-to-air, Marketplace $100", "boost_target": "hope ~800 hp", "t": "15:48-16:13, 17:39, 45:31-47:39, 57:47"},
+      "fuel": {"type": "E85 / flex fuel (flex-fuel sensor fitted); runs pump gas originally", "t": "16:57, 18:02, 35:33, 39:21"},
+      "ecu": {"type": "Holley Terminator", "t": "15:23"},
+      "transmission": {"type": "4L80E from an Express van (junkyard), shift kit", "shifter": "aftermarket shifter (opponent says ~$1,000 'operator' shifter) with doorbell-style two-step button", "trans_brake": false, "t": "14:40-15:01, 35:58"},
+      "converter": {"stall_rpm": 3800, "brand": "caption 'TI' (possibly TCI, low confidence)", "notes": "single-disc lockup", "t": "15:23"},
+      "launch": {"method": "foot-brake against two-step up to ~3,000 rpm", "t": "15:01"},
+      "rear_end": {"type": "GM 10-bolt 8.5 (factory)", "gear": "3.73 (swapped from 2.73)", "diff": "factory 1973 clutch-type posi", "brakes": "rear drums", "t": "14:13, 1:04:51"},
+      "suspension": "stock",
+      "tires": {"desc": "street wheels/tires (drive wheels)", "t": "13:23, 35:33"},
+      "weight_lb": {"claim": 4800, "by": "Jackstand (opponent)", "t": "38:50"},
+      "dyno": [],
+      "passes": [],
+      "failures": [
+        {"part": "Catch can smoking at first start-up", "cause": null, "t": "58:44"}
+      ],
+      "parts": [
+        {"part": "1973 El Camino turbo LS roller-ready car (no turbo)", "price_usd": 5000, "t": "47:39"},
+        {"part": "ARP head studs (installed by seller)", "price_usd": 350, "t": "36:20"},
+        {"part": "Precision 7675 remanufactured turbo, T4, 1.15 divided", "price_usd": 700, "t": "45:31-48:04"},
+        {"part": "Air-to-air intercooler (came with car, seller paid $100 on Marketplace)", "price_usd": 100, "t": "17:39"},
+        {"part": "Oil drain line from shop scrap pile", "price_usd": 0, "note": "taken from garbage, declared free", "t": "55:25"},
+        {"part": "Spark plugs, RTV, AN hoses", "price_usd": null, "t": "48:04"}
+      ],
+      "targets": {"et": "10-second run first day; '9s' claimed", "t": "50:19, 38:50"},
+      "confidence": "high for purchase/drivetrain; medium for converter brand and shifter"
+    },
+    {
+      "car_id": "crc1_mustang",
+      "nickname": "'Transformer' (joke)",
+      "owner_driver": "Zach + Ty",
+      "base_vehicle": {"make": "Ford", "model": "Mustang (Coyote V8, carbon-fiber interior trim, front-end damage, deployed seat airbags, window louvers)", "year": null, "t": "4:31-5:23"},
+      "purchase": {"price_usd": 5200, "note": "roughly $5,200 incl. auction fees and shipping, bought via a friend at auction before budget was handed out; ~$2,300 left", "t": "5:00-5:23"},
+      "engine": {"family": "Ford Coyote (generation not stated); claim it'll hold ~800 hp at least once", "t": "4:31, 5:51"},
+      "power_adder": {"type": "turbo", "brand_model": "Ty's old, 'pretty much blown up' turbo off his Ranger + his old Ranger wastegates", "intercooler": "none", "piping": "Summit + cheap Chinese/Amazon piping, stainless charge pipe", "boost_target": "hope ~800 hp", "t": "20:41-21:07, 53:46, 1:07:40-1:08:40"},
+      "fuel": {"type": "E85", "system": "two pumps in stock hanger, fuel pressure regulator, used injectors", "issue": "injectors too short; spacers ordered; ran on stock injectors with base tune", "t": "21:07, 24:38, 1:08:14, 1:11:15-1:11:41"},
+      "ecu": {"notes": "Nate brought laptop to tune (outside tuner)", "t": "1:08:40"},
+      "transmission": {"type": "6R80 automatic", "t": "5:23"},
+      "rear_end": {"notes": "plan to weld the diff", "t": "23:46"},
+      "budget": {"remaining_at_tech_usd": 850, "t": "1:09:28"},
+      "reference": {"fact": "Ty's Ranger with the same turbo, wastegates, injectors and pumps ran 9.05 on E85 with a Gen 1 Coyote and 6R80", "t": "1:10:12"},
+      "failures": [
+        {"part": "Injectors too short for rail", "cause": "wrong fitment", "t": "1:11:15"},
+        {"part": "Misfire / loading up, backfire after lift on stock injectors", "cause": "base tune, stock injectors", "t": "1:13:41-1:14:04"}
+      ],
+      "logistics": {"fact": "Arrived after ~15-16 h tow with multiple flat tires", "t": "1:06:56-1:07:40"},
+      "parts": [
+        {"part": "Mustang (auction + fees + shipping)", "price_usd": 5200, "t": "5:00"},
+        {"part": "Used Ranger turbo + wastegates (Ty's)", "price_usd": null, "note": "joked street value ~$8", "t": "1:08:14"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc1_240sx_coupe",
+      "nickname": "possibly 'Lieutenant Dan' (named in later videos; not in this one)",
+      "owner_driver": "Jackstand + Nate",
+      "base_vehicle": {"make": "Nissan", "model": "240SX coupe (black)", "year": 1990, "note": "nearly identical to Jackstand's 2017-era high-school car", "t": "7:12, 26:59"},
+      "purchase": {"price_usd": 7000, "note": "delivered from Wilson, Oklahoma (~24 h drive by seller); leaves $500 for the week", "t": "7:42, 28:14"},
+      "engine": {"family": "GM LS, iron block (caption 'LS 3pc iron block')", "heads": "799-casting 6.0L heads (caption 'six ler 799 heads')", "cam": "small, stock-type", "rotating_assembly": "stock bottom end", "intake": "Edelbrock single-plane", "t": "8:54, 11:17, 29:10"},
+      "fuel": {"induction": "carburetor (caption 'brawler' - likely Holley Brawler)", "fuel": "pump gas", "t": "8:54, 39:21"},
+      "power_adder": {"type": "nitrous, plate", "brand_model": "Nitrous Express (NX) plate, NX Maximizer 3 controller, 3 bottles, jets up to 500 shot available", "planned_shot_hp": "200-250", "purge": "came loose, to be installed", "t": "8:54-11:41"},
+      "ignition": {"notes": "stock MSD low-octane LS1 tune", "t": "10:27"},
+      "transmission": {"type": "Powerglide with trans brake", "t": "7:42, 27:42"},
+      "rear_end": {"type": "stock 240 diff (caption '240 D'), axle breakage expected", "t": "27:42"},
+      "interior": "Kirkey seats",
+      "tires": {"desc": "on slicks; seeking radials. Got Mickey Thompson ET Street R 255/60R15 via sticker barter at event (counted as free by them, disputed)", "t": "10:06, 1:01:23-1:02:11"},
+      "weight_lb": {"claim": "~2,000 lb lighter than the El Camino (~2,800 implied, not stated)", "t": "39:49"},
+      "predictions": {"et": "with 200 shot ~5.70s 1/8 mile, possibly low 9s / bottom 9 in 1/4", "sixty_ft": "solid 1.30s all day with the Glide", "t": "10:50-11:17, 29:41"},
+      "failures": [
+        {"part": "Oil pressure sending unit blown through center at first startup; car would not shut off by key/kill switch (coils unplugged)", "cause": "cold rev suspected", "price_usd": 50, "t": "41:53-43:31"},
+        {"part": "Water pump seal blew (Amazon LS water pump) -> overheating, steam", "cause": "seal failure", "repair_cost_claim_usd": 500, "t": "53:01-54:28, 57:04"}
+      ],
+      "parts": [
+        {"part": "240SX LS/carb/nitrous/Powerglide car, delivered", "price_usd": 7000, "t": "28:14"},
+        {"part": "Oil pressure sending unit", "price_usd": 50, "t": "42:57"}
+      ],
+      "confidence": "medium-high (captions garble some brands)"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {"turbo_ls_el_camino_no_turbo": 5000, "arp_head_studs_installed": 350, "precision_7675_reman_t4": 700, "used_air_to_air_intercooler": 100, "coyote_mustang_auction_shipped": 5200, "ls_nitrous_powerglide_240sx_delivered": 7000, "oil_pressure_sender": 50, "aftermarket_shifter_claim": 1000},
+    "reference_numbers": {"ranger_gen1_coyote_turbo_e85_6r80_et": 9.05, "el_camino_weight_claim_lb": 4800, "converter_stall": 3800},
+    "gameplay_hooks": ["no work until day one", "fair market value accounting", "sticker barter for tires", "sending unit / water pump failures on day zero"]
+  }
+}

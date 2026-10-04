@@ -1,0 +1,86 @@
+{
+  "video_id": "jBug09pPpv4",
+  "title": "McFlurry Gets a 2,000hp Twin Turbo Coyote Swap In ONE WEEK",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-24:40+, 49 merged lines)",
+  "context": {
+    "location": "Freedom Factory",
+    "reason_for_swap": {"fact": "Godzilla engine was injured at FL2K; team had ~3 weeks before World Cup and chose a Coyote swap; also noted they were beaten by a Coyote car at FL2K", "t": "3:48, 11:05"},
+    "build_history": {"fact": "McFlurry versions: V1 Godzilla swap, V2 built Godzilla, V3 = this Coyote swap", "t": "7:06"},
+    "timeline": {"fact": "Godzilla pulled about one week before first start of the Coyote", "t": "19:11"},
+    "target_event": "World Cup (Import vs Domestic World Cup implied; caption says 'World Cup')",
+    "unrelated_segments": "Cars & Coffee / helicopter meetup (every third Saturday 8-10am); diesel project fuel bleeding (12 gallons of oil); DraftKings ad; Freedom Factory event plug Nov 17-18"
+  },
+  "cars": [
+    {
+      "car_id": "mcflurry",
+      "build_version": "v3_twin_turbo_coyote",
+      "nickname": "McFlurry",
+      "owner_driver": "McFarland Racing; fab by Ty, Sam, Zach, Jackstand",
+      "base_vehicle": {"make": "Ford", "model": "Mustang (not stated in this video)", "year": null},
+      "engine": {
+        "family": "Ford Coyote (5.0 implied, displacement not stated)",
+        "builder": "TKM (caption 'tkm'); built in ~10 days as a '2,000 hp worthy' Coyote",
+        "block": "Darton sleeves (caption 'Dart and sleeves'), custom dry deck with added coolant passages, billet main caps, ARP main studs",
+        "head_sealing": "Top Fuel hoops (caption) + Flatout copper head gaskets (caption 'Flatout copper gaskets'); ARP head studs",
+        "rotating_assembly": "Wiseco custom pistons (caption 'wisco'), aluminum rods (caption 'RNR aluminum rods', brand low confidence), bearings brand unclear (caption 'cite bearings'), Total Seal piston rings, ATI balancer",
+        "heads": "Livernois CNC ported heads (caption 'liver noise'), PAC springs (caption 'pack Springs'), titanium retainers, billet cam caps (+ARP cam cap bolts), custom valves",
+        "cam": "Comp Cams camshaft/valvetrain; timing components brand garbled (caption 'rgr')",
+        "valve_covers": "TKM custom billet valve covers (tall; required turbo kit adjustments); no breathers yet at first start",
+        "intake": "Plazmaman billet intake manifold (caption 'plasma man'), shipped from overseas",
+        "throttle_body": "Motion Raceworks 102 mm (caption 'most motion 102 mm')",
+        "compression": null,
+        "oil_drain_bungs": "pre-installed by builder",
+        "t": "11:05-13:18, 7:36-8:03"
+      },
+      "mockup_note": {"fact": "Sam's stock Coyote used as mockup engine; said to be an ~800 hp stocker, not suitable for the ~2,000 hp plan", "t": "3:24"},
+      "power_adder": {
+        "type": "twin turbo",
+        "brand": "Precision Turbo (thanked in credits)",
+        "turbo_size_mm": null,
+        "description": "'really small' turbos; team doubts they can feed the engine's full potential",
+        "boost_psi": {"observed_free_rev": 3, "note": "about 3 psi on a free rev; wastegates opened on revs", "t": "21:36-23:30"},
+        "power_estimate_hp": {"engine_rated": 2000, "with_these_turbos": "mid-1000s, ~1,500 claimed capable", "claimed": true, "t": "19:11"},
+        "placement": "turbo kept below hood line; upper fender exhaust exit (first in their shop)",
+        "t": "4:53, 8:03, 15:45"
+      },
+      "exhaust": {"headers": "Flowtech turbo headers from Holley (caption 'flow Tech from Holly'); budget-friendly, fit nearly perfectly; Ty welds on own male/female V-band flanges", "exit": "upper fender exit", "t": "5:36-6:44, 15:45"},
+      "fuel": {"type": null, "pump": "belt-driven mechanical fuel pump via Motion Raceworks drive bracket (pump hangs forward)", "injectors": "two sets of injectors (secondary injector rail; Sam fabricated longer injector blanks)", "t": "14:20, 15:00"},
+      "ecu": {"brand": "Haltech (caption 'htech'); plug-and-play Coyote swap harness with jumpers; Holley coils; widebands", "t": "5:36, 15:45, 23:56"},
+      "transmission": {"type": "Lenco (caption 'Lano')", "t": "4:10"},
+      "converter": {"brand": "PTC", "contact": "Dusty Bradford", "notes": "new converter matched to Lenco + Coyote", "t": "5:36"},
+      "rear_end": null,
+      "suspension": null,
+      "tires": null,
+      "weight_lb": null,
+      "fuel_tank_note": {"fact": "tank holds ~3.75 gal (said 'three and three quarters'); filling 5", "t": "19:37", "confidence": "low"},
+      "dyno": null,
+      "passes": [],
+      "failures": [
+        {"part": "fuel pump line/seal", "cause": "loose line at the pump; large fuel leak once pressure built at first crank; pump needs resealing", "t": "19:58-23:56"},
+        {"part": "wiring", "cause": "harness plug issues/crank-cam sensor nearly swapped", "t": "17:04-17:33"}
+      ],
+      "milestones": [
+        {"event": "first start: idled on its own, turbos made small boost on revs", "t": "21:36"}
+      ],
+      "targets": {"et": "6-second pass possible as it sits (claim)", "next": "dyno, then World Cup", "t": "19:37, 24:18"},
+      "parts": [
+        {"part": "TKM built Coyote long block (full list above)", "price_usd": null, "t": "12:52"},
+        {"part": "Plazmaman billet intake", "price_usd": null, "t": "7:36"},
+        {"part": "Motion Raceworks 102 mm throttle body", "price_usd": null, "t": "8:03"},
+        {"part": "Flowtech (Holley) turbo headers", "price_usd": null, "t": "6:01"},
+        {"part": "PTC torque converter", "price_usd": null, "t": "5:36"},
+        {"part": "Haltech Coyote swap wiring", "price_usd": null, "t": "5:36"},
+        {"part": "Holley coils", "price_usd": null, "t": "15:45"},
+        {"part": "Motion Raceworks Coyote water-port AN adapters", "price_usd": null, "t": "14:20"}
+      ],
+      "confidence": "high for parts list structure; medium for brand spellings flagged as caption corrections"
+    }
+  ],
+  "game_use": {
+    "engine_limits_claims": {"stock_coyote_hp": 800, "tkm_built_coyote_target_hp": 2000, "small_twin_turbos_expected_hp": 1500},
+    "build_time": "TKM built the engine in ~10 days; swap completed in ~1 week",
+    "price_points_usd": {}
+  }
+}

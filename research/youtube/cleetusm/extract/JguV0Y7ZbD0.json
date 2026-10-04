@@ -1,0 +1,162 @@
+{
+  "video_id": "JguV0Y7ZbD0",
+  "title": null,
+  "title_note": "Title not returned by transcript tool; Cheap Racecar Challenge 3 episode (Ep.6 per caller batch order, not confirmed)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-45:15). Non-CRC segments: 0:00-1:58 sponsor (Helix Sleep); 1:58-5:13 Jackstand's new 1998 240SX daily driver (not the race car); 41:16-end turbo giveaway calls.",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "$15,000 total budget; no sponsorship; nothing free (gifted parts must be priced at fair market value); car must be stock when bought, then anything goes", "t": "15:43, 10:35"},
+      {"fact": "Fuel system safety rule: team must inventory/price a cheap (e.g. Amazon) fuel system, then may substitute the nicer hoses/fittings normally used, at the cheap price", "t": "15:43-17:35"},
+      {"fact": "Brake safety rule: a complete paid-for brake set can be traded for a set of TBM brakes (cars expected to reach ~160 mph); upgraded master cylinder counted as part of the brake upgrade", "t": "14:18-14:39, 16:30"},
+      {"fact": "Ryan acts as budget referee/moderator ('red marker') verifying invoices and setting fair market values", "t": "8:22, 21:54, 25:17"},
+      {"fact": "Budget whiteboard used to log each team's spend", "t": "6:59, 19:16"}
+    ],
+    "teams": [
+      {"team": "Cleetus + McNutt/Squirrel (George)", "car_ref": "crc3_gen1_s10"},
+      {"team": "Zach + Tye", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand (James)", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_gen1_s10",
+      "owner_driver": "Cleetus McFarland + McNutt/Squirrel",
+      "budget_whiteboard": {
+        "t": "19:16-19:42",
+        "items": [
+          {"item": "S10 truck", "price_usd": 1000},
+          {"item": "Powerglide + converter", "price_usd": 3000},
+          {"item": "Engine (Lumberjack spare LS)", "price_usd": 3800, "note": "Earlier episode negotiated to $3,750; board shows $3,800"},
+          {"item": "Holley Terminator X (used, standard version)", "price_usd": 900, "note": "came with a used throttle body in the box - disputed, see below"},
+          {"item": "Fuel injectors (Holley per caption 'Holl's')", "price_usd": 450},
+          {"item": "Pair of used turbos from friend Glenn", "price_usd": 500},
+          {"item": "8.8 rear end (pre-estimate, before junkyard trip)", "price_usd": 100}
+        ],
+        "running_total_usd": null,
+        "running_total_note": "No total stated aloud; sum of listed items = $9,750"
+      },
+      "disputes": [
+        {"item": "Throttle body included with Terminator X: Holley Sniper 4-bolt 102 mm, $258 new; used (ground-down corner, no sensors) fair value argued $30-125; Amazon equivalent $60; to be valued only if used", "t": "10:16-11:36, 27:58-28:24"}
+      ],
+      "junkyard_purchase": {
+        "yard": "A&A Auto Recycling (caption 'ANA')",
+        "items": [
+          {"part": "Locked-up 6.0L LS (donor for intake, starter, coils, plug wires, headers)", "price_usd": 200, "t": "33:05-34:22"},
+          {"part": "Ford Explorer 8.8 rear end, 3.73 ratio (counted)", "price_usd": 50, "t": "34:22-35:19"}
+        ],
+        "total_usd": 250,
+        "notes": "AI search suggested 1995-2001 Explorer 8.8 for a '91 S10; requires cutting spring perches and welding new ones at S10 width (~38.5 in apart); yard price for a typical 02-06 5.3 LS ~$500-600",
+        "t": "32:38-35:19"
+      },
+      "engine": {"family": "GM LS (Lumberjack spare, junkyard LS w/ Texas Speed rods/pistons per Ep.4)", "t": "19:16"},
+      "power_adder": {
+        "type": "twin turbo (used pair)",
+        "brand_model": null,
+        "price_usd": 500,
+        "layout": "Top-mounted, front-and-center, on flipped junkyard LS headers; turbos welded directly to headers (no flanges/V-bands); no intercooler, compressor feeds straight into intake; no blow-off valve (capped); short open dumps",
+        "intake_pipe": "used shop piece bought for $5 (vs ~$35 Amazon part)",
+        "t": "9:50, 35:48-40:57"
+      },
+      "fuel": {"pump_candidate": "Magnafuel 750 pump from Leroy's old parts mentioned (not confirmed in use)", "t": "37:33"},
+      "ecu": {"type": "Holley Terminator X (used)", "price_usd": 900, "t": "8:45-9:08"},
+      "rear_end": {"type": "Ford 8.8 (Explorer)", "ratio": 3.73, "price_usd": 50, "t": "35:19"},
+      "cooling": {"plan": "Old radiator questionable; Amazon radiator with fans ~$150 considered", "t": "36:53"},
+      "status": "Team says it is furthest behind",
+      "confidence": "high for whiteboard prices; medium for injector brand"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "owner_driver": "Jackstand (James)",
+      "budget_whiteboard": {
+        "t": "19:42-20:30",
+        "items": [
+          {"item": "240SX hatch (no engine/trans)", "price_usd": 2500},
+          {"item": "'Mystery' LS engine (from Cameron Johnson)", "price_usd": 4000},
+          {"item": "Powerglide (stock case, stock planetary, with transbrake; converter included but unknown brand)", "price_usd": 700, "note": "Listed $900 on Marketplace by Nick Latau (caption), lowballed via a 'burner' account; seller had offered FTI inspection for $200", "t": "20:52-21:54"},
+          {"item": "Engine mounts", "price_usd": 40},
+          {"item": "New carburetor + new fuel pump + new ignition box", "price_usd": 1093, "note": "caption '$1,93'; interpreted as $1,093 (medium confidence)"},
+          {"item": "Amazon fans, radiator, switch panel", "price_usd": 360},
+          {"item": "Nitrous Express kit + related parts", "price_usd": 1531, "note": "Earlier stated as ~$1,600 / 1,536; progressive controller questioned as not listed"},
+          {"item": "Rear wheels", "price_usd": 50},
+          {"item": "Transmission cooler with fan, new", "price_usd": 100, "note": "source caption 'ATE'/'AE' unclear"}
+        ],
+        "running_total_usd": null,
+        "running_total_note": "No total stated; sum of listed items = $10,374; described as least spent of all teams"
+      },
+      "engine": {"family": "GM LS ('just an LS' per Zach), came with starter, partial alternator, no water pump", "t": "18:16-18:37"},
+      "power_adder": {"type": "nitrous", "brand_model": "Nitrous Express", "price_usd": 1531, "t": "20:06"},
+      "fuel": {"notes": "Cheap hose with good fittings laid out; awaiting fuel-system rule; carburetor", "t": "15:24, 17:35"},
+      "rear_end": {"type": "9-inch (stated 'it's got a 9 in in it')", "t": "30:36", "confidence": "medium"},
+      "brakes": {"plan": "TBM front kit exists 5-lug; car is 4-lug, so swap to used 5-lug hubs he buys himself; TBM to make rear brakes", "t": "29:38-30:36"},
+      "exhaust": {"plan": "Either fair-market-priced headers/dumps from previous car 'Daddy Shark' or ~$140 Amazon headers; previous CRC fender exits were valued at $500", "t": "30:36-31:21"},
+      "suspension": {"notes": "Amazon front bushings added to stop wobble (front bushings blown)", "t": "42:12-42:42"},
+      "confidence": "medium-high"
+    },
+    {
+      "car_id": "crc3_95_mustang",
+      "owner_driver": "Zach + Tye",
+      "labor": {"hours": 728, "note": "claimed hours of labor so far (labor free)", "t": "11:36"},
+      "budget_whiteboard": {
+        "t": "22:21-23:55",
+        "items": [
+          {"item": "First car (95 Mustang roller)", "price_usd": 500},
+          {"item": "Turbo 400 (used) with bellhousing", "price_usd": 1700},
+          {"item": "Junk engine #1 (known-bad core motor)", "price_usd": 500},
+          {"item": "8.8 rear end out of what became second car", "price_usd": 150},
+          {"item": "Second car (parts car)", "price_usd": 250},
+          {"item": "Junk engine #2", "price_usd": 500},
+          {"item": "UPR parts (scratch and dent)", "price_usd": 1800, "note": "Invoice showed 50% off; referee says typical UPR scratch-and-dent is 15-34% off; Zach pre-calculated $2,100 at a 30% discount; some shocks/springs bought full price"},
+          {"item": "New FTI torque converter", "price_usd": 1150, "note": "caption '$150' / earlier '1150'; interpreted as $1,150 retail"},
+          {"item": "New connecting rod from Ford dealership", "price_usd": 58},
+          {"item": "Cam phaser delete/lockout", "price_usd": 285},
+          {"item": "Head gasket kit (with bolts)", "price_usd": 212}
+        ],
+        "running_total_usd": null,
+        "running_total_note": "No total stated; sum of listed items = $7,105 (with UPR at $1,800); team says more parts still to add"
+      },
+      "engine": {
+        "family": "Ford Coyote",
+        "block": "Gen 3 bottom end ($500) - came out of a flood car; rusted/seized rings caused hydrolock and one bent rod",
+        "repairs": "Rings freed and hand-sanded/decked thinner to fit; one new Ford rod; phaser delete; head gasket kit; reused bolts",
+        "donor_note": "Second motor was overheated",
+        "t": "7:18-7:41, 12:01-12:58"
+      },
+      "transmission": {"type": "TH400 (used)", "price_usd": 1700, "t": "23:13"},
+      "converter": {"brand": "FTI", "new": true, "price_usd": 1150, "t": "20:52, 23:13"},
+      "suspension": {"source": "UPR scratch-and-dent (motor mounts, front parts, shocks); some shocks/springs full price (caption 'Vikings' and Strange)", "t": "7:59, 13:20, 27:36-27:58"},
+      "brakes": {"notes": "New brake master cylinder as part of TBM brake upgrade", "t": "14:18"},
+      "status": "Complete roller", "status_t": "8:00",
+      "confidence": "medium-high (prices from whiteboard read-out; UPR value disputed)"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {
+      "holley_terminator_x_used": 900,
+      "holley_sniper_4bolt_102mm_throttle_body_new": 258,
+      "amazon_102mm_throttle_body": 60,
+      "ls_injectors_used_set": 450,
+      "used_turbo_pair": 500,
+      "junkyard_locked_6.0_ls_donor": 200,
+      "junkyard_ford_8.8_explorer_3.73": 50,
+      "junkyard_5.3_ls_typical": "500-600",
+      "amazon_radiator_with_fans": 150,
+      "amazon_240_headers": 140,
+      "stock_case_powerglide_with_transbrake_used": 700,
+      "new_carb_pump_ignition_box": 1093,
+      "nitrous_express_kit_and_parts": 1531,
+      "used_th400_with_bellhousing": 1700,
+      "fti_converter_new": 1150,
+      "coyote_junk_core_engine": 500,
+      "ford_coyote_connecting_rod_dealer": 58,
+      "coyote_phaser_delete": 285,
+      "coyote_head_gasket_kit": 212,
+      "upr_scratch_dent_order": 1800,
+      "trans_cooler_with_fan_new": 100
+    },
+    "speeds": {"expected_trap_mph": 160}
+  }
+}

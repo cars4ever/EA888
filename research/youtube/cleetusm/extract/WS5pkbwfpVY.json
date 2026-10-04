@@ -1,0 +1,86 @@
+{
+  "video_id": "WS5pkbwfpVY",
+  "title": "Installing Mullet's New 5,000hp 9.3L SMX Big Block",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-19:32)",
+  "notes": "Title claims 5,000hp and 9.3L; neither number is spoken in the transcript (title-only claim). Install happens right before TX2K (said to start 'tomorrow').",
+  "context": {
+    "event": {"name": "TX2K (auto-caption 'tx2k' / 'gx2k')", "t": "10:23, 19:13"},
+    "crew": [
+      {"name": "Ty", "role": "fabrication (headers, motor/mid plates)", "t": "9:21"},
+      {"name": "James", "role": "plumbing/hoses (fuel, oil, water)", "t": "11:41"},
+      {"name": "Zach", "role": "wiring", "t": "17:29"},
+      {"name": "George", "role": "transmission/bellhousing bolts", "t": "18:16"},
+      {"name": "Pete", "role": "tuner (coming to tune it)", "t": "16:44"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "mullet",
+      "build_version": "SMX billet big block install (pre-TX2K; ~2023)",
+      "nickname": "Mullet",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino", "year": null, "chassis": null, "note": "model not named in transcript; from caller context"},
+      "engine": {
+        "family": "Steve Morris SMX billet big block",
+        "displacement": {"value": null, "title_claim": "9.3L"},
+        "block": "SMX billet",
+        "notes": [
+          {"fact": "Engine is so wide it fills the engine bay; only motor wider said to be a Coyote (joking comparison)", "t": "7:15, 14:00"},
+          {"fact": "Oil pump had to be relocated for clearance; crank pickup trimmed because it hit the steering rack", "t": "3:07, 6:48"},
+          {"fact": "Rear-of-head oil scavenge port very tight to firewall", "t": "16:44"},
+          {"fact": "Many coolant lines through heads and block; old coolant setup cut off, new boxed coolant return manifold added to radiator", "t": "2:12, 16:04"}
+        ],
+        "t": "0:00"
+      },
+      "power_adder": {
+        "type": "twin turbo",
+        "brand_model": "Precision Turbo (pair, freshened by Precision with brand-new wheels, housings bead blasted)",
+        "turbo_size_mm": null,
+        "boost_psi": {"stated": "~70 psi talked about as 'the limit'; Cleetus says it will likely run ~85 through this setup", "kind": "claimed/target", "t": "9:43, 15:16"},
+        "notes": "Turbos had to be re-clocked/remounted because of new oil fittings; wastegate routing redone",
+        "t": "4:39, 5:45, 8:06"
+      },
+      "intake": {
+        "throttle_body": "single 123 mm throttle body (~just under 5 in), replacing planned dual throttle bodies (raw caption 'icon throttle body')",
+        "t": "5:03, 14:52"
+      },
+      "exhaust": {"headers": "custom by Ty, 2.25 in primaries, 3.5 in collector, routed to clear tire at full steering lock", "t": "8:27, 14:00"},
+      "fuel": {
+        "type": null,
+        "injectors": "two injectors per cylinder ('SMX 24 injectors' per caption), over 1,000 lb/hr of fuel per cylinder (claimed)",
+        "fuel_line": "very large hose, bigger than radiator hose (raw caption '20 a.m', likely -20 AN; low confidence)",
+        "injector_harness": "old outer harness reused for inner bank; Zach building new outer harness",
+        "t": "11:41, 17:53"
+      },
+      "ecu": {"notes": "three computers needed to run it (claim)", "t": "17:53"},
+      "cooling": {"water_pump": "large electric water pump bolted to radiator (caption says '55 gallon'; units unclear)", "t": "16:26"},
+      "transmission": {"type": null, "notes": "Transmission position unchanged; everything moved forward off mid plate", "t": "4:39"},
+      "converter": {"notes": "Converter-to-flexplate gap target 3/16 in; required 3/8 in motor plate spacing (measured with 3/8 Allen keys as jig)", "t": "1:48"},
+      "chassis_mods": [
+        {"fact": "New 3/8 in motor plate; new mid plates doubled (steel + aluminum) for spacing and strength", "t": "2:12, 3:40"},
+        {"fact": "Front plate mounts engine to frame rails via 'wings' off the block", "t": "6:28"},
+        {"fact": "Tire tuck at full lock is tight but clears", "t": "10:42"}
+      ],
+      "hoses": {"fact": "About 80 hose ends; ~41 lines total on James' list at one point", "t": "11:41"},
+      "rear_end": null, "suspension": null, "tires": null, "weight_lb": null,
+      "dyno": null, "passes": [], "failures": [],
+      "parts": [
+        {"part": "Steve Morris SMX billet big block", "price_usd": null, "t": "0:00"},
+        {"part": "Precision Turbo twin turbos (refresh with new wheels)", "price_usd": null, "t": "4:39"},
+        {"part": "123 mm single throttle body", "price_usd": null, "t": "15:16"},
+        {"part": "3/8 in motor plate (made by Ty)", "price_usd": null, "t": "2:12"},
+        {"part": "Steel + aluminum mid plates", "price_usd": null, "t": "3:40"}
+      ],
+      "targets": {"event": "Get running and qualify at TX2K", "t": "18:43"},
+      "confidence": "high for fabrication facts; low for fuel hose size and water pump units; displacement/hp only in title"
+    }
+  ],
+  "game_use": {
+    "engine_geometry": {"header_primary_in": 2.25, "collector_in": 3.5, "throttle_body_mm": 123},
+    "boost_claims_psi": {"stated_limit": 70, "expected_run": 85},
+    "fuel_claim": {"injectors_per_cylinder": 2, "lb_hr_per_cylinder_gt": 1000},
+    "converter_gap_in": 0.1875
+  }
+}

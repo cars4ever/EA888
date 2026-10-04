@@ -1,0 +1,77 @@
+{
+  "video_id": "VWcUtGO1yrQ",
+  "title": "Leroy Qualifies #1 At TX2K26, His Best Pass EVER",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-30:32; 58 segments). 0:00-1:25 sponsor.",
+  "context": {
+    "event": {"name": "TX2K26 (Texas 2K)", "note": "team arrived only for last day of qualifying, decided 5 days prior; cars hauled ~20 hours", "t": "1:25-2:11, 12:18"},
+    "class_structure": {"fact": "Ruby's class split into fastest 16 / second 16 / third 16; going 7s would put Ruby against seven-second cars", "t": "7:32"},
+    "other_cars_seen": [
+      {"desc": "'Coleman' truck (caption 'Cole man') has run 6.54 quarter", "t": "18:15", "confidence": "low"},
+      {"desc": "'Mad' with freshly built Pro Mod C7, 6.78 in right lane (garbled)", "t": "23:17", "confidence": "low"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "leroy",
+      "build_version": "Leroy - TX2K26 (2026, billet LS / Liberty trans era)",
+      "nickname": "Leroy ('the Savage'; 'eBay Corvette')",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette", "note": "called the eBay Corvette", "t": "28:41"},
+      "engine": {"builder": "Pete Harrell (tune/data sent to Pete)", "t": "20:09, 30:13"},
+      "tune": {"desc": "'680 tune-up' loaded for first pass; second pass tune could go ~6.70 (claimed)", "t": "2:11, 23:17"},
+      "transmission": {"type": "manual (stick)", "shifts": 6, "t": "27:31"},
+      "spare_engine": {"desc": "spare in trailer", "t": "4:44"},
+      "passes": [
+        {"track": "TX2K26 (Texas)", "session": "qualifying round 4 (first hit)", "et": 6.91, "mph": 214, "sixty_ft": 1.13, "eighth_et": 4.59, "eighth_mph": 166, "result": "#2 qualifier at the time; fastest of session", "conditions": "sun out, warm", "notes": "short-shifted; considered adding '30 lbs on the rear' for next day (unclear: boost or weight)", "kind": "measured", "t": "12:18-17:33"},
+        {"track": "TX2K26 (Texas)", "session": "qualifying, evening", "et": 6.71, "mph": 219, "sixty_ft": 1.11, "three_thirty_ft": 2.99, "eighth_et": 4.45, "eighth_mph": 170, "result": "#1 qualifier; new PB by ~0.1 (previous PB 6.80)", "conditions": "after sun down", "notes": "first ever 2.9x 330; scramble button not used; tune not turned up per Cleetus", "kind": "measured", "t": "24:49-30:13"}
+      ],
+      "targets": {"et": "6.80-6.90 first pass, then 6.70s at night", "t": "10:06, 19:46"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "ruby",
+      "build_version": "Ruby - TX2K26 (retired/'grandma' tune)",
+      "nickname": "Ruby (the 'old auction Corvette')",
+      "owner_driver": "Cleetus McFarland (tuner and driver)",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette", "note": "auction Corvette; now runs with a hood", "t": "6:05, 2:32"},
+      "power_adder": {"type": "turbo", "boost_psi": {"two_step_before": 7, "two_step_after_fixes": 9.5, "run_boost": 14.7}, "t": "5:13, 10:39"},
+      "fixes": [
+        {"desc": "leaking wastegate fixed", "t": "2:54"},
+        {"desc": "very leaky blow-off valve fixed", "t": "2:54"},
+        {"desc": "transmission fluid changed", "t": "2:54"},
+        {"desc": "throttle body/TPS relearn: TPS read only 91% at WOT, recalibrated -> more boost", "t": "10:39, 20:30"}
+      ],
+      "issues": [
+        {"desc": "oil pressure rises then falls during the run; plans to add a quart", "t": "10:39"},
+        {"desc": "forgot to switch on the air cooler (intercooler/charge-air system) on both runs", "t": "21:01"}
+      ],
+      "passes": [
+        {"track": "TX2K26", "et": 8.33, "mph": 166, "sixty_ft": 1.29, "boost_psi": 14.7, "notes": "target was ~8.50-8.60 (dial-in class); went faster than intended due to sealed leaks", "kind": "measured", "t": "6:05-8:31, 10:39"},
+        {"track": "TX2K26", "et": null, "mph": null, "three_thirty_ft": {"earlier": 3.52, "this_run": 3.49, "confidence": "medium (captions '3:52' / '3:49')"}, "notes": "eighth-mile only, lifted; picked up ~0.08 to the eighth in hottest part of day after TPS fix", "kind": "measured", "t": "20:09-22:35"}
+      ],
+      "targets": {"et": "8.50-8.60 to stay in slower class", "t": "1:50, 2:54"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "django_stick_promod",
+      "build_version": "Shawn's Pro Mod stick-shift car 'Django'",
+      "nickname": "Django",
+      "owner_driver": "Shawn (other racer)",
+      "base_vehicle": null,
+      "engine": {"family": "billet small-block Chevy", "builder": "Jonathan Atkins", "t": "13:54"},
+      "power_adder": {"type": "centrifugal supercharger", "brand_model": "ProCharger 'F-4 136' (as captioned; model designation uncertain)", "t": "15:05"},
+      "transmission": {"type": "manual (stick); clutch tightens with RPM like ProCharger boost rises with RPM", "t": "16:12"},
+      "power_claim_hp": {"value": 3000, "kind": "claimed capability ('just north of 3,000')", "t": "15:05"},
+      "passes": [
+        {"track": "TX2K26", "eighth_et": 4.51, "sixty_ft": 1.19, "notes": "first eighth-mile hit, lifted before the eighth, heat of day", "kind": "announced", "t": "14:28-14:47, 18:15"}
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "leroy_pb": "6.71 @ 219 (1.11 / 2.99 / 4.45 @ 170)",
+    "ruby_boost_vs_et": "8.33 @ 166 on 14.7 psi"
+  }
+}

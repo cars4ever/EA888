@@ -1,0 +1,106 @@
+{
+  "video_id": "6_quJlgCSC0",
+  "title": "Mullet's NEW Big Block Will Turn the Earth Backwards!",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-37:13); second half (~16:09 onward) is an RC airplane segment with no car-build data",
+  "context": {
+    "location": {"name": "Cameron Johnson Race Cars (CJ Racecars)", "t": "1:16"},
+    "event": {"name": "FL2K", "t": "7:16"},
+    "rule_change": {"fact": "World Cup changed rules so Mullet's former radial class can now run a big tire if it meets the 'Warriors' rules, which makes the car heavy", "t": "2:12"},
+    "tuner_builder": {"fact": "Pete (shop name raw caption 'Harold Engine and Dyno') built the new engine and is the tuner", "t": "4:43", "confidence": "low on spelling"}
+  },
+  "cars": [
+    {
+      "car_id": "mullet",
+      "build_version": "Mullet tall-deck big block (big tire)",
+      "nickname": "Mullet",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino", "year": null, "chassis": null, "note": "model from caller context; chassis work at Cameron Johnson Race Cars"},
+      "engine": {
+        "family": "big block (Brodix-based)",
+        "displacement": null,
+        "block": "tall-deck block (replaces standard-deck Brodix blocks; two standard-deck blocks were broken). Deck ~0.4 in taller",
+        "heads": "same heads as before, new valves: titanium intake, Inconel exhaust",
+        "intake": "same intake, new intake runners ('Steve's intake runners')",
+        "rotating_assembly": "R&R rods (caption 'R&R Hemi rods'), new Diamond pistons, new crank",
+        "cam_sensor": "Holley EFI cam sensor moved to cam drive (front); back of intake now fully sealed",
+        "lubrication": "converting to dry sump (oil tank size TBD, current tank very large)",
+        "builder": "Pete (raw caption 'Harold Engine and Dyno'; low confidence on name)",
+        "t": "3:14-6:02, 16:09-17:21"
+      },
+      "power_adder": {"type": "twin turbo", "brand_model": null, "turbo_size_mm": null, "boost_psi": null, "notes": "Cleetus unsure current turbos can reach the new engine's capability; previously 'ran as much boost as we wanted' but it broke things", "t": "4:06-4:26"},
+      "power_claims": [
+        {"fact": "New engine has close to 1,000 hp more capability (claimed)", "kind": "claimed", "t": "4:06"},
+        {"fact": "During grudge banter one speaker says ~1,000 hp more, another says at least 800 more (speakers unclear)", "kind": "claimed", "t": "8:58"}
+      ],
+      "fuel": null, "ecu": {"notes": "Holley EFI cam sensor implies Holley EFI (only sensor named)", "t": "5:21"},
+      "transmission": null, "converter": null, "rear_end": null,
+      "suspension": {"wheelie_bars": "new powder-coated wheelie bars", "t": "2:12"},
+      "tires": {"type": "big tire (switched from radials); first big-tire outing was very successful before engine failure", "t": "2:12, 2:56"},
+      "exhaust": {"notes": "Driver-side hot side (header to turbo) needs shortening + new V-band; charge pipes to be remade", "t": "6:18"},
+      "weight_lb": null,
+      "dyno": null,
+      "passes": [
+        {"desc": "First pass ever on big tires ran a 6.40-something (quarter mile implied)", "et": "6.4x", "kind": "recalled claim", "t": "11:23"},
+        {"desc": "Only two passes on big tires before engine failure", "t": "2:56"}
+      ],
+      "failures": [
+        {"part": "standard-deck Brodix big block (x2)", "cause": "broken from being leaned on too hard (high boost)", "t": "3:14"},
+        {"part": "rear of intake / oil system", "cause": "chronic oil leak out the back of the intake after high-boost passes; smoke trail and oil under car", "t": "5:21"},
+        {"part": "oil pressure (wet sump)", "cause": "drops to single digits at big end when chutes deploy; motivation for dry sump", "t": "7:39"}
+      ],
+      "parts": [
+        {"part": "Tall-deck big block", "price_usd": null, "t": "3:14"},
+        {"part": "Titanium intake valves / Inconel exhaust valves", "price_usd": null, "t": "3:38"},
+        {"part": "R&R rods", "price_usd": null, "t": "3:38"},
+        {"part": "Diamond pistons", "price_usd": null, "t": "3:38"},
+        {"part": "Dry sump system", "price_usd": null, "t": "6:02"},
+        {"part": "Powder-coated wheelie bars", "price_usd": null, "t": "2:12"}
+      ],
+      "targets": {"grudge": "FL2K grudge vs Eagle to the 1,000 ft mark for $150 (negotiated from $7,500 class payout idea)", "t": "12:28-13:09"},
+      "confidence": "high for engine change list; low for builder name spelling"
+    },
+    {
+      "car_id": "eagle",
+      "build_version": null,
+      "nickname": "Eagle",
+      "owner_driver": "Cameron Johnson (brings it to FL2K); driver Troy Odell",
+      "base_vehicle": null,
+      "description": "Street-legal-ish 'fully roadworthy' car per Cameron (banter); set up as quarter-mile car; Troy promotes no-time races in Florida",
+      "passes": [],
+      "notes": "Race setup claimed to be quarter mile; no-time class pays $7,500 to win (stated)",
+      "t": "7:16, 9:42, 10:05, 11:02",
+      "confidence": "low (few facts)"
+    },
+    {
+      "car_id": "jackstand_903_car",
+      "build_version": "Pat Musi 903 ci nitrous big block swap",
+      "nickname": null,
+      "owner_driver": "Jackstand",
+      "base_vehicle": {"make": null, "model": null, "chassis": "carbon tub; back half recently redone; front half being replaced with Menscer strut front end at CJ Racecars"},
+      "engine": {"family": "Pat Musi big block", "displacement": "903 ci", "notes": "described as a 3,500 hp nitrous motor (claimed); bought used from a buddy", "t": "13:47"},
+      "power_adder": {"type": "nitrous", "t": "13:47"},
+      "history": [
+        {"fact": "Raced the car for a buddy for a couple years, then bought it; hurt the old motor on last outing", "t": "13:26"},
+        {"fact": "Quote for a class-legal motor was about $38,000; declined", "t": "13:47"}
+      ],
+      "parts": [
+        {"part": "Class-friendly race engine (quote, not bought)", "price_usd": 38000, "t": "13:47"},
+        {"part": "Menscer strut front suspension", "price_usd": null, "t": "14:25"}
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "other_refs": [
+    {"fact": "C7 ZR1 giveaway car ran a 9.1 quarter mile, still on drag radials, 5 in intake", "t": "14:59"},
+    {"fact": "ZR2 giveaway truck got polished Custom Offsets wheels with Ridge Grappler tires", "t": "15:25"}
+  ],
+  "game_use": {
+    "engine_failure_model": "standard-deck big block cracked under very high boost; tall deck as fix",
+    "tall_deck_increase_in": 0.4,
+    "power_capability_gain_claim_hp": [800, 1000],
+    "price_points_usd": {"class_race_engine_quote": 38000},
+    "engine_claims": {"pat_musi_903ci_nitrous_hp": 3500}
+  }
+}

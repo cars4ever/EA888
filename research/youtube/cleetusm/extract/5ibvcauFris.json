@@ -1,0 +1,107 @@
+{
+  "video_id": "5ibvcauFris",
+  "title": "Leroy's New BILLET Transmission & Lumberjack's BEST PASS EVER",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-51:18; 108 segments). Merch/spatula segment 7:43-12:48 and free-turbo calls 44:01-end contain no build data.",
+  "context": {
+    "track": {"name": "Bradenton Motorsports Park (caption 'Bradon')", "t": "21:59"},
+    "event_target": {"name": "FL2K", "t": "1:21"},
+    "merch_turbo_sizes": {"fact": "Daily free-turbo giveaway offered sizes 64/66, 76 and 88", "t": "50:24"}
+  },
+  "cars": [
+    {
+      "car_id": "leroy",
+      "build_version": "Leroy - Liberty billet transmission fit-up (2026)",
+      "nickname": "Leroy",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette", "year": null},
+      "transmission": {
+        "model": "Liberty (Liberty's Gears) billet manual, case based on Chrysler 727 architecture",
+        "notes": "Mockup case (no internals) test-fit without cutting floor/tunnel; one crossmember needed clearancing. Liberty sending two complete transmissions with two different gear ratios (one serves as spare). Takes any gear offered, 'like a motorcycle transmission'; shifter lockout being made to block downshifts (e.g. 3 back to 1)",
+        "gears": null,
+        "ratios": null,
+        "raw_caption_note": "caption also mentions 'Pacifica' and 'country' as the case origin - contradictory with 727; low confidence",
+        "t": "0:00, 2:04-4:23"
+      },
+      "chassis": {
+        "decision": "Keep stock floor/tunnel/firewall rather than cut it out (would require new firewall, windshield, floor, pedals; safety concern with driver under engine-bay fire)",
+        "weight_tradeoff": {"value_lb": "75-100", "note": "weight saving forgone by keeping the floor", "t": "0:56"},
+        "mid_plate": {"desc": "mid plate to be thickened by ~1/8 in to ~1/4 in total", "t": "2:54"},
+        "t": "0:00-2:54"
+      },
+      "engine": {"note": "new engine said to be ~100 lb lighter", "t": "0:56"},
+      "driveshaft": {"desc": "new driveshaft to be overnighted by 'Doug' (sponsor; caption 'Beef dog' unclear)", "t": "1:21", "confidence": "low"},
+      "passes": [],
+      "parts": [
+        {"part": "Liberty billet transmission (x2 complete + mockup)", "price_usd": null, "t": "3:35"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "c7_blackwing_giveaway",
+      "build_version": "C7 giveaway car (marketed as 'C7 Blackwing')",
+      "nickname": "Blackwing (giveaway shirt/name; caption 'C7 a Blackwing')",
+      "owner_driver": "Cleetus McFarland shop (giveaway)",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette (C7)", "year": null},
+      "engine": {
+        "family": "GM LT (implied, not stated)",
+        "heads": {"desc": "CNC-ported heads, new valves, new valve springs, ported exhaust ports; new head gaskets and head studs; all from LME", "t": "6:13-6:55"},
+        "cam": {"desc": "big LME camshaft ('thump stick')", "t": "6:13, 13:08"},
+        "builder": "LME (parts supplier)",
+        "t": "6:13-13:08"
+      },
+      "power_adder": {"type": "supercharger", "brand_model": "Kong (ported blower, returned from Kong)", "belt": "11-rib belt", "t": "6:13, 7:19, 13:08"},
+      "intake": {"desc": "5 in intake (caption 'Cordz', brand low confidence)", "t": "7:19"},
+      "ecu": {"desc": "HP Tuners; tuned by Matt Sanford (remote, from data logs)", "t": "6:55, 12:48"},
+      "fuel": {"desc": "new fuel system being installed", "t": "6:55"},
+      "exhaust": {"desc": "open headers for first fire; full exhaust with adjustable volume planned", "t": "15:45"},
+      "dyno": [],
+      "first_start": {"rpm_rev": 5500, "note": "first fire on open headers; valvetrain quiet", "t": "14:46"},
+      "giveaway": {"desc": "C7 giveaway, 3 weeks left; $5 merch spend = 1 entry", "t": "7:43"},
+      "confidence": "medium"
+    },
+    {
+      "car_id": "lumberjack",
+      "build_version": "Lumberjack - fixed MAP/oil-pressure sensors, new valve covers",
+      "nickname": "Lumberjack",
+      "owner_driver": "Jackstand (likely driver/builder; captions refer to 'Jackson'/'jack stand'); tuning handed to 'Doctor' (Nate?)",
+      "base_vehicle": {"make": null, "model": null, "note": "vehicle has a tailgate (truck); also referred to as 'CNS number one, your first build' - unclear", "t": "32:07, 38:56"},
+      "engine": {
+        "family": null,
+        "notes": "New baffled valve covers (Motion Race Works, mismatched black/gold scratch-and-dent pair), bigger baffled catch can, -10 AN breather lines replacing 3/8 fuel hose; old valve-cover gasket had melted from an exhaust leak",
+        "t": "17:54, 19:50-20:59, 29:51"
+      },
+      "power_adder": {"type": "turbo", "brand_model": null, "boost_controller": "caption 'RA sensors boost controller' (brand unclear)", "t": "30:14"},
+      "fuel": {"type": "C16 (race fuel)", "fuel_pressure_psi": 88, "injector_duty_pct": {"dyno": 65, "track": 69}, "fuel_system": "self-built", "t": "18:41, 36:58-37:24"},
+      "ecu": null,
+      "ignition": {"timing_deg_dyno": 19, "spark_plugs": "colder heat range '11' plugs installed in cyl 7 and 5 at track; cheap ('Chinese') plug wires", "t": "18:41, 24:03, 25:17, 22:46"},
+      "dyno": [
+        {"date_context": "previous dyno session", "note": "boost exceeded MAP sensor range so boost unknown; ~100 hp gained after fixing sensors", "t": "16:27, 17:27"},
+        {"hp": 900, "hp_type": "dyno (whp not specified)", "boost_psi": 26, "note": "boost turned down 10 psi vs previous; AFR on target, tune pulling 5-8% fuel; oil pressure 84 psi", "kind": "measured", "t": "18:15-19:27"}
+      ],
+      "targets": {"hp": 850, "t": "16:27"},
+      "passes": [
+        {"track": "Bradenton Motorsports Park", "et": 9.45, "mph": 143, "sixty_ft": 1.46, "eighth_et": 6.06, "eighth_mph": 117, "notes": "pedaled early; launched on ~4 psi; PB previously ~9.50 (claimed)", "kind": "measured", "t": "25:17-26:22"},
+        {"track": "Bradenton Motorsports Park", "et": 9.30, "mph": 144, "sixty_ft": 1.432, "eighth_et": 5.967, "eighth_mph": 119, "notes": "boost raised +5 (claimed 30 psi on dome); 29.4 psi peak out the back; 7,100 rpm through traps; car stepped out; first 5-second eighth; new personal best", "kind": "measured", "t": "32:33-36:58"},
+        {"track": "Bradenton Motorsports Park", "et": null, "mph": null, "notes": "third attempt after further +5 boost and loosened front limiter strap; strap trapped under control arm pulled nose down, no time given", "t": "38:10-42:50"}
+      ],
+      "failures": [
+        {"part": "valve cover gasket", "cause": "melted by an exhaust leak", "t": "19:50"},
+        {"part": "misfire cyl 7 (and 5)", "cause": "spark plug/wiring; fixed with fresh plugs", "t": "21:59-25:17"},
+        {"part": "front shocks", "cause": "blown/bent after limiter-strap adjustment", "t": "42:50"},
+        {"part": "MAP sensor (previous)", "cause": "over-range, fueling guessed from O2", "t": "16:27"}
+      ],
+      "suspension": {"desc": "front travel limiter strap; ~100 degrees steering angle (joke)", "t": "35:09, 36:35"},
+      "parts": [
+        {"part": "Motion Race Works valve covers (scratch-and-dent)", "price_usd": null, "t": "17:54"},
+        {"part": "Parts owed between crew for 'cow tracks'", "price_usd": 100, "t": "39:18", "confidence": "low"}
+      ],
+      "confidence": "medium (car identity not stated)"
+    }
+  ],
+  "game_use": {
+    "dyno_points": {"lumberjack_900hp_at_26psi": true},
+    "passes": {"lumberjack_best": "9.30 @ 144, 1.43 60ft, 5.967 @ 119 eighth"}
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "video_id": "m-X8-o0myuw",
+  "title": "Mullet 2.0's FASTEST Run Yet! (Removed 500lbs Of Weight)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-27:57); ~22:00 onward is Precision Turbo giveaway calls (64/66, 76, 88 sizes) with no car-build data",
+  "notes": "Title says 500 lb removed; transcript says about 400 lb. Testing over two days just before 'the Snowbirds' event; track not named.",
+  "cars": [
+    {
+      "car_id": "mullet",
+      "build_version": "Mullet 2.0 (out of World Cup trim, lightened, lockup converter)",
+      "nickname": "Mullet",
+      "owner_driver": "Cleetus McFarland (driver)",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino", "year": null, "chassis": null, "note": "model from caller context; described as essentially a new, largely untested car (~a dozen runs total)", "t": "2:55-3:14"},
+      "engine": {"family": "big block", "notes": "Ignition timing found ~10 deg off (EGTs very hot); crew guessed ~500 hp left on the table (claim)", "t": "20:11-21:17"},
+      "power_adder": {"type": "twin turbo", "brand_model": null, "boost_psi": null},
+      "fuel": {"type": null, "notes": "Fuel pressure reduced between days", "t": "18:12"},
+      "ecu": {"tuner": "Pete (remote tunes incl. new lockup tune)", "traction": "traction control / crankshaft profiler pulled power on a pass; driveshaft-speed input unplugged", "t": "4:00, 13:09-13:55"},
+      "transmission": null,
+      "converter": {"type": "lockup converter re-installed (was non-lockup)", "t": "1:44"},
+      "rear_end": null,
+      "suspension": {"type": "four-link", "change": "rear four-link bar angle changed by Jamie Miller; ~3.5 in separation in back", "t": "17:30-17:54"},
+      "tires": {"type": "big tire (implied from earlier builds); spun on first two hits after weight loss", "t": "4:57"},
+      "weight_lb": {
+        "before": 3330,
+        "after_raw_caption": "'280' (garbled; likely ~2,8xx-2,9xx lb, low confidence)",
+        "removed_lb_stated": "about 400",
+        "ballast_added_back_lb": 40,
+        "notes": "Same weight bias kept, but too light on rear tires; 40 lb added to rear after two spins",
+        "kind": "measured (scale numbers read aloud) with garbled after value",
+        "t": "3:35-3:55, 6:36"
+      },
+      "dyno": null,
+      "passes": [
+        {"desc": "Previous best quarter mile, heavier and no lockup", "et_quarter": 6.50, "kind": "recalled", "t": "2:12"},
+        {"desc": "Day 1, first two hits after lightening: spun, no time", "kind": "measured (aborted)", "t": "4:57-6:36"},
+        {"desc": "Day 1 pass, +40 lb on rear, new tune; personal best to 1/8 at the time", "sixty_ft": 1.09, "three_thirty_ft": 2.89, "eighth_mile_et": 4.29, "eighth_mile_mph": 176, "notes": "Rolled through after eighth (caption '698', meaning unclear)", "kind": "measured (timeslip)", "t": "7:20-9:32"},
+        {"desc": "Day 1 night pass, asked Pete for 4.1x", "sixty_ft": 1.08, "eighth_mile_et": 4.27, "eighth_mile_mph": null, "notes": "First slip printed 4.20 flat, reprint said 4.27; crankshaft profiler/traction control slowed it; parachute tangled (pilot bag looped)", "kind": "measured (timeslip)", "t": "12:25-13:55"},
+        {"desc": "Quarter-mile grudge vs Victor ($100 on the tree): Mullet won the tree, spun/hit at 330 ft and lost the race", "kind": "measured outcome, no ET given", "t": "14:16-17:01"},
+        {"desc": "Day 2 after bar-angle change, less fuel pressure, new plugs", "sixty_ft": 1.09, "eighth_mile_et": 4.35, "eighth_mile_mph": 172, "notes": "Slowed; later found timing 10 deg off", "kind": "measured (timeslip)", "t": "18:41"}
+      ],
+      "failures": [
+        {"part": "ignition timing", "cause": "~10 deg off actual vs commanded; caused hot EGTs and lost power; risk of damage", "t": "20:11"},
+        {"part": "parachute", "cause": "pilot bag looped around, chute tangled/did not deploy properly", "t": "11:24, 13:09"},
+        {"part": "traction", "cause": "spin with weight removed (too light on rear)", "t": "4:57"}
+      ],
+      "parts": [
+        {"part": "Lockup torque converter", "price_usd": null, "t": "1:44"},
+        {"part": "Spark plugs (new)", "price_usd": null, "t": "18:12"},
+        {"part": "Lead/ballast 40 lb on rear", "price_usd": null, "t": "6:36"}
+      ],
+      "targets": {"quarter_et": "low 6s now; goal to go 5.99 at least once", "eighth_et": "4.1x requested", "t": "1:44-2:35, 9:32"},
+      "confidence": "high for timeslips; low for post-diet weight figure"
+    },
+    {
+      "car_id": "victor_grudge_car",
+      "nickname": null,
+      "owner_driver": "Victor",
+      "notes": "Beat Mullet in quarter-mile grudge race; Mullet got the better reaction time ($100 on the tree)",
+      "t": "13:55-17:01",
+      "confidence": "low (no build data)"
+    }
+  ],
+  "game_use": {
+    "weights_lb": {"mullet_world_cup_trim": 3330, "removed": 400, "rear_ballast_added": 40},
+    "passes": [
+      {"car": "mullet", "60ft": 1.09, "330": 2.89, "1/8_et": 4.29, "1/8_mph": 176},
+      {"car": "mullet", "60ft": 1.08, "1/8_et": 4.27},
+      {"car": "mullet", "60ft": 1.09, "1/8_et": 4.35, "1/8_mph": 172}
+    ],
+    "tuning_fault_model": {"timing_error_deg": 10, "claimed_power_loss_hp": 500, "symptom": "high EGT"}
+  }
+}

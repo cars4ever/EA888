@@ -1,0 +1,54 @@
+{
+  "video_id": "X3-5De9k4hI",
+  "title": "TOAST IS ALIVE! First Fire Up Of His NEW Supercharged Australian Burnout Engine",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-11:36). Tool returned the transcript inline (not saved to file), so tx2ts.py was not run and no .ts.txt exists; read directly from the tool result.",
+  "context": {
+    "unrelated_segments": "Diesel Power Gear Ram TRX giveaway ad (TRX said ~800 hp with supercharger upgrades); stolen Freedom Factory giraffe; dog-food drive for Lakewood Ranch Humane Society; JH Diesel mower stunt; shop ceiling fan joke",
+    "t": "0:00-6:53"
+  },
+  "cars": [
+    {
+      "car_id": "toast",
+      "build_version": "v2_castlemaine_540_14-71_mech_injection (first start attempt)",
+      "nickname": "Toast",
+      "owner_driver": "McFarland / Freedom Factory crew",
+      "base_vehicle": {"make": null, "model": null, "year": null, "note": "Camaro per caller context; not stated in this video"},
+      "engine": {
+        "family": "Australian supercharged burnout engine (details in QHDAecxBbus); not restated here",
+        "oiling": "dry sump; oil system primed with plugs out before start",
+        "ignition": "magneto",
+        "t": "7:16-7:38"
+      },
+      "power_adder": {
+        "type": "Roots supercharger (blower size not restated in this video)",
+        "hat": "Aerodyne Composites hat (caption 'aerodyne'); taller, larger air-volume hat than the one that came with the engine -> more velocity off the blower; different tune-up, may need fuel trimming at WOT under load",
+        "boost_psi": null,
+        "t": "7:01, 7:43-8:09"
+      },
+      "fuel": {"type": "methanol in system; pump/race gas used as priming squirt", "delivery": "mechanical fuel injection with mechanical fuel pump", "note": "caption 'precision 2.13 turns' unclear (possibly a fuel setting), low confidence", "t": "7:38, 8:53, 10:11"},
+      "ecu": {"brand": "Holley Dominator", "role": "data logging/monitoring only (EGTs, fans, water pump, added sensors), not fuel/spark control", "t": "8:12-8:31"},
+      "safety": [{"fact": "engine kill/cut-off switch fitted", "t": "8:38"}],
+      "transmission": null,
+      "dyno": null,
+      "passes": [],
+      "build_timeline": {"fact": "car was essentially complete ~1.5 months but waited on fuel fittings; one oil line redone", "t": "7:07"},
+      "milestones": [{"event": "first fire: runs only a split second on priming fuel", "t": "9:27-10:58"}],
+      "failures": [
+        {"part": "mechanical fuel pump (suspected)", "cause": "no fuel reaching the hat; engine only runs briefly on primer; pump to be removed and torn down", "t": "10:47-11:03"},
+        {"part": "fuel fitting", "cause": "loose rear fitting leaking fuel", "t": "9:06"}
+      ],
+      "targets": {"next": "repair pump and get it running within a few days", "t": "11:03"},
+      "parts": [
+        {"part": "Aerodyne Composites blower hat", "price_usd": null, "t": "7:01"},
+        {"part": "Holley Dominator ECU (logging)", "price_usd": null, "t": "8:12"}
+      ],
+      "confidence": "medium (short build segment; few hard numbers)"
+    }
+  ],
+  "game_use": {
+    "failure_modes": ["mechanical fuel pump not delivering on first start", "hat change alters mechanical injection tune-up (needs fuel trim)"],
+    "price_points_usd": {}
+  }
+}

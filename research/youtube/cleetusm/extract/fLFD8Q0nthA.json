@@ -1,0 +1,136 @@
+{
+  "video_id": "fLFD8Q0nthA",
+  "title": null,
+  "title_note": "Title not returned by transcript tool; Cheap Racecar Challenge 3 episode (Ep.5 per caller batch order, not confirmed)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-46:18). Non-CRC segments: 0:00-5:19 nitrous kit install on a T-top F-body (appears to be the giveaway Camaro, not a CRC car) + bobblehead merch; 14:12-15:14 C6 giveaway car/shop tour; 41:40-end turbo giveaway calls (64/76/88 mm turbos offered) and Kinetic drink ad.",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "New 'brake trade-in' rule (Cleetus executive decision, for safety): a team that has paid for a complete set of brakes may trade it in for a set of aftermarket brakes (caption 'TBM'/'DVN' - brand unclear, low confidence)", "t": "20:25-22:24"},
+      {"fact": "Fair-market-value rule applies to purchases; teams can be protested and forced to count full retail price (e.g. UPR scratch-and-dent parts)", "t": "23:36, 31:40-32:07"},
+      {"fact": "Cleetus promises no further safety-part additions beyond brakes (parachutes joked)", "t": "22:24"},
+      {"fact": "Missing windshield may be a tech issue", "t": "22:47"}
+    ],
+    "side_bet": {"fact": "Jackstand and Zach/Tye side bet of $1,000 on who wins", "t": "39:41-40:04, 41:14"},
+    "teams": [
+      {"team": "Cleetus + McNutt/Squirrel (George)", "car_ref": "crc3_gen1_s10"},
+      {"team": "Zach + Tye", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand (James)", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_gen1_s10",
+      "owner_driver": "Cleetus McFarland + McNutt/Squirrel",
+      "chassis_work": [
+        {"fact": "Correct motor mounts obtained; stock K-member cut to clear stock oil pan, reinforcing plates welded in (cost: free); engine sits very low", "t": "5:19-5:47, 13:43"},
+        {"fact": "Cage done by Cameron Johnson with rear down bars and window net (Stroud nets via template); transmission crossmember made by Cameron after first one was lost; firewall block-offs welded, seam sealer still needed", "t": "5:47-6:12, 16:11-17:20"},
+        {"fact": "Engine + Powerglide installed in chassis", "t": "13:14-14:12"}
+      ],
+      "weight_lb": [
+        {"value": 1700, "desc": "stated current weight after stripping ('1,700 something'), steel bumpers still on; ~250 lb lost from previous weight", "measured": true, "t": "6:35-7:00"},
+        {"value": "300-400 each", "desc": "estimated weight of each steel bumper", "measured": false, "t": "7:00"},
+        {"value": "2600-2700", "desc": "expected race weight", "measured": false, "t": "7:00"}
+      ],
+      "tires": {"plan": "drag radials (not slicks), on leaf springs", "t": "6:35"},
+      "power_adder": {"type": "turbo", "boost_plan_psi": 30, "note": "Same tune-up as Lumberjack's previous car, which made 30 psi without issue; claim ~1,000 hp at 30 psi; '800 hp is all we need'", "t": "7:00, 12:26"},
+      "targets": {"et": "8s at ~2,700 lb", "t": "12:26"},
+      "transmission": {
+        "type": "Powerglide, aftermarket case, from Jared Bradshaw",
+        "first_gear": 1.80,
+        "first_gear_t": "24:41",
+        "price_usd": 3000,
+        "history": "Jared says he ran 4.60s (presumably 1/8 mile) with it; bellhousing has a small weld repair (crack stopped) per Jackstand",
+        "t": "17:42-19:08, 24:41-25:04",
+        "price_dispute": "Jackstand says a new FTI Powerglide with aftermarket case, transbrake, flexplate and converter would be ~$4,000, called the $3,000 used one a steep buy; Jackstand claims fair value ~$2,500 and offers his stock-case glide for $700-800"
+      },
+      "confidence": "high for weights/plan; medium for powerglide details"
+    },
+    {
+      "car_id": "crc3_95_mustang",
+      "owner_driver": "Zach + Tye",
+      "donor_cars": [
+        {"fact": "Bought another Mustang parts car (old convertible GT) - more of a parts car than their parts car; pulled its 8.8 rear end, steering rack, brakes/rotors, maybe wheels; original car had a 7.5 rear", "t": "19:25-20:25"},
+        {"fact": "A third Mustang loaded in a truck the night before", "t": "23:10"},
+        {"fact": "Team's two cars cost less than half the price of Jackstand's first car ($2,500)", "t": "31:40"},
+        {"fact": "Missing windshield; would run without", "t": "22:47"}
+      ],
+      "engine": {
+        "family": "Ford Coyote 5.0 (combined from junk motors)",
+        "block": "Gen 3 Coyote short block (bottom end condition unknown, may need a rod or two)",
+        "heads": "Gen 1 Coyote heads from another blown junk motor (Gen 3 heads avoided as hard to run)",
+        "other": "coils, sensors, flywheel, balancer from donor engines; two K-members",
+        "t": "33:15-34:18"
+      },
+      "ecu": {"type": "used Holley Terminator (caption 'Terminator'), bought on Facebook", "price_usd": "about $900 with harness (haggled lower; speaker attribution unclear)", "t": "35:00-35:27", "confidence": "low"},
+      "suspension": {
+        "source": "UPR Products scratch-and-dent/returned items (dented, circled scratches)",
+        "parts": [
+          {"part": "UPR front coilover conversion + front-end parts", "price_usd": 1060, "note": "plus coilovers; website retail used for pricing", "t": "31:13"},
+          {"part": "Strange single-adjustable struts/shocks", "price_usd": 150, "unit": "each, $300 pair", "t": "32:33"},
+          {"part": "Coil springs", "price_usd": 140, "t": "32:33"},
+          {"part": "Unspecified boxed items", "price_usd": 70, "unit": "each", "t": "32:07"},
+          {"part": "Motor mounts, two billet control arms", "price_usd": null, "t": "30:47"},
+          {"part": "Shocks from 'Leroy' (previous car)", "price_usd": null, "t": "28:14"}
+        ],
+        "strategy": "Save on engine/trans, spend on suspension because Mustangs don't go straight without it",
+        "t": "23:10-33:15"
+      },
+      "proven_combo_claim": {"fact": "Team says the engine/trans/powertrain combo is the same 8.30-proven combo as their previous Ranger, now in a car with better suspension", "t": "33:15, 40:25", "confidence": "medium"},
+      "history": [{"fact": "Their previous Coyote turbo car (~4,000 lb, stock ECU running badly) blew up twice", "t": "40:25"}],
+      "confidence": "medium (invoice never shown; prices partially from website)"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "owner_driver": "Jackstand (James)",
+      "engine": {
+        "family": "GM LS (Gen 4 with LS3-style heads implied)",
+        "displacement_l": null,
+        "source": "Bought from Cameron Johnson; previously in Cameron's gray S10 (first carbureted, then EFI, then replaced by a turbo motor)",
+        "label": "Marked 'HED?' on intake (auto-caption; low confidence)",
+        "heads": "aftermarket LS3-style cathedral/rect heads described as cheap Chinese castings (caption 'Liberty', low confidence)",
+        "cam": "unknown",
+        "bottom_end": "unknown",
+        "na_dyno_claim": {"hp": 460, "condition": "NA on EFI, previously in Cameron's S10", "measured": "claimed, not shown", "t": "36:09-36:33"},
+        "nitrous_history": "known nitrous motor (had a fogger)",
+        "price_usd": 4000,
+        "t": "35:47-37:14"
+      },
+      "power_adder": {"type": "nitrous", "brand_model": null, "price_usd": 1600, "note": "Brand new nitrous kit bought because original solenoids were lent out", "t": "37:14"},
+      "intake": {"type": "carb intake came with engine", "t": "36:50"},
+      "ignition": {"desc": "MSD ignition box (bought used); nitrous switch panel came with kit; Amazon fuse/relay panel", "t": "38:45-39:06"},
+      "cooling": [
+        {"part": "Amazon 240SX radiator", "price_usd": 120, "t": "38:06"},
+        {"part": "Amazon fans", "price_usd": 18, "unit": "each", "t": "38:06"},
+        {"part": "Radiator + fans total", "price_usd": 170, "t": "38:06", "note": "approximate"}
+      ],
+      "suspension": {"desc": "Stock suspension and stock axles; springs cut for ride height", "t": "39:24-39:41"},
+      "safety": {"cage": "Cameron Johnson cage, tucked; seat mounted", "t": "38:28"},
+      "comparison": {"fact": "Expected to run close to Jackstand's previous CRC car 'Daddy Shark' — nearly identical combo", "t": "37:39, 40:04"},
+      "targets": {"et": "7.90 mentioned in banter", "t": "40:04", "confidence": "low"},
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {
+      "used_ls_nitrous_motor_ls3_style_heads": 4000,
+      "new_nitrous_kit": 1600,
+      "new_fti_powerglide_with_transbrake_flexplate_converter_claim": 4000,
+      "sfi_flexplate": "70-80",
+      "new_stage5.5_powerglide_1.69_gearset": 4200,
+      "used_torque_converter": "400-500",
+      "stock_case_powerglide_used": "700-800",
+      "used_holley_terminator_with_harness": 900,
+      "upr_sn95_front_coilover_conversion": 1060,
+      "strange_single_adjustable_each": 150,
+      "coil_springs_pair": 140,
+      "amazon_240sx_radiator": 120,
+      "amazon_electric_fan_each": 18
+    },
+    "engine_limits_claims": {"ls_turbo_30psi_hp": 1000, "ls_nitrous_motor_na_efi_hp": 460},
+    "transmission": {"powerglide_first_gear_1.80_vs_1.69": "1.69 first gear considered better/more expensive"}
+  }
+}

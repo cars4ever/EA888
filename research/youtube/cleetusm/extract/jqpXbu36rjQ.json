@@ -1,0 +1,87 @@
+{
+  "video_id": "jqpXbu36rjQ",
+  "title": "Our Twin Turbo 7.3L Godzilla Mustang Just DESTROYED Its Fastest Pass Ever",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-22:05+, 29 merged lines)",
+  "caveat": "The transcript never says 'Godzilla', '7.3' or 'twin turbo'; the car on track is called McFlurry. Engine identity below comes from the video TITLE only (not stated in speech). Caption speaker attribution is often ambiguous.",
+  "context": {
+    "event": {"name": "Street Car Takeover testing night (qualifying run counted for next day)", "track": "Bradenton Motorsports Park", "t": "0:50, 21:40"},
+    "other_cars_on_track": ["McFlurry", "Blazer", "Big-turbo Coyote Ford Ranger (Ty)"]
+  },
+  "cars": [
+    {
+      "car_id": "mcflurry",
+      "build_version": "godzilla_7.3_twin_turbo (per title only)",
+      "nickname": "McFlurry",
+      "owner_driver": "McFarland Racing; driver for main passes unclear (caption 'cleaner' likely Cleetus; speaker says it is his first time driving it)",
+      "base_vehicle": {"make": "Ford", "model": "Mustang (Fox body per caller-supplied title context; not stated in speech)", "year": null},
+      "engine": {
+        "family": "Ford 7.3 Godzilla (title only, not in speech)",
+        "displacement_l": 7.3,
+        "notes": "described as a 'brand new engine'; billet rods mentioned in passing (low confidence)",
+        "source": "title",
+        "t": "2:11, 18:37",
+        "confidence": "low for engine family (title-only)"
+      },
+      "power_adder": {
+        "type": "turbo (twin per title)",
+        "boost_psi": {"observed": 13, "next_target": 18, "note": "13 psi said after an early pass; attribution to McFlurry likely but not certain", "t": "13:21"},
+        "boost_control": "first passes on wastegate pressure only; boost controller turned on 'a little bit' for the best pass; boost came in too late ('ran out the back door'), plan to bring less boost in earlier",
+        "t": "10:19, 14:38, 20:44"
+      },
+      "fuel_tune_notes": [
+        {"fact": "Still rich high in the RPM, causing breakup/laying over; fuel trims still to be finalized", "t": "10:19, 13:21"}
+      ],
+      "transmission": {"type": "Lenco (caption 'lanco')", "notes": "first time driving it; driver must grab gears manually", "t": "2:11, 2:40"},
+      "safety": [
+        {"fact": "Oil-pressure safety cuts engine if oil pressure below 50 psi above 3000 rpm", "t": "2:11"},
+        {"fact": "Cage certified to 7.50 ET ('750 cage') was installed", "t": "14:12"}
+      ],
+      "oil_pressure": {"measured_psi": 80, "note": "steady, no fluctuation in datalog", "t": "5:28"},
+      "passes": [
+        {"run": 1, "result": "short hit, lifted; past the 330 ft for datalog; short-shifted all three gears; tire smoke", "measured": true, "t": "3:30-5:28"},
+        {"run": "early full-ish", "eighth_et": 5.28, "eighth_mph": 117.60, "quarter_et_approx": "9.0x (lifted after eighth)", "measured": true, "t": "8:03-10:19"},
+        {"run": "4th/5th ever run (best)", "quarter_et": 7.80, "quarter_mph": 166, "eighth_et": 5.00, "eighth_mph": 140, "sixty_ft": 1.15, "boost_controller": "on, slightly", "track": "Bradenton Motorsports Park", "measured": true, "t": "14:38-20:44"}
+      ],
+      "failures": [
+        {"part": "crankcase ventilation (stock valve covers)", "cause": "insufficient breathing at this power; oil haze out of breather onto window; plan bigger/more valve-cover vent holes or new valve covers", "t": "20:09-21:17"},
+        {"part": "dipstick", "cause": "oil pushed out of dipstick; zip-tied; coolant hose fitted to oil fill cap as quick fix", "t": "21:40"}
+      ],
+      "targets": {"et": "an 8.50 was mentioned as an earlier expectation (low confidence); 4-second eighth seen as within reach", "t": "18:37, 20:09"},
+      "parts": [],
+      "confidence": "high for timeslips; low for engine/turbo hardware (title-only)"
+    },
+    {
+      "car_id": "ty_coyote_ranger",
+      "build_version": "big_turbo_coyote",
+      "nickname": null,
+      "owner_driver": "Ty",
+      "base_vehicle": {"make": "Ford", "model": "Ranger", "year": null},
+      "engine": {"family": "Ford Coyote", "t": "11:28"},
+      "power_adder": {"type": "single big turbo", "t": "11:28"},
+      "passes": [
+        {"eighth_et": 6.13, "eighth_mph": 113, "measured": true, "notes": "something fell out from under the car; no rod knock heard; got kicked out of the track for running too quick without a cage (limit said as 12.0)", "t": "11:08-14:12"}
+      ],
+      "safety": [{"fact": "No roll cage", "t": "11:08"}],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "blazer",
+      "nickname": "Blazer",
+      "owner_driver": "unclear (George/'Georgie' possibly)",
+      "base_vehicle": {"make": "Chevrolet (assumed from name; not stated)", "model": "Blazer", "year": null},
+      "passes": [
+        {"result": "ran past the eighth; shifter failed (air shifter did not work); slow 60 ft; no big wheelie", "measured": true, "t": "5:52-7:36"}
+      ],
+      "notes": "previously did a huge wheelie; caption suggests a 3,400 rpm launch vs 3,000 last time (low confidence, car unclear)",
+      "t_notes": "1:49, 7:36",
+      "confidence": "low"
+    }
+  ],
+  "game_use": {
+    "timeslips": {"mcflurry_best": {"et": 7.80, "mph": 166, "eighth": "5.00 @ 140", "sixty_ft": 1.15}, "mcflurry_early": {"eighth": "5.28 @ 117.60"}, "coyote_ranger": {"eighth": "6.13 @ 113"}},
+    "safety_rules": {"no_cage_et_limit": 12.0, "oil_pressure_cut": "below 50 psi above 3000 rpm"},
+    "failure_modes": ["crankcase pressure/oil out breather and dipstick on stock valve covers at high boost"]
+  }
+}

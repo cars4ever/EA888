@@ -1,0 +1,83 @@
+{
+  "video_id": "1DL_XEuSOGU",
+  "title": null,
+  "title_note": "Title not returned by transcript tool; Cheap Racecar Challenge 3 episode (Ep.4 per caller batch order, not confirmed)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-23:51). 0:00-1:48 is a sponsor read (ShipStation); 23:08-end is an unrelated Nashville race plug.",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "Others may help as long as the team isn't standing with hands in pockets (restated)", "t": "14:32"},
+      {"fact": "Firewall hole block-off panels count as safety", "t": "15:14"},
+      {"fact": "Jackstand ('James', auto-caption 'Jack/Jan') had his engine mounted by Cameron's shop because he was injured in a boat crash; other teams allowed it", "t": "14:13-14:32", "confidence": "medium (captions garble name)"}
+    ],
+    "teams": [
+      {"team": "Cleetus + McNutt (also called George in this episode)", "car_ref": "crc3_gen1_s10"},
+      {"team": "Zach + Tye", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand (James)", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_gen1_s10",
+      "owner_driver": "Cleetus McFarland + McNutt",
+      "engine": {
+        "family": "GM LS (junkyard)",
+        "displacement_l": null,
+        "displacement_note": "Ep.1 described this spare as a 5.3; not restated here",
+        "origin": "Lumberjack's (Jackstand's) spare engine from the previous Cheap Racecar Challenge",
+        "rotating_assembly": "Texas Speed rods and pistons; crank described both as 'new crank' and 'stock crank' (unclear)",
+        "cam": "used cam",
+        "heads": "stock heads, resurfaced only (no valve job); one rusty valve from rain exposure",
+        "head_gasket_fasteners": "new head gaskets, head studs",
+        "condition": "left uncovered and rained on; surface rust inside, rusted studs, dirt on cam",
+        "t": "1:48-2:44"
+      },
+      "purchase_engine": {"price_usd": 3750, "asking_usd": 3800, "note": "Negotiated $50 off for rust by phone with Jackstand (offers 3,550/3,600/3,700 refused)", "t": "3:06, 5:10-6:13"},
+      "reference_prices": [
+        {"part": "Pre-balanced LS piston/rod/crank kit (rebuild-yourself estimate)", "price_usd": 1100, "t": "4:26"},
+        {"part": "Fuel injectors (bought previous night, 'big')", "price_usd": 450, "t": "7:41-8:03"},
+        {"part": "Used K-member fair market estimate", "price_usd": "100-200", "t": "21:14-21:42"}
+      ],
+      "transmission": {"type": "Powerglide", "price_usd": 3000, "note": "Restated as $3,000 and called a good deal by the others", "t": "6:36"},
+      "converter": {"note": "Converter/flywheel spacing measured; long time spent on converter fitment", "t": "17:37-19:02, 22:01"},
+      "chassis_work": [
+        {"fact": "Engine mounts: only one of the free mounts fit; other holes don't line up. Building a new tube transmission crossmember", "t": "15:32-16:41"},
+        {"fact": "Bellhousing hits tunnel and oil pan hits K-member; plan to cut stock K-member and weld a plate rather than buy tube K-member (no budget; steering would not fit); engine to sit ~5 in lower", "t": "21:14-22:49"},
+        {"fact": "Firewall holes filled with block-off panels (seam sealer pending)", "t": "15:14, 20:08"},
+        {"fact": "Roll cage installed at Cameron Johnson's, tucked high for tall driver", "t": "11:17"}
+      ],
+      "weight_lb": [{"value": 1940, "desc": "S10 stripped body/chassis as weighed at Cameron's (no engine)", "measured": true, "t": "13:47", "confidence": "medium (context of scale not shown in captions)"}],
+      "power_adder": {"type": "power adder TBD; budget tight for it", "t": "22:49"},
+      "targets": {"et": "into the 8s", "t": "22:49"},
+      "confidence": "high for engine price/spec; medium for weights"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "owner_driver": "Jackstand (James)",
+      "engine": {
+        "family": "secret (rumoured possibly a big block; Cameron's staff told to keep secret)",
+        "cost_claim_usd": 4000,
+        "notes": "Jackstand says his engine cost about $4,000 and came with a carburetor intake and only a temp sensor; earlier joke about a '$4,000 crankshaft / spent $2,500'",
+        "t": "3:25, 5:40-6:13, 12:59"
+      },
+      "parts_seen": [{"fact": "Parts found at shop attributed to Jackstand's motor (injectors, fuel rail ~$30-46, solenoids); estimated ~$2,500 of stuff (joking/contested)", "t": "17:06-17:37", "confidence": "low"}],
+      "rear_end": {"note": "A rear-end case at Cameron's said to be for the 240 (not yet painted)", "t": "13:21", "confidence": "low"},
+      "weight_lb": [{"value": 1430, "desc": "240SX stripped shell weight stated (earlier said 1,400)", "measured": true, "t": "13:47"}],
+      "status": "Car hidden/removed from Cameron's shop to keep engine secret",
+      "confidence": "low-medium"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {
+      "junkyard_ls_texas_speed_rods_pistons_used_cam_assembled": 3750,
+      "prebalanced_ls_rotating_assembly_estimate": 1100,
+      "ls_injectors_set_large": 450,
+      "used_k_member": "100-200",
+      "used_powerglide_with_converter": 3000
+    },
+    "weights_lb": {"gen1_s10_stripped_no_engine": 1940, "240sx_hatch_stripped_shell": 1430}
+  }
+}

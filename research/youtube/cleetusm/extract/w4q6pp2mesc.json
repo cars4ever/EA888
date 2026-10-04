@@ -1,0 +1,71 @@
+{
+  "video_id": "w4q6pp2mesc",
+  "title": "Return of the Cheap Racecar Challenge Turbo Mustang + ZR1 runs",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-38:44); 0:00-1:16 sponsor read; merch segments ~13:16-14:36 and ~37:34-38:23",
+  "context": {
+    "date_stated": "Friday, September 11 (25 years after 2001 -> 2026)",
+    "t_date": "36:23",
+    "event": "Giveaway ZR1 dyno + track test; giveaway (ZR1 + ZR2 + $75,000 cash) ends September 25",
+    "track_conditions": {"fact": "~85-86 F, car heat-soaked; new asphalt at track", "t": "35:05"}
+  },
+  "cars": [
+    {
+      "car_id": "giveaway_zr1_sep",
+      "nickname": null,
+      "owner_driver": "Cleetus (giveaway car); tuner Matt Sanford",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette ZR1 (orange)", "generation": "called 'C7' once at 36:00 (low confidence, supercharged)", "year": null},
+      "engine": {"family": "supercharged GM V8 (LT not named)", "heads": "LME head porting", "cam": "LME cam", "notes": "mods described as fitting on one hand", "t": "36:51-37:13"},
+      "power_adder": {"type": "supercharger", "brand_model": "factory blower ported by Kong Performance", "boost_psi": 23, "t": "7:06, 36:51"},
+      "fuel": {"type": "ethanol blend ~70% (not full E85)", "system": "DSX Tuning aux pumps; Fuel Injector Clinic injectors", "t": "9:54, 3:40, 37:13"},
+      "ecu": {"tuner": "Matt Sanford", "notes": "wideband installed for tuning", "t": "1:16"},
+      "exhaust": "Stainless Works headers",
+      "transmission": {"notes": "automatic with paddle/manual mode; manual mode starts in 2nd; 'seven gears' mentioned; shift points uncertain due to different tire size", "t": "6:19-6:47, 15:07-15:26"},
+      "wheels_tires": {"desc": "Billet Specialties drag pack (ceramic coated by Sam), new rear tires, front skinnies", "t": "10:21-10:44"},
+      "targets": {"dyno_hp": "900-950", "et": "into the 9s, beat a Tesla Plaid (~9.5); then 'want 8.90'", "t": "1:38, 24:22"},
+      "dyno": [
+        {"hp": 877, "tq_lbft": 935, "rpm_end": 5500, "note": "partial pull", "measured": true, "t": "3:40"},
+        {"hp": 937, "tq_lbft": 925, "rpm_end": "~6200", "measured": true, "t": "5:15-6:19"},
+        {"hp": 995, "tq_lbft": 961, "boost_psi": 23, "fuel": "~70% ethanol", "note": "driver lifted early; ~1,000 claimed possible if 2 F cooler", "measured": true, "t": "7:39-9:54"},
+        {"claim": "torque of ~925 lb-ft available by 4,300 rpm", "t": "6:19"},
+        {"claim": "previous giveaway-car dyno 'high score' 651; previous best giveaway car blipped ~901", "t": "1:59, 9:29"}
+      ],
+      "passes": [
+        {"run": 1, "et": 9.47, "mph": 148, "sixty_ft": 1.49, "launch": "2nd-gear leave", "note": "no data log saved", "measured": true, "t": "19:31-23:02"},
+        {"run": 2, "et": 9.34, "mph": 145, "sixty_ft": 1.36, "eighth_et": 5.97, "eighth_mph": 117, "launch": "1st gear, wheelie", "note": "heat-soaked back-to-back run, lost ~3 mph", "measured": true, "t": "23:02-26:41"},
+        {"run": 3, "et": 9.11, "mph": 148, "sixty_ft": "1.30 (caption '130 with a six', possibly 1.36)", "eighth_et": 5.83, "eighth_mph": 119, "launch": "1st gear, +1 deg timing in launch, big wheelie", "conditions": "~85-86 F after 30 min cool-down, iced blower", "measured": true, "t": "31:00-35:05"}
+      ],
+      "notes": [
+        {"fact": "Car is a full second faster than when acquired; fastest giveaway car ever", "t": "26:41, 36:51"},
+        {"fact": "One more degree of launch timing made the difference; 2-3 would have been bad", "t": "34:41"}
+      ],
+      "parts": [],
+      "confidence": "high for numbers; medium for generation/transmission"
+    },
+    {
+      "car_id": "crc1_mustang",
+      "link_note": "Video calls it the cheap-car-challenge Turbo Mustang that sat after the challenge and was given to Zach instead of auctioned; matches Zach+Ty's CRC1 Coyote/turbo Mustang (medium confidence)",
+      "nickname": "'Frankenstein' (caption, low confidence)",
+      "owner_driver": "Zach Walker (now his drag car)",
+      "base_vehicle": {"make": "Ford", "model": "Mustang", "year": null},
+      "engine": {"family": "Gen 3 bottom end (Coyote implied, not named) from junkyard", "block": "Gen 3, stock bottom end", "heads": "Gen 1 heads", "cam": "stock top end; tuned somewhat (lockouts asked about)", "oil_pump": "no upgraded oil pump gears", "t": "16:35-17:38"},
+      "power_adder": {"type": "turbo", "brand_model": "Precision, caption '8284' (likely an 82 mm-class Precision; exact model uncertain)", "notes": "Ty welded aluminium parts (his first aluminium)", "t": "18:26-18:51"},
+      "ignition": {"plug_gap_in": 0.016, "t": "29:45"},
+      "passes": [
+        {"run": 1, "sixty_ft": 1.55, "et": null, "mph": null, "note": "ran heavy boost, broke up / scary sound, driver stayed in it then lifted; engine survived", "measured": true, "t": "27:06-30:37"}
+      ],
+      "failures": [{"part": "engine breaking up at high boost", "cause": "not diagnosed (plug gap / ignition suspected by others)", "t": "29:07-30:18"}],
+      "confidence": "medium"
+    }
+  ],
+  "other_vehicles": [
+    {"desc": "Tesla Plaid (used, $50,000, 'wrecked twice') as benchmark, ran ~9.5", "t": "14:36, 21:07"},
+    {"desc": "JH Diesel 4x4 truck at track; diesel ~$6.40/gal", "t": "15:44-16:08"}
+  ],
+  "game_use": {
+    "price_points_usd": {},
+    "reference_numbers": {"supercharged_zr1_ported_cam_hp": 995, "supercharged_zr1_tq": 961, "boost_psi": 23, "best_et": 9.11, "best_mph": 148},
+    "gameplay_hooks": ["heat soak costs ~3 mph", "launch timing sensitivity +1 deg", "datalog lost when not saved"]
+  }
+}

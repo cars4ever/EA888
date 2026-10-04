@@ -1,0 +1,93 @@
+{
+  "video_id": "PgdQ91n0Bmw",
+  "title": "McFlurry's FASTEST Pass Yet! Leroy 6 Second Runs & Ruby Returns",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-1:04:13; 129 segments). 0:00-1:38 sponsor; 1:03:50-end giveaway promo.",
+  "context": {
+    "track": {"name": "Bradenton Motorsports Park (testing)", "t": "7:00"},
+    "event_target": [
+      {"name": "FL2K, October 2-5 at Bradenton Motorsports Park", "t": "7:00"},
+      {"name": "World Cup (McFlurry and Leroy prepping)", "t": "15:07, 39:20"}
+    ],
+    "giveaway": {"fact": "2025 F-250 Platinum, 2025 RTR Mustang (<600 mi, slightly damaged), 20 ft Eliminator tilt car hauler, $50,000 cash; $5 merch = entry", "t": "1:03:50"},
+    "other": {"fact": "Horn Blasters owner Matt's oddball turbo street car builds ~5 psi cruising at 60 mph; has scavenge-pump oil system and AC", "t": "5:28-6:31", "confidence": "medium (vehicle not identified)"}
+  },
+  "cars": [
+    {
+      "car_id": "mcflurry",
+      "build_version": "McFlurry - limited-turbo class car, World Cup prep",
+      "nickname": "McFlurry (Oreo McFlurry wrap)",
+      "owner_driver": "Jackstand (driver); tuned by Cleetus/team",
+      "base_vehicle": {"make": null, "model": null, "note": "not stated; 'orange Mustang' mentioned near its run is probably the opponent", "t": "38:36"},
+      "engine": {"family": "Ford Coyote (inferred from 'coyote RPMs' remark and spark-plug tubes in valve cover)", "rpm_trap": 9300, "t": "38:36, 52:26, 54:32", "confidence": "medium"},
+      "power_adder": {"type": "turbo (limited-turbo class)", "brand_model": null, "boost_psi": {"launch": 18.8, "peak": "36-37", "trap": 33, "trans_brake_dome": 30}, "t": "53:45-54:08, 48:40"},
+      "exhaust_backpressure": {"emp_psi": 45, "boost_psi": 34, "note": "team rule of thumb: ~2:1 EMP:boost is where you run out of turbo; still headroom", "t": "54:08-55:33"},
+      "crankcase_pressure_psi": {"value": 4, "boost_psi": 37, "t": "55:11"},
+      "sensors_added": ["exhaust back-pressure sensor", "crankcase pressure sensor"],
+      "chassis_fixes": [
+        {"desc": "rear wheel runout ~35 thou vs claimed 30 thou axle tolerance", "t": "3:15-4:14"},
+        {"desc": "rear not square: passenger bar ~1/4 in longer, causing rear steer", "t": "4:14"},
+        {"desc": "hood reinforced with fiberglass", "t": "4:37"},
+        {"desc": "25 lb hung off the back as ballast", "t": "26:34"},
+        {"desc": "quarter-mile rear gear", "t": "56:14"}
+      ],
+      "passes": [
+        {"track": "Bradenton Motorsports Park", "distance": "1/8", "eighth_et": 4.78, "eighth_mph": 147, "sixty_ft": 1.12, "notes": "went straight; sounded early-shift/bog; boost controller later found unplugged", "kind": "measured", "t": "27:49-29:15"},
+        {"track": "Bradenton Motorsports Park", "distance": "1/8", "eighth_et": 4.76, "eighth_mph": 147, "sixty_ft": 1.11, "notes": "turned up but no gain - dash boost-control switch unplugged (ran ~30 psi across the board)", "kind": "measured", "t": "38:36-43:01"},
+        {"track": "Bradenton Motorsports Park", "et": 7.12, "mph": 189, "sixty_ft": 1.10, "eighth_et": 4.58, "eighth_mph": 155, "notes": "boost controller fixed; quarter mile without hitting limiter; tires shaking/kicking off top end; ~156 mph eighth claimed strong vs 'ultra street' cars", "kind": "measured", "t": "49:55-56:14"}
+      ],
+      "failures": [
+        {"part": "header oil fire", "cause": "oil leak; leaking spark plug tube on valve cover - done for night", "t": "51:55-52:49, 55:11"},
+        {"part": "boost controller", "cause": "dash switch unplugged after dash removal", "t": "42:01-42:29"}
+      ],
+      "targets": {"eighth_et": "4.50s (class)", "t": "41:03"},
+      "confidence": "medium"
+    },
+    {
+      "car_id": "leroy",
+      "build_version": "Leroy - testing before FL2K/World Cup (2025)",
+      "nickname": "Leroy ('the Savage')",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette", "t": "18:41"},
+      "tune": {"desc": "same tune and clutch set as last outing; Pete sent a different traction control for pass 2 which slowed it in the eighth; turned up for pass 3", "t": "16:46, 38:12, 56:35"},
+      "parachutes": {"desc": "new parachutes from a different brand (previous maker sold; previous outing had a chute blowout); printed 'hell yeah brother'", "t": "14:23-14:45, 37:07"},
+      "passes": [
+        {"track": "Bradenton Motorsports Park", "et": 7.45, "mph": 146, "sixty_ft": 1.159, "three_thirty_ft": 3.094, "eighth_et": 4.597, "eighth_mph": 163, "notes": "floored to ~1000 ft (6.01 at 1000 ft per caption), then rolled out; estimated 6.88-6.91 if full pass", "kind": "measured", "t": "16:46-17:22"},
+        {"track": "Bradenton Motorsports Park", "et": 6.93, "mph": 211.9, "sixty_ft": 1.180, "three_thirty_ft": 3.11, "eighth_et": 4.60, "eighth_mph": 165, "notes": "different traction-control setting; night", "kind": "measured", "t": "34:22-38:12"},
+        {"track": "Bradenton Motorsports Park", "et": 7.43, "mph": 150, "sixty_ft": 1.152, "three_thirty_ft": 3.098, "eighth_et": 4.612, "eighth_mph": 159, "notes": "lifted after late grab of 4th gear (thought 3rd reached eighth)", "kind": "measured", "t": "57:17-59:51"}
+      ],
+      "targets": {"eighth_et": 4.40, "quarter": "6.70s", "t": "57:17, 38:36"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "ruby",
+      "build_version": "Ruby - 850 class prep with new driver",
+      "nickname": "Ruby",
+      "owner_driver": "Cleetus (tuner); driver George 'Squirrel' McNutt (first turbo car, first parachute pull)",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette", "t": "32:15"},
+      "power_adder": {"type": "single turbo", "turbo_size_mm": 98, "boost_psi": {"pass1": 20.7, "trans_brake": 7, "later": "~15"}, "t": "45:10, 24:47, 48:19"},
+      "launch": {"trans_brake_rpm": 3600, "bump_box": "bump function (also used as line lock, did not work)", "shift_rpm": 7000, "t": "25:17, 9:55, 11:41"},
+      "class": "850 index at FL2K",
+      "passes": [
+        {"et": null, "notes": "first run: fuel pump cut out; same pump as Lumberjack", "t": "12:59-13:24"},
+        {"et": 8.15, "mph": 169, "sixty_ft": 1.33, "eighth_et": 5.30, "eighth_mph": 137, "reaction": -0.017, "notes": "red light; parachute tangled; boost 20.7 psi", "kind": "measured", "t": "21:23, 24:47"},
+        {"et": 8.27, "mph": 166, "sixty_ft": 1.32, "reaction": -0.003, "notes": "boost lowered (dome ~24-25)", "kind": "measured", "t": "30:59-33:01"},
+        {"et": null, "notes": "broke throttle cable/gas pedal on hard stab", "t": "44:19"},
+        {"et": 8.41, "mph": 162, "sixty_ft": 1.30, "eighth_et": 5.42, "eighth_mph": 130, "reaction": 0.01, "notes": "~15 psi", "kind": "measured", "t": "45:42-48:19"},
+        {"et": 8.66, "mph": null, "sixty_ft": 1.34, "eighth_et": 5.56, "eighth_mph": 127, "reaction": -0.022, "notes": "fuel pump lost power up top; mph garbled ('15')", "kind": "measured", "t": "1:01:13-1:02:28"}
+      ],
+      "failures": [
+        {"part": "fuel pump", "cause": "intermittent cut-out", "t": "13:24, 1:02:07"},
+        {"part": "throttle cable", "cause": "split out from hard throttle stab", "t": "44:19"},
+        {"part": "parachute", "cause": "tangled/stale", "t": "23:14"}
+      ],
+      "confidence": "high"
+    }
+  ],
+  "game_use": {
+    "emp_rule": "EMP:boost ~2:1 = turbo running out (team claim)",
+    "mcflurry_best": "7.12 @ 189, 4.58 @ 155 eighth",
+    "leroy_best_here": "6.93 @ 211.9"
+  }
+}

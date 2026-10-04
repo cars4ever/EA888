@@ -1,0 +1,112 @@
+{
+  "video_id": "PSGvE8jkSoc",
+  "title": "Cheap Car Challenge DRAMA, Is Jackstand's NEW Engine Legal?",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-45:25)",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 2 per caller labelling = Sick Summer leg of the $7,500 challenge (budget now $10,000 total incl. Sick Week spend); <10 days before Sick Summer",
+    "edition_note": "Same cars as crc1_* (B9BPtlgCxy8); crc2_* = Sick Summer build snapshot.",
+    "rules": [
+      {"fact": "Victor (drag-strip co-owner, shop owner, racer) appointed budget administrator; his call is final", "t": "0:26"},
+      {"fact": "Budget covers the car and its parts only, not hotels/food", "t": "0:55"},
+      {"fact": "Broken parts may be replaced with identical parts at no cost; improvements must be paid", "t": "1:22"},
+      {"fact": "Total budget $10,000 (original $7,500 + $2,500 for Sick Summer), counting what was already spent", "t": "1:47"},
+      {"fact": "Marketplace purchases count at price paid; parts pulled from shop/garage at fair market value; new sponsored/free parts at 50% of retail", "t": "2:36-2:58"},
+      {"fact": "Safety equipment not counted (administrator decides); upgraded brakes count as safety", "t": "3:18, 4:49"},
+      {"fact": "Labor (own or others') does not count", "t": "3:42"},
+      {"fact": "Selling a part credits its sale price to the budget, but its replacement must be paid from budget; a sold engine forfeits free like-for-like replacement", "t": "4:29, 12:50-13:39"}
+    ],
+    "teams": [
+      {"team": "Jackstand (James)", "car_ref": "crc2_jackstand_240"},
+      {"team": "Cleetus + Squirrel", "car_ref": "crc2_lumberjack"},
+      {"team": "Zach + Tye", "car_ref": "crc2_tye_mustang"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc2_jackstand_240",
+      "nickname": "Gray Shark / Sharky (named in this video)",
+      "same_car_as": "crc1_jackstand_240",
+      "owner_driver": "Jackstand (James)",
+      "base_vehicle": {"make": "Nissan", "model": "240SX", "year": null, "t": "41:17"},
+      "engine": {
+        "family": "GM LS 6.0 L (iron/aluminum not stated)",
+        "displacement_l": 6.0,
+        "block": "6.0 L block (his former spare), stock bore, no decking; factory stamp visible",
+        "heads": "PRC 237 cylinder heads via Texas Speed ($2,782 retail per invoice)",
+        "cam": "used cam from his stock (valued $150)",
+        "rotating_assembly": "Texas Speed: K1 4.0 in stroke crank (caption 'K1 4-in stroke'), I-beam rods (caption 'super I-beam'), Carrillo forged pistons (caption 'Carillo'); bearings/rings included; Texas Speed invoice $3,469 retail, he paid $1,390",
+        "compression": null,
+        "other": "ATI balancer; Motion Raceworks billet valve covers and valley cover (later removed); used trunnion-upgraded stock rockers; used head + main studs; used pushrods; used timing set",
+        "t": "10:19, 15:34-18:16, 23:28-24:29, 26:32-34:10"
+      },
+      "power_adder": {"type": "nitrous (carbureted)", "notes": "says a nitrous engine needs nicer parts than a boosted one; combo similar to his earlier nitrous 240", "t": "17:00, 18:16-18:36"},
+      "fuel": {
+        "carburetor": "Original Quick Fuel Brawler 950 (~$723 online) replaced by a TRC (Total Racing Components / 'Carburetor Craig') custom carb said to retail ~$1,650; upgrade charged ~$475 net",
+        "t": "4:49-8:00"
+      },
+      "exhaust": {"notes": "custom headers from garage (built by 'Jim', paid $400 originally) debated at $400-$1,000; he reverted to modifying his old swap headers for $137 (Amazon material)", "t": "8:00-9:59, 25:22, 41:17"},
+      "transmission": {"type": "Powerglide", "notes": "rebuild kit only, no upgrades", "t": "33:39, 41:38"},
+      "parts": [
+        {"part": "Previous running built 6.0 L engine SOLD (credit)", "price_usd": -3300, "note": "only $1,500 deposit received at time; budget calc used $3,000", "t": "9:59, 15:04, 25:00"},
+        {"part": "Carburetor upgrade (TRC custom vs Quick Fuel Brawler 950)", "price_usd": 475, "t": "7:35, 25:22-25:58"},
+        {"part": "Header modification material", "price_usd": 137, "t": "25:22"},
+        {"part": "Texas Speed rotating assembly + PRC 237 heads (sponsored, half of $6,251 retail)", "price_usd": 3125, "t": "27:36-28:18"},
+        {"part": "Used camshaft", "price_usd": 150, "t": "29:01"},
+        {"part": "Used lifters", "price_usd": 100, "t": "29:01"},
+        {"part": "Used head studs + main studs", "price_usd": 300, "t": "30:16-31:01"},
+        {"part": "Stock rockers with trunnion upgrade", "price_usd": 100, "t": "31:01"},
+        {"part": "Used pushrods", "price_usd": 50, "t": "31:21"},
+        {"part": "Covers (stock valley cover etc.)", "price_usd": 125, "t": "32:23"},
+        {"part": "Timing component kit (used)", "price_usd": 75, "t": "34:10", "confidence": "low"},
+        {"part": "6.0 L block (fair market)", "price_usd": 600, "t": "32:48-34:33", "confidence": "low"},
+        {"part": "Valve springs / rocker bolts ($6) / ARP cam bolts ($15) / stainless header material ($36)", "price_usd": null, "t": "38:33-39:04, 41:38", "confidence": "low"},
+        {"part": "Texas Speed Kit retail ref: PRC 237 heads", "price_usd_retail": 2782, "t": "27:36"}
+      ],
+      "budget": {"start_usd": 2755, "plus_engine_sale_usd": 3000, "after_carb_headers_usd": 5143, "remaining_usd": 318, "note": "$318 left only if he removes the spare water pump, billet valve covers and valley cover", "t": "25:00-26:32, 34:55-35:18"},
+      "plans": {"notes": "Clean up wiring/lights, freshen Powerglide, hold remaining ~$300 for race bets", "t": "40:55-42:18"},
+      "confidence": "medium (numbers heavily negotiated; final ledger lines partly unclear)"
+    },
+    {
+      "car_id": "crc2_lumberjack",
+      "nickname": "Lumberjack",
+      "same_car_as": "crc1_lumberjack",
+      "owner_driver": "Cleetus McFarland + Squirrel",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino (referenced at 44:58)", "year": null},
+      "engine": {"family": "GM LS (turbo)", "notes": "reusing block, heads, head studs, cam; only new pistons and rods", "t": "36:11, 38:10"},
+      "transmission": {"notes": "valve body upgrade (for trans-brake) + input shaft", "t": "36:11"},
+      "fuel": {"pump": "Aeromotive 5.0 brushless (rebuilt, used) valued at $700 = half of $1,409 new; may not be installed", "t": "36:36-37:49"},
+      "parts": [
+        {"part": "Valve body", "price_usd": null, "t": "36:11"},
+        {"part": "Pistons and rods", "price_usd": null, "t": "36:11"},
+        {"part": "Input shaft", "price_usd": null, "t": "36:11"},
+        {"part": "Aeromotive 5.0 brushless fuel pump (rebuilt, valued half new)", "price_usd": 700, "retail_usd": 1409, "t": "37:01-37:31"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc2_tye_mustang",
+      "nickname": null,
+      "same_car_as": "crc1_tye_mustang",
+      "owner_driver": "Zach + Tye",
+      "base_vehicle": {"make": "Ford", "model": "Mustang", "year": null},
+      "engine": {"family": "Ford Coyote Gen 2", "notes": "bought a used Gen 2 Coyote for $1,200 from a guy who emailed; had bent rods and tulipped valves; at the machine shop (Joe, Fast Forward) being fixed with stock/equal parts", "t": "20:53-21:18, 43:01-43:24"},
+      "power_adder": {"type": "single turbo", "boost_control": "boost controller (caption 'True boost') under discussion", "notes": "nitrous being removed", "t": "40:06-40:31"},
+      "parts": [
+        {"part": "Used Gen 2 Coyote engine (damaged)", "price_usd": 1200, "t": "43:01"},
+        {"part": "Intercooler (Amazon, new)", "price_usd": 105, "t": "39:04"},
+        {"part": "Universal 3 in aluminum intercooler piping kit", "price_usd": 130, "t": "39:04"},
+        {"part": "Nitrous kit (to be sold; originally ~$200)", "price_usd": 200, "t": "40:06"}
+      ],
+      "issues": [{"fact": "Intake air temps very high without intercooler (tune had 'heat stroke')", "t": "39:39"}],
+      "plans": {"notes": "Intercooler, dual fuel (E85 in small front tank, factory tank for pump gas), maybe bigger injectors, weight reduction (AC removed, no headliner)", "t": "43:45-44:33, 45:25"},
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {"texas_speed_ls_rotating_assembly_retail_invoice": 3469, "prc_237_heads_retail": 2782, "quick_fuel_brawler_950_online": 723, "trc_custom_carb_retail_claim": 1650, "used_built_6.0_ls_sale": 3300, "used_ls_cam": 150, "used_ls_lifters": 100, "used_head_main_studs": 300, "aeromotive_5.0_brushless_new": 1409, "used_gen2_coyote_damaged": 1200, "amazon_intercooler": 105, "intercooler_piping_kit_3in": 130},
+    "rules_model": {"sponsored_part_fmv_factor": 0.5, "safety_and_brakes_free": true, "labor_free": true}
+  }
+}

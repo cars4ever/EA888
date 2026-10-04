@@ -1,0 +1,91 @@
+{
+  "video_id": "ZTuZc5Sp1fo",
+  "title": "Cheap Racecar Challenge 3 Ep.8",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-52:53); 0:00-1:51 sponsor read; 1:51-4:03 giveaway-car handover (unnamed car, no specs); 41:59-43:08 brisket segment; 43:08-52:53 free-turbo hotline (giveaway turbo sizes only)",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "Tires are not a safety item; teams must buy tires within budget and must arrive at the race with a safe set (at least rears)", "t": "8:56-9:32"},
+      {"fact": "Ryan (the 'money guy') prices contested items on the board; he had not yet made corrections", "t": "4:23, 6:38"}
+    ],
+    "accounting_notes": [
+      {"fact": "Ty sold his own used Ranger turbo kit (6-year-old turbo, journal bearing, cast vs billet wheel argued) to the Mustang team; price to be set by Ryan; the wastegates with it are brand new and priced separately", "t": "5:56-7:48"},
+      {"fact": "Mustang team bought an onboard air compressor with 'little left in the budget' to avoid the CO2/air-pressure problems seen on Lumberjack", "t": "8:38"},
+      {"fact": "Accusation that the Mustang team is effectively a $25,000 build on a $15,000 budget", "t": "28:55"},
+      {"fact": "S10 team stresses its used fuel pump has documented Facebook Marketplace transaction", "t": "36:25-36:47"}
+    ],
+    "teams": [
+      {"team": "Cleetus + McNutt/Squirrel (+ George)", "car_ref": "crc3_s10"},
+      {"team": "Zach + Ty", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_s10",
+      "nickname": "none yet ('red truck'; 'Red Rocket' / 'Red Dragon' floated)",
+      "owner_driver": "Cleetus McFarland + McNutt",
+      "base_vehicle": {"make": "Chevrolet", "model": "S10 (red)", "year": null},
+      "status": "Described as behind the others; needs rear end, wiring, fuel system",
+      "rear_end": {
+        "history": [
+          {"fact": "First junkyard rear end (from a Ford Explorer) was the wrong one: could not take a C-clip eliminator, breaking the TBM brake plan", "t": "10:12-10:37"},
+          {"fact": "Replaced with a junkyard disc-brake rear end with ABS and 4-bolt pattern", "t": "10:37-13:44"}
+        ],
+        "gear": {"stock": "3.20-something", "target": "3.73 (in stock) or 3.90; need 3.00+ minimum", "t": "14:38, 22:30, 34:33"},
+        "setup": "Pinion angle set; spring perches from old rear end slightly off-size, gap filled with weld; axle tubes welded; C-clip eliminators fitted; wide offset wheels",
+        "t": "17:37-22:57"
+      },
+      "suspension": {"rear": "CalTracs to be set/preloaded on the ground; may need a new rear shackle; shocks still needed", "t": "22:57, 27:22, 24:47"},
+      "transmission": {"notes": "Trans must come out because flex plate was installed backwards (at Cameron's shop); crossmember is welded in on both sides", "cooler": "transmission cooler mounted under car", "t": "23:58-25:37, 38:46"},
+      "fuel_system": {"cell": "fuel cell mounted in back of bed (weight over rear tires), opening cut in bed", "notes": "Discussion of switching fuels, leave room to swap lines", "pump": "used Facebook Marketplace pump, mounted with a home-made 2-hole bracket", "t": "25:37-26:04, 29:48, 36:00-40:29"},
+      "weight_notes": {"fact": "Front sits light; turbo (~30-40 lb) and coolant not yet installed", "t": "26:28"},
+      "failures": [
+        {"part": "Flex plate installed backwards", "cause": "assembly error", "t": "23:58-24:28"},
+        {"part": "Leaf spring perches initially installed backwards (per Jackstand)", "cause": "assembly error", "t": "28:13"}
+      ],
+      "parts": [
+        {"part": "Junkyard disc-brake ABS rear end", "price_usd": null, "t": "10:37"},
+        {"part": "Fuel cell", "price_usd": null, "t": "25:37"}
+      ],
+      "targets": {"fact": "Jackstand predicts the S10 will blow its head gaskets by day two", "t": "27:49"},
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc3_95_mustang",
+      "nickname": null,
+      "owner_driver": "Zach + Ty",
+      "engine": {"notes": "'Our rebuilt motor'", "t": "8:13"},
+      "power_adder": {"type": "turbo", "brand_model": "Ty's used Ranger turbo kit (journal-bearing turbo, ~6 years old) + new wastegates", "t": "5:56-7:48"},
+      "boost_control_air": {"part": "onboard air compressor", "t": "8:38"},
+      "body": {"cage": "done", "seat": "in", "wiring": "in progress", "t": "8:13"},
+      "tires": {"desc": "wheels (Race Star) with dry-rotted tires; told to buy proper rears within budget", "t": "8:56-9:56"},
+      "parts": [
+        {"part": "Used Ranger turbo kit (from Ty)", "price_usd": null, "note": "price left to Ryan", "t": "6:18"},
+        {"part": "New wastegates", "price_usd": null, "t": "7:02"},
+        {"part": "Onboard air compressor", "price_usd": null, "t": "8:38"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "nickname": null,
+      "owner_driver": "Jackstand",
+      "status": "Essentially done, waiting on a driveshaft",
+      "body": {"hood_scoop": "Amazon hood scoop, flush fit", "t": "35:06-36:00"},
+      "history": {"fact": "On the earlier challenge car ('Lieutenant Dan') the hood flew off at ~150 mph", "t": "35:32"},
+      "confidence": "high"
+    }
+  ],
+  "other_vehicles": [
+    {"desc": "Giveaway car delivered to winners Justin and Amy (headed to Arkansas); model not stated; next up is the C7 ZR1 giveaway winner", "t": "1:51-4:03"}
+  ],
+  "giveaway_turbo_sizes": {"offered": ["64/66 mm", "76 mm", "88 mm"], "advice": "88 mm suggested for a supercharged Mustang switching to turbo", "t": "45:11-52:28"},
+  "game_use": {
+    "rules": {"tires_in_budget": true, "safety_tires_required": true},
+    "gameplay_hooks": ["wrong junkyard axle incompatible with C-clip eliminator", "flex plate on backwards forces trans removal", "used turbo with journal bearings valued by a judge"]
+  }
+}

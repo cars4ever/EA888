@@ -1,0 +1,76 @@
+{
+  "video_id": "_zG9CUX1vmI",
+  "title": "Leroy 2.0 Just Got a BRAND NEW Engine (Dyno + First Track Test)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-33:24; 47 segments). 0:24-2:13 time-lapse music only; 32:13-end giveaway call.",
+  "context": {
+    "track": {"name": "Bradenton Motorsports Park", "t": "19:57"},
+    "event_target": {"name": "FL2K", "classes_entered": [
+      {"car_ref": "mcflurry", "class": "street car", "t": "15:07"},
+      {"car_ref": "george_blazer", "class": "950", "t": "15:07"},
+      {"car_ref": "neighbors (car)", "class": "1050", "t": "14:43"},
+      {"car_ref": "mullet", "class": "Extreme 28", "t": "15:07"},
+      {"car_ref": "leroy", "class": "stick shift", "t": "15:07"},
+      {"car_ref": "james 240", "class": "No Time", "t": "15:30"}
+    ], "t": "14:43-15:30"}
+  },
+  "cars": [
+    {
+      "car_id": "leroy",
+      "build_version": "Leroy 2.0 - Pete Harrell 392 ci LS (c. 2023)",
+      "nickname": "Leroy",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette", "note": "'the OG Bradenton Motorsports Park Corvette' (may refer to Leroy)", "t": "19:57"},
+      "engine": {
+        "family": "GM LS",
+        "displacement_ci": {"value": 392, "previous": 427, "note": "de-stroked ('I think it's like a 392') for higher RPM; first time under 400 ci", "t": "3:27, 10:10"},
+        "block": {"desc": "LSX block; same block as before per Pete (caption garbled)", "t": "0:24, 3:08", "confidence": "medium"},
+        "heads": {"desc": "Mast cathedral-port heads (kept cathedral port to match existing intake; bigger/better than before)", "t": "3:27"},
+        "rotating_assembly": {"crank": "Callies", "rods": "Callies Enforcer (heavy I-beam steel)", "pistons": "Wiseco custom with abradable coating (requires break-in oil change)", "t": "4:12-4:34"},
+        "rpm_capability": {"value": 9000, "kind": "claimed (if needed)", "t": "3:50"},
+        "builder": "Pete Harrell",
+        "t": "0:00-4:34"
+      },
+      "power_adder": {"type": "twin turbo", "brand_model": null, "wastegate_dome_psi": 6, "notes": "told they'll need bigger turbos eventually", "t": "0:00, 12:14"},
+      "clutch": {"desc": "counterweights added for dyno to prevent slip; discs at wear bars after dyno -> fresh discs planned; base turns adjusted at track", "t": "4:34, 16:57, 24:41"},
+      "dyno": [
+        {"hp": 580, "rpm": 5000, "boost_psi": null, "note": "break-in partial pull", "kind": "measured (chassis dyno)", "t": "7:55"},
+        {"hp": 800, "rpm": 6500, "boost_psi": "wastegate spring only", "kind": "measured", "t": "9:18-10:36"},
+        {"hp": "950-970", "boost_psi": 9.4, "note": "both 950 and 970 stated", "kind": "measured", "t": "13:49, 15:30"},
+        {"hp": null, "boost_psi": 17.5, "note": "boost spiked to 17.5 psi briefly; caption '8300 new record' (unclear if rpm or hp)", "kind": "measured", "confidence": "low", "t": "16:57-17:23"}
+      ],
+      "passes": [
+        {"track": "Bradenton Motorsports Park", "distance": "1/8", "eighth_et": 4.98, "eighth_mph": 144, "boost_psi": 15, "notes": "first pass with new engine; captions also mention '8.33', '120 or 64' and '498 at 141' just before, possibly another car or Leroy's 60ft", "kind": "measured", "confidence": "medium", "t": "19:57-22:43"},
+        {"track": "Bradenton Motorsports Park", "distance": "1/8", "sixty_ft": 1.209, "notes": "hopscotch/clutch slip after added power; full turn of base added", "kind": "measured", "confidence": "medium (caption '120 with a nine')", "t": "24:00-24:41"},
+        {"track": "Bradenton Motorsports Park", "et": 7.48, "mph": 182, "sixty_ft": 1.18, "three_thirty_ft": 3.14, "eighth_et": 4.80, "eighth_mph": 148, "boost_psi": 20, "notes": "quarter mile, clutch tightened; called a 7.40-ish on 20 psi", "kind": "measured", "t": "28:42-31:44"}
+      ],
+      "failures": [
+        {"part": "connecting rods (previous 427 engine)", "cause": "bent every time car got down to ~7.0", "t": "0:00, 4:12"},
+        {"part": "turbo", "cause": "spraying oil on dyno", "t": "7:55"},
+        {"part": "oxygen sensor / wideband", "cause": "reading weird, replaced", "t": "12:14"}
+      ],
+      "targets": {"et": "sixes; 1.25 60ft target mentioned", "t": "0:00, 24:41"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "george_blazer",
+      "build_version": "George's Blazer - FL2K 950 class",
+      "nickname": "Blazer ('Rocky'?)",
+      "owner_driver": "George (Squirrel McNutt)",
+      "base_vehicle": {"make": "Chevrolet", "model": "Blazer", "year": null},
+      "power_adder": {"type": "supercharger", "notes": "same pulley as when it won FL2K last year", "t": "14:43"},
+      "body": {"desc": "whole new front end, zip-tied headlights", "t": "14:17"},
+      "class": "950 index (target 9.50)",
+      "passes": [
+        {"track": "Bradenton Motorsports Park", "et": 8.92, "mph": 136, "sixty_ft": 1.33, "notes": "too fast for 9.50 class; pedaled due to wheelie, lifted early", "kind": "measured", "t": "17:23-19:12"},
+        {"track": "Bradenton Motorsports Park", "et": 8.95, "mph": 153, "sixty_ft": 1.48, "notes": "timing pulled 20 deg at trans-brake release, 11 deg at 1 s; wheelie gone; still too fast", "kind": "measured", "t": "25:51-27:18"}
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "leroy_2_0": {"displacement_ci": 392, "dyno": "800 hp @ wastegate; ~950-970 hp @ 9.4 psi", "best": "7.48 @ 182 on 20 psi"},
+    "rule_of_thumb_claim": "~100 hp per psi joke - not usable"
+  }
+}

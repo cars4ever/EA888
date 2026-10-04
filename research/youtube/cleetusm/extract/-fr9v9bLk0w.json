@@ -1,0 +1,90 @@
+{
+  "video_id": "-fr9v9bLk0w",
+  "title": "Introducing Project Eagle's NEW Engine (100% Billet)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-40:17, 81 caption lines)",
+  "context": {
+    "series": "project_eagle",
+    "location": "Proline Racing shop, Georgia (engine pickup + partial top-end assembly by the Cleetus crew under Proline supervision)",
+    "caption_corrections": [
+      {"raw": "Prine", "corrected": "Proline (Proline Racing)", "confidence": "high (video title context: 'Proline Hemi' in follow-up video title)"},
+      {"raw": "hammy/hamy", "corrected": "Hemi"},
+      {"raw": "grp rods", "corrected": "GRP rods", "confidence": "medium"},
+      {"raw": "Frankenstein intake", "corrected": "Frankenstein intake (brand)", "confidence": "medium"}
+    ],
+    "people": ["Eric (Proline)", "Doug (Proline)", "Chris (Proline)", "James, Zach, Sam, George, Jack (Cleetus crew)"]
+  },
+  "cars": [
+    {
+      "car_id": "eagle",
+      "build_version": "engine v1 - Proline 564 Hemi (pre-install)",
+      "nickname": "Eagle",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"notes": "Engine to be installed at Cameron Johnson Race Cars into Eagle", "t": "40:17"},
+      "engine": {
+        "family": "Hemi (Proline billet Hemi)",
+        "builder": {"value": "Proline Racing", "t": "0:26-0:50"},
+        "displacement_ci": {"value": 564, "t": "3:45-4:15"},
+        "stroke_in": {"value": 4.5, "t": "4:15"},
+        "model_designation": {"value": "'MH7' (caption, low confidence)", "t": "4:15"},
+        "block": {"material": "billet", "notes": "dry deck - no water jackets (first engine the crew has had without water jackets); block lightened; lifter bores large/replaceable", "t": "5:46, 10:36"},
+        "heads": {"material": "billet", "type": "true hemispherical chamber", "notes": "roughly twice the size of heads they normally use; heads can be removed without removing intake (slide out from under intake) - designed for between-round service", "t": "7:01-7:58, 12:02-12:25, 13:25, 27:39"},
+        "head_gaskets": {"value": "copper", "t": "3:45"},
+        "head_fastening": {"torque_sequence": "70 ft-lb all, center outward; then upper row 220 ft-lb, lower row 150 ft-lb; repeated 220 checks; some '50 pounders'", "t": "14:42-15:16, 18:45, 19:32"},
+        "crank": {"value": "billet", "t": "6:40"},
+        "rods": {"value": "billet (GRP per caption 'grp')", "t": "6:13-6:40"},
+        "pistons": {"value": "billet, big dish to reduce compression for abuse", "t": "6:13-6:40"},
+        "compression_ratio": null,
+        "cam": null,
+        "valvetrain": {"rockers": "shaft rockers, oil fed up through pushrods/adjusters", "pushrods": "labeled per cylinder", "lash_cold_notes": "lash value said as 'six, six' (caption unclear)", "t": "21:21-23:52, 27:39, 32:23"},
+        "intake": {"brand": "Frankenstein (caption) billet intake, braced against backfire", "boost_rating": "Proline said they have made up to ~80-85 psi through this intake design; baseline tune-up talk around that (ambiguous, claimed)", "t": "2:45-3:15, 29:14"},
+        "fuel_rail": {"size": "-16 AN", "t": "3:15"},
+        "valve_covers": {"material": "billet", "notes": "very tight fit, valve cover puller tool supplied", "t": "7:01, 36:54-37:22"},
+        "manifolds": {"material": "billet", "t": "7:01"},
+        "firing_order": {"value": "1-8-7-2-6-5-4-3 (as captioned)", "confidence": "low (caption digits)", "t": "24:41"},
+        "rev_limits": {"manufacturer_max_rpm": 10000, "recommended_operating": "high 8,000s to low 9,000s for longevity", "planned_limiter": "around 10,000-11,000 (caption ambiguous)", "t": "24:41-26:25"},
+        "weight_lb": {"block_est": "~138-140 (caption)", "short_block_est": 300, "kind": "guess by crew", "t": "5:46"},
+        "oil_pressure_prime_psi": {"values": [150, 170, 180], "notes": "on stand while priming; ~170 high side", "t": "30:08, 31:10-32:23"},
+        "service_intervals": {"rods_every_runs": "25-30 hard eighth/quarter runs", "if_kept_under_9000_rpm": "35-40 runs", "pistons": "generally hold up; inspect", "run_counting": "line-lock/burnout and knocking tires off at the line does not count as a run", "t": "25:08-26:40"}
+      },
+      "power_adder": {"type": "turbo (crew says 'we got turbos')", "brand_model": null, "turbo_size_mm": null, "boost_psi": null, "t": "3:45"},
+      "power_claim": {"value": "highest-horsepower engine the channel has had; 'more than you need' per Proline", "hp": null, "t": "0:00, 3:45"},
+      "fuel": null,
+      "ecu": null,
+      "transmission": null,
+      "converter": null,
+      "rear_end": null,
+      "suspension": null,
+      "tires": null,
+      "weight_lb": null,
+      "dyno": null,
+      "passes": [],
+      "failures": [
+        {"part": "Piston (spare set)", "cause": "George dropped a piston and rod on the floor; ~$5,000 joked cost", "t": "21:59, 35:10"},
+        {"part": "Valve cover O-ring", "cause": "cut during installation", "t": "37:51"},
+        {"part": "Intake", "cause": "intentional small cosmetic scratch by crew (joke)", "t": "36:23-39:14"}
+      ],
+      "parts": [
+        {"part": "Proline 564ci billet Hemi (complete engine)", "price_usd": null, "notes": "'most expensive engine we've ever bought' - no price stated", "t": "0:00"},
+        {"part": "Set of connecting rods with correct bolts (service item)", "price_usd": 2000, "notes": "caption garbled ('just under $22,000'), then clarified as two grand for a set; medium confidence", "t": "25:32"},
+        {"part": "Catastrophic engine failure repair (comparison)", "price_usd": 30000, "notes": "Proline: rods are cheap insurance vs ~$30k failure; one client failure cost ~19 rod sets", "t": "26:57-27:18"}
+      ],
+      "targets": {"notes": "Get engine to Cameron Johnson Race Cars, install, race soon; track runs with Sharpie tally on car", "t": "39:52-40:17"},
+      "confidence": "high for displacement/stroke/billet construction/torque specs; medium for rod price; low for firing order and limiter"
+    }
+  ],
+  "reference_facts": [
+    {"fact": "Proline moved to all-billet engines around 2011 after experience with a billet 41X-based engine", "t": "6:40-7:01"},
+    {"fact": "Anecdote: an aluminum 41 Hemi customer kept adding nitrous (75/125/150 shot) but only turned 8,200 rpm and survived - lower rpm extends life", "t": "26:57"},
+    {"fact": "Proline Hemis are common in Pro Mod; heads swapped every other round in Pro Mod", "t": "0:50, 12:46"},
+    {"fact": "Early Hemi had reverse head studs into the valley requiring intake removal", "t": "12:25"},
+    {"fact": "Pulling heads on Mullet: ~75% of the work is removing the intake", "t": "27:39"},
+    {"fact": "Cleetus recently bought a Chrysler 300 (Hemi) for the $3,000 car challenge", "t": "0:00"}
+  ],
+  "game_use": {
+    "engine_spec": {"name": "Proline 564 billet Hemi", "ci": 564, "stroke_in": 4.5, "dry_deck": true, "head_torque_ftlb": {"upper": 220, "lower": 150}, "rpm_max": 10000, "rpm_life": [8500, 9000]},
+    "maintenance_model": {"rod_change_runs": [25, 30], "rod_change_runs_if_under_9k": [35, 40], "rod_set_price_usd": 2000, "major_failure_usd": 30000},
+    "fuel_rail": "-16 AN"
+  }
+}

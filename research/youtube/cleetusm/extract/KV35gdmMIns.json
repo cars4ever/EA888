@@ -1,0 +1,32 @@
+{
+  "video_id": "KV35gdmMIns",
+  "title": "Installing a 5 Speed Lenco and Twin Turbos On Our 7.3L Godzilla Swapped Mustang",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-17:09). 0:00-0:55 is a sponsor read.",
+  "context": {"notes": [{"fact": "Rushed build for Sick Week (caption also says 'SEMA week', likely garble)", "t": "4:15, 11:37"}, {"fact": "MassFab sent a wing for Ruby (mention only)", "t": "9:22"}]},
+  "cars": [
+    {
+      "car_id": "mcflurry_godzilla_mustang",
+      "build_version": "McFlurry - Godzilla 7.3 twin turbo, Lenco (Sick Week rush build)",
+      "nickname": "McFlurry",
+      "owner_driver": "Cleetus McFarland team (Ty fab, Sam machining, James lines, Zack wiring)",
+      "base_vehicle": {"year": null, "make": "Ford", "model": "Mustang (per title)", "registration": "antique tags, street registered", "t": "4:34"},
+      "engine": {"family": "Ford 7.3L Godzilla (title)", "heads": "stock heads", "t": "9:00", "notes": "fitting required remade crossmember section to clear oil pan; half K-member, custom motor/trans mounts", "t_fit": "2:21-3:01"},
+      "power_adder": {"type": "twin turbo (title)", "kit": "quick 'one day' MIG-welded Ty turbo kit; uses Leroy's old 'bull horns' pieces; Motion Raceworks 'butt cheek' Y kit for the merge", "intercooler": "none (crew vote to skip; saves ~5 h fab)", "turbo_size_mm": null, "t": "3:52-4:34, 8:28-9:00, 12:27, 14:51-15:14"},
+      "fuel": {"plan": "VP C16 race fuel because no intercooler; joked about injectors in charge pipe", "t": "9:00-9:22"},
+      "transmission": {"type": "Lenco 5-speed (title) with Bruno drive; lever shifters with custom throw", "t": "5:28, 7:11, 10:24"},
+      "rear_end": null,
+      "chassis": {"cage": "certified cage; one tube trimmed for shifter clearance", "seat": "new seat; seating/carpet brought over from TBM", "t": "6:25, 15:34"},
+      "electrical": {"fact": "fuel pump, level sender, switch panel with breakers; big fuel tank", "t": "15:34-16:02"},
+      "risks_stated": [{"fact": "No intercooler -> hot intake air; crew expects possible head gasket/piston damage, packing spares", "t": "9:00"}],
+      "parts": [
+        {"part": "Motion Raceworks twin-turbo Y ('butt cheek') kit", "price_usd": null, "t": "14:51"},
+        {"part": "Unidentified used part called 'garbage' (price garbled/cut off)", "price_usd": null, "t": "12:44"}
+      ],
+      "targets": {"event": "Sick Week", "t": "4:15"},
+      "confidence": "medium (displacement/trans count come from title)"
+    }
+  ],
+  "game_use": {"design_choices": ["no intercooler -> C16 race fuel", "Lenco + Bruno behind Godzilla"]}
+}

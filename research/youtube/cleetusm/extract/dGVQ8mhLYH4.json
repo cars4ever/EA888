@@ -1,0 +1,69 @@
+{
+  "video_id": "dGVQ8mhLYH4",
+  "title": "Lumberjack's CUSTOM Junkyard LS is DONE! First Fire Up! (1,500hp?)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-56:00); 0:00-3:45 music/intro montage, 3:45-9:39 unrelated swan segment",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 2 (Sick Summer leg) per caller labelling - Lumberjack engine build",
+    "timing_note": "Said to be on the key for Sick Summer and filmed at end of 'Month of Freedom'; but captions also say BTR gaskets were obtained 'while we were out on six summer' - exact order vs the event is unclear (low confidence)",
+    "people": [
+      {"name": "Joe (Fast Forward Race Engines, 'FFRE')", "role": "supervised machine work/assembly"},
+      {"name": "Texas Speed", "role": "balanced rotating assembly"},
+      {"name": "Brian Tooley Racing (caption 'Brian Tulie')", "role": "head gaskets / head studs"},
+      {"name": "Cameron Powers", "role": "helped build the transmission"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc2_lumberjack",
+      "nickname": "Lumberjack",
+      "build_snapshot": "'CNS (Cleetus and Squirrel) serial #1' engine + 'CNS serial #1' transmission",
+      "owner_driver": "Cleetus McFarland + Squirrel",
+      "engine": {
+        "family": "GM LS (turbo)",
+        "displacement_l": null,
+        "block": "aluminum LS block (their 'old aluminum girl'), cylinders crosshatch-honed at Fast Forward; uses small-bore (5.3-bore) gaskets",
+        "heads": "existing heads reused ('flattest heads on the planet'), old valve springs reused",
+        "cam": "old Lumberjack cam reused (an NA-type cam; replacement on order)",
+        "rotating_assembly": "Texas Speed balanced assembly: brand-new stock GM LS crank (balanced), forged H-beam rods, pistons with coated skirts; spiral-lock wrist-pin retainers; 0.927 in wrist pins",
+        "compression": null,
+        "head_gasket": "Brian Tooley Racing MLS, LS9-style multi-layer in small 5.3 bore size",
+        "head_studs": "BTR head studs (also bought for backup motor)",
+        "t": "10:46-12:13, 13:06-14:14, 22:35, 43:27-45:29"
+      },
+      "build_specs": [
+        {"fact": "Wrist pin diameter measured 0.927 in; rod pin-bore honed to ~0.0009-0.0011 in clearance", "t": "15:15-20:14"},
+        {"fact": "Top ring end-gap target ~0.026 in (file-fit rings)", "t": "26:12-27:53"},
+        {"fact": "Main bearing clearance ~0.0021 in (ideal 0.0023-0.0024; aluminum block grows) - warm up before hard launches", "t": "30:50-31:41"},
+        {"fact": "Main caps: 15 ft-lb + 80 deg inner, 15 ft-lb + 51 deg outer", "t": "29:38-29:59"},
+        {"fact": "Rod bearing clearances all in spec, tightest at edge", "t": "27:53"},
+        {"fact": "Scratch found and polished out of main journals", "t": "9:48-10:15, 22:44-23:06", "confidence": "low"},
+        {"fact": "Pistons mistakenly installed with wrong orientation during assembly and corrected", "t": "37:24-39:00"}
+      ],
+      "power_targets": [
+        {"fact": "Hoped 1,100-1,200 hp; likely first failure point is the head gasket", "t": "12:13-12:45", "kind": "claimed"},
+        {"fact": "Joe: ~40 psi and 20 deg timing about the limit for these parts; team suggests ~29 psi at 11 deg, Joe would run 15-16 deg", "t": "13:20-13:46", "kind": "claimed"},
+        {"fact": "Pistons said to be good for ~1,500 (hp implied)", "t": "10:46", "kind": "claimed", "confidence": "low"},
+        {"fact": "Goal: deep 9s or 8s", "t": "1:56, 13:46", "kind": "claimed"}
+      ],
+      "power_adder": {"type": "single turbo", "notes": "turbo found full of rainwater before install", "t": "45:53"},
+      "transmission": {"notes": "'CNS serial #1' transmission built with Cameron Powers; torque converter installed", "t": "46:19-46:57, 55:14"},
+      "fuel": {"notes": "fuel pump stuck from sitting on E85; freed by striking it; gas cap had been loose", "t": "47:17-48:49"},
+      "ecu_notes": "no-start fixed by TPS auto-calibration; 12 psi oil pressure while cranking; 13.8 V running", "t_ecu": "50:18-52:15",
+      "parts": [
+        {"part": "Texas Speed balanced rotating assembly (pistons/rods charged to budget; stock crank)", "price_usd": null, "t": "10:46, 43:04"},
+        {"part": "BTR small-bore LS9-style MLS head gaskets", "price_usd": null, "t": "43:27"},
+        {"part": "Cam plate retainer, lifter trays ('dumbbells')", "price_usd": null, "t": "43:27"}
+      ],
+      "result": {"fact": "Engine fired after TPS calibration; idled smooth and quiet", "t": "52:15-54:24"},
+      "previous_failure_ref": {"fact": "Previous crank was destroyed by bent rods", "t": "42:41"},
+      "confidence": "medium-high for build specs; title's 1,500 hp not stated in video"
+    }
+  ],
+  "game_use": {
+    "engine_build_refs": {"ls_main_clearance_in": 0.0021, "ls_top_ring_gap_in": 0.026, "ls_wrist_pin_in": 0.927, "main_cap_torque": "15 ft-lb + 80/51 deg"},
+    "limits_claims": {"lumberjack_ls_target_hp": [1100, 1200], "ls_rotating_assembly_limit_boost_psi": 40, "ls_rotating_assembly_limit_timing_deg": 20}
+  }
+}

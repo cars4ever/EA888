@@ -1,0 +1,61 @@
+{
+  "video_id": "ArK5sv0Xi2U",
+  "title": "Our SLEEPER Turbo Marauder Hits the Dyno (Boost Activated Exhaust Cutouts)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-15:00)",
+  "cars": [
+    {
+      "car_id": "marauder",
+      "build_version": "turbo kit, pump gas -> E90 flex, initial dyno tune",
+      "nickname": null,
+      "owner_driver": "Sam (driver for Sick Week; polished the car)",
+      "base_vehicle": {"year": null, "make": "Mercury (implied)", "model": "Marauder", "t": "0:00"},
+      "engine": {"family": null, "displacement": null, "block": null, "heads": null, "cam": null, "rotating_assembly": null, "compression": null, "builder": null, "notes": "engine internals not discussed"},
+      "power_adder": {
+        "type": "single turbo kit (built by Ty: 'another turbo kit is approved')",
+        "brand_model": null, "turbo_size_mm": null,
+        "blow_off_valve": "none (came that way)",
+        "boost_control": "no dedicated boost controller source; uses its own boost to drive the controller",
+        "exhaust": "boost-activated exhaust cutout/dump that opens at 3 psi (opens almost immediately on throttle); wastegate dump burned the floor, metal plate added",
+        "boost_psi_final": 13,
+        "t": "0:12, 2:53-3:07, 3:47, 12:58"
+      },
+      "fuel": {"type": "93 pump gas, then ~10 gal Ignite Racing E90 added; flex-fuel sensor blends tune automatically, boost offset by ethanol content planned", "t": "1:12, 6:21-6:41"},
+      "ecu": {"brand": null, "tuner": "Nate (tuner on site); shout-out to 'Doc Tumolo' (caption spelling)", "timing_final_deg": 19, "t": "5:09, 13:49, 14:51"},
+      "transmission": {"type": null, "notes": "still has overdrive; dyno pulls in 2nd then 3rd ('high gear')", "t": "9:22, 14:51"},
+      "converter": null,
+      "rear_end": {"ratio": null, "notes": "unknown, believed long stock-type gear", "t": "6:00"},
+      "suspension": null, "tires": null, "weight_lb": null,
+      "dyno": [
+        {"pull": 1, "gear": 2, "fuel": "93", "whp": "450-453", "boost_psi": "4-4.5", "t": "2:12-3:07"},
+        {"pull": 2, "gear": 2, "fuel": "93", "whp": "476-478", "boost_psi": 5.6, "t": "3:47-4:42"},
+        {"pull": 3, "gear": 2, "fuel": "93", "whp": 514, "torque_lbft": 555, "boost_psi": "7.7 at end (~8 total)", "t": "5:09-5:57"},
+        {"pull": 4, "gear": 2, "fuel": "E90 blend", "whp": 542, "boost_psi": "same as pull 3", "notes": "+~30 hp from ethanol alone, no timing added", "t": "7:42-8:31"},
+        {"pull": 5, "gear": 2, "fuel": "E90 blend", "whp": 580, "notes": "hit rev limiter; boost spoken as 11-12 (garbled)", "t": "8:52-9:22"},
+        {"pull": 6, "gear": 3, "fuel": "E90 blend", "whp": "672-678", "boost_psi": "~9 per one read, later read as 11.5", "injector_duty_pct": "70-71", "t": "10:00-11:34"},
+        {"pull": 7, "gear": 3, "fuel": "E90 blend", "whp": 693, "boost_psi": 13, "timing_deg": 19, "oil_pressure_psi": 79, "fuel_pressure_drop_psi": 1, "injector_duty_pct": 80.3, "notes": "goal 700 not reached; fuel system 'right on the edge'", "measured": true, "t": "12:58-14:23"},
+        {"note": "All numbers are rear-wheel ('693 at the rear tires')", "t": "14:51"}
+      ],
+      "passes": [],
+      "failures": [
+        {"part": "floor pan", "cause": "wastegate/dump heat burned the floor", "t": "3:47"},
+        {"part": "starter (noise, shimmed)", "cause": null, "t": "0:21"}
+      ],
+      "limits": {"fuel_system": "~80% injector duty at 693 whp / 13 psi; considered at the edge", "t": "11:10, 14:23"},
+      "parts": [
+        {"part": "Ignite Racing E90 (~10 gallons)", "price_usd": null, "t": "6:21"},
+        {"part": "Flex fuel sensor", "price_usd": null, "t": "6:41"},
+        {"part": "Boost-activated exhaust cutout", "price_usd": null, "t": "2:53"}
+      ],
+      "targets": {"whp": 700, "event": "Sick Week (hot laps / street driving)", "t": "3:21, 11:34, 12:58"},
+      "confidence": "high for dyno numbers; unclear phrase 'single 525 on 700 wheel' at 14:23 not interpreted"
+    }
+  ],
+  "game_use": {
+    "boost_vs_whp_curve_2nd_gear_93": [[4.5, 453], [5.6, 478], [8, 514]],
+    "ethanol_gain_same_boost_hp": 30,
+    "gear_load_effect": "~100 hp more in 3rd vs 2nd at similar boost (more load)",
+    "final": {"whp": 693, "boost_psi": 13, "timing_deg": 19, "fuel": "E90 blend", "injector_duty_pct": 80.3}
+  }
+}

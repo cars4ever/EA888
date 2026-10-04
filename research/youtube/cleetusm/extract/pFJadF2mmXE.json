@@ -1,0 +1,81 @@
+{
+  "video_id": "pFJadF2mmXE",
+  "title": "Tye's Homebuilt Turbo Ranger Just DESTROYED Its Best Pass EVER + I Broke McFlurry (36psi)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-24:39, 55 caption lines)",
+  "context": {
+    "event": {"name": "Private rental test day", "track": "Bradenton Motorsports Park", "conditions": "hot; track temp ~140 F; improved after sundown; track sprayed later; track 'beat up by big tire cars'", "t": "4:04, 6:03, 8:18, 12:00, 14:22"},
+    "caption_corrections": [
+      {"raw": "Holly", "corrected": "Holley (ECU)", "confidence": "high"},
+      {"raw": "Doc Tunemall", "corrected": "unclear - remote tuner contact (Nate)", "confidence": "low"},
+      {"raw": "tie / Ty", "corrected": "Tye", "confidence": "high"}
+    ],
+    "non_car_segment": "Traxxas RC giveaway (0:50-3:32) ignored"
+  },
+  "cars": [
+    {
+      "car_id": "mcflurry",
+      "build_version": "pre-World Cup test (stock-head-gasket Godzilla)",
+      "nickname": "McFlurry",
+      "owner_driver": "Cleetus McFarland (driver this day)",
+      "base_vehicle": {"make": "Ford", "model": "Mustang", "year": null, "tube_chassis": null, "t": "4:04"},
+      "engine": {"family": "Ford 7.3 Godzilla (caption 'turbo Godzilla Mustang')", "displacement_l": null, "head_gaskets": {"value": "stock, with head studs", "t": "16:56"}, "intake": {"value": "stock plastic intake; team has a longer-runner intake that could help it rev", "t": "17:43"}, "notes": "suspected valve issue - lays over hard at higher rpm; low compression sound on cranking", "t": "17:25-17:43"},
+      "power_adder": {"type": "twin turbo (left turbo mentioned)", "brand_model": null, "turbo_size_mm": null, "boost_psi": {"setting_5_approx": 22, "launch_psi": 5, "third_gear_psi": 21, "top_end_psi": 27, "max_seen_psi": 36, "notes": "'setting five' ~22 psi baseline; log showed 5 psi at the hit, 21 psi in 3rd, crept to 27 psi; final pass reached 36 psi unintentionally", "t": "5:23, 7:59, 18:21"}, "two_step_boost": {"issue": "boost kept climbing the longer it sat on the two-step (7-8 psi); changed to a hard stop around 5.5-5.7 psi", "t": "12:45-14:22"}},
+      "fuel": null,
+      "ecu": null,
+      "transmission": {"notes": "automatic with converter (converter drive pan-rail gasket seep); shift at 6,500 rpm, considered 7,000", "t": "8:40, 9:48-10:13"},
+      "rear_end": {"notes": "previously broke a tab off the rear end - fixed", "t": "5:06"},
+      "suspension": {"notes": "previously broken front strut - fixed; new front right shock; front shocks loosened 4 clicks ('wheelie mode'); car drives left - anti-roll bar adjustment needed; car 'lays over' when revved out", "t": "5:06, 5:23, 12:00, 14:51"},
+      "tires": {"notes": "brand new tires; tire pressure lowered ~1.5 lb (caption 'turn out pound and a half', low confidence)", "t": "5:23, 12:00"},
+      "weight_lb": null,
+      "launch": {"rpm": [3400, 3600], "t": "5:23, 8:40, 14:22"},
+      "dyno": [{"hp": 1355, "kind": "stated dyno result (fresh off dyno)", "t": "4:25"}],
+      "passes": [
+        {"run": 1, "et": 8.17, "mph": 122, "60ft": 1.20, "eighth_et": 4.89, "eighth_mph": 145.9, "notes": "intended eighth-mile hit, lifted ~850-900 ft and rolled through; setting 5, 3,400 rpm launch", "kind": "measured", "t": "6:03-7:36"},
+        {"run": 2, "et": null, "notes": "3,600 rpm launch + more boost; knocked tires off", "t": "8:40-9:12"},
+        {"run": 3, "et": null, "notes": "back to 3,400 rpm with spicier tune; made ~18 psi and knocked tires off", "t": "10:49-12:45"},
+        {"run": 4, "et": null, "est_et": "~7.60-7.70 (crew estimate, no timeslip - timing system false-triggered)", "boost_psi": 36, "notes": "3,600 rpm launch, new two-step strategy; drove through the quarter; best run feel ever but no slip", "kind": "claimed/estimated", "t": "14:51-18:04"}
+      ],
+      "failures": [
+        {"part": "Head gasket (stock, with head studs)", "cause": "36 psi exceeded limit; pushed coolant out overflow near left turbo, sprayed windshield; radiator hose rock hard; 'half-day job' to fix", "t": "16:36-17:25, 24:22"},
+        {"part": "Valves (suspected)", "cause": "low-compression sound; power falls off at high rpm", "t": "17:25-17:43", "confidence": "low"},
+        {"part": "Converter drive pan-rail gasket", "cause": "minor seep, cleaned", "t": "9:48-10:13"},
+        {"part": "Front strut / rear end tab", "cause": "broken on earlier outing, fixed before this test", "t": "5:06"}
+      ],
+      "parts": [],
+      "targets": {"today": "mid 7s", "world_cup": "bottom 7s", "fl2k": "conservative to avoid the faster class (6.90 class reference)", "60ft": "1.13-1.14", "t": "4:25-4:47, 7:10"},
+      "confidence": "high for 1,355 hp, 8.17/4.89 pass, 36 psi and head gasket failure"
+    },
+    {
+      "car_id": "tye_ranger",
+      "build_version": "homebuilt turbo Coyote Ranger (street/burnout truck)",
+      "nickname": null,
+      "owner_driver": "Tye (caption 'Ty Braun', surname low confidence)",
+      "base_vehicle": {"make": "Ford", "model": "Ranger", "year": null, "tube_chassis": false, "notes": "homebuilt; street-driven (drove 40 min to work); came straight from Bristol burnout contest; no cage, no race seat or belts yet", "t": "4:04, 19:03, 19:41, 24:22"},
+      "engine": {"family": "Ford Coyote", "notes": "loses cam phasing momentarily causing hiccup", "t": "19:41, 23:59"},
+      "power_adder": {"type": "turbo", "brand_model": null, "turbo_size_mm": null, "boost_psi": null, "t": "19:41"},
+      "fuel": null,
+      "ecu": {"brand": "Holley", "t": "19:41"},
+      "transmission": {"type": "Turbo 400 (TH400)", "trans_brake": false, "launch": "foot brake", "shift_rpm": "~6,200-6,600 actual vs ~7,200 rev limiter (short shifted by ear)", "t": "19:41, 21:16"},
+      "converter": null,
+      "rear_end": null,
+      "tires": null,
+      "weight_lb": null,
+      "dyno": null,
+      "passes": [
+        {"run": 1, "et": 9.92, "mph": 139, "mph_alt": 140, "60ft": 1.60, "eighth_et": 6.40, "eighth_mph": 111, "notes": "first pass; short shifted; best-ever per title context", "kind": "measured", "t": "19:41-20:24"},
+        {"run": 2, "et": 9.77, "mph": 139, "60ft": 1.45, "eighth_et": 6.26, "eighth_mph": 112, "notes": "better foot-brake launch; small hiccup (cam phasing)", "kind": "measured", "t": "22:34-23:28"}
+      ],
+      "failures": [{"part": "Cam phasing", "cause": "momentary loss of cam phasing causing a hiccup", "t": "23:59", "confidence": "medium (Tye's own guess)"}],
+      "parts": [],
+      "targets": {"et": "~9.50 or bottom 9s with a trans brake; 9.70 possible with right launch", "t": "20:24, 21:16, 21:58"},
+      "confidence": "high for passes and drivetrain"
+    }
+  ],
+  "game_use": {
+    "mcflurry": {"dyno_hp": 1355, "boost_psi": {"base": 22, "max": 36}, "head_gasket_failure_psi": 36, "pass": {"et": 8.17, "mph": 122, "60ft": 1.20, "eighth": 4.89, "eighth_mph": 145.9}},
+    "tye_ranger": {"drivetrain": "turbo Coyote / TH400 / Holley / foot brake", "best": {"et": 9.77, "mph": 139, "60ft": 1.45, "eighth": 6.26, "eighth_mph": 112}},
+    "mechanics": ["two-step boost creep while held -> tire spin; fix by capping two-step boost", "stock head gasket limit around mid-30s psi on Godzilla", "foot-brake launch vs trans brake ~0.15-0.2 s 60ft penalty"]
+  }
+}

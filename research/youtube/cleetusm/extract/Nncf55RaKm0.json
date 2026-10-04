@@ -1,0 +1,70 @@
+{
+  "video_id": "Nncf55RaKm0",
+  "title": "Here's Why Our Cummins Swapped 1965 Galaxie Went Missing (Runs HARD)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-13:59); mostly bodywork/shop talk, very few hard numbers",
+  "context": {
+    "event": {"name": "Race Week (pre-event shop prep; test session rained out)", "t": "13:14-13:38"},
+    "notes": [
+      {"fact": "Sponsor segment: Motion Raceworks acquiring TBM Brakes and RIFE sensors (sensor block with four sensors in one plug, vibration resistant; company ~2 years old)", "t": "0:05-1:35"},
+      {"fact": "Boxo tool boxes supplied for race week", "t": "11:41-12:18"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "galaxie_cummins",
+      "build_version": "repainted/re-cleared, pre-wheel-swap",
+      "nickname": null,
+      "owner_driver": null,
+      "base_vehicle": {"year": 1965, "make": "Ford", "model": "Galaxie", "t": "4:17 (year from title)"},
+      "engine": {"family": "Cummins diesel ('90s engine in a 60s body'; caption 'ninety-five cummins' - year unclear, low confidence)", "displacement": null, "builder": null, "t": "6:38"},
+      "power_adder": {"type": "nitrous (switch shown) + turbo diesel implied", "nitrous_shot": null, "t": "7:24"},
+      "fuel": "diesel", "ecu": null,
+      "transmission": {"type": "automatic with manual shifting (slam forward for 2nd, 3rd); overdrive switch and lockup switch; owner usually drives unlocked", "t": "6:53-7:38"},
+      "converter": {"notes": "lockup; locking it may just spin the tires", "t": "7:32-7:47"},
+      "rear_end": {"notes": "now has a 'legit' rear end (caption 'real four lane', unclear)", "t": "5:31"},
+      "suspension": null,
+      "tires_wheels": {"notes": "Steel wheels to be ordered; car has two different bolt patterns front vs rear; missing a lug nut", "t": "10:10-10:28"},
+      "body": {"notes": "Sat outside and rusted; cleaned and re-clear-coated with gun-sprayed clear over existing bondo/lead work; original can clear had failed", "t": "4:15-4:31, 9:20-10:07"},
+      "interior_plans": "Bolt-in race seat and harness bar (like the Crown Vic) because it is fast on nitrous; headliner",
+      "weight_lb": null,
+      "dyno": [],
+      "passes": [],
+      "failures": [{"part": "paint/clear coat", "cause": "left outside in sun; rattle-can clear failed", "t": "9:28-9:43"}],
+      "parts": [],
+      "targets": null,
+      "confidence": "low (no power/ET data in this video)"
+    },
+    {
+      "car_id": "ruby",
+      "nickname": "Ruby",
+      "owner_driver": null,
+      "parts": [
+        {"part": "TBM brakes (front)", "price_usd": null, "t": "2:03"},
+        {"part": "New belt (broken in same morning; old belt squealed)", "price_usd": null, "t": "2:13-2:35"}
+      ],
+      "notes": "Passed shakedown: good oil pressure and temps; may move up to the 750 class at race week",
+      "t": "11:16-11:36",
+      "confidence": "low (no build data)"
+    },
+    {
+      "car_id": "leroy",
+      "nickname": "Leroy",
+      "notes": "Ready for race week; plan to pull a washer off the clutch",
+      "t": "13:17",
+      "confidence": "low"
+    },
+    {
+      "car_id": "parker_backup_turbo",
+      "owner_driver": "Parker",
+      "engine": {"family": "GM LS-type (implied)", "displacement_l": 6.0, "notes": "Texas Speed 6.0 'turbo piston/rod' backup motor; Parker also ordered a Texas Speed 427 (backordered)", "t": "12:43-13:02"},
+      "power_adder": {"type": "turbo", "t": "12:51"},
+      "targets": {"class": "8.5 or 9.0 index class at race week", "t": "13:06"},
+      "confidence": "medium (vehicle not named)"
+    }
+  ],
+  "game_use": {
+    "notes": "Mostly flavor: classes 750 / 8.5 / 9.0 at race week; Galaxie diesel+nitrous with manual-valve-body-style shifting"
+  }
+}

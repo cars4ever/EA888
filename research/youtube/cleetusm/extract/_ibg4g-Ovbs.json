@@ -1,0 +1,67 @@
+{
+  "video_id": "_ibg4g-Ovbs",
+  "title": "Ruby Is ALIVE After 13 Months! First Fire Up, 2-Step Check & Dyno",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-23:23+). 0:00-1:30 is a sponsor read (no car data).",
+  "context": {
+    "notes": [
+      {"fact": "Ruby returned to service as-is (not the planned bigger 'Ruby 2.0' build) using Leroy's former engine, plus her old intake and old turbo kit; new wiring and plumbing", "t": "6:50-7:54"},
+      {"fact": "Side segment: shop F-150 with Coyote + Whipple pulled for a crank support (front of crank snout broken); 'Mullet' gets a new rear end with TBM rotors", "t": "1:30-4:37"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "ruby",
+      "build_version": "Ruby (13-month rebuild, Leroy's ex-engine)",
+      "nickname": "Ruby",
+      "owner_driver": "Cleetus McFarland team (Zach wiring, Ty fab, Jackson, Dr. Tune-them-all tuning)",
+      "base_vehicle": {"year": null, "make": null, "model": null, "note": "Corvette per series title/context; model/year not stated in this transcript"},
+      "engine": {
+        "family": "LS-based (caption mentions LS-style features; family not explicitly named here)",
+        "origin": "Leroy's old engine; said to have run 7.01 in Leroy with a stick-shift trans", "t": "7:54",
+        "displacement": null, "block": null, "heads": null, "cam": null, "rotating_assembly": null, "compression": null, "builder": null,
+        "notes": "Called a 'used engine'; oil pan swapped to Ruby's pan months earlier",
+        "confidence": "medium"
+      },
+      "ignition": {"crank_trigger": "MSD crank-trigger pickup (forced alternator relocation, new bracket by Ty)", "t": "5:17-5:39"},
+      "power_adder": {"type": "single turbo", "brand_model": null, "turbo_size_mm": 98, "boost_psi_runs": "5-11 psi on dyno; spring ~5 psi + 1 psi on dome", "t": "16:21, 18:18, 21:23"},
+      "fuel": {"type": "E85 / E90 (ethanol only; methanol not needed for target)", "injectors": "FIC 2150 cc (caption 'fic 2150s')", "system": "separate E85 race system in rear; stock tanks for street", "t": "4:56, 8:35, 16:21"},
+      "ecu": {"dash": "Holley Pro Dash on Revision Race Works carbon-fiber 3D-printed mount (caption 'reversion race works')", "ecu": null, "boost_control": "dome pressure via boost controller (commanded 12, saw 11)", "t": "8:18-8:35, 21:53"},
+      "transmission": {"type": "automatic with trans brake (type not named)", "t": "16:21-16:55"},
+      "converter": null,
+      "rear_end": null,
+      "suspension": null,
+      "tires": null,
+      "weight_lb": null,
+      "electrical": {"fact": "Entire harness redone into one side, split-loom; new button panel incl. cool-down button (water pump/intercooler fans), turn signals, hazards, under-glow", "t": "6:00-9:46"},
+      "dyno": [
+        {"pull": 1, "boost_psi": "~5-6 (spring + 1 on dome)", "whp": 839, "torque_lbft": 770, "type": "measured (chassis dyno, wheel)", "t": "18:18-19:29"},
+        {"pull": 2, "boost_psi": "~6-7 on dome", "whp": 930, "note": "+~90 hp", "type": "measured", "t": "20:20-21:23"},
+        {"pull": 3, "boost_psi": 11, "whp": 1002, "note": "caption '1,2 horsepowers'; goal of 1,000 met; breaking up on the way up", "type": "measured (value low-confidence from caption)", "t": "21:53-22:18"}
+      ],
+      "fluid_checks": [
+        {"fact": "Oil pressure ~37 psi after fix (idle); ~61-62 psi at speed, crew cites 7 psi per 1,000 rpm rule (~49 needed)", "t": "14:59, 21:53"}
+      ],
+      "passes": [],
+      "failures": [
+        {"part": "oil system (remote oil filter mount)", "cause": "remote filter lines plumbed backwards -> zero oil pressure for ~7-10 s at first fire; fixed, no apparent damage", "t": "11:51-14:59"},
+        {"part": "accessory belt", "cause": "chronic belt squeal (signature Ruby issue)", "t": "11:51"},
+        {"part": "previous wiring", "cause": "old patched harness caused misfire/cut-out gremlins", "t": "6:24"}
+      ],
+      "parts": [
+        {"part": "FIC 2150cc injectors", "price_usd": null, "t": "4:56"},
+        {"part": "MSD crank trigger", "price_usd": null, "t": "5:17"},
+        {"part": "Holley Pro Dash", "price_usd": null, "t": "8:18"},
+        {"part": "98 mm turbo (existing)", "price_usd": null, "t": "16:21"}
+      ],
+      "targets": {"hp": 1000, "et": "8.50s (caption '850s'), possibly faster; 'a six' floated with automatic (low confidence)", "t": "8:18, 19:29"},
+      "confidence": "medium (auto-captions garble several numbers)"
+    }
+  ],
+  "game_use": {
+    "dyno_curve_points_whp": {"ruby_98mm_e85_5psi": 839, "ruby_98mm_e85_7psi": 930, "ruby_98mm_e85_11psi": 1002},
+    "rules_of_thumb": {"oil_pressure_psi_per_1000rpm": 7},
+    "failure_modes": ["reversed remote oil filter lines -> zero oil pressure"]
+  }
+}

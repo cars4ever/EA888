@@ -1,0 +1,64 @@
+{
+  "video_id": "XgXpvu6Q52Y",
+  "title": "Introducing Project EAGLE - Our NEW 5 Second Drag Car",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-16:07, 40 caption lines)",
+  "context": {
+    "series": "project_eagle",
+    "chassis_builder": {"name": "Cameron Johnson Race Cars (CJ Race Cars)", "notes": "Cameron built Leroy's exo cage years ago at Profab; shop about an hour from Cleetus' shop; Tye formerly worked there", "t": "1:46-2:07"},
+    "motivation": [
+      {"fact": "Mullet's best stated as 6.30s at 235 mph; car is a compromise of many concepts (jet car, Drag & Drive, race car)", "t": "1:24"},
+      {"fact": "Goal is a 5-second quarter mile", "t": "1:24"},
+      {"fact": "Mullet transmission swap takes ~6 hours just to remove; Eagle trans meant to come out through the door opening, estimated 6-9x easier to work on", "t": "9:39-9:59"},
+      {"fact": "Building it in-house would take Tye about a year alone", "t": "1:46"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "eagle",
+      "build_version": "announcement / chassis mock-up stage",
+      "nickname": {"value": "Eagle", "t": "6:29"},
+      "owner_driver": "Cleetus McFarland (driver)",
+      "base_vehicle": {"year": 1969, "make": "Chevrolet", "model": "Camaro", "chassis_builder": "Cameron Johnson Race Cars", "tube_chassis": true, "construction": "built from scratch out of tube/metal, not from a purchased car; steel quarter panels; two-piece hood and two-piece front end", "chassis_material_notes": "titanium pieces noted (roll bar / parts), steel elsewhere; caption also says 'all titanium' loosely", "t": "4:00-5:14, 6:56, 11:17, 12:58"},
+      "build_start": {"fact": "Chassis work started on 'the 25th' (a Thursday)", "t": "6:29"},
+      "engine": {"family": null, "displacement": null, "notes": "Not decided yet; a big-block mock-up was in the chassis but explicitly 'not decided'; 'big horsepower'; Cleetus jokes about 3,000 hp", "t": "4:00, 6:29, 10:48"},
+      "power_adder": {"type": "twin turbo (stated by Cleetus as concept)", "brand_model": null, "turbo_size_mm": null, "boost_psi": null, "confidence": "low - plan statement only", "t": "4:47"},
+      "fuel": null,
+      "ecu": null,
+      "transmission": {"type": "lock-up Turbo 400 (TH400)", "supplier": "M&M (caption 'Eminem') - claimed, likely M&M Transmission", "notes": "Bellhousing to suit big block or the '41x' (caption; possibly a specific block) still to be sourced", "status": "planned", "confidence": "medium", "t": "11:58, 13:54"},
+      "converter": null,
+      "rear_end": {"notes": "Rear end housing not yet ordered; to be measured after wheels/tires arrive; 'axle, the whole nine yards' pending", "t": "11:58, 13:54"},
+      "suspension": {"rear": "four-link (mentioned)", "shocks": "Menscer shocks ordered (caption 'mener' - corrected, medium confidence)", "t": "7:23, 8:34"},
+      "brakes": {"brand": "TBM brakes ordered", "t": "7:23"},
+      "wheels": {"brand": "Billet Specialties", "t": "7:23"},
+      "windows": {"brand": "Optic Armor", "t": "7:23"},
+      "tires": {"type": "drag radial ('small tire' car)", "size": null, "notes": "'275' said while viewing the car - possibly 275 radial reference, low confidence", "t": "3:04, 4:47, 6:03"},
+      "weight_lb": {"car_with_engine_est": 2400, "race_weight_with_driver_est": 2600, "driver_weight_lb": 200, "vs_mullet": "~1,100 lb less than Mullet", "kind": "claimed estimate by Cameron/Cleetus", "t": "13:28"},
+      "parts_strategy": {"fact": "Built using as much of the Cleetus/'motion race' (caption) in-house parts catalog as possible", "confidence": "low on catalog name", "t": "13:28"},
+      "dyno": null,
+      "passes": [],
+      "failures": [],
+      "parts": [
+        {"part": "TBM brakes", "price_usd": null, "t": "7:23"},
+        {"part": "Menscer shocks (caption 'mener')", "price_usd": null, "t": "7:23"},
+        {"part": "Billet Specialties wheels", "price_usd": null, "t": "7:23"},
+        {"part": "Optic Armor windows", "price_usd": null, "t": "7:23"},
+        {"part": "Titanium roll bar / chassis components", "price_usd": null, "notes": "'it ain't cheap' - no figure", "t": "12:16-12:38"}
+      ],
+      "targets": {"et": "5-second quarter mile", "class_rules": "not decided", "goal": "lightest possible, maximum traction", "t": "1:24, 10:48-11:17, 14:14"},
+      "confidence": "high for chassis/base/weight estimates; low for engine/power adder (undecided)"
+    }
+  ],
+  "reference_cars": [
+    {"car_id": "mullet", "facts": [{"fact": "Best 6.30s at 235 mph", "t": "1:24"}, {"fact": "Eagle ~1,100 lb lighter than Mullet (implies Mullet ~3,500 lb)", "t": "13:28"}, {"fact": "Trans removal ~6 h", "t": "9:59"}]},
+    {"car_id": "leroy", "facts": [{"fact": "Exo cage built by Cameron Johnson at Profab", "t": "2:07"}]},
+    {"car_id": "elco", "facts": [{"fact": "El Camino ('3500 El Camino' trying to go 5s called a bad idea); same fabricator worked on it", "t": "5:42, 11:17"}]}
+  ],
+  "giveaway_refs": [{"fact": "Cleetus store giveaway options: 64 mm turbo, 72 mm turbo or set of tires", "t": "14:56"}],
+  "game_use": {
+    "eagle_weight_est_lb": {"car": 2400, "race_with_driver": 2600},
+    "eagle_target_et": "5.xx quarter mile",
+    "mullet_reference": {"et": 6.30, "mph": 235}
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "video_id": "aEdFIigQk9g",
+  "title": "Testing Mullet's NEW 4,000hp Big Block",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-28:58); ~20:40 onward is turbo-giveaway calls (Precision 64/66, 76, 88 sizes) with no car-build data",
+  "notes": "4,000hp is title-only. Track is the FL2K venue (event said to start tomorrow, then 'FL2K baby' at track).",
+  "cars": [
+    {
+      "car_id": "mullet",
+      "build_version": "Mullet tall-deck big block, first test (big tire, non-lockup converter)",
+      "nickname": "Mullet",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino", "year": null, "chassis": null, "note": "model from caller context"},
+      "engine": {"family": "big block (new engine)", "notes": "Red oil from previous blown big block found in catch can (forgot to drain) - not a new-engine failure", "t": "16:25"},
+      "power_adder": {"type": "twin turbo", "brand_model": null, "turbo_size_mm": null, "notes": "New 'giant' turbos; first body drop with them; bullhorns built out the side; one wastegate tube re-clocked", "t": "9:13, 9:32, 11:00"},
+      "fuel": {"type": "methanol", "t": "1:56"},
+      "ecu": {"tuner": "Pete (tune); Pete instructed to run to 330 ft if it felt good", "t": "11:30"},
+      "transmission": null,
+      "converter": {"type": "non-lockup converter (this test)", "t": "17:20"},
+      "rear_end": {"notes": "Driver felt possible ring gear damage after pass; to inspect via fill hole", "t": "17:42"},
+      "suspension": {"chassis_settings_by": "Jamie (raw caption 'Jamie'; chassis settings)", "wheelie_bars": "installed at track (nearly forgotten)", "t": "8:45, 17:20"},
+      "tires": {"type": "big tire", "t": "1:56, 15:18"},
+      "weight_lb": {
+        "measured_without_nose": 2762,
+        "lead_ballast_lb": 200,
+        "target": "~3,000 lb car plus driver ~200+ lb to reach class weight",
+        "kind": "measured (scale) + planned",
+        "t": "8:18-8:45"
+      },
+      "dyno": null,
+      "passes": [
+        {
+          "desc": "First hit on new engine, FL2K venue, full class weight, non-lockup converter",
+          "sixty_ft": 1.10,
+          "sixty_ft_note": "board/slip read as 1.10 (caption also '1105'/'105')",
+          "three_thirty_ft": 2.92,
+          "eighth_mile_et": 4.60,
+          "eighth_mile_mph": 131,
+          "notes": "Driver likely lifted before 330 ft and rolled to the eighth",
+          "kind": "measured (timeslip read aloud)",
+          "t": "14:43-16:52"
+        }
+      ],
+      "failures": [
+        {"part": "ring gear (suspected)", "cause": "unusual per-tooth noise felt after pass; not confirmed", "t": "17:42"},
+        {"part": "catch can", "cause": "oil puked out - old engine oil left in can", "t": "16:25"}
+      ],
+      "parts": [
+        {"part": "Lead ballast ~200 lb", "price_usd": null, "t": "8:45"},
+        {"part": "Wheelie bars", "price_usd": null, "t": "8:45"}
+      ],
+      "targets": {"class": "same setup intended for World Cup (weight, converter)", "t": "8:18"},
+      "confidence": "high"
+    },
+    {
+      "car_id": "leroy",
+      "build_version": null,
+      "nickname": "Leroy the Savage",
+      "owner_driver": "Cleetus McFarland team",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette", "generation": "C5 (confirmed in giveaway trivia)", "t": "27:50"},
+      "chassis_mods": [{"fact": "New billet CNC front motor plate made by Ty on his home CNC router (Shapeoko 5 Pro 4x4, 2.2 kW water-cooled spindle; caption 'Shapokco')", "t": "4:52-6:14"}],
+      "confidence": "medium (few build facts)"
+    },
+    {
+      "car_id": "unknown_cast_block_ls_car",
+      "build_version": null,
+      "nickname": null,
+      "owner_driver": "unidentified (friend in shop; possibly class racer)",
+      "engine": {
+        "block": "stock GM cast iron block",
+        "heads": "cast 'B2' heads from a brand garbled as 'mass Moses' (possibly Mast Motorsports; low confidence)",
+        "intake": "billet intake (caption 'billet LM intake')",
+        "notes": "Owner spray-paints billet parts so they look non-billet; says rules don't prohibit it",
+        "t": "3:34-4:52"
+      },
+      "confidence": "low"
+    }
+  ],
+  "game_use": {
+    "weights_lb": {"mullet_no_nose": 2762, "ballast": 200},
+    "passes": [{"car": "mullet", "60ft": 1.10, "330": 2.92, "1/8_et": 4.60, "1/8_mph": 131, "note": "lifted early"}]
+  }
+}

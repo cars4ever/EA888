@@ -1,0 +1,111 @@
+{
+  "video_id": "fzddx_3njA4",
+  "title": "Leroy's NEW 3,000 Horsepower Billet LS",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-29:40+; 72 segments). 0:00-1:38 sponsor, 1:38-7:30 family/auction aside, build content 7:30-end.",
+  "context": {
+    "event_target": {"name": "FL2K (auto-caption 'FL 2K')", "note": "work done the week before FL2K, down to the wire", "t": "9:36"},
+    "engine_builder": {"name": "Pete Harrell (auto-caption 'Pete Harold'; 'Big power Pete')", "t": "16:01"},
+    "other_purchases": [
+      {"fact": "Cleetus bought Greg Biffle's 2004 Roush Racing Ford Taurus Cup car (chassis RK195) at a Mecum auction (caption 'Mikum'); hammer ~USD 47,000 per auctioneer recap", "price_usd": 47000, "t": "2:59-6:47", "confidence": "medium (auctioneer chatter garbled; recap says $47,000)"}
+    ],
+    "turbo_give": null
+  },
+  "cars": [
+    {
+      "car_id": "leroy",
+      "build_version": "Leroy - billet tall-deck LS, bigger turbos, new transmission (2026 build)",
+      "nickname": "Leroy",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "Corvette (C5)", "year": null, "note": "not restated in this video; C5 per task brief"},
+      "engine": {
+        "family": "GM LS",
+        "block": {"desc": "billet tall-deck LS block; ~100 lb lighter on the nose than the previous iron LS block", "t": "15:21, 18:39"},
+        "heads": {"desc": "Mast 'Moses 2.0' heads (caption 'masked Moses 2.0'; raw caption brand uncertain); previous engine used Mast cathedral-port heads", "t": "15:21, 19:05", "confidence": "medium"},
+        "intake": {"desc": "new Hogan's intake manifold", "t": "15:21"},
+        "displacement": {"value": null, "note": "described only as more stroke / bigger engine than before", "t": "18:39"},
+        "cam": null,
+        "rotating_assembly": null,
+        "oiling": {"desc": "dry sump with billet dry-sump pan (caption 'motion billet dry sump pan', brand low confidence) with lines integrated into the pan; dry-sump lines routed through/around headers", "t": "29:17, 22:05"},
+        "fuel_pump": {"desc": "cam-driven mechanical fuel pump on the engine", "t": "9:36, 20:35"},
+        "builder": "Pete Harrell",
+        "notes": "Delivered at ~2-3 a.m. the night before install; Zach installed it overnight",
+        "t": "14:54-15:21"
+      },
+      "power_adder": {
+        "type": "twin turbo",
+        "brand_model": null,
+        "turbo_size_mm": {"value": 88, "note": "'power on these 88s' said about the bigger turbos; inferred as 88 mm, medium confidence", "t": "19:26"},
+        "boost_psi": {"plan": "~60 psi mentioned by Pete as future level requiring more rear gear", "t": "22:54", "kind": "claimed/plan"},
+        "notes": "New bigger turbos bolted on without modification; new up-pipes header-to-turbo, wastegates off the front as before; larger downpipe/bullhorn exhaust both sides; new cold side",
+        "t": "7:33-8:32"
+      },
+      "fuel": null,
+      "ecu": null,
+      "transmission": {
+        "model": null,
+        "notes": "New transmission (see 5ibvcauFris: Liberty). Front of trans needed a riser plate; new 1/2 in CNC mid plate moved engine forward; adapter plate between bellhousing and trans means trans must come out in three pieces to reach clutch adjustment; shifter extender from Liberty",
+        "t": "8:53-9:17, 12:19-13:10, 28:18"
+      },
+      "clutch": {"desc": "clutch with dyno tune-up weights installed for now", "t": "10:30"},
+      "converter": null,
+      "rear_end": {"note": "Pete warned more rear gear may be needed at ~60 psi boost", "t": "22:54"},
+      "suspension": null,
+      "tires": null,
+      "weight_lb": {"change": "roughly 150 lb lighter if everything goes right (plus driver lost 30 lb)", "t": "19:26", "kind": "claimed/target"},
+      "dyno": [],
+      "passes": [],
+      "failures": [],
+      "parts": [
+        {"part": "Billet tall-deck LS engine (Pete Harrell)", "price_usd": null, "t": "15:21"},
+        {"part": "Mast Moses 2.0 cylinder heads", "price_usd": null, "t": "19:05"},
+        {"part": "Hogan's intake", "price_usd": null, "t": "15:21"},
+        {"part": "CNC-machined 1/2 in mid plate (made in-house)", "price_usd": null, "t": "8:32"},
+        {"part": "Liberty shifter extender/relocator", "price_usd": null, "t": "28:18"}
+      ],
+      "targets": {"note": "bigger turbos to go 'crazy town'; mainly a total rewrite needing sorting (gearing, trans, clutch, engine, turbos)", "t": "19:26"},
+      "confidence": "medium"
+    },
+    {
+      "car_id": "mullet",
+      "build_version": "Mullet - tall-deck big block, new dry sump (2026)",
+      "nickname": "Mullet",
+      "owner_driver": null,
+      "base_vehicle": null,
+      "engine": {
+        "family": "GM LS (tall deck)",
+        "block": {"desc": "tall-deck 'HIP' cast block (hot isostatic process per Pete); deck ~0.4 in taller; previous blocks cracked near the cam bore", "t": "14:14, 17:21-17:40"},
+        "heads": {"desc": "same heads reused from previous engine", "t": "16:40"},
+        "rotating_assembly": {"desc": "taller deck allows longer/beefier rod with larger rod bolt ('like a Hemi rod'); 55 mm camshaft core for rigidity", "t": "16:40-17:21"},
+        "builder": "Pete Harrell",
+        "t": "14:14-17:40"
+      },
+      "power_adder": {"type": "turbo", "boost_psi": {"history": "both previous engines were hurt at ~50 psi; new engine expected OK above 50 psi", "t": "18:02"}},
+      "oiling": {"desc": "new dry sump pump; oil pressure reference line, feed relocated", "t": "14:14, 27:54"},
+      "chassis": {"desc": "back from Cameron Johnson Race Cars", "t": "13:35"},
+      "failures": [
+        {"part": "engine blocks (previous two)", "cause": "cracked near cam bore / hurt at ~50 psi boost", "t": "17:21, 18:02"},
+        {"part": "bolt broke during assembly", "cause": null, "t": "27:02"}
+      ],
+      "parts": [
+        {"part": "Rear-end gear oil (reused) - saved ~$50", "price_usd": 50, "t": "26:31", "note": "cost avoided"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "jackstand_ls_car",
+      "build_version": "Jackstand's upcoming engine (same family as Leroy's)",
+      "nickname": null,
+      "owner_driver": "Jackstand",
+      "engine": {"desc": "same heads, LME block, slightly larger bore than Leroy's", "na_dyno_hp": {"value": 800, "kind": "claimed (engine dyno, naturally aspirated)"}, "capability_hp": {"value": 3300, "kind": "claimed"}, "t": "23:32"},
+      "power_adder": {"type": "single turbo", "turbo_size_mm": 111, "note": "'single 111' box coming", "t": "23:52"},
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {"greg_biffle_2004_cup_car_auction": 47000},
+    "engine_limits_claims": {"previous_pete_harrell_ls_cracked_at_boost_psi": 50, "jackstand_lme_ls_na_hp": 800, "jackstand_lme_ls_capable_hp": 3300},
+    "notes": "Video title claims 3,000 hp but no number for Leroy's engine is stated in the transcript."
+  }
+}

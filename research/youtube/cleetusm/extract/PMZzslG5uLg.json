@@ -1,0 +1,40 @@
+{
+  "video_id": "PMZzslG5uLg",
+  "title": "FIRST FIRE UP of Our Twin Turbo 7.3L Godzilla Engine! Made AWESOME Power On The Dyno",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-25:28)",
+  "cars": [
+    {
+      "car_id": "mcflurry_godzilla_mustang",
+      "build_version": "McFlurry - Godzilla 7.3 twin turbo, pump-gas shakedown",
+      "nickname": "McFlurry",
+      "owner_driver": "Cleetus McFarland team; Haltech staff on site tuning",
+      "base_vehicle": {"make": "Ford", "model": "Mustang (per title)", "exterior": "Nardo gray wrap with McFarland Racing logos", "t": "1:10"},
+      "engine": {"family": "Ford 7.3L Godzilla", "notes": "oil pan + tensioner from Brian Wolf; sounds like big LS with Ford firing order; flywheel contacting bellhousing at first fire", "t": "0:00, 4:01-5:07"},
+      "power_adder": {"type": "twin turbo", "wastegate_springs_psi": 6, "boost_controller": "none yet", "turbo_oil_feed": "none at first fire; found block port", "t": "3:14-4:01, 15:55"},
+      "fuel": {"dyno": "93 pump gas", "system": "-6 feed, -6 return, cheap 340 lph pump (caption 'like 40 dollar fuel pump')", "future": "race fuel / methanol system planned", "t": "6:42, 24:21-24:48"},
+      "ecu": {"brand": "Haltech", "t": "2:47, 24:48"},
+      "transmission": {"type": "Lenco 5-speed (5 packs filled individually) + Bruno drive", "notes": "no park; must stop to downshift out of high gear; trans brake needs CO2/air to be drivable", "t": "1:10, 11:36, 15:33, 19:46, 24:21"},
+      "converter": {"note": "felt tight", "t": "12:03"},
+      "driveshaft": {"part": "PST chromoly driveshaft with Lenco yoke", "t": "1:36"},
+      "rear_end": null,
+      "dyno": [
+        {"pull": 1, "gear": "high-ish (140 roller choice)", "boost_psi": 6, "whp": 551, "fuel": "93", "type": "measured", "t": "16:22-18:01"},
+        {"pull": 2, "boost_psi": 6, "whp": 593, "note": "hit boost/lean cut at 5,300 rpm (engine protection)", "type": "measured (partial)", "t": "20:34-21:35"},
+        {"pull": 3, "boost_psi": 6, "whp": 730, "note": "rolled in late; low torque reading", "type": "measured", "t": "22:03-23:42"}
+      ],
+      "targets": {"rpm_pull": 6800, "hp_pump_gas": "~600 is enough for Sick Week", "t": "21:35"},
+      "failures": [
+        {"part": "Lenco high gear", "cause": "attempted downshift while moving -> freewheeling noise; no damage found", "t": "19:46-20:06"},
+        {"part": "turbo oil feed", "cause": "not plumbed at first fire", "t": "3:39"}
+      ],
+      "parts": [
+        {"part": "340 lph fuel pump", "price_usd": 40, "note": "caption 'like 40 dollar' - low confidence", "t": "24:21"},
+        {"part": "PST chromoly driveshaft", "price_usd": null, "t": "1:36"}
+      ],
+      "confidence": "medium-high for dyno numbers"
+    }
+  ],
+  "game_use": {"dyno_points_whp": {"godzilla_7.3_twin_6psi_93": [551, 593, 730]}, "mechanics": ["Lenco: no park, cannot downshift under way", "boost/lean cut at 5300 rpm"]}
+}

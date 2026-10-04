@@ -1,0 +1,123 @@
+{
+  "video_id": "PTORqnT_zT4",
+  "title": "Cheap Racecar Challenge 3 Ep.7",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-1:00:30); 0:00-2:00 is a sponsor read (no car data); late segment 48:55-52:24 is an unrelated Charger EV rental-car skit",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "Free safety upgrade includes TBM brakes; supporting parts like C-clip eliminators must still be paid for", "t": "56:23"},
+      {"fact": "Helpers may assist as long as team members are not just standing by (referenced informal rule)", "t": "26:53"},
+      {"fact": "Parts taken from own stock (e.g. off Ty's Ranger/Blazer) still need a price on the team's list; pricing disputed", "t": "15:22-15:44"}
+    ],
+    "accounting_notes": [
+      {"fact": "S10 team: items bought cheaply/thrown in by friends (Grant wheel) flagged as needing to go on the budget board", "t": "3:25"},
+      {"fact": "Mustang team says the team 'accountant' (Ryan implied) has been out of town; new parts in their area not yet listed", "t": "15:22"},
+      {"fact": "Mustang team estimates ~$1,200 into their Coyote engine so far", "t": "14:59"}
+    ],
+    "teams": [
+      {"team": "Cleetus + McNutt/Squirrel (George also addressed)", "car_ref": "crc3_s10"},
+      {"team": "Zach + Ty", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_s10",
+      "relation": "Cleetus/McNutt CRC3 build is now a red Chevy S10 (the Express van from Ep.1 is not mentioned here); 'red truck'",
+      "nickname": null,
+      "owner_driver": "Cleetus McFarland + McNutt (driver intends ~160 mph claim, joking)",
+      "base_vehicle": {"make": "Chevrolet", "model": "S10", "year": null, "t": "3:48"},
+      "engine": {"family": "GM LS (S10 LS swap; generation/displacement not stated in this video)", "notes": "Using headers that came with the engine (not shop Hooker headers, to avoid paying for them); O2 bungs already present", "t": "20:17-20:58"},
+      "intake": {"part": "Used 'high ram' (Hi-Ram style) intake with lower, upper, fuel rails; intercooler brick inside is bad/leaking and to be capped/removed", "price_usd": 400, "new_price_claim_usd": 980, "seller": "Jackson", "t": "2:23-3:48, 21:44-22:39"},
+      "power_adder": {"type": "twin turbo", "brand_model": "unbranded T4-flange turbos (sizes not stated)", "notes": "One T4 flange accidentally welded 90 degrees off so one turbo sits sideways; team keeps it ('intertwined boost'); no intercooler; China wastegates (red); MAC valve boost solenoid; downpipe fitted", "t": "5:51, 8:01, 16:31-17:06, 30:52-34:23, 59:17"},
+      "fuel": null,
+      "fuel_system": {"pump": "Used pump bought sight unseen on Facebook Marketplace, stamped 2020, Deutsch connector", "price_usd": 600, "t": "55:40-56:02"},
+      "ecu": null,
+      "transmission": {"shifter": "TCI shifter", "t": "4:27"},
+      "converter": null,
+      "rear_end": {"notes": "U-bolts bought for 'new 88' (likely Ford 8.8, low confidence); C-clip eliminators for TBM brakes; wrong C-clip eliminator kit received", "t": "6:23, 56:02, 58:42"},
+      "suspension": {"rear": "Used CalTracs (off an S10, from Doc Tune) missing bushings/U-bolts; mono-leaf springs with new bushings", "t": "4:54-5:23, 53:39"},
+      "steering": "Factory column removed for turbo clearance; used column (from Cameron Johnson / Jared) + Grant steering wheel w/ quick release; stock steering box kept; needs DD shaft + two U-joints",
+      "cooling": {"radiator": "Amazon 'S10 LS swap' radiator with shroud and fans", "price_usd": 215, "t": "8:49"},
+      "body": {"hood": "none (team says no hood)", "t": "37:14"},
+      "tires": null,
+      "weight_lb": null,
+      "dyno": [],
+      "passes": [],
+      "failures": [
+        {"part": "Exhaust/turbo pipe broke clean off when hammered; had stress fractures", "cause": "pre-existing fatigue", "t": "27:37"},
+        {"part": "Turbo flange cracked / weld fell into flange", "cause": "crooked welding table, welding heat", "t": "28:21-30:24"}
+      ],
+      "parts": [
+        {"part": "Used Hi-Ram style intake w/ rails (no intercooler core)", "price_usd": 400, "t": "2:23"},
+        {"part": "Used steering column (+ new Grant wheel thrown in)", "price_usd": 100, "note": "column quoted $50, paid $100", "t": "3:05-3:25"},
+        {"part": "TCI shifter", "price_usd": 360, "note": "'about 360 something'", "t": "4:27"},
+        {"part": "Cooler (caption 'dog cooler', likely trans cooler, brand unclear)", "price_usd": 100, "t": "4:27"},
+        {"part": "Used CalTracs", "price_usd": 150, "t": "4:54"},
+        {"part": "Amazon relay panel / hardware", "price_usd": 20, "note": "'like 20 bucks', item ambiguous", "t": "6:46"},
+        {"part": "Amazon S10 LS-swap radiator w/ fans + shroud", "price_usd": 215, "t": "8:49"},
+        {"part": "Used Facebook Marketplace fuel pump", "price_usd": 600, "t": "56:02"},
+        {"part": "Scrap pipe from friend", "price_usd": 5, "note": "joked $20 vs $5", "t": "36:50"},
+        {"part": "Hard 90 fitting for fuel rail clearing alternator", "price_usd": 100, "note": "stated as a $100 fitting, not confirmed bought", "t": "47:07"},
+        {"part": "Misc Amazon: silicone couplers, kill switch, spark plugs, push-to-start, switch panel, MAP sensor adapter, 'squirrely' T4 flanges", "price_usd": null, "t": "5:23-7:37, 35:27"}
+      ],
+      "targets": null,
+      "confidence": "medium (auto-captions; turbo sizes and engine spec not stated)"
+    },
+    {
+      "car_id": "crc3_95_mustang",
+      "nickname": null,
+      "owner_driver": "Zach + Ty",
+      "base_vehicle": {"make": "Ford", "model": "Mustang (SN95)", "year": 1995},
+      "engine": {"family": "Ford Coyote (implied by cam phasers/lockouts; engine bought for $500)", "rotating_assembly": "bottom end assembled with a replacement non-bent rod", "notes": "Cam phasers degreed in by the team themselves; billet phaser lockouts installed", "t": "14:13-14:59"},
+      "engine_cost": {"engine_core_usd": 500, "estimated_total_in_engine_usd": 1200, "t": "14:59"},
+      "power_adder": {"type": "turbo", "notes": "Turbo kit being mocked up on a mock-up engine; Amazon air-to-air intercooler present", "t": "16:31-17:36"},
+      "fuel_system": {"pumps": "triple pump setup on a universal bracket (captions: 'triple Wally', 'triple Hellcat pump', 'three of those 525s'), claimed good for ~3,000 hp", "bracket_or_kit_price_usd": "~200-299 (stated uncertain)", "extras": "distribution block, fuel pressure regulator", "t": "18:04-18:51"},
+      "boost_control": {"type": "CO2 tank (Vevor) feeding gates; owner ran same setup 2 years", "price_usd": 70, "t": "19:10-19:39"},
+      "suspension": {"notes": "Rear springs from a New Edge Mustang tried; do not fit, being returned; welded tubes", "t": "16:10"},
+      "cooling": {"radiator": "radiator with fans bought separately, ~$210 (ambiguous who said $230)", "t": "20:00"},
+      "failures": [],
+      "parts": [
+        {"part": "Billet cam phaser lockouts (4 pcs)", "price_usd": 287, "t": "14:34"},
+        {"part": "Coyote engine (core)", "price_usd": 500, "t": "14:59"},
+        {"part": "Amazon item with sensors and stiff spring (likely wastegate, unclear)", "price_usd": 62, "t": "17:36"},
+        {"part": "Vevor CO2 tank for boost control", "price_usd": 70, "t": "19:10"},
+        {"part": "Radiator (fans separate)", "price_usd": 210, "t": "20:00"}
+      ],
+      "notes": [
+        {"fact": "Engine done and front cover sealed after ~2-3 weeks; Cleetus/George jokingly claim they altered cam timing (14 deg 'making power like 18')", "t": "59:40-1:00:02"},
+        {"fact": "Parts sourced from Ty's Ranger and Blazer; valuation contested", "t": "15:22-15:44"}
+      ],
+      "confidence": "medium (captions garble fuel pump brand and prices)"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "nickname": null,
+      "owner_driver": "Jackstand",
+      "base_vehicle": {"make": "Nissan", "model": "240SX hatchback"},
+      "engine": {"notes": "Already running; first fire-up spun off an oil filter (unbranded filter installed at Cameron's)", "t": "11:03-12:31"},
+      "fuel": {"induction": "carburetor, dyno-tuned out of the box on an engine dyno; Jackstand set pressures and bowl heights", "t": "13:10-13:52"},
+      "power_adder": {"type": "nitrous (stated 'it's got nitrous')", "t": "57:38"},
+      "driveline": {"driveshaft": "ordered, awaiting", "t": "13:10"},
+      "brakes": "TBM Brakes building a 4-lug rear brake kit",
+      "tires": {"desc": "Brand new Mickey Thompson radials", "price_usd": 572, "wheels": "4-lug wheels from Marketplace, $50; switching front to 5-lug", "t": "38:50-39:09"},
+      "cooling": {"radiator": "Amazon radiator ($130, powder coated - attribution likely Jackstand)", "t": "13:52"},
+      "weight_lb": {"measured": 2273, "conditions": "no driver, springs not yet cut", "with_driver_est": 2400, "comparison": "~35-40 lb heavier than his previous black 240", "t": "56:43-57:38"},
+      "parts": [
+        {"part": "Mickey Thompson radials (new)", "price_usd": 572, "t": "38:50"},
+        {"part": "Marketplace 4-lug wheels", "price_usd": 50, "t": "38:50"},
+        {"part": "Amazon radiator", "price_usd": 130, "t": "13:52"}
+      ],
+      "failures": [{"part": "Oil filter came off at first start, oil on floor", "cause": "filter not properly installed", "t": "11:38-12:31"}],
+      "history": {"fact": "Previous challenge: Jackstand went 8s while Zach's car blew up", "t": "58:00"},
+      "confidence": "medium-high"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {"hi_ram_intake_used_with_rails": 400, "hi_ram_new_claim": 980, "tci_shifter": 360, "caltracs_used": 150, "amazon_s10_ls_radiator_with_fans": 215, "amazon_radiator_basic": 130, "used_marketplace_fuel_pump": 600, "coyote_phaser_lockouts_x4": 287, "co2_tank_boost_control": 70, "mt_radials_pair": 572, "marketplace_wheels": 50, "used_steering_column": 100},
+    "gameplay_hooks": ["turbo flange clocked 90 deg by mistake", "pipe fatigue cracks", "oil filter not tightened on first start", "CO2/air pressure running out for wastegate control"]
+  }
+}

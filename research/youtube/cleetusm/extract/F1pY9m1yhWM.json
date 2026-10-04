@@ -1,0 +1,94 @@
+{
+  "video_id": "F1pY9m1yhWM",
+  "title": null,
+  "title_note": "Title not returned by transcript tool; Cheap Racecar Challenge 3 episode (Ep.3 per caller batch order, not confirmed in transcript)",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-28:17). 0:00-2:04 is an unrelated burnout bet with Mr. Sam's car.",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 3 ($15,000)",
+    "rules": [
+      {"fact": "Roll cages done by Cameron Johnson (Cameron Johnson Race Cars) are safety and not part of the budget", "t": "5:42"},
+      {"fact": "Cleetus/McNutt allowed to switch vehicles for safety reasons; whether the van cost still counts was argued (Jackstand says it does; Cleetus says they may pay full price for the van to keep its engine/sensors)", "t": "20:24-21:40"},
+      {"fact": "Reselling the car for profit to fund the build is not legal per the participants", "t": "24:34"}
+    ],
+    "teams": [
+      {"team": "Cleetus + McNutt/Squirrel", "car_ref": "crc3_gen1_s10 (replaces crc3_express_van)"},
+      {"team": "Zach + Tye", "car_ref": "crc3_95_mustang"},
+      {"team": "Jackstand", "car_ref": "crc3_240sx_hatch"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "crc3_express_van",
+      "owner_driver": "Cleetus McFarland + McNutt/Squirrel",
+      "status": "abandoned as race vehicle for safety (open cockpit, engine on verge of failure, would need funny-car-level cage); may still be bought at its $675 price as an engine/sensor donor",
+      "t": "2:28-2:53, 21:40-22:23, 26:27",
+      "notes": [
+        {"fact": "Van has LS + 14-bolt rear end (reason it was bought)", "t": "2:04"},
+        {"fact": "Van engine as complete junkyard-equivalent valued ~$580-600; junkyard LS coils ~$86 for a set of four", "t": "20:46-21:21"}
+      ],
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc3_gen1_s10",
+      "nickname": null,
+      "nickname_candidates": "undecided ('Big Red', 'Senorita', 'the Duchess' joked)",
+      "owner_driver": "Cleetus McFarland + McNutt/Squirrel",
+      "base_vehicle": {"make": "Chevrolet", "model": "S10 (first generation), regular cab short bed, manual transmission", "year": null, "t": "3:14-3:40"},
+      "state_at_purchase": "ran and drove, custom/hot-wired ignition, camo interior, minor side dent, slight quarter-panel rust, solid frame, fender louvers; came with a second set of wheels/tires; newer shocks, all four control arms and greased steering parts",
+      "purchase": {"price_usd": 1000, "asking_usd": 1500, "source": "Facebook Marketplace, Placerville", "t": "2:53-3:14, 16:46"},
+      "why_gen1": {"fact": "Second-gen S10 said by Cameron Johnson to be ~400 lb heavier than first gen", "t": "16:26"},
+      "engine": {"stock": "unspecified (pulled)", "plan": "LS swap with custom motor mounts; leaning to buy 'Lumberjack's' spare motor (5.3 w/ rods+pistons per Ep.1) for $3,800 but lacks intake/sensors", "t": "5:20, 14:40, 18:56", "confidence": "medium (caption 'Lumberjack')"},
+      "power_adder": {"type": "turbo (planned, single turbo on LS discussed)", "brand_model": null, "t": "10:30, 25:00"},
+      "transmission": {
+        "type": "Powerglide (used, aftermarket case)",
+        "source": "Jared Bradshaw; said to have run in 'Willy Dynamite' until ~1.5-2 years ago (proven)",
+        "price_usd": 3000,
+        "price_note": "Cleetus says $3,000 including used converter and flywheel; another person says it was $2,000 (dispute in conversation); Jackstand later counts it as $1,000",
+        "fluid": "Type F",
+        "t": "13:10-14:40, 19:17-19:44"
+      },
+      "converter": {"desc": "used converter included with Powerglide", "t": "13:57"},
+      "rear_end": {"notes": "needs diff weld (one-wheel burnout)", "t": "7:36"},
+      "suspension": {"front": "newer shocks + control arms; plan double-adjustable shocks", "rear": "leaf springs (good for street trucks per Cameron)", "t": "17:42-18:04, 26:48"},
+      "tires": {"notes": "second set of wheels/tires for drag tires; street tires blown in burnout", "t": "4:23, 11:37"},
+      "weight_lb": [
+        {"value": 3000, "desc": "Cameron's recollection/estimate of the truck 'as is' (34-3,500 also mentioned); not a scale reading", "measured": false, "t": "26:27"},
+        {"value": "2600-2700", "desc": "Cameron's estimated finished weight with cast-iron LS + single turbo, no interior, no driver", "measured": false, "t": "25:00-25:25"}
+      ],
+      "budget_tracking": [
+        {"fact": "Truck $1,000 + Lumberjack motor $3,800 = $4,800; plus $3,000 Powerglide (Cleetus figure)", "t": "19:17"},
+        {"fact": "Jackstand's tally: $6,800 incl. truck, or $7,800 counting the van; still need every sensor, intake and power rack (steering)", "t": "20:01-20:24"}
+      ],
+      "cosmetic_plan": "Patina look with Poppy's Patina clear (Vise Grip's product) wiped on; fiberglass bumpers if cheap",
+      "build_progress": "Fully stripped (interior, gas tank, bumpers, drivetrain to be pulled), loaded and sent to Cameron Johnson for cage/seat/safety",
+      "confidence": "high for purchase/trans; medium for budget tally (participants disagree)"
+    },
+    {
+      "car_id": "crc3_95_mustang",
+      "owner_driver": "Zach + Tye",
+      "build_progress": [{"fact": "Mustang fully stripped down after ~2 weeks of work", "t": "16:29-17:10", "confidence": "medium (team not named explicitly at that moment)"}],
+      "confidence": "low"
+    },
+    {
+      "car_id": "crc3_240sx_hatch",
+      "owner_driver": "Jackstand",
+      "build_progress": [{"fact": "240 already at Cameron Johnson's for roll cage", "t": "5:42"}],
+      "notes": [{"fact": "Reference to a recent injury/incident ('situation with Jackstand'; 'Justin's had gotten injured') that prompted the safety rethink — details not given in this video", "t": "2:28, 26:06", "confidence": "low"}],
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {
+      "gen1_s10_regcab_running": 1000,
+      "used_powerglide_aftermarket_case_with_converter_flywheel": 3000,
+      "ls_5.3_spare_with_rods_pistons_no_intake_sensors": 3800,
+      "complete_junkyard_ls_dressed": "580-600",
+      "junkyard_ls_coils_set_of_4": 86,
+      "new_battery_everstart": null
+    },
+    "weights_lb": {"gen1_s10_ls_turbo_estimate": "2600-2700", "gen2_vs_gen1_s10_delta": 400}
+  }
+}

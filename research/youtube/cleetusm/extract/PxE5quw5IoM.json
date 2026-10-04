@@ -1,0 +1,65 @@
+{
+  "video_id": "PxE5quw5IoM",
+  "title": "Mullet's NEW 4,000hp Big Block First Fire Up!",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-22:58)",
+  "notes": "4,000hp appears only in the title; not stated in the transcript.",
+  "context": {
+    "credits": [{"fact": "Shout-outs to Pete (raw caption 'Pete Harold'), Cameron Johnson Race Cars, shop crew", "t": "22:36"}],
+    "side_projects": "Cheap car challenge cars put on hold to focus on race cars",
+    "t": "4:17"
+  },
+  "cars": [
+    {
+      "car_id": "mullet",
+      "build_version": "Mullet tall-deck big block, first fire-up (big tire)",
+      "nickname": "Mullet",
+      "owner_driver": "Cleetus McFarland",
+      "base_vehicle": {"make": "Chevrolet", "model": "El Camino", "year": null, "chassis": null, "note": "model from caller context"},
+      "engine": {
+        "family": "big block, tall deck",
+        "displacement": null,
+        "cam": "new camshaft with 4/7 swap firing order (new firing order vs old tune); possibly a '3/4 race' grind (low confidence)",
+        "oil": "straight 60-weight Amsoil Dominator racing oil (red); caption 'AMS oil'",
+        "lubrication": {"type": "dry sump", "tank_qt": 9, "total_fill_est_qt": "15-16", "oil_pressure_psi": {"prime": "~90-100 on drill prime", "idle": "~90s", "revved": "125-130 (target to adjust down via pump regulator)", "on_two_step": 125}, "t": "15:15-18:18, 21:23"},
+        "timing": {"fact": "Timing check: wanted 30 deg, read 32; Pete changed ignition reference angle 53->51 which moved it to 34, then went the other direction", "t": "13:14-14:33"},
+        "builder": "Pete (caption 'Pete Harold')",
+        "t": "5:36, 22:36"
+      },
+      "power_adder": {"type": "twin turbo", "brand_model": null, "turbo_size_mm": null, "notes": "Two large turbos; blow-off valves labeled; turbo drain lines", "t": "2:39, 15:15"},
+      "fuel": {"type": "methanol", "injectors": "labeled per cylinder/bank (e.g. 5C, 7B, 7C) by Devon", "t": "2:39, 21:46"},
+      "ecu": {"notes": "Pete tunes remotely; 'new computer' mentioned", "t": "13:48"},
+      "launch_control": {"two_step_rpm": 5000, "two_step_boost_psi": 13, "kind": "measured (shop fire-up)", "notes": "Very rich on throttle whack, blowing fuel out when gates crack; blue flames on two-step", "t": "16:37, 21:46"},
+      "transmission": {"notes": "transmission fluid is purple (distinguish leaks from red engine oil)", "t": "6:21"},
+      "converter": null,
+      "rear_end": {"type": "rear end accepting a very large third member (raw caption 'Marilat'; brand unclear, low confidence); currently running a smaller third member with a block-off plate", "t": "1:52"},
+      "suspension": null,
+      "tires": {"type": "big tires; front tire needed replacement (gash)", "t": "2:14, 2:57"},
+      "weight_lb": null,
+      "dyno": {"fact": "Cleetus does not expect to dyno it; going straight to testing", "t": "22:58"},
+      "passes": [],
+      "failures": [
+        {"part": "rear end", "cause": "leak from missing O-ring under small block-off plate for smaller third member", "t": "1:52"},
+        {"part": "oil hose (crimped)", "cause": "bad fitting leak; hose replaced, cost ~$100", "t": "10:07"},
+        {"part": "dry sump inlet/port at back of motor", "cause": "oil leak, possibly too much pump pressure / overfill", "t": "17:41, 19:58"},
+        {"part": "oil pump belt", "cause": "trying to ride off pulley; needs adjustment", "t": "12:28"}
+      ],
+      "parts": [
+        {"part": "Crimped oil/fuel hose assembly (replacement)", "price_usd": 100, "t": "10:07"},
+        {"part": "Camshaft with 4/7 swap", "price_usd": null, "t": "5:36"},
+        {"part": "Amsoil Dominator straight 60 oil", "price_usd": null, "t": "5:55"},
+        {"part": "Dry sump tank (9 qt)", "price_usd": null, "t": "14:56"}
+      ],
+      "targets": {"next": "track testing the next day", "t": "22:36"},
+      "confidence": "high for fire-up data; low for rear-end brand and cam grind name"
+    }
+  ],
+  "game_use": {
+    "two_step": {"rpm": 5000, "boost_psi": 13},
+    "oil_pressure_psi": {"idle": 90, "high_rpm": [125, 130]},
+    "timing_target_deg": 30,
+    "dry_sump_tank_qt": 9,
+    "price_points_usd": {"crimped_hose_assembly": 100}
+  }
+}

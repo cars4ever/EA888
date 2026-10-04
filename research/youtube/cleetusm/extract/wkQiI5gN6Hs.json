@@ -1,0 +1,112 @@
+{
+  "video_id": "wkQiI5gN6Hs",
+  "title": "World Cup Day 2 - Eagle Resets the Radial Tire World Record, Leroy Enters TWO Grudge Races",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-43:24, 77 caption lines)",
+  "context": {
+    "event": {"name": "World Cup (day 2, qualifying)", "conditions": "cold, early morning, 'great boost weather'; track 'really good'; later track getting cold; crosswind noted for Eagle Q2", "t": "0:00, 7:52, 15:20, 29:43"},
+    "people": ["Power Pete (tuner, caption 'big power Pete')", "Jamie (Eagle chassis/setup; caption also 'Jack stand' for Jamie in places - ambiguous)", "Patrick (helping learn Haltech)", "Zach, James, Sam, Ty, Jackstand, George"],
+    "caption_corrections": [
+      {"raw": "how tech", "corrected": "Haltech", "confidence": "high"},
+      {"raw": "PVM brakes", "corrected": "TBM brakes", "confidence": "high"},
+      {"raw": "ppfed", "corrected": "PPF (paint protection film) applied", "confidence": "high"}
+    ],
+    "sponsor_product_refs": [
+      {"fact": "Mark Williams (drivetrain company bought by Motion Race Works a few weeks earlier) sells lug nuts with integrated bearing spacer", "t": "7:10-7:34"},
+      {"fact": "Mickey Thompson supplied fresh tires for Eagle Q2", "t": "6:47"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "eagle",
+      "build_version": "v1 World Cup (Proline Hemi, radial)",
+      "nickname": "Eagle",
+      "owner_driver": "Cleetus McFarland",
+      "tires": {"type": "radial (Mickey Thompson, fresh set for Q2)", "size": null, "notes": "one tire found with a deep gash in the tread; crew rule to inspect every run; earlier 'gouge' seen on day-1 video judged to be burnout-box moisture", "t": "0:48-1:18, 4:23, 6:47, 7:34"},
+      "chassis_notes": [
+        {"fact": "Car has been pulling right as speeds rose; drove to the wall on day 1 so driver lifted; Jamie plans to add a little rear steer", "t": "1:18"},
+        {"fact": "Front wheels coming slightly off the ground on the record run; tracked straight", "t": "20:38-21:01"},
+        {"fact": "Nitrous/bottle mount bracket broke and was welded by Ty (caption 'bottle mounts' - could be parachute/air bottle, low confidence)", "t": "19:43"}
+      ],
+      "passes": [
+        {"run": "day 1 qualifier", "et": 5.75, "mph": null, "notes": "won the side (win light) but slower of two 5.75s; ~5th in class qualifying", "t": "1:57-2:17"},
+        {"run": "day 2 Q2", "et": 5.74, "mph": 259, "60ft": 1.05, "330ft": 2.67, "eighth": null, "eighth_note": "about 1.5 hundredths off previous at the eighth", "kind": "measured (timeslip read on video)", "record": "personal best; new mph record for radial tire (claimed world record / 'fastest radial'); ET also said as '573 or something'", "notes": "new tires, turned up; driver ran it out because car felt the best ever; nearly 260 mph", "t": "16:12, 18:28, 19:43-20:38"}
+      ],
+      "targets": {"et": "hoping 'in the 70s' at the eighth translating to ~5.60s in the quarter (ambiguous caption)", "t": "8:09"},
+      "failures": [
+        {"part": "Driver-side window", "cause": "blew out at speed on 5.74/259 run; door damaged; same thing happened last year; PPF limited paint damage", "t": "16:12-18:57"},
+        {"part": "Tire", "cause": "deep gash in tread found before Q2, replaced", "t": "4:23"},
+        {"part": "Bottle mount bracket", "cause": "broke, welded at track", "t": "19:43"}
+      ],
+      "confidence": "high for 5.74 @ 259 and 1.05 60ft; medium for 330 (2.67)"
+    },
+    {
+      "car_id": "leroy",
+      "build_version": "World Cup (LS, stick shift class, body on)",
+      "nickname": "Leroy",
+      "owner_driver": "Cleetus McFarland",
+      "engine": {"family": "GM LS (Cleetus: 'never losing the LS')", "t": "5:36"},
+      "class": {"value": "stick shift class", "t": "29:09"},
+      "tune": {"tuner": "Power Pete", "notes": "~6.85 'A-to-B' tune from Florida; boost added a bit; plugs replaced after Pete inspected worn ones", "t": "2:37, 4:46, 14:10, 21:32"},
+      "passes": [
+        {"run": "Q1", "et": 6.86, "mph": 216, "notes": "hopped tires on 1-2 shift; strong in 4th; likely best Leroy World Cup qualifying", "kind": "measured", "t": "10:51-14:55"},
+        {"run": "grudge/qualifier vs John's 240 (stick shift class)", "et": 6.89, "mph": 216, "notes": "spinning on shifts; Leroy won; crew side bets ($10/$100)", "kind": "measured", "t": "29:09-32:37"},
+        {"run": "Q3", "et": null, "mph": null, "notes": "lifted - shaking tires badly on 1-2 shift", "t": "40:16"}
+      ],
+      "previous_best": {"et": 6.81, "kind": "stated PB", "t": "2:37"},
+      "targets": {"et": "possibly 6.70 with good air", "t": "3:01"},
+      "qualifying_position": "expected top 8-10 of the ladder", "t": "43:03",
+      "confidence": "high"
+    },
+    {
+      "car_id": "mullet",
+      "build_version": "World Cup",
+      "nickname": "Mullet",
+      "owner_driver": "Cleetus team (driver not explicitly named in this part)",
+      "tune": {"tuner": "Power Pete", "notes": "Turned up ~a tenth for Q2; aiming for 6.60s", "t": "21:32, 23:19"},
+      "weight": {"notes": "missed minimum weight on day 1; adding 20 lb to be ~10 lb over", "t": "2:17-2:37"},
+      "boost_note": {"value": "~38 psi launch boost level discussed for a 1.10 60ft (caption '38 lb'); low confidence", "t": "6:12"},
+      "passes": [
+        {"run": "Q2", "et": 6.60, "mph": 214, "60ft": 1.10, "330ft": 2.92, "eighth_et": 4.34, "eighth_mph": "173-174", "kind": "measured", "notes": "stopped accelerating late; flames out of every pipe at the stripe; driver thumb tapped transbrake button on wheel, which pulled timing (input not deactivatable)", "t": "25:54, 32:37-33:56"}
+      ],
+      "records": [
+        {"fact": "Mullet best 60ft 1.07 last year with much more power; 1.10 this event; expectation of 1.05 with more power", "t": "6:12-6:47"}
+      ],
+      "class_context": {"fact": "Someone in Mullet's class ran 6.27; Mullet qualified ~14th-15th of 32", "t": "3:48, 42:41"},
+      "failures": [
+        {"part": "Main fuel line (bottom)", "cause": "leak found before staging; fixed, did not lose qualifier", "t": "22:00-22:52"}
+      ],
+      "confidence": "high for 6.60/214 pass splits"
+    },
+    {
+      "car_id": "mcflurry",
+      "build_version": "World Cup (Haltech)",
+      "nickname": "McFlurry",
+      "owner_driver": "driven by Jackstand (inferred from context, low confidence)",
+      "ecu": {"brand": "Haltech", "notes": "team learning Haltech with help from Patrick", "t": "3:01"},
+      "transmission": {"notes": "automatic with converter; 1-2 shift set 8,100 rpm in Haltech; converter flash reached ~8,200 so it shifted to 2nd ~0.4 s into the run; Florida PB run flashed to 8,080 rpm, 20 rpm from triggering same issue", "t": "36:58-37:35"},
+      "tune_issues": [
+        {"fact": "Traction control engaging early; tune too rich - slowed day 1", "t": "3:01"},
+        {"fact": "Torque management was on unintentionally; now fully off; fuel corrections made", "t": "37:57"},
+        {"fact": "Ignition breakup blips in log (suspected table or bad coil)", "t": "34:19"}
+      ],
+      "suspension": {"issue": "rear shock topping out; tire spin in log; pinion angle set wrong direction (lifting tires rather than planting); severe vibration; fixed after Jackstand spotted it", "t": "34:40-36:09"},
+      "passes": [
+        {"run": "day 1", "et": null, "notes": "in Florida trim would have been a 6-second pass; sitting 4th in qualifying; class leader 6.89", "t": "3:26-3:48"},
+        {"run": "Q2", "et": 7.26, "mph": 193, "kind": "measured", "notes": "on the edge; whole class went faster", "t": "27:47"}
+      ],
+      "confidence": "medium (driver identity and class not clearly stated)"
+    }
+  ],
+  "unattributed": [
+    {"fact": "A car finished without its parachute deploying (third time) using TBM brakes until they glowed; personal-best mph '190 something'. Car not clearly identified", "t": "41:20-42:15", "confidence": "low"}
+  ],
+  "game_use": {
+    "eagle_record_pass": {"et": 5.74, "mph": 259, "60ft": 1.05, "330ft": 2.67, "tire": "radial"},
+    "leroy_pass": {"et": 6.86, "mph": 216, "class": "stick shift"},
+    "mullet_pass": {"et": 6.60, "mph": 214, "60ft": 1.10, "330ft": 2.92, "eighth": 4.34, "eighth_mph": 173.5},
+    "mcflurry_pass": {"et": 7.26, "mph": 193},
+    "failure_events": ["window blowout at 259 mph", "tire gash", "fuel line leak", "transbrake button tapped mid-run pulls timing", "converter flash exceeds 1-2 shift rpm -> early shift", "wrong pinion angle -> tire spin/vibration"]
+  }
+}

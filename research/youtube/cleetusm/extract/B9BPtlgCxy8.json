@@ -1,0 +1,133 @@
+{
+  "video_id": "B9BPtlgCxy8",
+  "title": "CHEAP RACECAR BATTLE Damage Report & Budget Updates",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:00-38:08); 0:00-1:21 is a sponsor read, 2:42-4:46 merch talk",
+  "context": {
+    "series": "cheap_racecar_challenge",
+    "edition": "CRC 1 ($7,500) - post Sick Week ('Drag and Drive on Sick Week') budget audit + teardown",
+    "edition_note": "The same three cars (Lumberjack, Jackstand 240, Coyote Mustang) plus Tom Bailey's Camaro continue to Sick Summer with the budget raised to $10,000 total; caller labels the Sick Summer videos crc2. crc1_* = Sick Week snapshot, crc2_* = Sick Summer snapshot of the same cars.",
+    "rules": [
+      {"fact": "Original budget $7,500 (implied: Lumberjack only team under budget); $2,500 added for Sick Summer bringing total to $10,000", "t": "22:45"},
+      {"fact": "Engine failures from pushing the car are NOT charged; repairing with same parts is free, but upgrades (e.g. better pistons/rods) must come out of budget", "t": "24:53-25:40"},
+      {"fact": "Safety equipment (seats, harnesses, roll cages) not charged to budget", "t": "26:35"},
+      {"fact": "If you blow an engine and the replacement is no improvement, it does not go in the budget (agreed off-record)", "t": "18:59"},
+      {"fact": "Fair market value of used/donated parts negotiated; new rule: parts must be shown to 'the committee' before being installed", "t": "36:26"},
+      {"fact": "Heads-up race side bet of $500 of remaining budget (Lumberjack vs Jackstand); winner gains $500 budget", "t": "21:44-22:45"}
+    ],
+    "event": {"name": "Sick Week drag-and-drive (completed); next event Sick Summer (auto-caption 'six summer') a few months later", "t": "1:21, 1:44"},
+    "teams": [
+      {"team": "Cleetus + Squirrel", "car_ref": "crc1_lumberjack"},
+      {"team": "Zach + Tye (Mustang 'boys')", "car_ref": "crc1_tye_mustang"},
+      {"team": "Jackstand (James)", "car_ref": "crc1_jackstand_240"},
+      {"team": "Tom Bailey", "car_ref": "crc1_tom_bailey_camaro"}
+    ],
+    "name_notes": "Auto-captions render Jackstand as 'jackon'/'Jackson'; he is addressed as James. 'George' appears in captions (e.g. 'georgiz Motors broke') for a Lumberjack team member - possibly Cleetus (Garrett); low confidence."
+  },
+  "cars": [
+    {
+      "car_id": "crc1_tye_mustang",
+      "nickname": null,
+      "owner_driver": "Zach + Tye",
+      "base_vehicle": {"make": "Ford", "model": "Mustang", "year": null, "t": "4:46"},
+      "purchase": {"price_usd": 5775, "note": "includes auction fees and shipping", "t": "4:46"},
+      "engine": {"family": "Ford Coyote (stock block)", "displacement_l": null, "block": "stock Coyote block (said to be near its limit)", "heads": null, "cam": null, "rotating_assembly": null, "compression": null, "t": "1:44, 24:31"},
+      "power_adder": {"type": "single turbo (budget Amazon turbo kit, much of it carried over from team's earlier Ranger build) + nitrous", "brand_model": "unbranded Amazon turbo; nitrous kit", "size": null, "boost_psi": null, "nitrous_shot": null, "t": "5:21-6:20, 8:13"},
+      "fuel": {"injectors": "96 lb/hr Snake Eater injectors (caption 'Snake Eater')", "pumps": "two Hellcat-style fuel pumps (earlier cheap pumps removed)", "t": "6:50-7:44"},
+      "ecu": null,
+      "transmission": {"type": null, "notes": "trans-brake not working properly; team plans to rebuild trans themselves", "t": "24:31"},
+      "converter": {"price_usd": 900, "notes": "added because car left the line badly", "t": "7:44"},
+      "rear_end": null,
+      "suspension": null,
+      "tires": null,
+      "weight_lb": null,
+      "parts": [
+        {"part": "Amazon turbo + wastegate (fair market)", "price_usd": 200, "t": "5:45"},
+        {"part": "Turbo piping", "price_usd": 150, "t": "5:45"},
+        {"part": "Other Amazon turbo-kit items", "price_usd": 500, "note": "turbo kit category totalled $850", "t": "5:21-6:20"},
+        {"part": "Catalytic converters SOLD (credit)", "price_usd": -200, "t": "6:20"},
+        {"part": "Hellcat fuel pumps (pair, used)", "price_usd": 120, "note": "new said to be ~$127 each", "t": "7:21"},
+        {"part": "96 lb Snake Eater injector set (sponsored, valued half of $400 new)", "price_usd": 200, "t": "8:40", "confidence": "medium"},
+        {"part": "Torque converter", "price_usd": 900, "t": "7:44"},
+        {"part": "Nitrous kit (fair market, disputed $200-$400)", "price_usd": 300, "t": "8:13-8:40"},
+        {"part": "Fuel system (Amazon regulator, fittings etc.)", "price_usd": 300, "t": "9:38"},
+        {"part": "Fittings/hose bought at Gainesville", "price_usd": 200, "t": "9:38-10:08", "confidence": "medium (first said ~$100, then $200)"},
+        {"part": "Brisk spark plugs (set)", "price_usd": 100, "note": "~$8.99-$18.99 each new per discussion", "t": "10:08"}
+      ],
+      "budget": {"spent_usd": 8045, "over_budget": true, "remaining_for_sick_summer_usd": 1855, "t": "10:38, 23:26"},
+      "claims": [
+        {"fact": "Without needing the nitrous and converter they say they would have been in budget running 11s", "t": "10:38", "kind": "claimed"}
+      ],
+      "failures": [
+        {"part": "engine (Coyote) - heavy blow-by out of breather", "cause": "suspected piston/ring damage on the last cylinder (possible melted piston edge), oil burning; no definitive cause found in teardown", "t": "2:12, 33:28-34:48"}
+      ],
+      "plans": {"notes": "Rebuild transmission themselves, make trans-brake work, bigger injectors, better fuel system; trade nitrous for an intercooler", "t": "15:27, 24:31"},
+      "confidence": "medium (auto-captions make individual line items noisy; total and remaining are explicit)"
+    },
+    {
+      "car_id": "crc1_jackstand_240",
+      "nickname": null,
+      "owner_driver": "Jackstand (James)",
+      "base_vehicle": {"make": "Nissan", "model": "240SX (S13 rear components mentioned)", "year": null, "t": "37:23"},
+      "purchase": {"price_usd": null, "note": "caption says total spent on the vehicle '$7,000,000' - garbled", "t": "11:15"},
+      "engine": {"family": "GM LS (carbureted)", "displacement_l": null, "notes": "to be torn down/re-ringed; others want it built on camera; aluminum vs steel rod debate for nitrous", "t": "36:45-37:23"},
+      "power_adder": {"type": "nitrous", "notes": "car came with two full nitrous bottles", "t": "15:27"},
+      "fuel": {"carburetor": "came with the car; claimed $1,500 carb vs a $485 valuation", "t": "16:18"},
+      "transmission": {"type": "two-speed (Powerglide implied by 2-speed shifter discussion)", "t": "11:42"},
+      "parts": [
+        {"part": "Motion Raceworks shifter kit (scratch-and-dent, bought for $100, valued at fair market)", "price_usd": 400, "t": "11:42-13:58"},
+        {"part": "Axles", "price_usd": 100, "t": "14:25"},
+        {"part": "Fluids (Walmart)", "price_usd": 120, "t": "14:25"},
+        {"part": "Replacement hose after one melted", "price_usd": 125, "t": "14:56"}
+      ],
+      "budget": {"remaining_for_sick_summer_usd": 2755, "note": "includes $500 won in heads-up bet", "t": "23:26-23:59"},
+      "rear_end": {"notes": "S13 rear parts; suspension arms found mounted upside down - to be flipped", "t": "37:23"},
+      "suspension_issue": {"notes": "car pulls; possible bad ball joint; caster discussed", "t": "37:44"},
+      "plans": {"notes": "Spend ~$2,700 on a head/cam package and suspension", "t": "25:40"},
+      "confidence": "medium-low on line items"
+    },
+    {
+      "car_id": "crc1_lumberjack",
+      "nickname": "Lumberjack",
+      "owner_driver": "Cleetus McFarland + Squirrel",
+      "base_vehicle": {"make": "Chevrolet", "model": "GM A-body (identified as El Camino in later videos)", "year": null, "t": "27:20"},
+      "purchase": {"price_usd": 5350, "extra": "$400 charged for experiences/passes given to the seller (Crown Vic experience / Freedom Factory)", "t": "16:48-17:17"},
+      "engine": {"family": "GM LS (turbo)", "displacement_l": null, "notes": "a $300 replacement engine bought during the week not counted (blown-engine rule); 7 qt of GP1 oil used", "t": "18:59-19:28"},
+      "power_adder": {"type": "single turbo", "brand_model": "first turbo $700; upgraded to a reman unit (caption: 'from 76 to an 8', likely 76 mm to 80 mm - low confidence) for $400 plus trade-in", "boost_psi": null, "t": "17:47-18:25"},
+      "rear_end": {"notes": "rear suspension with AC Delco air shocks tee'd together at ~15 psi, blamed for rear-steer; driveshaft loop present", "t": "28:17-30:14"},
+      "suspension": {"notes": "car drove sideways/rear-steered at the 60 ft; one front wheel off the ground; plans to plate torque boxes, split air shocks (more pressure one side), junkyard anti-roll bar", "t": "26:57-29:20"},
+      "parts": [
+        {"part": "Turbo #1", "price_usd": 700, "t": "17:47"},
+        {"part": "Turbo #2 reman upgrade (plus trade-in of #1)", "price_usd": 400, "t": "18:25"},
+        {"part": "Turbo drain line", "price_usd": 25, "t": "18:25"},
+        {"part": "Hose and 90 fitting", "price_usd": 100, "t": "20:24"},
+        {"part": "Wheel studs + lug nuts (~10 used)", "price_usd": 60, "t": "20:24"},
+        {"part": "GP1 oil (7 qt)", "price_usd": null, "note": "caption amount unclear (~$199?)", "t": "19:28"}
+      ],
+      "budget": {"remaining_for_sick_summer_usd": 3058, "under_budget": true, "note": "only team under budget; caption shows '$644' total at 21:44 - unclear", "t": "21:44, 23:26-23:59"},
+      "failures": [
+        {"part": "engine - head gasket lifted, one cylinder at ~60 psi compression, bent rod(s)", "cause": "pressure lifted the head (water ports on gasket bubbled); bent rod same as earlier failure", "t": "30:34, 34:48-35:15"}
+      ],
+      "performance_refs": [
+        {"fact": "60 ft around 1.60 s; goal is to go quicker than that", "t": "26:10", "kind": "claimed"}
+      ],
+      "plans": {"notes": "Buy a valve body for a trans-brake, suspension parts, weight reduction, pistons and rods to go deep into the 9s (caption 'knots')", "t": "25:40-26:35"},
+      "confidence": "medium"
+    },
+    {
+      "car_id": "crc1_tom_bailey_camaro",
+      "nickname": null,
+      "owner_driver": "Tom Bailey",
+      "base_vehicle": {"make": "Chevrolet", "model": "Camaro", "year": null, "t": "23:59"},
+      "power_adder": {"type": "nitrous", "notes": "~$1,000 nitrous kit (claimed by others)", "t": "23:59"},
+      "budget": {"spent_usd": 4000, "remaining_note": "upwards of $5,000 to spend before Sick Summer", "t": "23:59"},
+      "claims": [{"fact": "A 408 small block could be bought for about $4,000", "t": "23:59", "kind": "claimed"}],
+      "confidence": "low (second-hand comments only)"
+    }
+  ],
+  "game_use": {
+    "price_points_usd": {"mustang_purchase_incl_fees_shipping": 5775, "lumberjack_purchase": 5350, "amazon_turbo_wastegate_fmv": 200, "turbo_piping": 150, "torque_converter": 900, "nitrous_kit_fmv": 300, "hellcat_fuel_pump_pair_used": 120, "cheap_turbo_used": 700, "reman_turbo_upgrade_net": 400, "motion_shifter_fmv": 400, "axles_used": 100, "spark_plug_set": 100},
+    "budget_outcomes": {"mustang_spent": 8045, "remaining_after_10k": {"mustang": 1855, "jackstand": 2755, "lumberjack": 3058}}
+  }
+}

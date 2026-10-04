@@ -1,0 +1,61 @@
+{
+  "video_id": "1Xwy_TeHkpc",
+  "title": "Our LS Swapped Supercharged Blazer Hits the Dyno! INSANE Torque",
+  "channel": "@CleetusM",
+  "transcript_kind": "auto",
+  "coverage": "full transcript read (0:04-12:24); dyno pulls are mostly [Music]; car name 'Blazer' comes from the title (transcript never says the car name)",
+  "context": {
+    "event": {"name": "Rocky Mountain Race Week", "t": "11:48"},
+    "notes": [
+      {"fact": "Sam's yellow C5 Corvette (bone stock) and a 'butternut' third-gen shown", "t": "0:23-1:10"},
+      {"fact": "El Camino ('Elko') finished and loaded; facing ~1,300 miles and seven days of racing", "t": "1:22-1:40"}
+    ]
+  },
+  "cars": [
+    {
+      "car_id": "blazer",
+      "build_version": "LS small-block + blower, Rocky Mountain Race Week (earlier than the Texas Speed 427 version)",
+      "nickname": null,
+      "owner_driver": "George (implied: 'George, you had the party pulleys on'; low confidence)",
+      "base_vehicle": {"year": null, "make": "Chevrolet", "model": "Blazer (from video title)", "t": null},
+      "engine": {
+        "family": "GM LS small block (title says LS swapped; transcript says it makes more on the small block than on the previous big one)",
+        "displacement": null, "block": null, "heads": null, "cam": null, "rotating_assembly": null, "compression": null, "builder": null,
+        "t": "6:34"
+      },
+      "power_adder": {
+        "type": "supercharger (blower) with top-mounted methanol injectors",
+        "brand_model": null,
+        "drive": "originally 33% overdrive ('party pulleys'), changed to 15% overdrive; lower pulley 59 swapped for 52 (units not stated)",
+        "boost_psi": {"calc_with_old_pulleys": "a little over 25", "expected_after_change": "16-20", "measured_pull_2": 23.8},
+        "t": "2:57-3:41, 8:06"
+      },
+      "fuel": {"race": "methanol through blower-top injectors", "street": "pump gas (93) via lower port injectors; separate fuel rails", "t": "9:33-9:50"},
+      "ecu": {"brand": null, "notes": "Tune switch wired by Zach: race mode vs 93-octane street tune; for street, ignition off, flip switch, remove blower belt", "t": "8:48-8:58"},
+      "street_mode": {"desc": "Bolt-in blower lock to stop the rotor spinning on the street (pump gas through lower injectors would heat the blower without methanol through it); plate made by Ty over two throttle bodies for drivability; hole cut in license plate cover for airflow", "t": "9:24-9:57, 11:15-11:22"},
+      "cooling": {"notes": "small radiator; 210 F on dyno; overheated to 230-240 F loading into trailer; idle hangs high on pump gas (throttle blade not centered, shimmed)", "t": "7:41, 10:02, 10:42-11:01, 11:42"},
+      "transmission": null, "converter": null, "rear_end": null,
+      "suspension": {"notes": "No anti-roll bar fitted at time of dyno (one on hand); car wheelied on the dyno and is expected to wheelie hard", "t": "5:19, 7:24-8:01"},
+      "tires": null, "weight_lb": null,
+      "dyno": [
+        {"pull": 1, "result": "no reading; car wheelied/lifted off the dyno, ran very rich", "boost_psi": 23, "t": "5:03-5:39"},
+        {"pull": 2, "hp": 1012, "torque_lbft": 1145, "boost_psi": 23.8, "notes": "caption 'one thousand twelve ... the torque eleven forty five'; over 1,000 lb-ft by 4,000 rpm; hp/torque assignment medium confidence; whp vs crank not stated", "measured": true, "t": "6:20-6:26, 7:01-7:10, 8:06"},
+        {"note": "Spark plugs pulled after pull 2 looked 'like factory'; no further pulls", "t": "8:27-8:34"}
+      ],
+      "passes": [],
+      "failures": [
+        {"part": "cooling", "cause": "undersized radiator / no time to fix; runs hot", "t": "10:00-10:02"}
+      ],
+      "parts": [
+        {"part": "blower lower pulley 52 (replacing 59)", "price_usd": null, "t": "2:59"},
+        {"part": "blower lock (stops blower for street driving)", "price_usd": null, "t": "9:24"}
+      ],
+      "targets": {"notes": "Run well and survive race week rather than max power; hoped for ~17-20 psi rather than 23", "t": "3:17, 9:15"},
+      "confidence": "medium"
+    }
+  ],
+  "game_use": {
+    "dyno_points": {"ls_blower_methanol_23_8psi": {"hp": 1012, "torque_lbft": 1145}},
+    "mechanics": ["pulley ratio -> boost", "methanol race fuel vs pump-gas street tune switch", "blower lock for street", "overheating with small radiator", "wheelie / anti-roll bar"]
+  }
+}
