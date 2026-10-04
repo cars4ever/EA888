@@ -1,0 +1,22 @@
+videos: 1873
+
+== series ==
+freedom_factory:95  nascar_oval:78  burnout_event:76  texas_or_events:53  neighbor:48  auction:43  abandoned:29  cheap_racecar_challenge:25  fl2k:21  cleetus_and_cars:8
+
+== named_cars ==
+leroy:261  mullet:144  ruby:119  eagle:87  jet_car_or_boat:87  blazer:40  toast:33  mcflurry:31  crown_vic:23  godzilla:20  galaxie:17  jackstand_240:16  ripper:15  marauder:15  lumberjack:11
+
+== make_model ==
+corvette:119  mustang:66  supra:34  f150_or_ford_truck:31  camaro:26  mopar:21  cadillac:16  nissan:16  minivan_or_odd:15  ev:14  porsche:13  bmw_audi_vw:10  exotic:9  chevy_truck:7  toyota_other:3  semi_truck:2  honda_or_acura:2
+
+== vehicle_type ==
+boat:70  aircraft:49  offroad_utv:18  motorcycle:14  rc:3
+
+== power ==
+turbo:190  supercharged:142  ls:70  big_block:52  engine_swap:49  nitrous:41  diesel:34
+
+== activity ==
+race_vs:274  drag_pass:256  failure_or_crash:237  build:224  purchase:142  burnout:86  dyno:79  drift:52  first_fire:36
+
+no car/series/vehicle tag: 531
+titles with hp figure: 155
