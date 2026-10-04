@@ -13,11 +13,16 @@ build/
 .env
 .env.*
 !.env.example
+keystore.properties
+signing.properties
+*.password
+*.passwd
 
 # Python
 __pycache__/
 *.py[cod]
 .venv/
+.venv*/
 venv/
 
 # Node / test output
