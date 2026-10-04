@@ -6,6 +6,7 @@
   'use strict';
   const Turbo = typeof module !== 'undefined' && module.exports ? require('./turbo.js') : root.EA888Turbo;
   const Engine = typeof module !== 'undefined' && module.exports ? require('./engine.js') : root.EA888Engine;
+  const RosterData = typeof module !== 'undefined' && module.exports ? require('./roster-data.js') : root.EA888_ROSTER_DATA;
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const lerp = (a, b, f) => a + (b - a) * f;
@@ -2151,6 +2152,8 @@
   // Race mass: vehicle base weight (OEM parts, incl. driver and fluids) plus drivetrain layout, every selected
   // part's mass difference versus OEM (block, oiling, turbo, ice tank, gearbox, ...) and rotating wheel mass.
   function buildMassKg(state) {
+    // a roster car races at its own weight (with driver), from the research or derived from it
+    if (state.rosterCar && Number.isFinite(state.rosterCar.massKg)) return state.rosterCar.massKg;
     const vehicle = state.vehicle;
     const c = compoundHp(state);
     const parts = CATEGORIES.reduce((sum, cat) => sum + Number(getPart(state, cat.id)?.massDeltaKg || 0), 0) + (c ? COMPOUND_KIT.massKg + Number(c.item.massDeltaKg || 0) : 0);
@@ -2607,16 +2610,17 @@
     lenco_5speed: { type: 'dog', clutchNm: 5200, clutchKg: 11.0, engageS: 0.025, launchDumpS: 0.08 }
   });
   // Hydrodynamic torque converter (planetary automatics: Powerglide, TH400, a Lenco with converter).
-  // Pump torque T_pump = f(SR) (w_pump / K)^2: the capacity factor K is constant from stall up to a knee
-  // (SR ~0.6 in measured converters) and rises beyond it, so f falls smoothly to zero at speed ratio 1 (no
-  // slip, no torque): f = 1 - x^3, x = (SR - knee) / (1 - knee). The stator multiplies the torque below the
+  // Pump torque T_pump = f(SR) (w_pump / K)^2: the capacity factor K is constant from stall up to the
+  // coupling point and rises steeply beyond it, so f falls smoothly to zero at speed ratio 1 (no slip, no
+  // torque): f = 1 - x^2, x = (SR - knee) / (1 - knee), knee = the coupling point. That leaves a race
+  // converter slipping 5-8 % at full power at the stripe, as they do. The stator multiplies the torque below the
   // coupling point: TR = TR0 at stall, falling linearly to 1 at the coupling point. Turbine torque =
   // TR x pump torque; the difference in power is heat in the fluid. K follows from the flash stall: on the
   // transbrake (turbine held) the engine settles where its torque equals the pump torque. At full power a
   // race converter still slips a few percent at the stripe, as measured ones do.
   function converterTorques(cv, wPump, wTurbine) {
     if (wPump < 1 && wTurbine < 1) return { pumpNm: 0, turbineNm: 0, sr: 0 };
-    const sr = wTurbine / Math.max(1, wPump), knee = cv.capacityKneeSr ?? 0.6;
+    const sr = wTurbine / Math.max(1, wPump), knee = cv.capacityKneeSr ?? cv.couplingSr;
     if (sr > 1) {
       // overrun: the turbine drives the pump (engine braking through the converter)
       const back = Math.min(1, (sr - 1) / (1 - knee));
@@ -2624,16 +2628,21 @@
       return { pumpNm: t, turbineNm: t, sr };
     }
     const x = sr <= knee ? 0 : (sr - knee) / (1 - knee);
-    const f = 1 - x * x * x;
+    const f = 1 - x * x;
     const tr = sr < cv.couplingSr ? cv.torqueRatio - ((cv.torqueRatio - 1) * sr) / cv.couplingSr : 1;
     const pump = Math.pow(wPump / cv.k, 2) * f;
     return { pumpNm: pump, turbineNm: pump * tr, sr };
   }
   // A converter from its flash stall: K such that the pump absorbs torqueNm at stallRpm with the turbine held.
-  function converterSpec({ stallRpm, torqueNm, torqueRatio = 1.8, couplingSr = 0.85, capacityKneeSr = 0.6 }) {
+  function converterSpec({ stallRpm, torqueNm, torqueRatio = 1.8, couplingSr = 0.85, capacityKneeSr = couplingSr }) {
     const w = (stallRpm * Math.PI) / 30;
     return { k: w / Math.sqrt(Math.max(1, torqueNm)), stallRpm, stallTorqueNm: torqueNm, torqueRatio, couplingSr, capacityKneeSr };
   }
+  // The prepared-strip grip of the drag compounds (radials, slicks) is calibrated on real passes from the
+  // research roster (data/roster): a car whose weight, power and timeslip are all known only hooks the way
+  // its 60 ft says at ~1.28 x the grip these compounds had before (v1.28); one factor for all of them, so the
+  // compounds keep their order. A second car on drag radials (the supercharged sports car) lands within 1 %
+  // on ET with it. Street compounds have no data in the roster and keep their values.
   // Peak friction coefficient (dry asphalt / prepared drag strip), slip ratio at the peak and
   // optimum grip temperature (tyreGripTempC) per compound. Drag compounds work best at ~50-65 C at the
   // launch (the 120-150 F that drag tyre makers quote); street tyres lower. Modeled values.
@@ -2641,15 +2650,15 @@
     street: { mu: 1.0, muPrep: 1.12, peakSlip: 0.1, optC: 40, windowC: 60, relaxM: 0.35 },
     uhp: { mu: 1.1, muPrep: 1.28, peakSlip: 0.09, optC: 48, windowC: 58, relaxM: 0.32 },
     semislick: { mu: 1.22, muPrep: 1.52, peakSlip: 0.1, optC: 60, windowC: 52, relaxM: 0.3 },
-    drag_radial: { mu: 1.25, muPrep: 1.95, peakSlip: 0.12, optC: 55, windowC: 45, relaxM: 0.3 },
-    slick: { mu: 1.2, muPrep: 2.25, peakSlip: 0.15, optC: 60, windowC: 40, relaxM: 0.35 },
-    pro_radial: { mu: 1.3, muPrep: 2.1, peakSlip: 0.12, optC: 58, windowC: 42, relaxM: 0.3 },
+    drag_radial: { mu: 1.25, muPrep: 2.5, peakSlip: 0.12, optC: 55, windowC: 45, relaxM: 0.3 },
+    slick: { mu: 1.2, muPrep: 2.88, peakSlip: 0.15, optC: 60, windowC: 40, relaxM: 0.35 },
+    pro_radial: { mu: 1.3, muPrep: 2.69, peakSlip: 0.12, optC: 58, windowC: 42, relaxM: 0.3 },
     // The big drag rubber. On an unprepared surface a huge soft tyre is not much better than a good radial -
     // it is the glue that makes the difference - so these gain almost all of their grip from muPrep. A
     // 34x17 Pro Mod slick wrinkles and grows on the launch, which is why its peak slip is so much higher
     // than a radial's: it is meant to be driven through slip, not away from it.
-    big_radial: { mu: 1.38, muPrep: 2.62, peakSlip: 0.14, optC: 60, windowC: 40, relaxM: 0.3 },
-    promod_slick: { mu: 1.32, muPrep: 3.15, peakSlip: 0.22, optC: 62, windowC: 38, relaxM: 0.42 }
+    big_radial: { mu: 1.38, muPrep: 3.35, peakSlip: 0.14, optC: 60, windowC: 40, relaxM: 0.3 },
+    promod_slick: { mu: 1.32, muPrep: 4.03, peakSlip: 0.22, optC: 62, windowC: 38, relaxM: 0.42 }
   });
   const ENGINE_INERTIA = 0.19; // kg m^2, crank + flywheel + clutch
   // Wheel hop (OEM parts): the drive shafts (~14 kNm/rad together) in series with the engine/gearbox roll
@@ -2703,15 +2712,19 @@
     return { surfaceC: c, bulkC: c };
   }
   // One step of h seconds. slipPowerW: |Fx x slip speed| of the driven axle; tyres: number of driven tyres.
-  function tyreThermalStep(th, h, { slipPowerW = 0, tyres = 2, speedMs = 0, ambientC = 20, trackC = 25, rollingW = 0 } = {}) {
+  // surfaceShare: the part of the slip heat that lands in the skin. A sliding tyre (burnout, wheelspin) heats
+  // its skin; at or below the peak slip most of the slip is the tread shearing in the contact patch, and that
+  // work is dissipated through the tread depth (the bulk).
+  function tyreThermalStep(th, h, { slipPowerW = 0, tyres = 2, speedMs = 0, ambientC = 20, trackC = 25, rollingW = 0, surfaceShare = 1 } = {}) {
     const T = TYRE_THERMAL, n = Math.max(1, tyres);
-    const qIn = (Math.max(0, slipPowerW) * T.intoTyre) / n;
+    const qSlip = (Math.max(0, slipPowerW) * T.intoTyre) / n, share = clamp(surfaceShare, 0, 1);
+    const qIn = qSlip * share;
     const qSb = T.surfaceToBulkWK * (th.surfaceC - th.bulkC);
     const qAir = tyreConvectionW(speedMs) * (th.surfaceC - ambientC);
     const qTrack = T.contactWK * (th.surfaceC - trackC);
     const qBulkAir = T.bulkAirWK * (th.bulkC - ambientC);
     th.surfaceC += ((qIn - qSb - qAir - qTrack) / T.surfaceJK) * h;
-    th.bulkC += ((qSb + Math.max(0, rollingW) / n - qBulkAir) / T.bulkJK) * h;
+    th.bulkC += ((qSb + qSlip * (1 - share) + Math.max(0, rollingW) / n - qBulkAir) / T.bulkJK) * h;
     return th;
   }
   // The temperature the grip curve uses.
@@ -2741,6 +2754,11 @@
     const wheelbase = Number(state.vehicle.wheelbaseM || 2.58), cgh = Number(state.vehicle.cgHeightM || 0.51);
     // Steady load transfer is exactly m a h / L; the suspension setting decides how fast it builds up (pitch).
     const transferLagS = clamp(0.2 - (Number(state.vehicle.suspensionTransferPct || 60) / 100) * 0.14, 0.05, 0.2);
+    // Anti-squat (rear-drive drag suspensions: 4-link, ladder bars): the axle housing's reaction to the drive
+    // torque goes through the rear links and loads the driven tyres at once, instead of through the body's
+    // pitch - it is what 'plants' the tyre at the hit, before the wheel has spun up. At 100 % the whole steady
+    // transfer m a h / L arrives with the axle torque; the rest still builds up with the pitch lag. 0 = none.
+    const antiSquat = state.vehicle.drivetrain === 'RWD' ? clamp(Number(state.vehicle.antiSquatPct || 0) / 100, 0, 1) : 0;
     const eta = trans.transEfficiency * (1 - drive.loss * 0.34);
     const wheelKg = Number(state.vehicle.wheelMassKg || 12.4) + 10; // rim + tyre
     const wheelI = wheelKg * r * r * 0.75;
@@ -2751,7 +2769,11 @@
     const launchRpm = clamp(Number(opts.launchRpm ?? state.tune.launchRpm ?? 4200), 1500, revLimit - 300);
     // Traction control needs an ECU with wheel-speed inputs and a torque-reduction strategy; an OEM MED17
     // has neither, so the switch is simply inert there.
-    const tcCapable = !!getPart(state, 'ecu').tractionControl;
+    // A roster car's race ECU (FuelTech, Haltech, a factory launch control) runs torque management instead: the
+    // engine torque is held to what the driven tyres can carry right now (grip x load, through the converter's
+    // multiplication and the gearing), the way radial racers tune boost by time and timing to the tyre.
+    const torqueManaged = !!(state.rosterCar && state.rosterCar.tractionControl) && (opts.tractionControl ?? state.tune.tractionControl !== false);
+    const tcCapable = state.rosterCar ? false : !!getPart(state, 'ecu').tractionControl;
     const tcOn = tcCapable && (opts.tractionControl ?? state.tune.tractionControl !== false);
     const tcTarget = tcOn ? ty.peakSlip * clamp(Number(state.tune.tcSlipPct ?? 125) / 100, 0.4, 2.5) : 0;
     const tcGain = clamp(Number(state.tune.tcAggressionPct ?? 60) / 100, 0.1, 1) * 70;
@@ -2762,10 +2784,15 @@
       const snap = s.turboSnap || {}, target = Math.max(0.05, Number(snap.targetBoostBar || 0.05));
       return clamp((0.93 - Number(snap.boostBar || 0) / target) / 0.58, 0, 1) * clamp((rpm() - 3000) / 400, 0, 1) * clamp((revLimit - rpm() + 800) / 2200, 0, 1);
     };
-    const staticDriven = state.vehicle.drivetrain === 'FWD' ? drive.frontStatic : state.vehicle.drivetrain === 'RWD' ? 1 - drive.frontStatic : 1;
+    // a roster car has its own measured (or modeled) static weight split
+    const frontStatic = Number.isFinite(state.rosterCar?.frontStatic) ? state.rosterCar.frontStatic : drive.frontStatic;
+    const staticDriven = state.vehicle.drivetrain === 'FWD' ? frontStatic : state.vehicle.drivetrain === 'RWD' ? 1 - frontStatic : 1;
     const kc = knockControlFor(state, getPart(state, 'ecu'), getPart(state, 'sensors'));
-    const kit = getPart(state, 'nitrous');
-    const sealing = getPart(state, 'sealing'), displacementM3 = engineGeometry(state).displacementCc * 1e-6;
+    // A roster engine runs on its dyno curve: no combustion model, so no knock index and no head-lift check
+    // (its gasket clamp is not known), and its nitrous shot is the measured net gain (timing pull included).
+    const curveEngine = !!(state.rosterCar && state.rosterCar.engine);
+    const kit = curveEngine ? rosterNitrousKit(state.rosterCar) : getPart(state, 'nitrous');
+    const sealing = getPart(state, 'sealing'), displacementM3 = curveEngine ? 0 : engineGeometry(state).displacementCc * 1e-6;
     const nitrousRetardPer50 = clamp(Number(state.tune.nitrousRetardPer50 ?? 2), 0, 6);
     const fuelCapHp = getPart(state, 'fuelSystem').fuelSystemHp * getPart(state, 'fuel').fuelFlowFactor;
     // Wheel hop as the driveline's torsional mode. Its damping is the mounts' damping minus what the tyre
@@ -2790,7 +2817,7 @@
       t: 0, x: 0, v: 0, a: 0, gear: 0, we: (launchRpm * Math.PI) / 30, ww: 0, kappa: 0, engage: 0, launched: false, launchT: 0,
       transfer: 0, tyreC: tyreGripTempC(th), clutchC: Number(opts.clutchTempC ?? 60), clutchJ: 0, shift: null, cut: false, limiterS: 0,
       fx: 0, wheelspin: 0, maxWheelspin: 0, torqueNm: 0, clutchNm: 0, slipRpm: 0, turboSnap: null, turboClock: 1, knockMax: 0, fuelG: 0, shiftLog: [],
-      convSr: 0, convJ: 0, convLossW: 0, fluidC: 80
+      convSr: 0, convJ: 0, convLossW: 0, fluidC: 80, axleNm: 0, gripN: 0, tmS: 0
     };
     // A planetary shift hands the torque from one clutch/band to the next under power: the ratio moves
     // across over the shift time while the converter absorbs the engine's speed change.
@@ -2899,8 +2926,8 @@
       if (shotHp > 0.5) {
         s.bottleKg = Math.max(0, s.bottleKg - shotHp * 0.00085 * h);
         s.n2oShotS += h; s.n2oMaxHp = Math.max(s.n2oMaxHp, shotHp);
-        n2oRetard = nitrousRetardPer50 * shotHp / 50;
-        n2oKnock = 0.1 * shotHp / 100 - 0.023 * n2oRetard;
+        n2oRetard = curveEngine ? 0 : nitrousRetardPer50 * shotHp / 50;
+        n2oKnock = curveEngine ? 0 : 0.1 * shotHp / 100 - 0.023 * n2oRetard;
         if (kit.n2oType === 'dry') {
           const need = (cell.torqueNm * rpm()) / 7023 + shotHp, over = need / Math.max(50, fuelCapHp) - 1;
           if (over > 0) { n2oKnock += Math.min(0.5, over * 2); s.n2oLeanS += h; s.knockDamage += over * 0.8 * h; }
@@ -2919,10 +2946,17 @@
       s.kcRetardDeg = Math.max(0, s.kcRetardDeg - h);
       s.kcMaxDeg = Math.max(s.kcMaxDeg, s.kcRetardDeg);
       if (tEng > 0) tEng *= 1 - 0.012 * (s.kcRetardDeg + n2oRetard);
+      if (torqueManaged && s.launched && tEng > 0 && s.gripN > 0) {
+        const trNow = conv ? (s.convSr < conv.couplingSr ? conv.torqueRatio - ((conv.torqueRatio - 1) * s.convSr) / conv.couplingSr : 1) : 1;
+        // past the peak slip the tyre only gives its sliding force: take torque away until it is back
+        const over = Math.max(0, s.kappa - ty.peakSlip * 1.1) / ty.peakSlip;
+        const cap = (s.gripN * clamp(1 - 0.5 * over, 0.3, 1) * r) / (ratio() * eta * trNow);
+        if (tEng > cap) { tEng = cap; s.tmS += h; }
+      }
       if (shotHp > 0.5) tEng += (shotHp * 7023) / Math.max(2600, rpm());
       // Head lift: cylinder pressure (as BMEP) past the head gasket's clamp margin lifts the head; a head
       // welded to the block has no gasket to lift.
-      if (firing && tEng > 0) {
+      if (firing && tEng > 0 && displacementM3 > 0) {
         const bmep = (tEng * 4 * Math.PI) / (displacementM3 * 1e5);
         const over = bmep / (sealing.headClampBmep * 1.15) - 1;
         if (over > 0) { s.headLiftS += h; s.knockDamage += over * 6 * h; }
@@ -2936,8 +2970,9 @@
       // --- tyre force
       const fzStatic = mass * g * staticDriven;
       const targetTransfer = (mass * s.a * cgh) / wheelbase;
-      s.transfer += (targetTransfer - s.transfer) * clamp(h / transferLagS, 0, 1);
-      const fz = clamp(state.vehicle.drivetrain === 'FWD' ? fzStatic - s.transfer : state.vehicle.drivetrain === 'RWD' ? fzStatic + s.transfer : fzStatic, mass * g * 0.15, mass * g);
+      s.transfer += ((1 - antiSquat) * targetTransfer - s.transfer) * clamp(h / transferLagS, 0, 1);
+      const linkLoad = antiSquat * ((s.axleNm / r) * cgh) / wheelbase;
+      const fz = clamp(state.vehicle.drivetrain === 'FWD' ? fzStatic - s.transfer : state.vehicle.drivetrain === 'RWD' ? fzStatic + s.transfer + linkLoad : fzStatic, mass * g * 0.15, mass * g);
       const slipV = s.ww * r - s.v;
       s.kappa += ((slipV - Math.abs(s.v) * s.kappa) / ty.relaxM) * h;
       s.kappa = clamp(s.kappa, -1, 3);
@@ -2946,6 +2981,7 @@
       // drivetrain table unread until now, which made a purpose-built drag AWD no better than a street one.
       const mu = tyreMu(ty, s.tyreC, fz / fzStatic) * (Number(drive.tractionUse) || 1);
       let fx = mu * fz * magicFormula(s.kappa, ty.peakSlip);
+      s.gripN = mu * fz; // the tyres' force at their peak slip now (torque management reads it next step)
       if (s.launched) {
         const vRef = Math.max(s.v, 0.5), d = 0.01;
         const slope = (magicFormula(s.kappa + d, ty.peakSlip) - magicFormula(Math.max(0, s.kappa - d), ty.peakSlip)) / (s.kappa + d - Math.max(0, s.kappa - d));
@@ -2966,9 +3002,22 @@
         // the turbine is held and the engine loads up against the pump to its stall speed.
         const wt = R * s.ww, cv = converterTorques(conv, s.we, wt);
         const wheelLoad = fx * r + ty.rolling * fz * r;
-        s.we = Math.max((650 * Math.PI) / 30, s.we + ((tEng - cv.pumpNm) / engineI) * h);
-        if (s.launched) s.ww = Math.max(0, s.ww + ((cv.turbineNm * R * eta - wheelLoad) / drivenI) * h);
-        tClutch = cv.turbineNm;
+        // Near coupling the converter is a stiff link (a short first gear makes it stiffer still at the
+        // wheels), so engine and wheel speed are advanced together implicitly: backward Euler on the
+        // converter torques linearised around this step.
+        const d = 0.5, ce = converterTorques(conv, s.we + d, wt), ct = converterTorques(conv, s.we, wt + d);
+        const pe = (ce.pumpNm - cv.pumpNm) / d, pt = (ct.pumpNm - cv.pumpNm) / d;
+        const te = (ce.turbineNm - cv.turbineNm) / d, tt = (ct.turbineNm - cv.turbineNm) / d;
+        const a11 = 1 + (h * pe) / engineI, a12 = (h * pt * R) / engineI, b1 = (h * (tEng - cv.pumpNm)) / engineI;
+        let dwe, dww;
+        if (s.launched) {
+          const a21 = -(h * te * R * eta) / drivenI, a22 = 1 - (h * tt * R * R * eta) / drivenI, b2 = (h * (cv.turbineNm * R * eta - wheelLoad)) / drivenI;
+          const det = a11 * a22 - a12 * a21;
+          dwe = (b1 * a22 - a12 * b2) / det; dww = (a11 * b2 - a21 * b1) / det;
+        } else { dwe = b1 / a11; dww = 0; }
+        s.we = Math.max((650 * Math.PI) / 30, s.we + dwe);
+        if (s.launched) s.ww = Math.max(0, s.ww + dww);
+        tClutch = cv.turbineNm + te * dwe + tt * R * dww;
         s.convSr = cv.sr;
         // power the pump takes in minus what the turbine gives off: heat in the fluid
         s.convLossW = Math.max(0, cv.pumpNm * s.we - cv.turbineNm * wt);
@@ -3005,6 +3054,7 @@
       }
       }
       s.clutchNm = tClutch;
+      s.axleNm = Math.max(0, tClutch * R * eta);
       s.slipRpm = ((s.we - R * s.ww) * 30) / Math.PI;
       if (s.launched) {
         // the torsional mode driven by the torque the clutch passes (launch dump, shifts); its deviation from
@@ -3046,7 +3096,7 @@
         s.clutchC += (Math.abs(tClutch * (s.we - R * s.ww)) * h * 0.85) / heatCap - (s.clutchC - 60) * 0.004 * h;
       }
       // tyre temperatures from the slip power at the contact patch, rolling hysteresis and cooling
-      if (s.launched) tyreThermalStep(th, h, { slipPowerW: Math.abs(fx * slipV), tyres: drivenTyres, speedMs: s.v, ambientC, trackC, rollingW: ty.rolling * fz * s.v * 0.5 });
+      if (s.launched) tyreThermalStep(th, h, { surfaceShare: clamp(0.35 + 0.325 * (Math.abs(s.kappa) / ty.peakSlip - 1), 0.35, 1), slipPowerW: Math.abs(fx * slipV), tyres: drivenTyres, speedMs: s.v, ambientC, trackC, rollingW: ty.rolling * fz * s.v * 0.5 });
       s.tyreC = tyreGripTempC(th);
       // --- body
       const air = Math.max(0, s.v + headwind);
@@ -3295,9 +3345,10 @@
   // Headless quarter mile with a driver model (rival, tests, auto run): same runtime as the player.
   function simulateRaceRun(inputState, cfg = {}) {
     const state = normalizeState(inputState);
-    const em = buildEngineMap(state);
-    const rt = createRaceRuntime(state, { engineMap: em, tyreTempC: cfg.tyreTempC, launchRpm: cfg.launchRpm, tractionControl: cfg.tractionControl ?? state.tune.tractionControl !== false });
-    const shiftRpm = cfg.shiftRpms || optimalShiftRpms(state, em);
+    const rc = state.rosterCar && state.rosterCar.engine ? state.rosterCar : null;
+    const em = rc ? curveEngineMap(rc.engine) : buildEngineMap(state);
+    const rt = createRaceRuntime(state, { engineMap: em, turbo: rc ? curveTurboRuntime(rc.engine) : undefined, tyreTempC: cfg.tyreTempC, launchRpm: cfg.launchRpm, tractionControl: cfg.tractionControl ?? state.tune.tractionControl !== false });
+    const shiftRpm = cfg.shiftRpms || (rc && rc.shiftRpm ? rt.gears.slice(0, -1).map(() => rc.shiftRpm) : optimalShiftRpms(state, em));
     const reaction = Number.isFinite(cfg.reactionTime) ? cfg.reactionTime : 0.1;
     const milestones = {}, trace = [];
     // pre-stage: build boost on the two-step for 1.5 s
@@ -3312,9 +3363,12 @@
       // Driver: feathers the throttle when the tyres go past their peak slip (a skilled driver reacts faster).
       const k = rt.state.kappa, target = rt.tyre.peakSlip * (1.6 - 0.4 * skill);
       pedal = clamp(pedal + (k > target ? -Math.min(0.5, k - target) * (2 + 4 * skill) : 0.8 + 1.5 * skill) * 0.01, 0.45, 1);
-      // the auto driver fires the nitrous from second gear (the tyres cannot take it earlier)
-      const p = rt.step(0.01, { flatShift: !!cfg.flatShift, clutchDumpS: cfg.clutchDumpS, pedal, nitrous: cfg.nitrous !== false && rt.state.gear >= 1 });
-      if (!rt.state.shift && p.gearIndex < rt.gears.length - 1 && p.rpm >= shiftRpm[p.gearIndex]) rt.requestShift();
+      // the auto driver fires the nitrous from second gear (the tyres cannot take it earlier); a roster car's
+      // controller brings it in after its delay. A documented lift (cfg.liftAtM) closes the throttle there.
+      const n2oOn = cfg.nitrous !== false && (rc && rc.nitrous ? rt.state.t >= rc.nitrous.delayS : rt.state.gear >= 1);
+      const lifted = Number.isFinite(cfg.liftAtM) && rt.state.x >= cfg.liftAtM;
+      const p = rt.step(0.01, { flatShift: !!cfg.flatShift, clutchDumpS: cfg.clutchDumpS, pedal, nitrous: n2oOn && !lifted, throttle: !lifted });
+      if (!lifted && !rt.state.shift && p.gearIndex < rt.gears.length - 1 && p.rpm >= shiftRpm[p.gearIndex]) rt.requestShift();
       timing.observe(p.t, p.distanceM);
       if (zero100 == null && p.speedKmh >= 100) zero100 = p.t;
       traceClock += 0.01;
@@ -3334,6 +3388,248 @@
       hopS: rt.state.hopS, hopMax: rt.state.hopMaxI, hopPeakShaftNm: rt.state.hopPeakNm, hopWearPct: hopWearPct(rt.state, getPart(state, 'mounts')),
       drivetrain: (DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD).name, tireName: (TIRE_MAP[state.vehicle.tireCompound] || {}).name
     };
+  }
+
+  // ---- Roster cars: real builds from the YouTube research (data/roster -> roster-data.js) ----------------
+  // These engines (V8s with nitrous, turbos or a blower) are not built from the parts catalogue: their power is
+  // the measured or stated dyno number on a curve shape per engine family (model-rules.json). Everything after
+  // the crank - converter, gearbox, tyres, weight, aero - runs on the same race runtime as the player's car.
+  // Every number the spec uses is a value {value, unit, kind, source | reason}: the research's own kind
+  // (measured / stated / estimate) or 'modeled' with the rule that made it.
+  const LB_KG = 0.45359237, HP_W = 745.7, LBFT_NM = 1.3558179, MPH_MS = 0.44704;
+  const rosterCars = () => (RosterData && RosterData.cars) || [];
+  const rosterRules = () => (RosterData && RosterData.rules) || null;
+  function rosterCarData(id) { return rosterCars().find(c => c.id === id) || null; }
+  const modeledValue = (value, unit, reason, extra = {}) => ({ value, unit, kind: 'modeled', reason, ...extra });
+  const ruleValue = (rule, unit, extra = {}) => modeledValue(rule.value, unit, rule.reason, extra);
+  function curveShapeAt(shape, x) {
+    if (x <= shape[0][0]) return shape[0][1];
+    for (let i = 1; i < shape.length; i++) {
+      if (x <= shape[i][0]) { const [x0, y0] = shape[i - 1], [x1, y1] = shape[i]; return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0); }
+    }
+    return shape[shape.length - 1][1];
+  }
+  // max over x of s(x) x: where the shape puts peak power (x = 1 by construction, checked numerically), within
+  // the shape's own range (past its last point the torque is held, which would make power keep rising)
+  function shapePowerFactor(shape) {
+    let best = 0;
+    const last = shape[shape.length - 1][0];
+    for (let i = 0; i <= 1000; i++) { const x = 0.3 + ((last - 0.3) * i) / 1000; best = Math.max(best, curveShapeAt(shape, x) * x); }
+    return best;
+  }
+  function curveTorqueNm(engine, rpm) { return engine.peakTorqueNm * curveShapeAt(engine.shape, rpm / engine.peakPowerRpm); }
+
+  // Resolve one roster car into the numbers the sim needs, each with its provenance.
+  function rosterSpec(id, overrides = {}) {
+    const car = rosterCarData(id), R = rosterRules();
+    if (!car || !R) throw new Error(`Onbekende roster-auto ${id}`);
+    if (!car.opponent || !car.opponent.usable) throw new Error(`${car.displayName}: ${car.opponent?.reason || 'te weinig gegevens om te rijden'}`);
+    const facts = car.facts || {}, v = {};
+    const fact = k => (facts[k] && facts[k].value != null ? facts[k] : null);
+    // body: aero, wheelbase, centre of gravity, weight split
+    const bodyId = R.carBody[id], body = R.bodies[bodyId];
+    v.cdA = ruleValue(body.cdA, 'm2', { rule: `bodies.${bodyId}` });
+    v.wheelbaseM = ruleValue(body.wheelbaseM, 'm', { rule: `bodies.${bodyId}` });
+    v.cgHeightM = ruleValue(body.cgHeightM, 'm', { rule: `bodies.${bodyId}` });
+    v.frontWeightPct = fact('frontWeightPct') || ruleValue(body.frontWeightPct, '%', { rule: `bodies.${bodyId}` });
+    // weight with driver
+    v.weightLb = car.opponent.weightLb;
+    // gearbox
+    const transFact = fact('transmission');
+    const transId = transFact ? transFact.value : R.transmissions.default.value;
+    const tr = R.transmissions[transId];
+    v.transmission = transFact || modeledValue(transId, null, R.transmissions.default.reason, { rule: 'transmissions.default' });
+    v.gears = modeledValue(tr.gears.slice(), null, tr.reason, { rule: `transmissions.${transId}` });
+    // engine: power at the crank (a wheel figure goes through this car's driveline efficiency)
+    const famId = R.engines.carEngine[id], fam = R.engines.families[famId];
+    const drive = DRIVETRAINS.RWD, eta = tr.efficiency * (1 - drive.loss * 0.34);
+    const shot = fact('nitrousShotHp');
+    const quoted = car.opponent.powerHp;
+    let crankHp = quoted.value;
+    if (quoted.basis === 'wheel') {
+      crankHp = quoted.value / eta;
+      v.enginePowerHp = modeledValue(round(crankHp), 'hp', `${quoted.value} pk aan de wielen gedeeld door het rendement van de aandrijflijn (${eta.toFixed(3)}): ${R.wheelToCrank.reason}`,
+        { derivedFrom: { wheelHp: quoted.value, efficiency: round(eta, 4) } });
+    } else v.enginePowerHp = quoted;
+    v.nitrousShotHp = shot;
+    const basePowerHp = shot ? (fact('naPowerHp') ? fact('naPowerHp').value : crankHp - shot.value) : crankHp;
+    const shape = fam.shape, C1 = shapePowerFactor(shape);
+    const tFact = fact(shot ? 'naTorqueLbft' : 'peakTorqueLbft');
+    let peakTorqueNm, peakPowerRpm;
+    if (tFact) {
+      peakTorqueNm = tFact.value * LBFT_NM;
+      peakPowerRpm = (basePowerHp * HP_W) / (peakTorqueNm * C1 * (Math.PI / 30));
+      v.peakTorqueNm = { ...tFact, value: round(peakTorqueNm, 1), unit: 'Nm', note: `${tFact.value} lb-ft${tFact.note ? '; ' + tFact.note : ''}` };
+      v.peakPowerRpm = modeledValue(Math.round(peakPowerRpm), 'rpm', `uit piekvermogen en piekkoppel met de kromme van ${fam.label}: P = T s(1) w`, { rule: `engines.families.${famId}` });
+    } else {
+      peakPowerRpm = fam.peakPowerRpm;
+      peakTorqueNm = (basePowerHp * HP_W) / (C1 * peakPowerRpm * (Math.PI / 30));
+      v.peakPowerRpm = modeledValue(peakPowerRpm, 'rpm', fam.reason, { rule: `engines.families.${famId}` });
+      v.peakTorqueNm = modeledValue(round(peakTorqueNm, 1), 'Nm', `volgt uit het piekvermogen op de kromme van ${fam.label}`, { rule: `engines.families.${famId}` });
+    }
+    const shiftFact = fact('shiftRpm'), limitFact = fact('revLimitRpm');
+    v.revLimitRpm = limitFact || (shiftFact ? modeledValue(shiftFact.value + 200, 'rpm', 'opgegeven schakeltoerental + 200 rpm', { derivedFrom: { shiftRpm: shiftFact.value } })
+      : modeledValue(Math.round(peakPowerRpm * fam.revLimitFactor), 'rpm', `${fam.revLimitFactor} x toerental van piekvermogen (${fam.label})`, { rule: `engines.families.${famId}` }));
+    if (shiftFact) v.shiftRpm = shiftFact;
+    v.engineInertiaKgM2 = modeledValue(fam.inertiaKgM2, 'kg m2', fam.reason, { rule: `engines.families.${famId}` });
+    // Turbo engines: the dyno curve is the full-boost curve; torque scales with the absolute manifold pressure and
+    // the boost comes up with time from the launch (boost by time). A stated launch boost wins over the rule.
+    const turbo = /^turbo/.test(famId), PSI_BAR = 0.0689476;
+    const fullBoostPsi = quoted.boostPsi ?? (car.boostPsi ? car.boostPsi.value : null);
+    const bc = R.boostControl;
+    let boost = null;
+    if (turbo) {
+      const fullBar = fullBoostPsi != null ? fullBoostPsi * PSI_BAR : bc.nominalFullBoostBar;
+      const lb = fact('launchBoostPsi');
+      const launchBar = lb ? lb.value * PSI_BAR : Math.max(0, bc.launchTorqueFraction * (1.013 + fullBar) - 1.013);
+      boost = { fullBar, launchBar, rampS: bc.rampS };
+      v.boostControl = lb ? { ...lb, note: `${lb.note}; volle boost ${fullBoostPsi ?? '?'} psi na ${bc.rampS} s (regel)` }
+        : modeledValue(`lancering op ${Math.round(bc.launchTorqueFraction * 100)} % koppel, vol na ${bc.rampS} s`, null, bc.reason, { rule: 'boostControl', derivedFrom: { fullBoostPsi } });
+    }
+    const engine = { family: famId, shape, peakTorqueNm, peakPowerRpm, revLimit: v.revLimitRpm.value, inertiaKgM2: fam.inertiaKgM2,
+      frictionNm: 0.08 * peakTorqueNm, boost };
+    // converter: flash stall from the research, or the rule; K from the engine's torque at that stall
+    const convRule = transId === 'oem_auto' ? R.converters.oem : R.converters.race;
+    const flashFact = fact('converterFlashRpm');
+    const stallRpm = flashFact ? flashFact.value : convRule.stallRpm || Math.round(convRule.flashStallFactor * peakPowerRpm);
+    v.converterStallRpm = flashFact || modeledValue(stallRpm, 'rpm', convRule.reason, { rule: transId === 'oem_auto' ? 'converters.oem' : 'converters.race' });
+    const converter = converterSpec({ stallRpm, torqueNm: curveTorqueNm(engine, stallRpm), torqueRatio: convRule.torqueRatio, couplingSr: convRule.couplingSr });
+    // the torque the engine makes on the transbrake (launch boost for a turbo engine)
+    const launchTorqueAt = rpm => curveTorqueNm(engine, rpm) * (boost ? (1.013 + boost.launchBar) / (1.013 + boost.fullBar) : 1);
+    // tyres: a stated type, otherwise the group's radial class, in that compound's standard size
+    const tyreFact = fact('tires');
+    const compound = overrides.tireCompound || (tyreFact ? tyreFact.value : R.tires.byGroup[car.group] || 'drag_radial');
+    v.tireCompound = tyreFact || modeledValue(compound, null, R.tires.reason, { rule: 'tires.byGroup' });
+    const size = tireSizing(compound).default;
+    v.tireSize = modeledValue(`${size.tireWidthMm}/${size.aspectRatio} R${size.rimDiameterIn}`, null, 'standaardmaat van dit bandtype in het spel; de echte maat is niet (zeker) genoemd');
+    const geo = tireGeometry({ ...size, tireCompound: compound });
+    // what the driven tyres carry at the hit: grip x (static load + the anti-squat load the drive itself adds),
+    // with the same tyre functions the race runtime uses (setup, launch temperature, load sensitivity)
+    const as = R.suspension.antiSquatPct / 100, hOverL = v.cgHeightM.value / v.wheelbaseM.value, rearStatic = 1 - v.frontWeightPct.value / 100;
+    const ty = tyreFor({ vehicle: { ...blankState().vehicle, tireCompound: compound, ...size, pressureBar: (TIRE_MAP[compound] || {}).optimumBar || 1.2, preparedTrack: true } });
+    let capacityG = 1;
+    for (let i = 0; i < 30; i++) {
+      const load = rearStatic + as * capacityG * hOverL;
+      capacityG = tyreMu(ty, ty.optC, load / rearStatic) * load;
+    }
+    // final drive: crosses the line just past peak power at the speed Hale predicts from power and weight
+    const fdR = R.finalDrive, hpForHale = crankHp, lb = v.weightLb.value;
+    const haleMph = 234 * Math.cbrt(hpForHale / lb);
+    const lineRpm = fdR.lineRpmFactor * peakPowerRpm, gears = tr.gears;
+    const trapFact = fact('trapRpm'), passMph = car.bestPass && car.bestPass.mph ? car.bestPass.mph.value : null;
+    let finalDrive = null, fdGear = gears.length - 1;
+    const fdFor = (gi, rpm, mph) => (rpm * Math.PI / 30) * geo.radiusM / (mph * MPH_MS) / gears[gi];
+    if (tr.finalDrive) {
+      finalDrive = tr.finalDrive;
+      v.finalDrive = modeledValue(tr.finalDrive, null, tr.reason, { rule: `transmissions.${transId}` });
+    } else if (trapFact && passMph) {
+      finalDrive = fdFor(gears.length - 1, trapFact.value, passMph);
+      v.finalDrive = modeledValue(round(finalDrive, 2), null, `uit het opgegeven toerental bij de trap (${trapFact.value} rpm bij ${passMph} mph) en de bandmaat`, { derivedFrom: { trapRpm: trapFact.value, mph: passMph } });
+    } else {
+      for (let gi = gears.length - 1; gi >= 0; gi--) {
+        const fd = fdFor(gi, lineRpm, haleMph);
+        if (fd >= fdR.minRatio && fd <= fdR.maxRatio) { finalDrive = fd; fdGear = gi; break; }
+      }
+      if (finalDrive == null) finalDrive = clamp(fdFor(gears.length - 1, lineRpm, haleMph), fdR.minRatio, fdR.maxRatio);
+      v.finalDrive = modeledValue(round(finalDrive, 2), null, fdR.reason, { rule: 'finalDrive', derivedFrom: { haleMph: round(haleMph, 1), lineRpm: Math.round(lineRpm), gear: fdGear + 1 } });
+    }
+    // launch rpm on the transbrake: no more converter torque at the hit than the tyres carry
+    const massKg = v.weightLb.value * LB_KG, overall1 = gears[0] * finalDrive;
+    const hitG = rpm => {
+      const pump = Math.min(launchTorqueAt(rpm), Math.pow(((rpm * Math.PI) / 30) / converter.k, 2));
+      return (pump * converter.torqueRatio * overall1 * tr.efficiency * (1 - DRIVETRAINS.RWD.loss * 0.34)) / geo.radiusM / (massKg * 9.80665);
+    };
+    let launchRpm = stallRpm;
+    while (launchRpm > 1800 && hitG(launchRpm) > capacityG * R.launch.capacityMargin) launchRpm -= 25;
+    v.launchRpm = modeledValue(launchRpm, 'rpm', R.launch.reason, { rule: 'launch', derivedFrom: { tyreCapacityG: round(capacityG, 2), hitAtStallG: round(hitG(stallRpm), 2) } });
+    // nitrous controller
+    const nitrous = shot ? { shotHp: shot.value, progressiveS: R.nitrous.progressiveS, delayS: R.nitrous.delayS } : null;
+    if (nitrous) v.nitrousController = modeledValue(`${R.nitrous.delayS} s vertraging, ${R.nitrous.progressiveS} s opbouw`, null, R.nitrous.reason, { rule: 'nitrous' });
+    // conditions
+    const cond = { ...R.conditions };
+    if (fact('ambientC')) cond.ambientC = fact('ambientC').value;
+    v.conditions = fact('ambientC') ? { ...fact('ambientC'), note: `${fact('ambientC').note}; baan ${cond.trackTempC} C, ${cond.altitudeM} m (regel)` }
+      : modeledValue(`${cond.ambientC} C, baan ${cond.trackTempC} C, ${cond.altitudeM} m`, null, R.conditions.reason, { rule: 'conditions' });
+    v.driverSkill = modeledValue(R.driver.skill, null, R.driver.reason, { rule: 'driver' });
+    v.antiSquatPct = modeledValue(R.suspension.antiSquatPct, '%', R.suspension.reason, { rule: 'suspension' });
+    // traction control: stated for the car, or a named race ECU that has it
+    const ecuText = [car.description?.ecu?.text, ...(car.builds || []).map(b => b.ecu)].filter(Boolean).join(' ');
+    const namedEcu = (R.tractionControl.ecus || []).find(e => ecuText.includes(e));
+    v.tractionControl = fact('tractionControl') || modeledValue(!!namedEcu, null, R.tractionControl.reason, { rule: 'tractionControl', derivedFrom: { ecu: namedEcu || null } });
+    return {
+      id, displayName: car.displayName, group: car.group, values: v, engine, nitrous,
+      massKg: v.weightLb.value * LB_KG, frontStatic: v.frontWeightPct.value / 100,
+      transmission: { id: transId, name: tr.label, gearRatios: gears.slice(), finalDrive: round(finalDrive, 3), transEfficiency: tr.efficiency, shiftSeconds: tr.shiftS,
+        driveline: { type: 'converter', converter } },
+      shiftRpm: shiftFact ? shiftFact.value : null, tractionControl: !!v.tractionControl.value, launchRpm,
+      tire: { compound, size, pressureBar: (TIRE_MAP[compound] || {}).optimumBar || 1.2 },
+      vehicle: { cdA: v.cdA.value, wheelbaseM: v.wheelbaseM.value, cgHeightM: v.cgHeightM.value, antiSquatPct: v.antiSquatPct.value },
+      conditions: cond, driverSkill: R.driver.skill, launchGear: fact('launchGear') ? fact('launchGear').value : 1,
+      driverLiftFt: fact('driverLiftFt') ? fact('driverLiftFt').value : null
+    };
+  }
+
+  // The game state a roster car races with: a normal state (so every rule of the race runtime applies) that
+  // carries the car's own engine curve, gearbox, converter, weight and body in rosterCar.
+  function rosterState(id, conditions = {}, overrides = {}) {
+    const spec = rosterSpec(id, overrides);
+    const st = blankState();
+    st.buildName = spec.displayName;
+    st.vehicle = {
+      ...st.vehicle, drivetrain: 'RWD', tireCompound: spec.tire.compound, ...spec.tire.size, pressureBar: spec.tire.pressureBar,
+      preparedTrack: spec.conditions.preparedTrack !== false, ambientTempC: spec.conditions.ambientC, trackTempC: spec.conditions.trackTempC,
+      altitudeM: spec.conditions.altitudeM, humidityPct: spec.conditions.humidityPct, headwindKmh: 0, ...spec.vehicle,
+      raceMode: 'solo', burnoutLevel: 92, ...conditions
+    };
+    st.tune = { ...st.tune, launchRpm: Math.min(spec.launchRpm, spec.engine.revLimit - 300), tractionControl: spec.tractionControl };
+    st.rosterCar = {
+      id, engine: spec.engine, transmission: spec.transmission, massKg: spec.massKg, frontStatic: spec.frontStatic,
+      nitrous: spec.nitrous, shiftRpm: spec.shiftRpm, tractionControl: spec.tractionControl
+    };
+    return normalizeState(st);
+  }
+  function rosterNitrousKit(rc) {
+    const n = rc && rc.nitrous;
+    return n ? { shotHp: n.shotHp, progressiveS: n.progressiveS, bottleKg: 10, n2oType: 'wet' } : { shotHp: 0, progressiveS: 0, bottleKg: 0, n2oType: 'wet' };
+  }
+  // The engine curve as a realtime engine map (same lookup as a combustion-model map): full torque at any
+  // manifold pressure from 1 bar up (the boost the dyno number was made on), friction only when closed.
+  const curveMapCache = new Map();
+  function curveEngineMap(engine) {
+    const key = JSON.stringify(engine);
+    if (curveMapCache.has(key)) return curveMapCache.get(key);
+    const rpmAxis = [700, 1000];
+    for (let r = 1250; r <= engine.revLimit + 750; r += 250) rpmAxis.push(r);
+    const fullMap = engine.boost ? 1.013 + engine.boost.fullBar : 1.0;
+    const mapAxis = engine.boost ? [0.3, 1.0, fullMap, 20] : [0.3, 1.0, 20];
+    const cell = (torqueNm, rpm) => ({ torqueNm, frictionNm: engine.frictionNm, exhaustK: 1100, knockIndex: 0.85, sparkDeg: 25, knockRetardDeg: 0, lambda: 0.85,
+      airKgS: Math.max(0, torqueNm) * rpm * 1.1e-7, fuelKgS: Math.max(0, torqueNm) * rpm * 7e-9 });
+    const grid = mapAxis.map(m => rpmAxis.map(rpm => cell(m < 1 ? -engine.frictionNm : curveTorqueNm(engine, rpm) * Math.min(1, m / fullMap), rpm)));
+    const em = { key: `curve:${key.length}`, rpmAxis, mapAxis, grid, vdM3: 0.006, revLimit: engine.revLimit, hw: null, maxMap: 20, curve: true };
+    curveMapCache.set(key, em);
+    if (curveMapCache.size > 24) curveMapCache.delete(curveMapCache.keys().next().value);
+    return em;
+  }
+  // A roster engine's boost: launch boost on the transbrake, then up to full with time (boost by time). The
+  // curve engine reads the manifold pressure; there is no compressor map behind it.
+  function curveTurboRuntime(engine) {
+    const bc = engine.boost;
+    let since = 0;
+    const snap = { boostBar: 0, targetBoostBar: 0, mapBarAbs: 1.013, manifoldK: ENGINE_MAP_REF_K, empBarAbs: 1.013, shaftPct: 0, egtC: 0,
+      alsActive: false, alsIntensity: 0, curve: true };
+    function step(dt, input = {}) {
+      if (bc) {
+        if (input.twoStep) since = 0; else since += Number(dt) || 0;
+        const b = bc.launchBar + (bc.fullBar - bc.launchBar) * clamp(since / Math.max(0.05, bc.rampS), 0, 1);
+        snap.boostBar = b; snap.targetBoostBar = b; snap.mapBarAbs = 1.013 + b; snap.empBarAbs = 1.013 + b;
+      }
+      return snap;
+    }
+    return { step, state: snap, curve: true };
+  }
+  // The roster cars that can race (both weight and power known or derived), with their display names.
+  function rosterOpponents() {
+    return rosterCars().filter(c => c.opponent && c.opponent.usable).map(c => ({ id: c.id, displayName: c.displayName, group: c.group }));
   }
 
   // Stationary ALS hold at the ALS target rpm (tune-page test), sampled every 0.1 s.
@@ -4366,6 +4662,12 @@
     converterSpec,
     TIMING,
     createTimingSystem,
+    rosterSpec,
+    rosterState,
+    rosterOpponents,
+    rosterCarData,
+    curveEngineMap,
+    ROSTER: RosterData,
     transmissionFor,
     drivelineFor,
     TYRE,

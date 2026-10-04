@@ -38,7 +38,9 @@ const race = (s, cfg = {}) => C.simulateRaceRun(s, { reactionTime: 0, tyreTempC:
   const awd = race(build('compound2500', st => { st.vehicle.tireCompound = 'promod_slick'; st.vehicle.preparedTrack = true; st.vehicle.drivetrain = 'AWD_DRAG'; }));
   assert(fwd.wheelspinPct > 50, `2500 pk through the front wheels must read as real wheelspin (${Math.round(fwd.wheelspinPct)} %)`);
   assert(fwd.wheelspinPct > awd.wheelspinPct + 15, 'and clearly more of it than four-wheel drive');
-  assert(fwd.quarter > awd.quarter + 1.5, 'which costs real time');
+  // (Before the prepared-strip grip was calibrated on real passes the gap was 2.1 s; with ×1.28 grip the front
+  // wheels lose less, ~1.2 s - still the clearly slower car.)
+  assert(fwd.quarter > awd.quarter * 1.08, `which costs real time (${fwd.quarter.toFixed(2)} vs ${awd.quarter.toFixed(2)} s)`);
 }
 
 // ---- 3. bigger rubber is worth having, and prep is most of it ----------------------------------------

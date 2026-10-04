@@ -17,12 +17,12 @@ const atCoupling = C.converterTorques(cv, rpmToW(6000), rpmToW(6000 * 0.85));
 assert(Math.abs(atCoupling.turbineNm / atCoupling.pumpNm - 1) < 1e-9, 'no multiplication at the coupling point');
 // no slip, no torque; continuous across the coupling point; the pump torque grows with the square of speed
 assert.strictEqual(C.converterTorques(cv, rpmToW(6000), rpmToW(6000)).pumpNm, 0, 'no torque without slip');
-for (const at of [0.6, 0.85]) {
+for (const at of [0.85]) {
   const below = C.converterTorques(cv, rpmToW(6000), rpmToW(6000 * (at - 1e-4))), above = C.converterTorques(cv, rpmToW(6000), rpmToW(6000 * (at + 1e-4)));
   assert(Math.abs(below.pumpNm - above.pumpNm) / below.pumpNm < 0.01, `pump torque continuous at SR ${at}`);
 }
 // capacity falls past the knee: at fixed pump speed the pump takes less torque as the turbine catches up
-assert(C.converterTorques(cv, rpmToW(6000), rpmToW(6000 * 0.9)).pumpNm < C.converterTorques(cv, rpmToW(6000), rpmToW(6000 * 0.7)).pumpNm, 'capacity knee');
+assert(C.converterTorques(cv, rpmToW(6000), rpmToW(6000 * 0.93)).pumpNm < C.converterTorques(cv, rpmToW(6000), rpmToW(6000 * 0.8)).pumpNm, 'capacity falls past the coupling point');
 assert(Math.abs(C.converterTorques(cv, rpmToW(6000), 0).pumpNm / 700 - Math.pow(6000 / 5000, 2)) < 1e-9, 'square law');
 // it never makes power: turbine power <= pump power for every speed ratio up to 1
 for (let sr = 0; sr <= 1.0001; sr += 0.01) {

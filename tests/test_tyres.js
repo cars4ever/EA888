@@ -72,9 +72,11 @@ function burnout(preset, seconds, mutate) {
   assert(idle.point().tyreSurfaceKmh === 0 && Math.abs(idle.point().tyreSurfaceC - 28) < 0.5, 'released: no slip, no heat');
 }
 
-// 5. The race starts from the tyre state the burnout and staging left, and grip follows it.
+// 5. The race starts from the tyre state the burnout and staging left, and grip follows it. (On a prepared strip
+//    the calibrated drag-radial grip carries this car's launch whatever the temperature, so the 60 ft cannot
+//    show it there; on an unprepared surface the launch is traction-limited and it does.)
 {
-  const st = build('randy', s => { s.vehicle.tireCompound = 'drag_radial'; s.vehicle.preparedTrack = true; });
+  const st = build('randy', s => { s.vehicle.tireCompound = 'drag_radial'; s.vehicle.preparedTrack = false; });
   const rt = C.createRaceRuntime(st, { tyreThermal: { surfaceC: 61, bulkC: 47 } });
   const p0 = rt.point();
   assert(p0.tyreSurfaceC === 61 && p0.tyreBulkC === 47 && Math.abs(p0.tyreTempC - C.tyreGripTempC({ surfaceC: 61, bulkC: 47 })) < 1e-9, 'race continues the tyre state');

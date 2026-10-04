@@ -70,6 +70,7 @@ FACTS = {
         'transmission': lambda: F('oem_auto', None, 'stated', 'w4q6pp2mesc', '6:19-6:47, 15:07-15:26',
                                   "automatic with paddle/manual mode; 'seven gears' mentioned"),
         'launchGear': lambda: F(1, None, 'measured', 'w4q6pp2mesc', '31:00-35:05', 'best run launched in 1st gear (run 1 left in 2nd)'),
+        'tractionControl': lambda: F(True, None, 'stated', 'w4q6pp2mesc', '31:00-35:05', 'launch with "+1 deg timing in launch": a launch-control tune on the factory ECU'),
         'ambientC': lambda: F(29.7, 'C', 'stated', 'w4q6pp2mesc', '31:00-35:05', '~85-86 F after a 30 min cool-down, iced blower'),
         'peakTorqueLbft': lambda: F(961, 'lbft', 'measured', 'w4q6pp2mesc', '7:39-9:54', 'driver lifted early on this pull; ~1,000 hp said possible'),
     },
@@ -80,11 +81,15 @@ FACTS = {
     'mullet': {
         'tires': lambda: F('pro_radial', None, 'stated', '6_quJlgCSC0', '2:12, 2:56', 'on radials until the 2026 switch to big tires'),
         'worldCupWeightLb': lambda: F(3330, 'lb', 'measured', 'm-X8-o0myuw', '3:35-3:55', 'World Cup trim before the ~400 lb diet; with or without driver not said'),
+        'launchBoostPsi': lambda: F(38, 'psi', 'stated', 'wkQiI5gN6Hs', '6:12', "~38 psi launch boost level discussed for a 1.10 60 ft (caption '38 lb'; low confidence)"),
+        'tractionControl': lambda: F(True, None, 'stated', 'wkQiI5gN6Hs', '6:12, 21:32', 'the tuner sets the launch boost for the 60 ft (boost-managed launch)'),
     },
     'mcflurry': {
         'transmission': lambda: F('lenco', None, 'stated', 'jBug09pPpv4', '4:10, 5:36', 'Lenco with a PTC converter matched to the Coyote'),
         'converterFlashRpm': lambda: F(8080, 'rpm', 'stated', 'wkQiI5gN6Hs', '36:58-37:35', 'the Florida best pass flashed the converter to 8,080 rpm'),
+        'tractionControl': lambda: F(True, None, 'stated', 'wkQiI5gN6Hs', '3:01', 'Haltech traction control in use ("engaging early")'),
         'shiftRpm': lambda: F(8100, 'rpm', 'stated', 'wkQiI5gN6Hs', '36:58-37:35', '1-2 shift set at 8,100 rpm in the Haltech'),
+        'launchBoostPsi': lambda: F(18.8, 'psi', 'stated', 'PgdQ91n0Bmw', '53:45-54:08', 'best pass: 18.8 psi at the launch, 36-37 psi peak, 33 at the trap'),
     },
     'lumberjack': {
         'trapRpm': lambda: F(7100, 'rpm', 'stated', '5ibvcauFris', '32:33-36:58', '7,100 rpm through the traps on the best pass'),

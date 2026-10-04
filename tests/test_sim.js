@@ -211,6 +211,9 @@ const rosterDataSuite = require('./test_roster_data.js');
 const converterSuite = require('./test_converter.js');
 // What the strip's beams measure: rollout, 66-ft speed traps.
 const timingSuite = require('./test_timing.js');
+// Roster cars on the race runtime, and against their real passes.
+const rosterRuntimeSuite = require('./test_roster_runtime.js');
+const rosterCalibrationSuite = require('./test_roster_calibration.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -247,7 +250,9 @@ const report = {
   maxBuilds: maxBuildSuite,
   rosterData: rosterDataSuite,
   converter: converterSuite,
-  timing: timingSuite
+  timing: timingSuite,
+  rosterRuntime: rosterRuntimeSuite,
+  rosterCalibration: rosterCalibrationSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

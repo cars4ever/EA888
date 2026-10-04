@@ -670,6 +670,26 @@
       "t": "3:35-3:55"
      },
      "note": "World Cup trim before the ~400 lb diet; with or without driver not said"
+    },
+    "launchBoostPsi": {
+     "value": 38,
+     "unit": "psi",
+     "kind": "stated",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "6:12"
+     },
+     "note": "~38 psi launch boost level discussed for a 1.10 60 ft (caption '38 lb'; low confidence)"
+    },
+    "tractionControl": {
+     "value": true,
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "6:12, 21:32"
+     },
+     "note": "the tuner sets the launch boost for the 60 ft (boost-managed launch)"
     }
    },
    "opponent": {
@@ -957,6 +977,16 @@
      },
      "note": "the Florida best pass flashed the converter to 8,080 rpm"
     },
+    "tractionControl": {
+     "value": true,
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "3:01"
+     },
+     "note": "Haltech traction control in use (\"engaging early\")"
+    },
     "shiftRpm": {
      "value": 8100,
      "unit": "rpm",
@@ -966,6 +996,16 @@
       "t": "36:58-37:35"
      },
      "note": "1-2 shift set at 8,100 rpm in the Haltech"
+    },
+    "launchBoostPsi": {
+     "value": 18.8,
+     "unit": "psi",
+     "kind": "stated",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": "53:45-54:08"
+     },
+     "note": "best pass: 18.8 psi at the launch, 36-37 psi peak, 33 at the trap"
     }
    },
    "opponent": {
@@ -2803,6 +2843,16 @@
       "t": "31:00-35:05"
      },
      "note": "best run launched in 1st gear (run 1 left in 2nd)"
+    },
+    "tractionControl": {
+     "value": true,
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "31:00-35:05"
+     },
+     "note": "launch with \"+1 deg timing in launch\": a launch-control tune on the factory ECU"
     },
     "ambientC": {
      "value": 29.7,
