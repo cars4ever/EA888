@@ -207,6 +207,8 @@ const gripSuite = require('./test_grip.js');
 const maxBuildSuite = require('./test_max_builds.js');
 // Real cars from the YouTube research: provenance of every value, calibration pairs.
 const rosterDataSuite = require('./test_roster_data.js');
+// Torque converter and planetary automatics on the shared race runtime.
+const converterSuite = require('./test_converter.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -241,7 +243,8 @@ const report = {
   swaps: swapSuite,
   grip: gripSuite,
   maxBuilds: maxBuildSuite,
-  rosterData: rosterDataSuite
+  rosterData: rosterDataSuite,
+  converter: converterSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

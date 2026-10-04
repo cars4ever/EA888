@@ -333,7 +333,7 @@
   // tune.finalDrive are what the car runs. Everything that needs gearing goes through here so the dyno,
   // the race and the shift-point model can never disagree about what is fitted.
   function effectiveGearing(state) {
-    const trans = getPart(state, 'transmission');
+    const trans = transmissionFor(state);
     const base = Array.isArray(trans.gearRatios) && trans.gearRatios.length ? trans.gearRatios : [3.36, 2.09, 1.47, 1.1, 0.86, 0.72];
     const t = state.tune || {};
     const custom = Array.isArray(t.gearRatios) && t.gearRatios.length === base.length
@@ -350,6 +350,17 @@
     const fd = Number.isFinite(Number(t.finalDrive)) && Number(t.finalDrive) > 1.5 && Number(t.finalDrive) < 7.5
       ? Number(t.finalDrive) : Number(trans.finalDrive) || 3.94;
     return { gears, finalDrive: fd, spread, stock: !custom && t.finalDrive == null && Math.abs(spread - 1) < 1e-6, base, baseFinalDrive: Number(trans.finalDrive) || 3.94 };
+  }
+  // A car from the research roster (an opponent) brings its own gearbox and torque converter in
+  // state.rosterCar; everyone else's gearbox is the fitted part. Every gearing and driveline lookup goes
+  // through these two so the race, the shift model and the gear table always see the same box.
+  function transmissionFor(state) {
+    const rc = state && state.rosterCar && state.rosterCar.transmission;
+    return rc ? { ...CATEGORY_MAP.transmission.items[0], ...rc } : getPart(state, 'transmission');
+  }
+  function drivelineFor(state, trans = transmissionFor(state)) {
+    const rc = state && state.rosterCar && state.rosterCar.transmission;
+    return (rc && rc.driveline) || DRIVELINE[trans.id] || DRIVELINE.oem_6mt;
   }
   function compoundHpMap(state) {
     const c = compoundHp(state);
@@ -2595,6 +2606,34 @@
     compound_4speed: { type: 'dog', clutchNm: 3200, clutchKg: 8.5, engageS: 0.03, launchDumpS: 0.09 },
     lenco_5speed: { type: 'dog', clutchNm: 5200, clutchKg: 11.0, engageS: 0.025, launchDumpS: 0.08 }
   });
+  // Hydrodynamic torque converter (planetary automatics: Powerglide, TH400, a Lenco with converter).
+  // Pump torque T_pump = f(SR) (w_pump / K)^2: the capacity factor K is constant from stall up to a knee
+  // (SR ~0.6 in measured converters) and rises beyond it, so f falls smoothly to zero at speed ratio 1 (no
+  // slip, no torque): f = 1 - x^3, x = (SR - knee) / (1 - knee). The stator multiplies the torque below the
+  // coupling point: TR = TR0 at stall, falling linearly to 1 at the coupling point. Turbine torque =
+  // TR x pump torque; the difference in power is heat in the fluid. K follows from the flash stall: on the
+  // transbrake (turbine held) the engine settles where its torque equals the pump torque. At full power a
+  // race converter still slips a few percent at the stripe, as measured ones do.
+  function converterTorques(cv, wPump, wTurbine) {
+    if (wPump < 1 && wTurbine < 1) return { pumpNm: 0, turbineNm: 0, sr: 0 };
+    const sr = wTurbine / Math.max(1, wPump), knee = cv.capacityKneeSr ?? 0.6;
+    if (sr > 1) {
+      // overrun: the turbine drives the pump (engine braking through the converter)
+      const back = Math.min(1, (sr - 1) / (1 - knee));
+      const t = -Math.pow(wTurbine / cv.k, 2) * back;
+      return { pumpNm: t, turbineNm: t, sr };
+    }
+    const x = sr <= knee ? 0 : (sr - knee) / (1 - knee);
+    const f = 1 - x * x * x;
+    const tr = sr < cv.couplingSr ? cv.torqueRatio - ((cv.torqueRatio - 1) * sr) / cv.couplingSr : 1;
+    const pump = Math.pow(wPump / cv.k, 2) * f;
+    return { pumpNm: pump, turbineNm: pump * tr, sr };
+  }
+  // A converter from its flash stall: K such that the pump absorbs torqueNm at stallRpm with the turbine held.
+  function converterSpec({ stallRpm, torqueNm, torqueRatio = 1.8, couplingSr = 0.85, capacityKneeSr = 0.6 }) {
+    const w = (stallRpm * Math.PI) / 30;
+    return { k: w / Math.sqrt(Math.max(1, torqueNm)), stallRpm, stallTorqueNm: torqueNm, torqueRatio, couplingSr, capacityKneeSr };
+  }
   // Peak friction coefficient (dry asphalt / prepared drag strip), slip ratio at the peak and
   // optimum grip temperature (tyreGripTempC) per compound. Drag compounds work best at ~50-65 C at the
   // launch (the 120-150 F that drag tyre makers quote); street tyres lower. Modeled values.
@@ -2688,8 +2727,11 @@
     const state = normalizeState(inputState);
     const em = opts.engineMap || buildEngineMap(state);
     const turbo = opts.turbo || createTurboRuntime(state, { engineMap: em });
-    const trans = getPart(state, 'transmission'), dl = DRIVELINE[trans.id] || DRIVELINE.oem_6mt;
+    const trans = transmissionFor(state), dl = drivelineFor(state, trans);
     const drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
+    const conv = dl.type === 'converter' ? dl.converter : null;
+    // crank + flywheel/flexplate (+ converter pump); a roster engine brings its own
+    const engineI = Number(state.rosterCar?.engine?.inertiaKgM2) || ENGINE_INERTIA;
     const ty = tyreFor(state, opts.tyreTempC);
     // Tyre temperatures carry over from the burnout and staging when given; otherwise a uniform tyre.
     const th = opts.tyreThermal ? { surfaceC: Number(opts.tyreThermal.surfaceC), bulkC: Number(opts.tyreThermal.bulkC) } : makeTyreThermal(ty.tempC);
@@ -2747,9 +2789,14 @@
       knockAcc: 0, knockEvents: 0, knockNow: 0, kcRetardDeg: 0, kcMaxDeg: 0, knockDamage: 0,
       t: 0, x: 0, v: 0, a: 0, gear: 0, we: (launchRpm * Math.PI) / 30, ww: 0, kappa: 0, engage: 0, launched: false, launchT: 0,
       transfer: 0, tyreC: tyreGripTempC(th), clutchC: Number(opts.clutchTempC ?? 60), clutchJ: 0, shift: null, cut: false, limiterS: 0,
-      fx: 0, wheelspin: 0, maxWheelspin: 0, torqueNm: 0, clutchNm: 0, slipRpm: 0, turboSnap: null, turboClock: 1, knockMax: 0, fuelG: 0, shiftLog: []
+      fx: 0, wheelspin: 0, maxWheelspin: 0, torqueNm: 0, clutchNm: 0, slipRpm: 0, turboSnap: null, turboClock: 1, knockMax: 0, fuelG: 0, shiftLog: [],
+      convSr: 0, convJ: 0, convLossW: 0, fluidC: 80
     };
-    const ratio = () => gears[s.gear] * fd;
+    // A planetary shift hands the torque from one clutch/band to the next under power: the ratio moves
+    // across over the shift time while the converter absorbs the engine's speed change.
+    const ratio = () => (s.shift && s.shift.type === 'converter'
+      ? gears[s.shift.from] + (gears[s.shift.to] - gears[s.shift.from]) * clamp(s.shift.t / s.shift.dur, 0, 1)
+      : gears[s.gear]) * fd;
     const rpm = () => (s.we * 30) / Math.PI;
     function engineTorque(throttleOpen) {
       const snap = s.turboSnap;
@@ -2764,7 +2811,8 @@
     function requestShift() {
       if (s.shift || s.gear >= gears.length - 1 || !s.launched) return false;
       const typ = dl.type;
-      const dur = typ === 'manual' ? Math.max(0.12, trans.shiftSeconds) : typ === 'dsg' ? Math.max(0.08, trans.shiftSeconds) : Math.max(0.03, trans.shiftSeconds);
+      const dur = typ === 'manual' ? Math.max(0.12, trans.shiftSeconds) : typ === 'dsg' ? Math.max(0.08, trans.shiftSeconds)
+        : typ === 'converter' ? Math.max(0.05, trans.shiftSeconds) : Math.max(0.03, trans.shiftSeconds);
       s.shift = { from: s.gear, to: s.gear + 1, t: 0, dur, type: typ, fromRpm: rpm() };
       s.shiftLog.push({ at: s.t, from: s.gear + 1, to: s.gear + 2, rpm: rpm() });
       return true;
@@ -2780,7 +2828,7 @@
         cut = rpm() >= launchRpm;
       } else {
         const since = s.t - s.launchT;
-        clutchCmd = typ === 'dsg' ? clamp(since / dl.launchDumpS, 0, 1) : clamp(since / (input.clutchDumpS ?? dl.launchDumpS), 0, 1);
+        clutchCmd = conv ? 1 : typ === 'dsg' ? clamp(since / dl.launchDumpS, 0, 1) : clamp(since / (input.clutchDumpS ?? dl.launchDumpS), 0, 1);
       }
       if (s.shift) {
         const sh = s.shift;
@@ -2791,6 +2839,10 @@
           clutchCmd = f < 0.2 ? 1 - f / 0.2 : f < 0.8 ? 0 : (f - 0.8) / 0.2;
           if (f >= 0.2 && s.gear === sh.from) s.gear = sh.to;
           if (f < 0.8) { if (flat) cut = true; else throttleOpen = false; }
+        } else if (sh.type === 'converter') {
+          // planetary automatic: no torque interruption, the ratio blends (see ratio()); the gear counts as
+          // changed once the oncoming band/clutch holds
+          if (sh.t >= sh.dur) s.gear = sh.to;
         } else if (sh.type === 'dsg') {
           // clutch-to-clutch: the other clutch takes the torque, ignition retard pulls the engine down
           if (s.gear === sh.from) s.gear = sh.to;
@@ -2801,10 +2853,10 @@
           cut = true;
           if (f >= 0.5 && s.gear === sh.from) {
             s.gear = sh.to;
-            const iTot = ENGINE_INERTIA + drivenI / (ratio() * ratio());
+            const iTot = engineI + drivenI / (ratio() * ratio());
             // dog engagement: engine and wheels meet at the momentum-conserving speed
-            const wwNew = (ENGINE_INERTIA * s.we * ratio() + drivenI * s.ww) / (ENGINE_INERTIA * ratio() * ratio() + drivenI);
-            s.clutchJ += 0.5 * ENGINE_INERTIA * (s.we * s.we - Math.pow(wwNew * ratio(), 2)) * 0.2;
+            const wwNew = (engineI * s.we * ratio() + drivenI * s.ww) / (engineI * ratio() * ratio() + drivenI);
+            s.clutchJ += 0.5 * engineI * (s.we * s.we - Math.pow(wwNew * ratio(), 2)) * 0.2;
             s.ww = wwNew; s.we = wwNew * ratio();
             void iTot;
           }
@@ -2820,7 +2872,7 @@
       // Pedal (driver) and traction control (ECU): both scale the positive engine torque.
       let pedal = clamp(input.pedal ?? 1, 0, 1);
       // While the clutch slips off the line the driver (or launch control) holds the engine near launch rpm.
-      if (s.launched && !s.lockedOnce && s.gear === 0) pedal = Math.min(pedal, clamp(1 - (rpm() - launchRpm - 250) / 900, 0.25, 1));
+      if (!conv && s.launched && !s.lockedOnce && s.gear === 0) pedal = Math.min(pedal, clamp(1 - (rpm() - launchRpm - 250) / 900, 0.25, 1));
       if (tcTarget && s.launched && s.v > 0.5) {
         const over = s.kappa - tcTarget;
         s.tc = clamp((s.tc ?? 1) - (over > 0 ? over * tcGain * h : -2.5 * h), 0.2, 1);
@@ -2908,6 +2960,20 @@
       s.fx = fx;
       // --- clutch / driveline
       const R = ratio();
+      let tClutch;
+      if (conv) {
+        // Torque converter: pump on the engine, turbine on the gearbox input. On the transbrake (not launched)
+        // the turbine is held and the engine loads up against the pump to its stall speed.
+        const wt = R * s.ww, cv = converterTorques(conv, s.we, wt);
+        const wheelLoad = fx * r + ty.rolling * fz * r;
+        s.we = Math.max((650 * Math.PI) / 30, s.we + ((tEng - cv.pumpNm) / engineI) * h);
+        if (s.launched) s.ww = Math.max(0, s.ww + ((cv.turbineNm * R * eta - wheelLoad) / drivenI) * h);
+        tClutch = cv.turbineNm;
+        s.convSr = cv.sr;
+        // power the pump takes in minus what the turbine gives off: heat in the fluid
+        s.convLossW = Math.max(0, cv.pumpNm * s.we - cv.turbineNm * wt);
+        s.convJ += s.convLossW * h;
+      } else {
       let cap = dl.clutchNm * s.engage * clamp(1 - Math.max(0, s.clutchC - 250) / 220, 0.5, 1);
       const slip = s.we - R * s.ww;
       // Launch: the driver (or launch control) slips the clutch to hold the engine near launch rpm until the
@@ -2917,13 +2983,12 @@
         // never more clutch torque than the tyres can put down at their peak slip (plus the wheels' spin-up)
         const overSlip = Math.max(0, s.kappa - ty.peakSlip) / ty.peakSlip;
         const traction = ((mu * fz * r) / (R * eta)) * (input.launchClutchFactor ?? launchMetering) * clamp(1 - 0.8 * overSlip, 0.5, 1);
-        cap = Math.min(cap, Math.max(0, tEng + (ENGINE_INERTIA * (s.we - wTarget)) / 0.04), traction);
+        cap = Math.min(cap, Math.max(0, tEng + (engineI * (s.we - wTarget)) / 0.04), traction);
         if (Math.abs(slip) < 3 && s.v > 0.5 && s.kappa < ty.peakSlip * 1.5) s.lockedOnce = true;
       }
       const wheelLoadTorque = fx * r + ty.rolling * fz * r;
-      let tClutch;
-      const lockedAccel = (tEng * R * eta - wheelLoadTorque) / (drivenI + ENGINE_INERTIA * R * R);
-      const lockedClutch = tEng - ENGINE_INERTIA * R * lockedAccel;
+      const lockedAccel = (tEng * R * eta - wheelLoadTorque) / (drivenI + engineI * R * R);
+      const lockedClutch = tEng - engineI * R * lockedAccel;
       if (Math.abs(slip) < 2 && Math.abs(lockedClutch) <= cap) {
         // locked: engine and wheels turn together
         s.ww = Math.max(0, s.ww + lockedAccel * h);
@@ -2931,12 +2996,13 @@
         tClutch = lockedClutch;
       } else {
         tClutch = Math.sign(slip || 1) * cap;
-        const we2 = s.we + ((tEng - tClutch) / ENGINE_INERTIA) * h;
+        const we2 = s.we + ((tEng - tClutch) / engineI) * h;
         const ww2 = Math.max(0, s.ww + ((tClutch * R * eta - wheelLoadTorque) / drivenI) * h);
         // slip heat into the clutch
         s.clutchJ += Math.abs(tClutch * slip) * h;
         if (Math.sign(we2 - R * ww2) !== Math.sign(slip) && s.engage > 0.5) { s.ww = ww2; s.we = ww2 * R; }
         else { s.we = Math.max((650 * Math.PI) / 30, we2); s.ww = ww2; }
+      }
       }
       s.clutchNm = tClutch;
       s.slipRpm = ((s.we - R * s.ww) * 30) / Math.PI;
@@ -2971,9 +3037,14 @@
         s.hopPeakNm = Math.max(s.hopPeakNm, Math.abs(hopK * s.hopTh));
       }
       if (!s.launched) { s.ww = 0; s.v = 0; s.kappa = 0; }
-      // clutch temperature: slip energy into the pressure/friction plates, slow cooling
-      const heatCap = dl.clutchKg * 460;
-      s.clutchC += (Math.abs(tClutch * (s.we - R * s.ww)) * h * 0.85) / heatCap - (s.clutchC - 60) * 0.004 * h;
+      if (conv) {
+        // converter: the slip heat goes into the transmission fluid (~8 kg ATF, ~2 kJ/kg K), cooled slowly
+        s.fluidC += (s.convLossW * h) / 16000 - (s.fluidC - 80) * 0.002 * h;
+      } else {
+        // clutch temperature: slip energy into the pressure/friction plates, slow cooling
+        const heatCap = dl.clutchKg * 460;
+        s.clutchC += (Math.abs(tClutch * (s.we - R * s.ww)) * h * 0.85) / heatCap - (s.clutchC - 60) * 0.004 * h;
+      }
       // tyre temperatures from the slip power at the contact patch, rolling hysteresis and cooling
       if (s.launched) tyreThermalStep(th, h, { slipPowerW: Math.abs(fx * slipV), tyres: drivenTyres, speedMs: s.v, ambientC, trackC, rollingW: ty.rolling * fz * s.v * 0.5 });
       s.tyreC = tyreGripTempC(th);
@@ -3022,7 +3093,8 @@
         n2oHp: s.n2oRamp * kit.shotHp * clamp(s.bottleKg / Math.max(0.1, kit.bottleKg * 0.12), 0, 1), bottleKg: s.bottleKg, n2oArmed: kit.shotHp > 0,
         hop: s.hopI, hopOsc: clamp(s.hopPhase, -1.2, 1.2), hopHz: hopW / (2 * Math.PI), hopZeta: s.hopZeta, hopS: s.hopS,
         knockNow: s.knockNow, knockEvents: s.knockEvents, kcRetardDeg: s.kcRetardDeg, knockDamagePct: s.knockDamage,
-        engage: s.engage, shifting: !!s.shift, limiter: s.cut, limiterS: s.limiterS, knockIndexMax: s.knockMax, fuelG: s.fuelG, launched: s.launched
+        engage: s.engage, shifting: !!s.shift, limiter: s.cut, limiterS: s.limiterS, knockIndexMax: s.knockMax, fuelG: s.fuelG, launched: s.launched,
+        converter: conv ? { speedRatio: s.convSr, fluidC: s.fluidC, heatKJ: s.convJ / 1000 } : null
       };
     }
     return { state: s, step, launch, requestShift, point, turbo, engineMap: em, driveline: dl, tyre: ty, tyreThermal: th, massKg: mass, launchRpm, revLimit, gears, finalDrive: fd, radiusM: r };
@@ -4257,6 +4329,10 @@
     simulateRaceRun,
     optimalShiftRpms,
     DRIVELINE,
+    converterTorques,
+    converterSpec,
+    transmissionFor,
+    drivelineFor,
     TYRE,
     correctionFactor,
     dynoLossKw,
