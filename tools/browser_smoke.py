@@ -392,14 +392,22 @@ def main() -> None:
         click(page, '[data-race-panel="setup"]')
         report['checks']['race_weekend_setup'] = page.locator('.v12-race-weekend-card').count() == 1
         report['checks']['heads_up_mode_active'] = page.locator('[data-race-mode="heads_up"].active').count() == 1
-        report['checks']['four_rival_levels'] = page.locator('[data-rival-level]').count() == 4
+        report['checks']['four_rival_levels'] = page.locator('.v12-rival-picker:not(.v12-roster-picker) [data-rival-level]').count() == 4
+        # real cars from the research roster: their own group, each with its numbers' kind, simulated on demand
+        report['checks']['roster_rivals_listed'] = page.locator('.v12-roster-picker [data-rival-level^="roster:"]').count() >= 6
+        roster_pass = page.evaluate("() => __EA888_DEBUG__.rosterRival('crc12_jackstand_240')")
+        report['roster_rival_pass'] = roster_pass
+        report['checks']['roster_rival_simulates'] = bool(roster_pass) and 7 < roster_pass['quarter'] < 12 and roster_pass['trapKmh'] > 150
         report['checks']['steering_setup_controls'] = page.locator('[data-vehicle="steeringSensitivityPct"]').count() == 1 and page.locator('[data-vehicle="steeringAssistPct"]').count() == 1
         click(page, '[data-rival-level="street"]')
         report['checks']['street_rival_selected'] = page.locator('[data-rival-level="street"].active').count() == 1
         click(page, '[data-race-mode="solo"]')
-        report['checks']['solo_mode_disables_rivals'] = page.locator('[data-race-mode="solo"].active').count() == 1 and page.locator('.v12-rival-picker.disabled').count() == 1
+        report['checks']['solo_mode_disables_rivals'] = page.locator('[data-race-mode="solo"].active').count() == 1 and page.locator('.v12-rival-picker').count() == page.locator('.v12-rival-picker.disabled').count() >= 1
         click(page, '[data-race-mode="heads_up"]')
         report['checks']['heads_up_restored'] = page.locator('[data-race-mode="heads_up"].active').count() == 1 and page.locator('[data-rival-level="street"].active').count() == 1
+        # the heads-up race below runs against a real build (the nitrous coupe from the roster)
+        click(page, '[data-rival-level="roster:crc12_jackstand_240"]')
+        report['checks']['roster_rival_selected'] = page.locator('[data-rival-level="roster:crc12_jackstand_240"].active').count() == 1
         click(page, '[data-race-panel="telemetry"]')
         report['checks']['telemetry_empty_before_run'] = page.locator('.v12-telemetry-empty').count() == 1
         click(page, '[data-race-panel="tree"]')
@@ -533,6 +541,9 @@ def main() -> None:
         report['checks']['drag_completed'] = ('HEADS-UP WIN' in overview_text or 'HEADS-UP LOSS' in overview_text)
         last_drag = page.evaluate("window.__EA888_DEBUG__.lastDrag()")
         report['checks']['heads_up_result_persisted'] = last_drag.get('raceMode') == 'heads_up' and bool(last_drag.get('opponentName')) and isinstance(last_drag.get('won'), bool) and isinstance(last_drag.get('raceDeltaS'), (int, float))
+        # the roster opponent ran that pass too: its own record, through the same wear rule as the player
+        roster_record = page.evaluate("() => __EA888_DEBUG__.rosterRival('crc12_jackstand_240').record")
+        report['checks']['roster_opponent_record'] = roster_record['runs'] >= 1 and roster_record['wear']['transmission'] > 0
         report['heads_up_result'] = {k:last_drag.get(k) for k in ('opponentName','won','raceDeltaS','reward','quarter','opponentQuarter','finishTotalTime','opponentFinishTotalTime','maxClutchTempC','maxGearboxTempC','drivelineStress','limiterTimeS')}
         report['drag_timeslip'] = overview_text
         page.wait_for_timeout(120)

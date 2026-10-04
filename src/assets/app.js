@@ -77,12 +77,35 @@
   const v10TrackVisual = { canvas:null, ctx:null, width:0, height:0, dpr:1, horizonImage:null, horizonReady:false, lastDistance:0 };
   // Rivals are real builds: a preset with their own hardware, tyres and gearbox, run on the same vehicle
   // model as the player (sim.js createRaceRuntime) with a driver model of their skill.
-  const RIVALS = Object.freeze({
+  const BASE_RIVALS = Object.freeze({
     club: { id:'club', name:'Clubman Scirocco', tag:'CLUB', preset:'stock', mods:{ tune:{ boostLowBar:1.1, boostMidBar:1.1, boostHighBar:.85 }, selections:{ transmission:'dq250' } }, massKg:1370, reactionMin:.18, reactionMax:.28, skill:.6, prep:false, tire:'uhp', reward:250, color:'#f4c66d', description:'Stage-1 CAWB op DSG en straatbanden: een rustige instaprivaal.' },
     street: { id:'street', name:'Night Shift R', tag:'STREET', preset:'k04', mods:{ selections:{ transmission:'dq250' } }, massKg:1340, reactionMin:.11, reactionMax:.19, skill:.8, prep:true, tire:'semislick', reward:500, color:'#ff7c55', description:'K04-064 op DSG met semi-slicks: sterk en consistent.' },
     pro: { id:'pro', name:'Redline Works', tag:'PRO', preset:'randy', mods:{ selections:{ fuel:'e85', transmission:'sequential' }, rebaseMap:true }, massKg:1290, reactionMin:.055, reactionMax:.115, skill:.9, prep:true, tire:'drag_radial', reward:900, color:'#ff4f69', description:'K04-hybrid op E85 met sequentiële bak en drag radials.' },
     outlaw: { id:'outlaw', name:'Outlaw 2.0T', tag:'OUTLAW', preset:'hx52', mods:{ vehicle:{ drivetrain:'AWD' } }, massKg:1240, reactionMin:.025, reactionMax:.075, skill:.97, prep:true, tire:'pro_radial', reward:1500, color:'#d15cff', description:'HX52 op E85, vierwielaandrijving, licht en bijna foutloos.' }
   });
+  // Real cars from the research roster (data/roster): their own dyno curve, converter, gearbox, weight and tyres
+  // on the same race runtime (sim.js rosterState). The names are the neutral display names; every number shown
+  // says whether it was measured, stated, estimated or modeled.
+  const KIND_LABEL = { measured: 'gemeten', stated: 'opgegeven', estimate: 'geschat', modeled: 'gemodelleerd' };
+  const ROSTER_COLORS = ['#7fd1ff', '#9be37a', '#ffd166', '#f78c6b', '#c792ea', '#5ad1b8', '#ff9fbf'];
+  function rosterRivalProfile(o, i) {
+    const spec = C.rosterSpec(o.id), v = spec.values, car = C.rosterCarData(o.id);
+    const realEt = car?.bestPass?.et?.value, realMph = car?.bestPass?.mph?.value;
+    const kind = x => KIND_LABEL[x?.kind] || x?.kind || '';
+    const pk = Math.round(v.enginePowerHp.value), kg = Math.round(spec.massKg);
+    return {
+      id: `roster:${o.id}`, rosterId: o.id, roster: true, name: o.displayName, tag: 'ECHT',
+      reactionMin: .03, reactionMax: .08, skill: spec.driverSkill, prep: true, tire: spec.tire.compound,
+      reward: Math.round(C.clamp((12 - (realEt || 11)) * 400, 300, 3000) / 50) * 50, color: ROSTER_COLORS[i % ROSTER_COLORS.length],
+      description: `${pk} pk ${kind(v.enginePowerHp)} · ${kg} kg ${kind(v.weightLb)} · ${spec.transmission.name} · ${C.TIRE_MAP[spec.tire.compound]?.name || spec.tire.compound}`
+        + (realEt ? ` · echt ${realEt.toFixed(2)} s${realMph ? ` @ ${realMph} mph` : ''}` : ' · geen echte run bekend')
+    };
+  }
+  const ROSTER_RIVALS = (() => {
+    try { return Object.fromEntries(C.rosterOpponents().map((o, i) => [`roster:${o.id}`, rosterRivalProfile(o, i)])); }
+    catch (e) { console.error('roster rivals', e); return {}; }
+  })();
+  const RIVALS = Object.freeze({ ...BASE_RIVALS, ...ROSTER_RIVALS });
   const TELEMETRY_COLORS = Object.freeze({ speed:'#ffad20', rpm:'#f4f6f8', boost:'#4cc9ff', wheelspin:'#ff526b', lane:'#bd77ff' });
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -129,6 +152,10 @@
     return { ambientTempC: v.ambientTempC, trackTempC: v.trackTempC, altitudeM: v.altitudeM, humidityPct: v.humidityPct, headwindKmh: v.headwindKmh };
   }
   function rivalState(profile) {
+    if (profile.rosterId) {
+      const cond = Object.fromEntries(Object.entries(rivalConditions()).filter(([, v]) => v != null));
+      return C.rosterState(profile.rosterId, { ...cond, preparedTrack: profile.prep });
+    }
     let rs = C.applyPreset(C.blankState(), profile.preset);
     const m = profile.mods || {};
     rs.selections = { ...rs.selections, ...(m.selections || {}) };
@@ -139,17 +166,19 @@
     return rs;
   }
   function rivalPass(profile) {
-    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, vehicle: C.VEHICLE_MODEL_VERSION, c: rivalConditions() });
+    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, vehicle: C.VEHICLE_MODEL_VERSION, roster: profile.rosterId ? C.ROSTER_VERSION : undefined, c: rivalConditions() });
     if (rivalCache.has(key)) return rivalCache.get(key);
     try {
       const stored = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}');
       if (stored[key]) { rivalCache.set(key, stored[key]); return stored[key]; }
     } catch (e) { /* storage unavailable */ }
     const rs = rivalState(profile);
-    const dyno = C.simulateEngine(rs, { noise: false });
+    // a roster car's dyno is its measured curve (sim.js rosterSpec), not the EA888 combustion model
+    const spec = profile.rosterId ? C.rosterSpec(profile.rosterId) : null;
+    const dyno = spec ? { peakHp: spec.values.enginePowerHp.value, peakTorqueNm: spec.engine.peakTorqueNm } : C.simulateEngine(rs, { noise: false });
     // rivals do a good burnout: their tyres are at the compound's optimum at the launch
     const pass = C.simulateRaceRun(rs, { reactionTime: 0, driverSkill: profile.skill, tyreTempC: (C.TYRE[profile.tire] || C.TYRE.uhp).optC });
-    const entry = { quarter: pass.quarter, trapKmh: pass.trapKmh, sixtyFt: pass.sixtyFt, eighth: pass.eighth, launchToFinishS: pass.launchToFinishS, rolloutS: pass.rolloutS, trace: pass.trace, peakHp: dyno.peakHp, peakTorqueNm: dyno.peakTorqueNm, massKg: pass.totalMassKg };
+    const entry = { limiterTimeS: pass.limiterTimeS, wheelspinPct: pass.wheelspinPct, hopWearPct: pass.hopWearPct, knockDamagePct: pass.knockDamagePct, quarter: pass.quarter, trapKmh: pass.trapKmh, sixtyFt: pass.sixtyFt, eighth: pass.eighth, launchToFinishS: pass.launchToFinishS, rolloutS: pass.rolloutS, trace: pass.trace, peakHp: dyno.peakHp, peakTorqueNm: dyno.peakTorqueNm, massKg: pass.totalMassKg };
     rivalCache.set(key, entry);
     try {
       const stored = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}');
@@ -166,8 +195,15 @@
     idle(() => { try { if (currentCompletedDyno()) C.buildEngineMap(state); if (raceIsHeadsUp()) rivalPass(selectedRival()); } catch (e) { console.error('warm race caches', e); } });
   }
   // What is known about a rival: its build, and its measured numbers once its pass has been simulated.
+  // The rival's simulated pass once it has been run (memory or storage), else null: nothing is shown before.
+  function rivalSimEntry(profile) {
+    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, vehicle: C.VEHICLE_MODEL_VERSION, roster: profile.rosterId ? C.ROSTER_VERSION : undefined, c: rivalConditions() });
+    let e = rivalCache.get(key);
+    if (!e) { try { e = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}')[key]; } catch (err) { e = null; } }
+    return e || null;
+  }
   function rivalSpec(profile) {
-    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, vehicle: C.VEHICLE_MODEL_VERSION, c: rivalConditions() });
+    const key = JSON.stringify({ id: profile.id, model: C.ENGINE_MODEL_VERSION, vehicle: C.VEHICLE_MODEL_VERSION, roster: profile.rosterId ? C.ROSTER_VERSION : undefined, c: rivalConditions() });
     let e = rivalCache.get(key);
     if (!e) { try { e = JSON.parse(localStorage.getItem(RIVAL_CACHE_KEY) || '{}')[key]; } catch (err) { e = null; } }
     return e ? `${Math.round(e.peakHp)} pk · ${e.quarter.toFixed(2)} s @ ${Math.round(e.trapKmh)} km/u` : profile.description;
@@ -3489,8 +3525,12 @@
         ${raceAdviceCard()}
         ${gripTuneCard()}
         <div class="v12-rival-picker ${headsUp?'':'disabled'}">
-          ${Object.values(RIVALS).map(r=>`<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${esc(rivalSpec(r))} · RT ${r.reactionMin.toFixed(3)}–${r.reactionMax.toFixed(3)} · winst ${euro(r.reward)}</small></button>`).join('')}
+          ${Object.values(BASE_RIVALS).map(r=>`<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${esc(rivalSpec(r))} · RT ${r.reactionMin.toFixed(3)}–${r.reactionMax.toFixed(3)} · winst ${euro(r.reward)}</small></button>`).join('')}
         </div>
+        ${Object.keys(ROSTER_RIVALS).length ? `<div class="section-head small v12-roster-head"><div><span class="eyebrow">Echte builds</span><h3>Auto's uit de video's</h3><p class="muted">Eigen motorkromme, converter, bak, gewicht en banden op dezelfde simulatie. Namen zijn neutraal en aanpasbaar (data/roster/display-names.json).</p></div></div>
+        <div class="v12-rival-picker v12-roster-picker ${headsUp?'':'disabled'}">
+          ${Object.values(ROSTER_RIVALS).map(r=>{ const rec=C.rosterRecord(state,r.rosterId), sim=rivalSimEntry(r); return `<button class="${rival.id===r.id?'active':''}" data-rival-level="${r.id}" ${headsUp?'':'disabled'}><span>${r.tag}</span><b>${esc(r.name)}</b><small>${esc(r.description)}</small><small>${sim ? `sim ${sim.quarter.toFixed(2)} s @ ${Math.round(sim.trapKmh / 1.609344)} mph · ` : ''}${rec.runs} runs tegen jou${rec.out?' · kapot, reviseert voor de volgende race':''} · winst ${euro(r.reward)}</small></button>`; }).join('')}
+        </div>` : ''}
         <div class="vehicle-grid v4-vehicle-grid">
           <div class="card">
             <span class="eyebrow">Aandrijflijn</span><h3>Platform & massa</h3>
@@ -5503,6 +5543,13 @@
 
   function commitV7DragResult(result){
     applyRaceTurboWear();
+    // a roster opponent ran this pass too: its own record, same wear rule and service schedule as the player
+    const opp = raceGame?.run?.opponent;
+    if (opp?.profile?.rosterId) {
+      const done = C.applyRosterRun(state, opp.profile.rosterId, { ...opp.result, missedShifts: 0, drivelineStress: 0 });
+      state.rosterOpponents = done.rosterOpponents;
+      for (const ev of done.events) pushHistory({ type: 'rival', label: `${opp.profile.name}: ${ev}` });
+    }
     // nitrous used on this pass comes out of the bottle
     if (result.n2oUsedKg > 0 && state.nitrous) state.nitrous.kg = Math.max(0, Number(state.nitrous.kg || 0) - result.n2oUsedKg);
     if (result.headLiftS > .05) pushHistory({ type: 'damage', label: `Head-lift in de race (${result.headLiftS.toFixed(1)} s): de koppakking houdt de cilinderdruk niet` });
@@ -5526,8 +5573,10 @@
       if(Array.isArray(trace)&&trace.length>20)state.ghost={drivetrain:key,quarter:result.quarter,at:result.measuredAt,trace:trace.slice(0,900)};
       pushHistory({type:'record',label:`Nieuw ${key}-record: ${result.quarter.toFixed(3)} s`,et:result.quarter,trap:result.trapKmh});
     }
-    state.wear.engine=clamp(state.wear.engine+.05+Math.max(0,result.quarter < 10 ? .08 : 0)+Number(result.limiterTimeS||0)*.025,0,100);
-    state.wear.transmission=clamp(state.wear.transmission+.10+result.wheelspinPct*.002+result.missedShifts*.025+Number(result.drivelineStress||0)*.003+Math.max(0,Number(result.maxGearboxTempC||0)-115)*.001,0,100);
+    // the pass's own wear: one rule for the player and every opponent (sim.js raceWearFromResult)
+    const passWear = C.raceWearFromResult({ ...result, hopWearPct: 0, knockDamagePct: 0 });
+    state.wear.engine=clamp(state.wear.engine+passWear.wear.engine,0,100);
+    state.wear.transmission=clamp(state.wear.transmission+passWear.wear.transmission,0,100);
     state.service.oilAgeKm+=35;
     if (result.reward > 0) {
       state.bank += result.reward;
@@ -5686,6 +5735,20 @@
     </section>`;
   }
 
+  // Real cars from the research (roster-data.js), with where every number came from.
+  function rosterDataCards() {
+    const R = C.ROSTER;
+    if (!R) return '';
+    const kind = x => KIND_LABEL[x?.kind] || '';
+    const src = s => (s && s.video ? `${esc(s.video)}${s.t ? ` @ ${esc(s.t)}` : ''}` : '');
+    const val = (x, unit, d = 0) => (x && x.value != null ? `${Number(x.value).toFixed(d)}${unit} <em>${kind(x)}</em>` : '—');
+    const cars = R.cars.filter(c => c.opponent?.usable).map(c => {
+      const o = c.opponent, rec = C.rosterRecord(state, c.id), bp = c.bestPass;
+      return `<div class="run-row"><span>${esc(c.group || '')}</span><div><b>${esc(c.displayName)}</b><small>${val(o.weightLb, ' lb')} · ${val(o.powerHp, ' pk')}${o.powerHp?.basis === 'wheel' ? ' (wiel)' : o.powerHp?.basis === 'unknown' ? ' (wiel/krukas niet gezegd)' : ''}${bp?.et?.value != null ? ` · echt ${bp.et.value.toFixed(2)} s @ ${bp.mph?.value ?? '—'} mph, 60 ft ${bp.sixtyFt?.value ?? '—'}` : ''} · ${rec.runs} runs tegen jou${rec.services ? ` · ${rec.services}× onderhoud` : ''}${(o.notes || []).length ? `<br>${esc(o.notes.join(' · '))}` : ''}</small></div></div>`;
+    }).join('');
+    return `<div class="card roster-card"><div class="section-head small"><div><span class="eyebrow">Echte auto's · research ${esc(R.source.commit)}</span><h2>Tegenstanders uit de video's</h2><p class="muted">Gewicht en vermogen met hun soort: gemeten, opgegeven, geschat of gemodelleerd (dan met de afleiding in de data). Namen zijn neutraal; aanpassen in data/roster/display-names.json.</p></div></div><div class="run-table">${cars}</div></div>
+`;
+  }
   function renderData() {
     const r = state.lastDyno;
     const clean = currentDyno();
@@ -5711,6 +5774,8 @@
         <div><span>FWD-record</span><b>${state.records?.FWD ? `${state.records.FWD.quarter.toFixed(3)} s` : '—'}</b><small>${state.records?.FWD ? `${state.records.FWD.trapKmh.toFixed(1)} km/u` : 'geen geldige pass'}</small></div>
         <div><span>AWD-record</span><b>${state.records?.AWD ? `${state.records.AWD.quarter.toFixed(3)} s` : '—'}</b><small>${state.records?.AWD ? `${state.records.AWD.trapKmh.toFixed(1)} km/u` : 'geen geldige pass'}</small></div>
       </div>
+
+      ${rosterDataCards()}
 
       ${r ? `<div class="card"><div class="section-head small"><div><span class="eyebrow">Laatste dynolog</span><h2>${esc(dynoHeadline(r))}</h2></div>${scoreBadge(r)}</div>
         <div class="technical-grid"><div><span>Status</span><b>${esc(r.rating || '')}${dynoIsPartial(r) ? ` · ${esc(dynoScopeLabel(r))}` : ''}</b></div><div><span>Turbo</span><b>${esc(r.turboName)} · ${r.compressorMm} mm</b></div><div><span>Knock-index</span><b>${num(r.maxKnockRisk,2)}</b></div><div><span>Fuel duty</span><b>${num(r.maxFuelDuty,1)}%</b></div><div><span>Turbo-load / as</span><b>${num(r.maxTurboLoad,1)}% · ${Math.round(r.maxTurboShaftRpm/1000)}k rpm</b></div><div><span>Thermisch</span><b>${num(r.maxIatC,0)} / ${num(r.maxEgtC,0)} / ${num(r.maxOilTempC,0)} °C</b></div></div>
@@ -6522,6 +6587,7 @@
     audio: () => audioDiagnostics(),
     turbo: () => raceGame ? { phase: raceGame.phase, snap: raceGame.run?.turboSnap || raceGame.turboSnap || null, als: raceGame.alsInfo ? { enabled: raceGame.alsInfo.enabled, mode: raceGame.alsInfo.mode } : null, flames: (raceGame.flameLog || []).slice(-30), wear: raceGame.turbo ? cloneJson(raceGame.turbo.state.wear) : null, alsSeconds: raceGame.turbo?.state.alsSeconds || 0 } : null,
     stateWear: () => ({ wear: cloneJson(state.wear), damage: cloneJson(state.damage) }),
+    rosterRival: id => { const p = RIVALS[`roster:${id}`]; if (!p) return null; const e = rivalPass(p); return { quarter: e.quarter, trapKmh: e.trapKmh, sixtyFt: e.sixtyFt, peakHp: e.peakHp, record: C.rosterRecord(state, id) }; },
     enterStageForTest: () => { if (!raceGame?.open) return false; enterV7Stage(); return true; },
     stageState: () => raceGame?.stage ? { progress: raceGame.stage.progress, staged: raceGame.stage.staged, rpm: raceGame.stage.rpm, treeStarted: raceGame.stage.treeStarted, green: !!raceGame.stage.green, launchArmed: !!raceGame.stage.launchArmed, launched: !!raceGame.stage.launched, launchFromRpm: raceGame.stage.launchFromRpm || 0 } : null,
     raceReaction: () => raceGame?.run ? { reactionTime: raceGame.run.reactionTime, redLight: raceGame.run.redLight, startRpm: raceGame.run.startRpm, launchTargetRpm: Number(state.tune.launchRpm || 4200) } : null,

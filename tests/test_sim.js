@@ -214,6 +214,8 @@ const timingSuite = require('./test_timing.js');
 // Roster cars on the race runtime, and against their real passes.
 const rosterRuntimeSuite = require('./test_roster_runtime.js');
 const rosterCalibrationSuite = require('./test_roster_calibration.js');
+// Roster cars as opponents: same wear rule, service intervals, career event.
+const rosterOpponentSuite = require('./test_roster_opponents.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -252,7 +254,8 @@ const report = {
   converter: converterSuite,
   timing: timingSuite,
   rosterRuntime: rosterRuntimeSuite,
-  rosterCalibration: rosterCalibrationSuite
+  rosterCalibration: rosterCalibrationSuite,
+  rosterOpponents: rosterOpponentSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

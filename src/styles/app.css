@@ -1235,3 +1235,11 @@ body {
 .backup-card p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .backup-card .why { color: var(--muted); font-size: 11px; }
+
+/* Real cars from the research roster (data page, rival picker) */
+.roster-card details { border-top: 1px solid rgba(255, 255, 255, .06); padding: 8px 0; }
+.roster-card details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; min-height: 32px; display: flex; align-items: center; }
+.roster-card .log-row small, .roster-card .run-row small { white-space: normal; line-height: 1.45; }
+.roster-card em { font-style: normal; color: var(--muted); font-size: .92em; }
+.v12-roster-head { margin-top: 14px; }
+.v12-roster-picker button small { white-space: normal; }

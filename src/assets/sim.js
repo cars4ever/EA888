@@ -310,6 +310,8 @@
       records: { FWD: null, RWD: null, AWD: null },
       achievements: {},
       career: defaultCareer(),
+      // what the roster opponents have been through in this save (runs, wear, damage, services)
+      rosterOpponents: {},
       buildSlots: [null, null, null],
       settings: { sound: true, haptics: true, reducedMotion: false, graphics3d: true, engineSound: 'synth', mix: { engine: 100, turbo: 100, als: 100, tyre: 100, rival: 100, ui: 100 } },
       history: []
@@ -398,6 +400,7 @@
     s.lastDyno = sanitizeDynoResult(input.lastDyno);
     s.dragRuns = Array.isArray(input.dragRuns) ? input.dragRuns.slice(0, 30) : [];
     s.history = Array.isArray(input.history) ? input.history.slice(0, 60) : [];
+    s.rosterOpponents = input.rosterOpponents && typeof input.rosterOpponents === 'object' ? { ...input.rosterOpponents } : {};
     s.version = 12;
     // v1.3.0 generic turbos were replaced by the Precision catalogue: map old ids to the nearest model.
     if (LEGACY_TURBO_IDS[s.selections.turbo]) s.selections.turbo = LEGACY_TURBO_IDS[s.selections.turbo];
@@ -3398,6 +3401,7 @@
   // (measured / stated / estimate) or 'modeled' with the rule that made it.
   const LB_KG = 0.45359237, HP_W = 745.7, LBFT_NM = 1.3558179, MPH_MS = 0.44704;
   const rosterCars = () => (RosterData && RosterData.cars) || [];
+  const ROSTER_VERSION = RosterData ? String(fnv1a(JSON.stringify([RosterData.source, RosterData.rules, RosterData.cars.map(c => [c.id, c.opponent, c.facts])]))) : '0';
   const rosterRules = () => (RosterData && RosterData.rules) || null;
   function rosterCarData(id) { return rosterCars().find(c => c.id === id) || null; }
   const modeledValue = (value, unit, reason, extra = {}) => ({ value, unit, kind: 'modeled', reason, ...extra });
@@ -3630,6 +3634,57 @@
   // The roster cars that can race (both weight and power known or derived), with their display names.
   function rosterOpponents() {
     return rosterCars().filter(c => c.opponent && c.opponent.usable).map(c => ({ id: c.id, displayName: c.displayName, group: c.group }));
+  }
+
+  // ---- Wear from one pass: the same rule for the player and every opponent --------------------------------
+  // Engine and gearbox wear, and engine damage, from what a pass actually did (ET, limiter time, wheelspin, shift
+  // quality, driveline stress, gearbox temperature, hop, knocking cycles). The player's car and a roster opponent
+  // both go through this one function.
+  function raceWearFromResult(r) {
+    const engine = 0.05 + (r.quarter < 10 ? 0.08 : 0) + Number(r.limiterTimeS || 0) * 0.025 + Number(r.knockDamagePct || 0) * 0.5;
+    const transmission = 0.1 + Number(r.wheelspinPct || 0) * 0.002 + Number(r.missedShifts || 0) * 0.025 + Number(r.drivelineStress || 0) * 0.003
+      + Math.max(0, Number(r.maxGearboxTempC || 0) - 115) * 0.001 + Number(r.hopWearPct || 0);
+    return { wear: { engine, transmission }, damage: { engine: Number(r.knockDamagePct || 0) } };
+  }
+  // A roster opponent's record in this save. Out = engine or gearbox worn or damaged through (100 %), the same
+  // line the player's car cannot race past; the team then rebuilds before its next race.
+  function rosterRecord(inputState, id) {
+    const rec = (inputState.rosterOpponents || {})[id] || {};
+    return { runs: 0, sinceService: 0, services: 0, wear: { engine: 0, transmission: 0 }, damage: { engine: 0 }, out: false, log: [], ...rec,
+      wear: { engine: 0, transmission: 0, ...(rec.wear || {}) }, damage: { engine: 0, ...(rec.damage || {}) }, log: Array.isArray(rec.log) ? rec.log.slice(0, 12) : [] };
+  }
+  // The service interval the research gives for a car ("replace every 25-30 runs"): the team services at the
+  // middle of the range. Only intervals in runs are used; nothing is made up for cars without one.
+  function rosterServiceInterval(id) {
+    const car = rosterCarData(id);
+    for (const m of (car && car.maintenance) || []) {
+      const hit = /every\s+(\d+)\s*(?:-|to|–)\s*(\d+)\s+runs/i.exec(m.item || '');
+      if (hit) return { runs: Math.round((Number(hit[1]) + Number(hit[2])) / 2), item: m.item, priceUsd: m.priceUsd, source: m.source };
+    }
+    return null;
+  }
+  // One pass of a roster opponent: the same wear rule as the player's, its own service schedule, and the
+  // rebuild when it is out. Works on the save's rosterOpponents only (the player's state is not touched) and
+  // returns the new map, the record and what happened (for the history).
+  function applyRosterRun(inputState, id, pass) {
+    const rec = rosterRecord(inputState || {}, id), events = [];
+    if (rec.out) {
+      rec.out = false; rec.wear = { engine: 0, transmission: 0 }; rec.damage = { engine: 0 }; rec.sinceService = 0; rec.services += 1;
+      events.push('gereviseerd na schade');
+    }
+    const w = raceWearFromResult(pass || {});
+    rec.runs += 1; rec.sinceService += 1;
+    rec.wear.engine = clamp(rec.wear.engine + w.wear.engine, 0, 100);
+    rec.wear.transmission = clamp(rec.wear.transmission + w.wear.transmission, 0, 100);
+    rec.damage.engine = clamp(rec.damage.engine + w.damage.engine, 0, 100);
+    const svc = rosterServiceInterval(id);
+    if (svc && rec.sinceService >= svc.runs) {
+      rec.sinceService = 0; rec.services += 1; rec.wear.engine = 0;
+      events.push(`onderhoud: ${svc.item}`);
+    }
+    if (rec.wear.engine >= 100 || rec.wear.transmission >= 100 || rec.damage.engine >= 100) { rec.out = true; events.push('kapot: eerst reviseren'); }
+    rec.log = [...events.map(e => ({ run: rec.runs, event: e })), ...rec.log].slice(0, 12);
+    return { rosterOpponents: { ...((inputState && inputState.rosterOpponents) || {}), [id]: rec }, record: rec, events };
   }
 
   // Stationary ALS hold at the ALS target rpm (tune-page test), sampled every 0.1 s.
@@ -4420,7 +4475,12 @@
     { id: 'pro_bracket', name: 'Pro Bracket', format: 'bracket', rounds: 4, entry: 800, prize: 6500, rep: 45, repRequired: 60, prep: true, rivals: ['street', 'pro', 'pro', 'outlaw'],
       rules: {}, detail: 'Open klasse met dial-in. Vier rondes, geen fouten toegestaan.' },
     { id: 'outlaw_20', name: 'Outlaw 2.0', format: 'heads_up', rounds: 3, entry: 1500, prize: 14000, rep: 80, repRequired: 110, prep: true, rivals: ['pro', 'outlaw', 'outlaw'],
-      rules: { maxDisplacementCc: 2100 }, detail: 'Heads-up tegen de snelste 2.0-liters. Alles mag.' }
+      rules: { maxDisplacementCc: 2100 }, detail: 'Heads-up tegen de snelste 2.0-liters. Alles mag.' },
+    // Real cars from the research roster (sim: rosterState). Bracket racing: a 9-second V8 and your Scirocco
+    // race on their own dial-ins, so it is consistency against real builds, not power.
+    { id: 'real_builds', name: 'Echte builds', format: 'bracket', rounds: 3, entry: 600, prize: 5200, rep: 40, repRequired: 40, prep: true,
+      rivals: ['roster:crc3_240sx_hatch', 'roster:lumberjack', 'roster:giveaway_zr1_sep'],
+      rules: {}, detail: "Dial-in tegen echte auto's uit de video's, gesimuleerd met hun eigen build." }
   ]);
   const CAREER_EVENT_MAP = Object.fromEntries(CAREER_EVENTS.map(e => [e.id, e]));
   function defaultCareer() {
@@ -4444,7 +4504,7 @@
     const ev = CAREER_EVENT_MAP[eventId], rivalId = ev.rivals[Math.min(roundIdx, ev.rivals.length - 1)];
     const rand = mulberry32(fnv1a(`${eventId}|${roundIdx}|${seed}`));
     const base = rivalPasses?.[rivalId];
-    const skill = { club: 0.6, street: 0.8, pro: 0.9, outlaw: 0.97 }[rivalId] ?? 0.8;
+    const skill = { club: 0.6, street: 0.8, pro: 0.9, outlaw: 0.97 }[rivalId] ?? (String(rivalId).startsWith('roster:') ? rosterRules()?.driver?.skill ?? 0.9 : 0.8);
     const spread = 0.02 + (1 - skill) * 0.12;
     const etScale = base ? 1 + ((rand() - 0.5) * 2 * spread) / base.quarter : 1;
     const reactionTime = clamp(0.02 + (1 - skill) * 0.25 + (rand() - 0.3) * 0.08, -0.02, 0.45);
@@ -4664,6 +4724,11 @@
     createTimingSystem,
     rosterSpec,
     rosterState,
+    ROSTER_VERSION,
+    raceWearFromResult,
+    rosterRecord,
+    rosterServiceInterval,
+    applyRosterRun,
     rosterOpponents,
     rosterCarData,
     curveEngineMap,
