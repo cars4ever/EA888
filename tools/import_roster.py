@@ -378,6 +378,111 @@ def build_car(c, lk, dyno_rows):
     return car
 
 
+# ---- Parts catalogue from calibration/prices.csv ---------------------------------------------------------
+# Budget-board category totals (item = power_adder / ecu / transmission / purchase) are sums of rows that are
+# also listed one by one, so they are left out; so are whole cars, repairs and quotes (kept apart with the
+# reason). A board line that repeats a parts line of the same car (same price, overlapping words) is merged
+# into it. Only a part that is the same as a game part is linked to its slot; the rest is listed as not
+# fitting the EA888/Scirocco slots (yet), with why.
+CATEGORY_TOTALS = {'power_adder', 'ecu', 'transmission', 'purchase'}
+SLOT_LINKS = {
+    # the same turbo the game sells new as pt7675 (Precision 7675, T4 1.15 divided)
+    'Precision 7675 remanufactured turbo, T4, 1.15 divided': ('turbo', 'pt7675', 'zelfde Precision 7675-wielset (76 mm compressor, 75 mm turbine) als in het spel; deze heeft een T4 1.15 divided-turbinebehuizing'),
+}
+CONDITIONS = [
+    ('scratch_and_dent', r'scratch[- ]and[- ]dent'),
+    ('sponsored', r'sponsor'),
+    ('remanufactured', r'\breman|rebuilt'),
+    ('used', r'\bused\b|marketplace|junk|core\b|blown|damaged|from friend|scrap|reused|trade|fair market|second car|parts car|donor'),
+    ('new', r'^new\b|\bbrand new|[(,] ?new\)|\bnew (fti|carburetor|connecting|transmission)'),
+]
+GROUPS = [
+    ('motor (V8)', r'\bLS\b|coyote|engine|block|rotating|heads?\b|cam(shaft)?\b|lifters|pushrods|rockers|timing|valve cover|head stud|main stud|connecting rod|phaser|head gasket|spark plug'),
+    ('automaat en converter', r'powerglide|turbo 400|th400|converter|bellhousing|trans(mission)? cooler|transbrake|shifter'),
+    ('turbo en inlaat', r'turbo|wastegate|intercooler|piping|intake|air cleaner'),
+    ('brandstof', r'fuel|injector|carb|pump|regulator|fitting|hose|methanol'),
+    ('lachgas', r'nitrous'),
+    ('ophanging en achteras', r'rear end|8\.8|9-inch|axle|caltrac|coilover|cow tracks|bushing|steering'),
+    ('wielen en banden', r'wheel|tire|tyre|radial|lug'),
+    ('koeling', r'radiator|fan|cooler'),
+    ('ECU en elektra', r'holley|terminator|ecu|relay|ignition|sensor|switch panel|sending unit'),
+]
+
+
+def words(t):
+    return {w for w in re.findall(r'[a-z0-9]+', (t or '').lower()) if len(w) > 2}
+
+
+def build_catalog(cal):
+    rows = read_csv(cal / 'prices.csv')
+    parts, apart, merged = [], [], []
+    for r in rows:
+        item, path = (r['item'] or '').strip(), r['path'] or ''
+        price = num(r['price_usd'])
+        src = {'video': r['video_id'], 't': r['t'] or None}
+        if item in CATEGORY_TOTALS:
+            apart.append({'item': item, 'priceUsd': price, 'carId': r['car_id'], 'source': src,
+                          'reason': 'categorietotaal van een budgetbord (de onderdelen staan los in de lijst)'})
+            continue
+        if path.startswith(('purchase', 'junkyard_purchase')) or re.search(r'\bcar\b.*delivered|\(auction|^\d{4} .*(camino|truck)| truck$|roller|\bhatch \(no engine', item, re.I) \
+                or re.match(r"^(First car|Second car|S10 truck|240SX hatch|Mustang \(auction)", item):
+            apart.append({'item': item, 'priceUsd': price, 'carId': r['car_id'], 'source': src, 'reason': 'een hele auto, geen onderdeel (voor fase 2: koopbare auto\'s)'})
+            continue
+        if path.startswith(('failures', 'reference_prices')) or re.search(r'DISALLOWED|quote, not bought|comparison|owed between crew', item, re.I):
+            apart.append({'item': item, 'priceUsd': price, 'carId': r['car_id'], 'source': src,
+                          'reason': 'reparatie, offerte of vergelijking, geen te koop onderdeel' if not re.search('DISALLOWED', item) else 'niet gemonteerd (afgekeurd)'})
+            continue
+        label = re.fullmatch(r'[a-z_]+', item) is not None
+        cond = None if label else next((c for c, pat in CONDITIONS if re.search(pat, item, re.I)), None)
+        retail = None
+        m = re.search(r'(?:half of|of) \$([\d,]+) (?:retail|new)|retail \$([\d,]+)|\$([\d,]+) new\)', item)
+        if m:
+            retail = float(next(g for g in m.groups() if g).replace(',', ''))
+        group = next((g for g, pat in GROUPS if re.search(pat, item, re.I)), 'overig')
+        entry = {'item': item, 'priceUsd': price, 'askingUsd': num(r['asking_usd']), 'retailUsd': retail, 'condition': cond,
+                 'group': group, 'carId': r['car_id'], 'source': src, 'note': r['note'] or None, 'fromBudgetBoard': path.startswith('budget_whiteboard')}
+        # A budget-board line or a bare category label ('fuel_system') that repeats a line of the same car at the
+        # same price is the same part: merged. Two ordinary lines alike in price and words may be one part seen
+        # in two videos - both stay, marked, because merging them could lose a real second part.
+        same = [e for e in parts if e['carId'] == entry['carId'] and e['priceUsd'] == entry['priceUsd']]
+        nums = lambda t: set(re.findall(r'#(\d+)', t))
+        lw = lambda t: words(t.replace('_', ' ')) | ({'pump', 'fuel'} if 'fuel' in t else set()) | ({'radiator', 'fans', 'fan'} if t == 'cooling' else set())
+        dup = next((e for e in same if e['item'].lower() == item.lower()
+                    or (label and lw(item) & words(e['item'])) or (re.fullmatch(r'[a-z_]+', e['item']) and lw(e['item']) & words(item))
+                    or ((entry['fromBudgetBoard'] != e['fromBudgetBoard']) and len(words(e['item']) & words(item)) >= 1)), None)
+        if dup:
+            if re.fullmatch(r'[a-z_]+', dup['item']) and not label:
+                # keep the descriptive name, the label row becomes the alias
+                dup['alsoSeen'] = dup.get('alsoSeen', []) + [{'item': dup['item'], 'source': dup['source']}]
+                dup.update({k: entry[k] for k in ('item', 'condition', 'group', 'source', 'fromBudgetBoard', 'retailUsd')})
+            else:
+                dup.setdefault('alsoSeen', []).append({'item': item, 'source': src})
+            merged.append(item)
+            continue
+        maybe = next((e for e in same if len(words(e['item']) & words(item)) >= 2 and nums(e['item']) == nums(item)), None)
+        if maybe:
+            entry['possibleDuplicateOf'] = maybe['item']
+        link = SLOT_LINKS.get(item)
+        entry['slot'] = {'category': link[0], 'partId': link[1], 'reason': link[2]} if link else None
+        if not link:
+            entry['notFitting'] = {
+                'motor (V8)': 'onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok',
+                'automaat en converter': 'Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto\'s (fase 2)',
+                'turbo en inlaat': 'budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit',
+                'brandstof': 'brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp',
+                'lachgas': 'lachgaskit zonder bekende shotgrootte; de spelkits hebben een vaste shot',
+                'ophanging en achteras': 'achteras/ophanging van een achterwielaangedreven V8-auto',
+                'wielen en banden': 'wiel- of bandenset zonder maat; banden kies je in het spel per compound',
+                'koeling': 'universele koeling; het spel modelleert koeling niet als onderdeel',
+                'ECU en elektra': 'V8/carburateur-elektronica; de EA888-ECU\'s zijn eigen onderdelen',
+                'overig': 'geen passend onderdeelslot',
+            }[group]
+        parts.append(entry)
+    for i, e in enumerate(parts):
+        e['id'] = f"p{i + 1:03d}"
+    return parts, apart, merged
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--research', required=True, type=Path, help='.../research/youtube/cleetusm')
@@ -450,6 +555,12 @@ def main():
     (OUT / 'calibration.json').write_text(json.dumps({'schemaVersion': 1, 'source': source,
                                                       'points': points, 'excluded': excluded}, indent=1, ensure_ascii=False) + '\n',
                                           encoding='utf-8')
+    parts, apart, merged = build_catalog(cal)
+    (OUT / 'parts-catalog.json').write_text(json.dumps({
+        'schemaVersion': 1, 'source': source, 'currency': 'USD',
+        'about': 'Onderdelen met prijs uit de video\'s (meest tweedehands). priceUsd = betaald of door het team gewaardeerd; '
+                 'condition uit de beschrijving (used / new / scratch_and_dent / sponsored / remanufactured; null = niet gezegd).',
+        'parts': parts, 'notInCatalog': apart, 'mergedDuplicates': merged}, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
     names_path = OUT / 'display-names.json'
     names = json.loads(names_path.read_text(encoding='utf-8')) if names_path.exists() else {}
     names.setdefault('_about', 'Weergavenamen in het spel. Pas ze vrij aan; een nieuwe import overschrijft ze niet.')

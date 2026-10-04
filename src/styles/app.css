@@ -1236,7 +1236,9 @@ body {
 .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .backup-card .why { color: var(--muted); font-size: 11px; }
 
-/* Real cars from the research roster (data page, rival picker) */
+/* Real prices and cars from the research roster (data page, part cards, rival picker) */
+.part-offers { margin: 0 15px 12px; display: grid; gap: 3px; padding: 8px 10px; border-radius: var(--radius-sm, 8px); background: rgba(127, 209, 255, .06); border: 1px solid rgba(127, 209, 255, .18); }
+.part-offers small { color: var(--muted); font-size: 11px; line-height: 1.4; }
 .roster-card details { border-top: 1px solid rgba(255, 255, 255, .06); padding: 8px 0; }
 .roster-card details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; min-height: 32px; display: flex; align-items: center; }
 .roster-card .log-row small, .roster-card .run-row small { white-space: normal; line-height: 1.45; }

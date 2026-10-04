@@ -87,6 +87,7 @@
   // on the same race runtime (sim.js rosterState). The names are the neutral display names; every number shown
   // says whether it was measured, stated, estimated or modeled.
   const KIND_LABEL = { measured: 'gemeten', stated: 'opgegeven', estimate: 'geschat', modeled: 'gemodelleerd' };
+  const CONDITION_LABEL = { used: 'gebruikt', new: 'nieuw', scratch_and_dent: 'scratch-and-dent', sponsored: 'gesponsord', remanufactured: 'gereviseerd' };
   const ROSTER_COLORS = ['#7fd1ff', '#9be37a', '#ffd166', '#f78c6b', '#c792ea', '#5ad1b8', '#ff9fbf'];
   function rosterRivalProfile(o, i) {
     const spec = C.rosterSpec(o.id), v = spec.values, car = C.rosterCarData(o.id);
@@ -1888,6 +1889,9 @@
         tqMeta = `<div class="part-meter"><span>Koppelgrens · ${note}</span><b>${Math.round(rated)} Nm</b><i style="--fill:${clamp((rated - 400) / 4600 * 100, 8, 100)}%"></i></div>`;
       }
     }
+    // the same part for sale in the research videos (data/roster/parts-catalog.json): a real price and condition
+    const offers = C.rosterPartOffers(cat.id, part.id);
+    const offerMeta = offers.length ? `<div class="part-offers"><span class="eyebrow">Echte prijs uit de video's</span>${offers.map(o => `<small>${esc(CONDITION_LABEL[o.condition] || 'conditie niet genoemd')} · <b>$${Math.round(o.priceUsd)}</b>${C.usdToEur(o.priceUsd) != null ? ` (≈ ${euro(C.usdToEur(o.priceUsd))})` : ''} · bron ${esc(o.source.video)}${o.source.t ? ` @ ${esc(o.source.t)}` : ''}</small>`).join('')}</div>` : '';
     const turboMeta = cat.id === 'turbo' ? `<div class="part-meter"><span>Compressor</span><b>${part.compressorMm || 'OEM'} mm</b><i style="--fill:${clamp(((part.compressorMm || 45)-40)/80*100,8,100)}%"></i></div>` : '';
     return `<article class="part-card part-row ${selected ? 'selected' : ''}" data-part-row="${key}">
       <details ${openPartRows.has(key) ? 'open' : ''} data-part-details="${key}">
@@ -1896,7 +1900,7 @@
           <span class="part-row-main"><b>${esc(part.name)}${randy ? ' <em class="randy-badge">RANDY SPEC</em>' : ''}</b><small>${esc(part.specs)}</small></span>
           <span class="part-row-price">${part.price ? euro(part.price) : 'OEM'}</span>
         </summary>
-        <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${tqMeta}${turboMeta}${hopMeta}</div>
+        <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${tqMeta}${turboMeta}${hopMeta}${offerMeta}</div>
       </details>
       ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`}
       ${cat.id === 'turbo' ? compoundButton(part, selected) : ''}
@@ -5735,7 +5739,7 @@
     </section>`;
   }
 
-  // Real cars from the research (roster-data.js), with where every number came from.
+  // Real cars and part prices from the research (roster-data.js), with where every number came from.
   function rosterDataCards() {
     const R = C.ROSTER;
     if (!R) return '';
@@ -5746,8 +5750,14 @@
       const o = c.opponent, rec = C.rosterRecord(state, c.id), bp = c.bestPass;
       return `<div class="run-row"><span>${esc(c.group || '')}</span><div><b>${esc(c.displayName)}</b><small>${val(o.weightLb, ' lb')} · ${val(o.powerHp, ' pk')}${o.powerHp?.basis === 'wheel' ? ' (wiel)' : o.powerHp?.basis === 'unknown' ? ' (wiel/krukas niet gezegd)' : ''}${bp?.et?.value != null ? ` · echt ${bp.et.value.toFixed(2)} s @ ${bp.mph?.value ?? '—'} mph, 60 ft ${bp.sixtyFt?.value ?? '—'}` : ''} · ${rec.runs} runs tegen jou${rec.services ? ` · ${rec.services}× onderhoud` : ''}${(o.notes || []).length ? `<br>${esc(o.notes.join(' · '))}` : ''}</small></div></div>`;
     }).join('');
+    const parts = R.parts?.parts || [];
+    const groups = [...new Set(parts.map(p => p.group))];
+    const partRows = groups.map(g => `<details><summary>${esc(g)} · ${parts.filter(p => p.group === g).length}</summary>${parts.filter(p => p.group === g).map(p =>
+      `<div class="log-row"><i></i><div><b>${esc(p.item)}</b><small>$${Math.round(p.priceUsd)}${C.usdToEur(p.priceUsd) != null ? ` (≈ ${euro(C.usdToEur(p.priceUsd))})` : ''}${p.retailUsd ? ` · nieuw $${Math.round(p.retailUsd)}` : ''} · ${esc(CONDITION_LABEL[p.condition] || 'conditie niet genoemd')} · bron ${src(p.source)}${p.slot ? ` · <b>in het spel: ${esc(C.CATEGORY_MAP[p.slot.category]?.label || p.slot.category)}</b>` : ` · ${esc(p.notFitting || '')}`}${p.possibleDuplicateOf ? ` · mogelijk dezelfde als „${esc(p.possibleDuplicateOf)}"` : ''}</small></div></div>`).join('')}</details>`).join('');
+    const apart = (R.parts?.notInCatalog || []).map(a => `<div class="log-row"><i></i><div><b>${esc(a.item)}</b><small>$${Math.round(a.priceUsd || 0)} · ${esc(a.reason)} · bron ${src(a.source)}</small></div></div>`).join('');
     return `<div class="card roster-card"><div class="section-head small"><div><span class="eyebrow">Echte auto's · research ${esc(R.source.commit)}</span><h2>Tegenstanders uit de video's</h2><p class="muted">Gewicht en vermogen met hun soort: gemeten, opgegeven, geschat of gemodelleerd (dan met de afleiding in de data). Namen zijn neutraal; aanpassen in data/roster/display-names.json.</p></div></div><div class="run-table">${cars}</div></div>
-`;
+      <div class="card roster-card"><div class="section-head small"><div><span class="eyebrow">Echte prijzen · ${parts.length} onderdelen</span><h2>Onderdelencatalogus</h2><p class="muted">Prijzen uit de video's in dollars (meest tweedehands); de europrijs is een vaste spelkoers (${R.currency?.usdToEur ?? '—'}). Kopen komt in fase 2; wat op een spelonderdeel past staat ook bij dat onderdeel.</p></div></div>${partRows}
+        <details><summary>Niet in de catalogus · ${(R.parts?.notInCatalog || []).length}</summary>${apart}</details></div>`;
   }
   function renderData() {
     const r = state.lastDyno;

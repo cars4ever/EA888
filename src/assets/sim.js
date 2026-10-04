@@ -3632,6 +3632,17 @@
     return { step, state: snap, curve: true };
   }
   // The roster cars that can race (both weight and power known or derived), with their display names.
+  // Prices from the research are in US dollars; the game shows euros next to them with one fixed, editable
+  // game rate (data/roster/currency.json). The dollar price stays the source.
+  function usdToEur(usd) {
+    const k = RosterData && RosterData.currency && Number(RosterData.currency.usdToEur);
+    return Number.isFinite(usd) && k > 0 ? usd * k : null;
+  }
+  // Catalogue entries (prices.csv) that are the same as a part of the game, for one category/part.
+  function rosterPartOffers(categoryId, partId) {
+    const parts = (RosterData && RosterData.parts && RosterData.parts.parts) || [];
+    return parts.filter(p => p.slot && p.slot.category === categoryId && p.slot.partId === partId);
+  }
   function rosterOpponents() {
     return rosterCars().filter(c => c.opponent && c.opponent.usable).map(c => ({ id: c.id, displayName: c.displayName, group: c.group }));
   }
@@ -4725,6 +4736,8 @@
     rosterSpec,
     rosterState,
     ROSTER_VERSION,
+    usdToEur,
+    rosterPartOffers,
     raceWearFromResult,
     rosterRecord,
     rosterServiceInterval,

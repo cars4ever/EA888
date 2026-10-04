@@ -1,0 +1,2338 @@
+{
+ "schemaVersion": 1,
+ "source": {
+  "repo": "github.com/cars4ever/EA888",
+  "branch": "claude/laughing-babbage-ls6v7d",
+  "commit": "334e31d",
+  "path": "research/youtube/cleetusm",
+  "importedBy": "tools/import_roster.py"
+ },
+ "currency": "USD",
+ "about": "Onderdelen met prijs uit de video's (meest tweedehands). priceUsd = betaald of door het team gewaardeerd; condition uit de beschrijving (used / new / scratch_and_dent / sponsored / remanufactured; null = niet gezegd).",
+ "parts": [
+  {
+   "item": "Oil pressure sending unit",
+   "priceUsd": 50.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "ECU en elektra",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "42:57"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "V8/carburateur-elektronica; de EA888-ECU's zijn eigen onderdelen",
+   "id": "p001"
+  },
+  {
+   "item": "Motion Raceworks shifter kit (scratch-and-dent, bought for $100, valued at fair market)",
+   "priceUsd": 400.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "scratch_and_dent",
+   "group": "automaat en converter",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "11:42-13:58"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p002"
+  },
+  {
+   "item": "Axles",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "ophanging en achteras",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "14:25"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "achteras/ophanging van een achterwielaangedreven V8-auto",
+   "id": "p003"
+  },
+  {
+   "item": "Fluids (Walmart)",
+   "priceUsd": 120.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "14:25"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p004"
+  },
+  {
+   "item": "Replacement hose after one melted",
+   "priceUsd": 125.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "14:56"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p005"
+  },
+  {
+   "item": "Carburetor upgrade (TRC custom vs Quick Fuel Brawler 950)",
+   "priceUsd": 475.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "7:35, 25:22-25:58"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p006"
+  },
+  {
+   "item": "Header modification material",
+   "priceUsd": 137.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "25:22"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p007"
+  },
+  {
+   "item": "Texas Speed rotating assembly + PRC 237 heads (sponsored, half of $6,251 retail)",
+   "priceUsd": 3125.0,
+   "askingUsd": null,
+   "retailUsd": 6251.0,
+   "condition": "sponsored",
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "27:36-28:18"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p008"
+  },
+  {
+   "item": "Used camshaft",
+   "priceUsd": 150.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "29:01"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p009"
+  },
+  {
+   "item": "Used lifters",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "29:01"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p010"
+  },
+  {
+   "item": "Used head studs + main studs",
+   "priceUsd": 300.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "30:16-31:01"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p011"
+  },
+  {
+   "item": "Stock rockers with trunnion upgrade",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "31:01"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p012"
+  },
+  {
+   "item": "Used pushrods",
+   "priceUsd": 50.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "31:21"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p013"
+  },
+  {
+   "item": "Covers (stock valley cover etc.)",
+   "priceUsd": 125.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "32:23"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p014"
+  },
+  {
+   "item": "Timing component kit (used)",
+   "priceUsd": 75.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "34:10"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p015"
+  },
+  {
+   "item": "6.0 L block (fair market)",
+   "priceUsd": 600.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "32:48-34:33"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p016"
+  },
+  {
+   "item": "Air cleaner",
+   "priceUsd": 18.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "turbo en inlaat",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "-dDkkIHyQRM",
+    "t": "2:29"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p017"
+  },
+  {
+   "item": "Motion Raceworks valve covers (paid $100; retail $540 without fittings)",
+   "priceUsd": 540.0,
+   "askingUsd": null,
+   "retailUsd": 540.0,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "-dDkkIHyQRM",
+    "t": "21:28-21:53"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p018"
+  },
+  {
+   "item": "Big block trade (net)",
+   "priceUsd": 250.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_tom_bailey_camaro",
+   "source": {
+    "video": "-dDkkIHyQRM",
+    "t": "51:05"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p019"
+  },
+  {
+   "item": "Headers (claimed)",
+   "priceUsd": 300.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc12_tom_bailey_camaro",
+   "source": {
+    "video": "-dDkkIHyQRM",
+    "t": "51:31"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p020"
+  },
+  {
+   "item": "Holley package (sponsored half of $2,500)",
+   "priceUsd": 1250.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "sponsored",
+   "group": "ECU en elektra",
+   "carId": "crc12_tom_bailey_camaro",
+   "source": {
+    "video": "-dDkkIHyQRM",
+    "t": "51:31"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "V8/carburateur-elektronica; de EA888-ECU's zijn eigen onderdelen",
+   "id": "p021"
+  },
+  {
+   "item": "Torque converter",
+   "priceUsd": 900.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "7:44"
+   },
+   "note": "added because car left the line badly",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "alsoSeen": [
+    {
+     "item": "converter",
+     "source": {
+      "video": "B9BPtlgCxy8",
+      "t": "7:44"
+     }
+    }
+   ],
+   "id": "p022"
+  },
+  {
+   "item": "Amazon turbo + wastegate (fair market)",
+   "priceUsd": 200.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "turbo en inlaat",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "5:45"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p023"
+  },
+  {
+   "item": "Turbo piping",
+   "priceUsd": 150.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "turbo en inlaat",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "5:45"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p024"
+  },
+  {
+   "item": "Other Amazon turbo-kit items",
+   "priceUsd": 500.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "turbo en inlaat",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "5:21-6:20"
+   },
+   "note": "turbo kit category totalled $850",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p025"
+  },
+  {
+   "item": "Hellcat fuel pumps (pair, used)",
+   "priceUsd": 120.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "brandstof",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "7:21"
+   },
+   "note": "new said to be ~$127 each",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p026"
+  },
+  {
+   "item": "96 lb Snake Eater injector set (sponsored, valued half of $400 new)",
+   "priceUsd": 200.0,
+   "askingUsd": null,
+   "retailUsd": 400.0,
+   "condition": "sponsored",
+   "group": "brandstof",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "8:40"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p027"
+  },
+  {
+   "item": "Nitrous kit (fair market, disputed $200-$400)",
+   "priceUsd": 300.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "lachgas",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "8:13-8:40"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "lachgaskit zonder bekende shotgrootte; de spelkits hebben een vaste shot",
+   "id": "p028"
+  },
+  {
+   "item": "Fuel system (Amazon regulator, fittings etc.)",
+   "priceUsd": 300.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "9:38"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p029"
+  },
+  {
+   "item": "Fittings/hose bought at Gainesville",
+   "priceUsd": 200.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "9:38-10:08"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p030"
+  },
+  {
+   "item": "Brisk spark plugs (set)",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "10:08"
+   },
+   "note": "~$8.99-$18.99 each new per discussion",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p031"
+  },
+  {
+   "item": "Used Gen 2 Coyote engine (damaged)",
+   "priceUsd": 1200.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "43:01"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p032"
+  },
+  {
+   "item": "Intercooler (Amazon, new)",
+   "priceUsd": 105.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "new",
+   "group": "turbo en inlaat",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "39:04"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p033"
+  },
+  {
+   "item": "Universal 3 in aluminum intercooler piping kit",
+   "priceUsd": 130.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "turbo en inlaat",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "39:04"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p034"
+  },
+  {
+   "item": "Nitrous kit (to be sold; originally ~$200)",
+   "priceUsd": 200.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "lachgas",
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "40:06"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "lachgaskit zonder bekende shotgrootte; de spelkits hebben een vaste shot",
+   "id": "p035"
+  },
+  {
+   "item": "'Mystery' LS engine (from Cameron Johnson)",
+   "priceUsd": 4000.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "alsoSeen": [
+    {
+     "item": "engine",
+     "source": {
+      "video": "fLFD8Q0nthA",
+      "t": "35:47-37:14"
+     }
+    }
+   ],
+   "id": "p036"
+  },
+  {
+   "item": "Amazon 240SX radiator",
+   "priceUsd": 120.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "koeling",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "38:06"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "universele koeling; het spel modelleert koeling niet als onderdeel",
+   "id": "p037"
+  },
+  {
+   "item": "Amazon fans",
+   "priceUsd": 18.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "koeling",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "38:06"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "universele koeling; het spel modelleert koeling niet als onderdeel",
+   "id": "p038"
+  },
+  {
+   "item": "Radiator + fans total",
+   "priceUsd": 170.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "koeling",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "38:06"
+   },
+   "note": "approximate",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "universele koeling; het spel modelleert koeling niet als onderdeel",
+   "id": "p039"
+  },
+  {
+   "item": "Powerglide (stock case, stock planetary, with transbrake; converter included but unknown brand)",
+   "priceUsd": 700.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "20:52-21:54"
+   },
+   "note": "Listed $900 on Marketplace by Nick Latau (caption), lowballed via a 'burner' account; seller had offered FTI inspection for $200",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p040"
+  },
+  {
+   "item": "Engine mounts",
+   "priceUsd": 40.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p041"
+  },
+  {
+   "item": "New carburetor + new fuel pump + new ignition box",
+   "priceUsd": 1093.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "new",
+   "group": "brandstof",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": "caption '$1,93'; interpreted as $1,093 (medium confidence)",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p042"
+  },
+  {
+   "item": "Amazon fans, radiator, switch panel",
+   "priceUsd": 360.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "koeling",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "universele koeling; het spel modelleert koeling niet als onderdeel",
+   "id": "p043"
+  },
+  {
+   "item": "Nitrous Express kit + related parts",
+   "priceUsd": 1531.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "lachgas",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": "Earlier stated as ~$1,600 / 1,536; progressive controller questioned as not listed",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "lachgaskit zonder bekende shotgrootte; de spelkits hebben een vaste shot",
+   "id": "p044"
+  },
+  {
+   "item": "Rear wheels",
+   "priceUsd": 50.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "wielen en banden",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "wiel- of bandenset zonder maat; banden kies je in het spel per compound",
+   "alsoSeen": [
+    {
+     "item": "Marketplace 4-lug wheels",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "38:50"
+     }
+    }
+   ],
+   "id": "p045"
+  },
+  {
+   "item": "Transmission cooler with fan, new",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": "source caption 'ATE'/'AE' unclear",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p046"
+  },
+  {
+   "item": "Brand new Mickey Thompson radials",
+   "priceUsd": 572.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "new",
+   "group": "wielen en banden",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "38:50-39:09"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "wiel- of bandenset zonder maat; banden kies je in het spel per compound",
+   "id": "p047"
+  },
+  {
+   "item": "Mickey Thompson radials (new)",
+   "priceUsd": 572.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "new",
+   "group": "wielen en banden",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "38:50"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "possibleDuplicateOf": "Brand new Mickey Thompson radials",
+   "slot": null,
+   "notFitting": "wiel- of bandenset zonder maat; banden kies je in het spel per compound",
+   "id": "p048"
+  },
+  {
+   "item": "Amazon radiator",
+   "priceUsd": 130.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "koeling",
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "13:52"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "universele koeling; het spel modelleert koeling niet als onderdeel",
+   "id": "p049"
+  },
+  {
+   "item": "Ford 8.8 rear end (GT)",
+   "priceUsd": 150.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "ophanging en achteras",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "15:43"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "achteras/ophanging van een achterwielaangedreven V8-auto",
+   "alsoSeen": [
+    {
+     "item": "8.8 rear end out of what became second car",
+     "source": {
+      "video": "JguV0Y7ZbD0",
+      "t": null
+     }
+    }
+   ],
+   "id": "p050"
+  },
+  {
+   "item": "Blown-up Gen 1 Coyote (donor for heads, timing, sensors, coils)",
+   "priceUsd": 500.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "16:27-17:15"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p051"
+  },
+  {
+   "item": "Turbo 400 (TH400), claimed built, no trans-brake solenoid",
+   "priceUsd": 1500.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "17:15-18:06"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p052"
+  },
+  {
+   "item": "TH400 bellhousing",
+   "priceUsd": 200.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "17:15"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p053"
+  },
+  {
+   "item": "Cowl hood",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "23:31"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p054"
+  },
+  {
+   "item": "UPR front coilover conversion + front-end parts",
+   "priceUsd": 1060.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "ophanging en achteras",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "31:13"
+   },
+   "note": "plus coilovers; website retail used for pricing",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "achteras/ophanging van een achterwielaangedreven V8-auto",
+   "id": "p055"
+  },
+  {
+   "item": "Strange single-adjustable struts/shocks",
+   "priceUsd": 150.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "32:33"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p056"
+  },
+  {
+   "item": "Coil springs",
+   "priceUsd": 140.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "32:33"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p057"
+  },
+  {
+   "item": "Unspecified boxed items",
+   "priceUsd": 70.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "32:07"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p058"
+  },
+  {
+   "item": "Turbo 400 (used) with bellhousing",
+   "priceUsd": 1700.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "automaat en converter",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p059"
+  },
+  {
+   "item": "Junk engine #1 (known-bad core motor)",
+   "priceUsd": 500.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "alsoSeen": [
+    {
+     "item": "Coyote engine (core)",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "14:59"
+     }
+    }
+   ],
+   "id": "p060"
+  },
+  {
+   "item": "Junk engine #2",
+   "priceUsd": 500.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "motor (V8)",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p061"
+  },
+  {
+   "item": "UPR parts (scratch and dent)",
+   "priceUsd": 1800.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "scratch_and_dent",
+   "group": "overig",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": "Invoice showed 50% off; referee says typical UPR scratch-and-dent is 15-34% off; Zach pre-calculated $2,100 at a 30% discount; some shocks/s",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p062"
+  },
+  {
+   "item": "New FTI torque converter",
+   "priceUsd": 1150.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "new",
+   "group": "automaat en converter",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": "caption '$150' / earlier '1150'; interpreted as $1,150 retail",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "alsoSeen": [
+    {
+     "item": "converter",
+     "source": {
+      "video": "JguV0Y7ZbD0",
+      "t": "20:52, 23:13"
+     }
+    }
+   ],
+   "id": "p063"
+  },
+  {
+   "item": "New connecting rod from Ford dealership",
+   "priceUsd": 58.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "new",
+   "group": "motor (V8)",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p064"
+  },
+  {
+   "item": "Cam phaser delete/lockout",
+   "priceUsd": 285.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p065"
+  },
+  {
+   "item": "Head gasket kit (with bolts)",
+   "priceUsd": 212.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p066"
+  },
+  {
+   "item": "Vevor CO2 tank for boost control",
+   "priceUsd": 70.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "19:10"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "alsoSeen": [
+    {
+     "item": "boost_control",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "19:10-19:39"
+     }
+    }
+   ],
+   "id": "p067"
+  },
+  {
+   "item": "Billet cam phaser lockouts (4 pcs)",
+   "priceUsd": 287.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "14:34"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p068"
+  },
+  {
+   "item": "Amazon item with sensors and stiff spring (likely wastegate, unclear)",
+   "priceUsd": 62.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "turbo en inlaat",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "17:36"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p069"
+  },
+  {
+   "item": "Radiator (fans separate)",
+   "priceUsd": 210.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "koeling",
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "20:00"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "universele koeling; het spel modelleert koeling niet als onderdeel",
+   "id": "p070"
+  },
+  {
+   "item": "Powerglide + converter",
+   "priceUsd": 3000.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p071"
+  },
+  {
+   "item": "Engine (Lumberjack spare LS)",
+   "priceUsd": 3800.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": "Earlier episode negotiated to $3,750; board shows $3,800",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p072"
+  },
+  {
+   "item": "Holley Terminator X (used, standard version)",
+   "priceUsd": 900.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "ECU en elektra",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": "came with a used throttle body in the box - disputed, see below",
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "V8/carburateur-elektronica; de EA888-ECU's zijn eigen onderdelen",
+   "id": "p073"
+  },
+  {
+   "item": "Fuel injectors (Holley per caption 'Holl's')",
+   "priceUsd": 450.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p074"
+  },
+  {
+   "item": "Pair of used turbos from friend Glenn",
+   "priceUsd": 500.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "turbo en inlaat",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p075"
+  },
+  {
+   "item": "8.8 rear end (pre-estimate, before junkyard trip)",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "ophanging en achteras",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "note": null,
+   "fromBudgetBoard": true,
+   "slot": null,
+   "notFitting": "achteras/ophanging van een achterwielaangedreven V8-auto",
+   "id": "p076"
+  },
+  {
+   "item": "rear_end",
+   "priceUsd": 50.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "35:19"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p077"
+  },
+  {
+   "item": "Used 'high ram' (Hi-Ram style) intake with lower, upper, fuel rails; intercooler brick inside is bad/leaking and to be capped/removed",
+   "priceUsd": 400.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "turbo en inlaat",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "2:23-3:48, 21:44-22:39"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p078"
+  },
+  {
+   "item": "Used Facebook Marketplace fuel pump",
+   "priceUsd": 600.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "brandstof",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "56:02"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "alsoSeen": [
+    {
+     "item": "fuel_system",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "55:40-56:02"
+     }
+    }
+   ],
+   "id": "p079"
+  },
+  {
+   "item": "Amazon S10 LS-swap radiator w/ fans + shroud",
+   "priceUsd": 215.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "8:49"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "alsoSeen": [
+    {
+     "item": "cooling",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "8:49"
+     }
+    }
+   ],
+   "id": "p080"
+  },
+  {
+   "item": "Used Hi-Ram style intake w/ rails (no intercooler core)",
+   "priceUsd": 400.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "turbo en inlaat",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "2:23"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "possibleDuplicateOf": "Used 'high ram' (Hi-Ram style) intake with lower, upper, fuel rails; intercooler brick inside is bad/leaking and to be capped/removed",
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p081"
+  },
+  {
+   "item": "Used steering column (+ new Grant wheel thrown in)",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "ophanging en achteras",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "3:05-3:25"
+   },
+   "note": "column quoted $50, paid $100",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "achteras/ophanging van een achterwielaangedreven V8-auto",
+   "id": "p082"
+  },
+  {
+   "item": "TCI shifter",
+   "priceUsd": 360.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "4:27"
+   },
+   "note": "'about 360 something'",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p083"
+  },
+  {
+   "item": "Cooler (caption 'dog cooler', likely trans cooler, brand unclear)",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "automaat en converter",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "4:27"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "Powerglide/TH400-automaat en converter: bestaan in het spel alleen voor de roster-auto's (fase 2)",
+   "id": "p084"
+  },
+  {
+   "item": "Used CalTracs",
+   "priceUsd": 150.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "ophanging en achteras",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "4:54"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "achteras/ophanging van een achterwielaangedreven V8-auto",
+   "id": "p085"
+  },
+  {
+   "item": "Amazon relay panel / hardware",
+   "priceUsd": 20.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "ECU en elektra",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "6:46"
+   },
+   "note": "'like 20 bucks', item ambiguous",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "V8/carburateur-elektronica; de EA888-ECU's zijn eigen onderdelen",
+   "id": "p086"
+  },
+  {
+   "item": "Scrap pipe from friend",
+   "priceUsd": 5.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "overig",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "36:50"
+   },
+   "note": "joked $20 vs $5",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p087"
+  },
+  {
+   "item": "Hard 90 fitting for fuel rail clearing alternator",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "PTORqnT_zT4",
+    "t": "47:07"
+   },
+   "note": "stated as a $100 fitting, not confirmed bought",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p088"
+  },
+  {
+   "item": "Set of connecting rods with correct bolts (service item)",
+   "priceUsd": 2000.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "eagle",
+   "source": {
+    "video": "-fr9v9bLk0w",
+    "t": "25:32"
+   },
+   "note": "caption garbled ('just under $22,000'), then clarified as two grand for a set; medium confidence",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p089"
+  },
+  {
+   "item": "ARP head studs (installed by seller)",
+   "priceUsd": 350.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "motor (V8)",
+   "carId": "lumberjack",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "36:20"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "onderdeel van een V8 (LS, Coyote, big-block); het spel heeft het EA888-blok",
+   "id": "p090"
+  },
+  {
+   "item": "Precision 7675 remanufactured turbo, T4, 1.15 divided",
+   "priceUsd": 700.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "remanufactured",
+   "group": "turbo en inlaat",
+   "carId": "lumberjack",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "45:31-48:04"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": {
+    "category": "turbo",
+    "partId": "pt7675",
+    "reason": "zelfde Precision 7675-wielset (76 mm compressor, 75 mm turbine) als in het spel; deze heeft een T4 1.15 divided-turbinebehuizing"
+   },
+   "id": "p091"
+  },
+  {
+   "item": "Air-to-air intercooler (came with car, seller paid $100 on Marketplace)",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "turbo en inlaat",
+   "carId": "lumberjack",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "17:39"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p092"
+  },
+  {
+   "item": "Turbo #1",
+   "priceUsd": 700.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "turbo en inlaat",
+   "carId": "lumberjack",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "17:47"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p093"
+  },
+  {
+   "item": "Turbo #2 reman upgrade (plus trade-in of #1)",
+   "priceUsd": 400.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "remanufactured",
+   "group": "turbo en inlaat",
+   "carId": "lumberjack",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "18:25"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p094"
+  },
+  {
+   "item": "Turbo drain line",
+   "priceUsd": 25.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "turbo en inlaat",
+   "carId": "lumberjack",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "18:25"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "budget- of universeel turbo-onderdeel zonder compressorkaart of passend EA888-kit",
+   "id": "p095"
+  },
+  {
+   "item": "Hose and 90 fitting",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "lumberjack",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "20:24"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p096"
+  },
+  {
+   "item": "Wheel studs + lug nuts (~10 used)",
+   "priceUsd": 60.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "wielen en banden",
+   "carId": "lumberjack",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "20:24"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "wiel- of bandenset zonder maat; banden kies je in het spel per compound",
+   "id": "p097"
+  },
+  {
+   "item": "Aeromotive 5.0 brushless fuel pump (rebuilt, valued half new)",
+   "priceUsd": 700.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "remanufactured",
+   "group": "brandstof",
+   "carId": "lumberjack",
+   "source": {
+    "video": "PSGvE8jkSoc",
+    "t": "37:01-37:31"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p098"
+  },
+  {
+   "item": "Aeromotive 5.0 pump (spare, not installed)",
+   "priceUsd": 700.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "lumberjack",
+   "source": {
+    "video": "-dDkkIHyQRM",
+    "t": "25:11"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "possibleDuplicateOf": "Aeromotive 5.0 brushless fuel pump (rebuilt, valued half new)",
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p099"
+  },
+  {
+   "item": "340 lph fuel pump",
+   "priceUsd": 40.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "mcflurry",
+   "source": {
+    "video": "PMZzslG5uLg",
+    "t": "24:21"
+   },
+   "note": "caption 'like 40 dollar' - low confidence",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p100"
+  },
+  {
+   "item": "Rear-end gear oil (reused) - saved ~$50",
+   "priceUsd": 50.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": "used",
+   "group": "overig",
+   "carId": "mullet",
+   "source": {
+    "video": "fzddx_3njA4",
+    "t": "26:31"
+   },
+   "note": "cost avoided",
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p101"
+  },
+  {
+   "item": "Crimped oil/fuel hose assembly (replacement)",
+   "priceUsd": 100.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "brandstof",
+   "carId": "mullet",
+   "source": {
+    "video": "PxE5quw5IoM",
+    "t": "10:07"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "brandstofonderdeel voor carburateur/V8; de EA888 heeft directe inspuiting met een eigen pomp",
+   "id": "p102"
+  },
+  {
+   "item": "Front mag drive conversion kit",
+   "priceUsd": 600.0,
+   "askingUsd": null,
+   "retailUsd": null,
+   "condition": null,
+   "group": "overig",
+   "carId": "toast",
+   "source": {
+    "video": "QHDAecxBbus",
+    "t": "10:10"
+   },
+   "note": null,
+   "fromBudgetBoard": false,
+   "slot": null,
+   "notFitting": "geen passend onderdeelslot",
+   "id": "p103"
+  }
+ ],
+ "notInCatalog": [
+  {
+   "item": "purchase",
+   "priceUsd": 7000.0,
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "7:42, 28:14"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "Oil pressure sending unit blown through center at first startup; car would not shut off by key/kill switch (coils unplugged)",
+   "priceUsd": 50.0,
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "41:53-43:31"
+   },
+   "reason": "reparatie, offerte of vergelijking, geen te koop onderdeel"
+  },
+  {
+   "item": "240SX LS/carb/nitrous/Powerglide car, delivered",
+   "priceUsd": 7000.0,
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "28:14"
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "IDS front coilovers (invoice $300) - DISALLOWED, not installed",
+   "priceUsd": 300.0,
+   "carId": "crc12_jackstand_240",
+   "source": {
+    "video": "-dDkkIHyQRM",
+    "t": "21:02-21:28"
+   },
+   "reason": "niet gemonteerd (afgekeurd)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 5200.0,
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "5:00-5:23"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "Mustang (auction + fees + shipping)",
+   "priceUsd": 5200.0,
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "5:00"
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 5775.0,
+   "carId": "crc12_tye_mustang",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "4:46"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 2500.0,
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "10:17, 25:31"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 2500.0,
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "forvQJqEvGg",
+    "t": "3:12"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "power_adder",
+   "priceUsd": 1600.0,
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "37:14"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "240SX hatch (no engine/trans)",
+   "priceUsd": 2500.0,
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "power_adder",
+   "priceUsd": 1531.0,
+   "carId": "crc3_240sx_hatch",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "20:06"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 500.0,
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "12:33-12:55"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "ecu",
+   "priceUsd": 900.0,
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "35:00-35:27"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "First car (95 Mustang roller)",
+   "priceUsd": 500.0,
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "Second car (parts car)",
+   "priceUsd": 250.0,
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "transmission",
+   "priceUsd": 1700.0,
+   "carId": "crc3_95_mustang",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "23:13"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 675.0,
+   "carId": "crc3_express_van",
+   "source": {
+    "video": "geuWzFpnQNQ",
+    "t": "7:41"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 1000.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "F1pY9m1yhWM",
+    "t": "2:53-3:14, 16:46"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "transmission",
+   "priceUsd": 3000.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "F1pY9m1yhWM",
+    "t": "13:10-14:40, 19:17-19:44"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "purchase_engine",
+   "priceUsd": 3750.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "1DL_XEuSOGU",
+    "t": "3:06, 5:10-6:13"
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "Pre-balanced LS piston/rod/crank kit (rebuild-yourself estimate)",
+   "priceUsd": 1100.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "1DL_XEuSOGU",
+    "t": "4:26"
+   },
+   "reason": "reparatie, offerte of vergelijking, geen te koop onderdeel"
+  },
+  {
+   "item": "Fuel injectors (bought previous night, 'big')",
+   "priceUsd": 450.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "1DL_XEuSOGU",
+    "t": "7:41-8:03"
+   },
+   "reason": "reparatie, offerte of vergelijking, geen te koop onderdeel"
+  },
+  {
+   "item": "Used K-member fair market estimate",
+   "priceUsd": 100.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "1DL_XEuSOGU",
+    "t": "21:14-21:42"
+   },
+   "reason": "reparatie, offerte of vergelijking, geen te koop onderdeel"
+  },
+  {
+   "item": "transmission",
+   "priceUsd": 3000.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "1DL_XEuSOGU",
+    "t": "6:36"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "transmission",
+   "priceUsd": 3000.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "fLFD8Q0nthA",
+    "t": "17:42-19:08, 24:41-25:04"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "S10 truck",
+   "priceUsd": 1000.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": null
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "Locked-up 6.0L LS (donor for intake, starter, coils, plug wires, headers)",
+   "priceUsd": 200.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "33:05-34:22"
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "Ford Explorer 8.8 rear end, 3.73 ratio (counted)",
+   "priceUsd": 50.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "34:22-35:19"
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "power_adder",
+   "priceUsd": 500.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "9:50, 35:48-40:57"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "ecu",
+   "priceUsd": 900.0,
+   "carId": "crc3_gen1_s10",
+   "source": {
+    "video": "JguV0Y7ZbD0",
+    "t": "8:45-9:08"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "Catastrophic engine failure repair (comparison)",
+   "priceUsd": 30000.0,
+   "carId": "eagle",
+   "source": {
+    "video": "-fr9v9bLk0w",
+    "t": "26:57-27:18"
+   },
+   "reason": "reparatie, offerte of vergelijking, geen te koop onderdeel"
+  },
+  {
+   "item": "Class-friendly race engine (quote, not bought)",
+   "priceUsd": 38000.0,
+   "carId": "jackstand_903_car",
+   "source": {
+    "video": "6_quJlgCSC0",
+    "t": "13:47"
+   },
+   "reason": "reparatie, offerte of vergelijking, geen te koop onderdeel"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 5350.0,
+   "carId": "lumberjack",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "12:43, 19:27, 36:20"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "1973 El Camino turbo LS roller-ready car (no turbo)",
+   "priceUsd": 5000.0,
+   "carId": "lumberjack",
+   "source": {
+    "video": "SAwRbNvp22c",
+    "t": "47:39"
+   },
+   "reason": "een hele auto, geen onderdeel (voor fase 2: koopbare auto's)"
+  },
+  {
+   "item": "purchase",
+   "priceUsd": 5350.0,
+   "carId": "lumberjack",
+   "source": {
+    "video": "B9BPtlgCxy8",
+    "t": "16:48-17:17"
+   },
+   "reason": "categorietotaal van een budgetbord (de onderdelen staan los in de lijst)"
+  },
+  {
+   "item": "Parts owed between crew for 'cow tracks'",
+   "priceUsd": 100.0,
+   "carId": "lumberjack",
+   "source": {
+    "video": "5ibvcauFris",
+    "t": "39:18"
+   },
+   "reason": "reparatie, offerte of vergelijking, geen te koop onderdeel"
+  }
+ ],
+ "mergedDuplicates": [
+  "Torque converter",
+  "'Mystery' LS engine (from Cameron Johnson)",
+  "Marketplace 4-lug wheels",
+  "8.8 rear end out of what became second car",
+  "converter",
+  "Coyote engine (core)",
+  "Vevor CO2 tank for boost control",
+  "Amazon S10 LS-swap radiator w/ fans + shroud",
+  "Used Facebook Marketplace fuel pump"
+ ]
+}
