@@ -1,0 +1,16 @@
+car_id,source_car_id,video_id,chrono_rank,path,weight_lb,raw,t
+crc12_jackstand_240,crc1_240sx_coupe,SAwRbNvp22c,1598,/weight_lb/claim,2000.0,"~2,000 lb lighter than the El Camino (~2,800 implied, not stated)",39:49
+crc12_jackstand_240,crc2_jackstand_240,-dDkkIHyQRM,1669,/weight_lb/without_driver,2408.0,2408,14:42-15:15
+crc12_jackstand_240,crc2_jackstand_240,-dDkkIHyQRM,1669,/weight_lb/with_driver,2605.0,2605,14:42-15:15
+crc3_240sx_hatch,crc3_240sx_hatch,PTORqnT_zT4,1844,/weight_lb/measured,2273.0,2273,56:43-57:38
+crc3_240sx_hatch,crc3_240sx_hatch,PTORqnT_zT4,1844,/weight_lb/with_driver_est,2400.0,2400,56:43-57:38
+crc3_express_van,crc3_express_van,geuWzFpnQNQ,1798,/weight_lb/stock_claim,5000.0,5000,"2:20, 30:29"
+crc3_express_van,crc3_express_van,geuWzFpnQNQ,1798,/weight_lb/target,1000.0,"stock minus >1,000 (Jackstand estimate ~3,500)","2:20, 30:29"
+eagle,eagle,XgXpvu6Q52Y,1488,/weight_lb/car_with_engine_est,2400.0,2400,13:28
+eagle,eagle,XgXpvu6Q52Y,1488,/weight_lb/race_weight_with_driver_est,2600.0,2600,13:28
+eagle,eagle,XgXpvu6Q52Y,1488,/weight_lb/vs_mullet,1100.0,"~1,100 lb less than Mullet",13:28
+eagle,eagle,XgXpvu6Q52Y,1488,weight_lb/race_weight_with_driver_est,2600.0,2600,13:28
+lumberjack,crc1_el_camino,SAwRbNvp22c,1598,/weight_lb/claim,4800.0,4800,38:50
+mullet,mullet,m-X8-o0myuw,1743,/weight_lb/before,3330.0,3330,"3:35-3:55, 6:36"
+mullet,mullet,aEdFIigQk9g,1871,/weight_lb/measured_without_nose,2762.0,2762,8:18-8:45
+mullet,mullet,aEdFIigQk9g,1871,/weight_lb/target,3000.0,"~3,000 lb car plus driver ~200+ lb to reach class weight",8:18-8:45

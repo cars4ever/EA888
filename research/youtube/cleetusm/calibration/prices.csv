@@ -1,0 +1,150 @@
+car_id,source_car_id,video_id,chrono_rank,path,item,price_usd,asking_usd,note,t
+crc12_jackstand_240,crc1_240sx_coupe,SAwRbNvp22c,1598,purchase,purchase,7000.0,,"delivered from Wilson, Oklahoma (~24 h drive by seller); leaves $500 for the week","7:42, 28:14"
+crc12_jackstand_240,crc1_240sx_coupe,SAwRbNvp22c,1598,failures/0,Oil pressure sending unit blown through center at first startup; car would not shut off by key/kill switch (coils unplugged),50.0,,,41:53-43:31
+crc12_jackstand_240,crc1_240sx_coupe,SAwRbNvp22c,1598,parts/0,"240SX LS/carb/nitrous/Powerglide car, delivered",7000.0,,,28:14
+crc12_jackstand_240,crc1_240sx_coupe,SAwRbNvp22c,1598,parts/1,Oil pressure sending unit,50.0,,,42:57
+crc12_jackstand_240,crc1_jackstand_240,B9BPtlgCxy8,1604,parts/0,"Motion Raceworks shifter kit (scratch-and-dent, bought for $100, valued at fair market)",400.0,,,11:42-13:58
+crc12_jackstand_240,crc1_jackstand_240,B9BPtlgCxy8,1604,parts/1,Axles,100.0,,,14:25
+crc12_jackstand_240,crc1_jackstand_240,B9BPtlgCxy8,1604,parts/2,Fluids (Walmart),120.0,,,14:25
+crc12_jackstand_240,crc1_jackstand_240,B9BPtlgCxy8,1604,parts/3,Replacement hose after one melted,125.0,,,14:56
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/1,Carburetor upgrade (TRC custom vs Quick Fuel Brawler 950),475.0,,,"7:35, 25:22-25:58"
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/2,Header modification material,137.0,,,25:22
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/3,"Texas Speed rotating assembly + PRC 237 heads (sponsored, half of $6,251 retail)",3125.0,,,27:36-28:18
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/4,Used camshaft,150.0,,,29:01
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/5,Used lifters,100.0,,,29:01
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/6,Used head studs + main studs,300.0,,,30:16-31:01
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/7,Stock rockers with trunnion upgrade,100.0,,,31:01
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/8,Used pushrods,50.0,,,31:21
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/9,Covers (stock valley cover etc.),125.0,,,32:23
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/10,Timing component kit (used),75.0,,,34:10
+crc12_jackstand_240,crc2_jackstand_240,PSGvE8jkSoc,1665,parts/11,6.0 L block (fair market),600.0,,,32:48-34:33
+crc12_jackstand_240,crc2_jackstand_240,-dDkkIHyQRM,1669,parts/1,Air cleaner,18.0,,,2:29
+crc12_jackstand_240,crc2_jackstand_240,-dDkkIHyQRM,1669,parts/2,Motion Raceworks valve covers (paid $100; retail $540 without fittings),540.0,,,21:28-21:53
+crc12_jackstand_240,crc2_jackstand_240,-dDkkIHyQRM,1669,parts/3,"IDS front coilovers (invoice $300) - DISALLOWED, not installed",300.0,,,21:02-21:28
+crc12_tom_bailey_camaro,crc2_tom_bailey_camaro,-dDkkIHyQRM,1669,parts/0,Big block trade (net),250.0,,,51:05
+crc12_tom_bailey_camaro,crc2_tom_bailey_camaro,-dDkkIHyQRM,1669,parts/1,Headers (claimed),300.0,,,51:31
+crc12_tom_bailey_camaro,crc2_tom_bailey_camaro,-dDkkIHyQRM,1669,parts/2,"Holley package (sponsored half of $2,500)",1250.0,,,51:31
+crc12_tye_mustang,crc1_mustang,SAwRbNvp22c,1598,purchase,purchase,5200.0,,"roughly $5,200 incl. auction fees and shipping, bought via a friend at auction before budget was handed out; ~$2,300 left",5:00-5:23
+crc12_tye_mustang,crc1_mustang,SAwRbNvp22c,1598,parts/0,Mustang (auction + fees + shipping),5200.0,,,5:00
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,purchase,purchase,5775.0,,includes auction fees and shipping,4:46
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,converter,converter,900.0,,added because car left the line badly,7:44
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/0,Amazon turbo + wastegate (fair market),200.0,,,5:45
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/1,Turbo piping,150.0,,,5:45
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/2,Other Amazon turbo-kit items,500.0,,turbo kit category totalled $850,5:21-6:20
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/4,"Hellcat fuel pumps (pair, used)",120.0,,new said to be ~$127 each,7:21
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/5,"96 lb Snake Eater injector set (sponsored, valued half of $400 new)",200.0,,,8:40
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/6,Torque converter,900.0,,,7:44
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/7,"Nitrous kit (fair market, disputed $200-$400)",300.0,,,8:13-8:40
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/8,"Fuel system (Amazon regulator, fittings etc.)",300.0,,,9:38
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/9,Fittings/hose bought at Gainesville,200.0,,,9:38-10:08
+crc12_tye_mustang,crc1_tye_mustang,B9BPtlgCxy8,1604,parts/10,Brisk spark plugs (set),100.0,,~$8.99-$18.99 each new per discussion,10:08
+crc12_tye_mustang,crc2_tye_mustang,PSGvE8jkSoc,1665,parts/0,Used Gen 2 Coyote engine (damaged),1200.0,,,43:01
+crc12_tye_mustang,crc2_tye_mustang,PSGvE8jkSoc,1665,parts/1,"Intercooler (Amazon, new)",105.0,,,39:04
+crc12_tye_mustang,crc2_tye_mustang,PSGvE8jkSoc,1665,parts/2,Universal 3 in aluminum intercooler piping kit,130.0,,,39:04
+crc12_tye_mustang,crc2_tye_mustang,PSGvE8jkSoc,1665,parts/3,Nitrous kit (to be sold; originally ~$200),200.0,,,40:06
+crc3_240sx_hatch,crc3_240sx_hatch,geuWzFpnQNQ,1798,purchase,purchase,2500.0,3000.0,,"10:17, 25:31"
+crc3_240sx_hatch,crc3_240sx_hatch,forvQJqEvGg,1803,purchase,purchase,2500.0,,"restated; claimed only stock example available, others were front-damaged or on coilovers",3:12
+crc3_240sx_hatch,crc3_240sx_hatch,fLFD8Q0nthA,1833,engine,engine,4000.0,,,35:47-37:14
+crc3_240sx_hatch,crc3_240sx_hatch,fLFD8Q0nthA,1833,power_adder,power_adder,1600.0,,Brand new nitrous kit bought because original solenoids were lent out,37:14
+crc3_240sx_hatch,crc3_240sx_hatch,fLFD8Q0nthA,1833,cooling/0,Amazon 240SX radiator,120.0,,,38:06
+crc3_240sx_hatch,crc3_240sx_hatch,fLFD8Q0nthA,1833,cooling/1,Amazon fans,18.0,,,38:06
+crc3_240sx_hatch,crc3_240sx_hatch,fLFD8Q0nthA,1833,cooling/2,Radiator + fans total,170.0,,approximate,38:06
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/0,240SX hatch (no engine/trans),2500.0,,,
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/1,'Mystery' LS engine (from Cameron Johnson),4000.0,,,
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/2,"Powerglide (stock case, stock planetary, with transbrake; converter included but unknown brand)",700.0,,"Listed $900 on Marketplace by Nick Latau (caption), lowballed via a 'burner' account; seller had offered FTI inspection for $200",20:52-21:54
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/3,Engine mounts,40.0,,,
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/4,New carburetor + new fuel pump + new ignition box,1093.0,,"caption '$1,93'; interpreted as $1,093 (medium confidence)",
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/5,"Amazon fans, radiator, switch panel",360.0,,,
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/6,Nitrous Express kit + related parts,1531.0,,"Earlier stated as ~$1,600 / 1,536; progressive controller questioned as not listed",
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/7,Rear wheels,50.0,,,
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,budget_whiteboard/items/8,"Transmission cooler with fan, new",100.0,,source caption 'ATE'/'AE' unclear,
+crc3_240sx_hatch,crc3_240sx_hatch,JguV0Y7ZbD0,1839,power_adder,power_adder,1531.0,,,20:06
+crc3_240sx_hatch,crc3_240sx_hatch,PTORqnT_zT4,1844,tires,Brand new Mickey Thompson radials,572.0,,,38:50-39:09
+crc3_240sx_hatch,crc3_240sx_hatch,PTORqnT_zT4,1844,parts/0,Mickey Thompson radials (new),572.0,,,38:50
+crc3_240sx_hatch,crc3_240sx_hatch,PTORqnT_zT4,1844,parts/1,Marketplace 4-lug wheels,50.0,,,38:50
+crc3_240sx_hatch,crc3_240sx_hatch,PTORqnT_zT4,1844,parts/2,Amazon radiator,130.0,,,13:52
+crc3_95_mustang,crc3_95_mustang,geuWzFpnQNQ,1798,purchase,purchase,500.0,800.0,,12:33-12:55
+crc3_95_mustang,crc3_95_mustang,geuWzFpnQNQ,1798,parts/0,Ford 8.8 rear end (GT),150.0,,,15:43
+crc3_95_mustang,crc3_95_mustang,geuWzFpnQNQ,1798,parts/1,"Blown-up Gen 1 Coyote (donor for heads, timing, sensors, coils)",500.0,,,16:27-17:15
+crc3_95_mustang,crc3_95_mustang,geuWzFpnQNQ,1798,parts/2,"Turbo 400 (TH400), claimed built, no trans-brake solenoid",1500.0,,,17:15-18:06
+crc3_95_mustang,crc3_95_mustang,geuWzFpnQNQ,1798,parts/3,TH400 bellhousing,200.0,,,17:15
+crc3_95_mustang,crc3_95_mustang,geuWzFpnQNQ,1798,parts/4,Cowl hood,100.0,,,23:31
+crc3_95_mustang,crc3_95_mustang,fLFD8Q0nthA,1833,ecu,ecu,900.0,,,35:00-35:27
+crc3_95_mustang,crc3_95_mustang,fLFD8Q0nthA,1833,suspension/parts/0,UPR front coilover conversion + front-end parts,1060.0,,plus coilovers; website retail used for pricing,31:13
+crc3_95_mustang,crc3_95_mustang,fLFD8Q0nthA,1833,suspension/parts/1,Strange single-adjustable struts/shocks,150.0,,,32:33
+crc3_95_mustang,crc3_95_mustang,fLFD8Q0nthA,1833,suspension/parts/2,Coil springs,140.0,,,32:33
+crc3_95_mustang,crc3_95_mustang,fLFD8Q0nthA,1833,suspension/parts/3,Unspecified boxed items,70.0,,,32:07
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/0,First car (95 Mustang roller),500.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/1,Turbo 400 (used) with bellhousing,1700.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/2,Junk engine #1 (known-bad core motor),500.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/3,8.8 rear end out of what became second car,150.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/4,Second car (parts car),250.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/5,Junk engine #2,500.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/6,UPR parts (scratch and dent),1800.0,,"Invoice showed 50% off; referee says typical UPR scratch-and-dent is 15-34% off; Zach pre-calculated $2,100 at a 30% discount; some shocks/s",
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/7,New FTI torque converter,1150.0,,"caption '$150' / earlier '1150'; interpreted as $1,150 retail",
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/8,New connecting rod from Ford dealership,58.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/9,Cam phaser delete/lockout,285.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,budget_whiteboard/items/10,Head gasket kit (with bolts),212.0,,,
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,transmission,transmission,1700.0,,,23:13
+crc3_95_mustang,crc3_95_mustang,JguV0Y7ZbD0,1839,converter,converter,1150.0,,,"20:52, 23:13"
+crc3_95_mustang,crc3_95_mustang,PTORqnT_zT4,1844,boost_control,boost_control,70.0,,,19:10-19:39
+crc3_95_mustang,crc3_95_mustang,PTORqnT_zT4,1844,parts/0,Billet cam phaser lockouts (4 pcs),287.0,,,14:34
+crc3_95_mustang,crc3_95_mustang,PTORqnT_zT4,1844,parts/1,Coyote engine (core),500.0,,,14:59
+crc3_95_mustang,crc3_95_mustang,PTORqnT_zT4,1844,parts/2,"Amazon item with sensors and stiff spring (likely wastegate, unclear)",62.0,,,17:36
+crc3_95_mustang,crc3_95_mustang,PTORqnT_zT4,1844,parts/3,Vevor CO2 tank for boost control,70.0,,,19:10
+crc3_95_mustang,crc3_95_mustang,PTORqnT_zT4,1844,parts/4,Radiator (fans separate),210.0,,,20:00
+crc3_express_van,crc3_express_van,geuWzFpnQNQ,1798,purchase,purchase,675.0,1000.0,,7:41
+crc3_gen1_s10,crc3_gen1_s10,F1pY9m1yhWM,1816,purchase,purchase,1000.0,1500.0,,"2:53-3:14, 16:46"
+crc3_gen1_s10,crc3_gen1_s10,F1pY9m1yhWM,1816,transmission,transmission,3000.0,,,"13:10-14:40, 19:17-19:44"
+crc3_gen1_s10,crc3_gen1_s10,1DL_XEuSOGU,1823,purchase_engine,purchase_engine,3750.0,3800.0,"Negotiated $50 off for rust by phone with Jackstand (offers 3,550/3,600/3,700 refused)","3:06, 5:10-6:13"
+crc3_gen1_s10,crc3_gen1_s10,1DL_XEuSOGU,1823,reference_prices/0,Pre-balanced LS piston/rod/crank kit (rebuild-yourself estimate),1100.0,,,4:26
+crc3_gen1_s10,crc3_gen1_s10,1DL_XEuSOGU,1823,reference_prices/1,"Fuel injectors (bought previous night, 'big')",450.0,,,7:41-8:03
+crc3_gen1_s10,crc3_gen1_s10,1DL_XEuSOGU,1823,reference_prices/2,Used K-member fair market estimate,100.0,,,21:14-21:42
+crc3_gen1_s10,crc3_gen1_s10,1DL_XEuSOGU,1823,transmission,transmission,3000.0,,"Restated as $3,000 and called a good deal by the others",6:36
+crc3_gen1_s10,crc3_gen1_s10,fLFD8Q0nthA,1833,transmission,transmission,3000.0,,,"17:42-19:08, 24:41-25:04"
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,budget_whiteboard/items/0,S10 truck,1000.0,,,
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,budget_whiteboard/items/1,Powerglide + converter,3000.0,,,
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,budget_whiteboard/items/2,Engine (Lumberjack spare LS),3800.0,,"Earlier episode negotiated to $3,750; board shows $3,800",
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,budget_whiteboard/items/3,"Holley Terminator X (used, standard version)",900.0,,"came with a used throttle body in the box - disputed, see below",
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,budget_whiteboard/items/4,Fuel injectors (Holley per caption 'Holl's'),450.0,,,
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,budget_whiteboard/items/5,Pair of used turbos from friend Glenn,500.0,,,
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,budget_whiteboard/items/6,"8.8 rear end (pre-estimate, before junkyard trip)",100.0,,,
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,junkyard_purchase/items/0,"Locked-up 6.0L LS (donor for intake, starter, coils, plug wires, headers)",200.0,,,33:05-34:22
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,junkyard_purchase/items/1,"Ford Explorer 8.8 rear end, 3.73 ratio (counted)",50.0,,,34:22-35:19
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,power_adder,power_adder,500.0,,,"9:50, 35:48-40:57"
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,ecu,ecu,900.0,,,8:45-9:08
+crc3_gen1_s10,crc3_gen1_s10,JguV0Y7ZbD0,1839,rear_end,rear_end,50.0,,,35:19
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,intake,"Used 'high ram' (Hi-Ram style) intake with lower, upper, fuel rails; intercooler brick inside is bad/leaking and to be capped/removed",400.0,,,"2:23-3:48, 21:44-22:39"
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,fuel_system,fuel_system,600.0,,,55:40-56:02
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,cooling,cooling,215.0,,,8:49
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/0,Used Hi-Ram style intake w/ rails (no intercooler core),400.0,,,2:23
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/1,Used steering column (+ new Grant wheel thrown in),100.0,,"column quoted $50, paid $100",3:05-3:25
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/2,TCI shifter,360.0,,'about 360 something',4:27
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/3,"Cooler (caption 'dog cooler', likely trans cooler, brand unclear)",100.0,,,4:27
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/4,Used CalTracs,150.0,,,4:54
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/5,Amazon relay panel / hardware,20.0,,"'like 20 bucks', item ambiguous",6:46
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/6,Amazon S10 LS-swap radiator w/ fans + shroud,215.0,,,8:49
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/7,Used Facebook Marketplace fuel pump,600.0,,,56:02
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/8,Scrap pipe from friend,5.0,,joked $20 vs $5,36:50
+crc3_gen1_s10,crc3_s10,PTORqnT_zT4,1844,parts/9,Hard 90 fitting for fuel rail clearing alternator,100.0,,"stated as a $100 fitting, not confirmed bought",47:07
+eagle,eagle,-fr9v9bLk0w,1518,parts/1,Set of connecting rods with correct bolts (service item),2000.0,,"caption garbled ('just under $22,000'), then clarified as two grand for a set; medium confidence",25:32
+eagle,eagle,-fr9v9bLk0w,1518,parts/2,Catastrophic engine failure repair (comparison),30000.0,,Proline: rods are cheap insurance vs ~$30k failure; one client failure cost ~19 rod sets,26:57-27:18
+jackstand_903_car,jackstand_903_car,6_quJlgCSC0,1864,parts/0,"Class-friendly race engine (quote, not bought)",38000.0,,,13:47
+lumberjack,crc1_el_camino,SAwRbNvp22c,1598,purchase,purchase,5350.0,,,"12:43, 19:27, 36:20"
+lumberjack,crc1_el_camino,SAwRbNvp22c,1598,parts/0,1973 El Camino turbo LS roller-ready car (no turbo),5000.0,,,47:39
+lumberjack,crc1_el_camino,SAwRbNvp22c,1598,parts/1,ARP head studs (installed by seller),350.0,,,36:20
+lumberjack,crc1_el_camino,SAwRbNvp22c,1598,parts/2,"Precision 7675 remanufactured turbo, T4, 1.15 divided",700.0,,,45:31-48:04
+lumberjack,crc1_el_camino,SAwRbNvp22c,1598,parts/3,"Air-to-air intercooler (came with car, seller paid $100 on Marketplace)",100.0,,,17:39
+lumberjack,crc1_lumberjack,B9BPtlgCxy8,1604,purchase,purchase,5350.0,,,16:48-17:17
+lumberjack,crc1_lumberjack,B9BPtlgCxy8,1604,parts/0,Turbo #1,700.0,,,17:47
+lumberjack,crc1_lumberjack,B9BPtlgCxy8,1604,parts/1,Turbo #2 reman upgrade (plus trade-in of #1),400.0,,,18:25
+lumberjack,crc1_lumberjack,B9BPtlgCxy8,1604,parts/2,Turbo drain line,25.0,,,18:25
+lumberjack,crc1_lumberjack,B9BPtlgCxy8,1604,parts/3,Hose and 90 fitting,100.0,,,20:24
+lumberjack,crc1_lumberjack,B9BPtlgCxy8,1604,parts/4,Wheel studs + lug nuts (~10 used),60.0,,,20:24
+lumberjack,crc2_lumberjack,PSGvE8jkSoc,1665,parts/3,"Aeromotive 5.0 brushless fuel pump (rebuilt, valued half new)",700.0,,,37:01-37:31
+lumberjack,crc2_lumberjack,-dDkkIHyQRM,1669,parts/1,"Aeromotive 5.0 pump (spare, not installed)",700.0,,,25:11
+lumberjack,lumberjack,5ibvcauFris,1859,parts/1,Parts owed between crew for 'cow tracks',100.0,,,39:18
+mcflurry,mcflurry_godzilla_mustang,PMZzslG5uLg,1248,parts/0,340 lph fuel pump,40.0,,caption 'like 40 dollar' - low confidence,24:21
+mullet,mullet,fzddx_3njA4,1869,parts/0,Rear-end gear oil (reused) - saved ~$50,50.0,,cost avoided,26:31
+mullet,mullet,PxE5quw5IoM,1870,parts/0,Crimped oil/fuel hose assembly (replacement),100.0,,,10:07
+toast,toast,QHDAecxBbus,786,parts/1,Front mag drive conversion kit,600.0,,,10:10

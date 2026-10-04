@@ -1,0 +1,85 @@
+car_id,source_car_id,video_id,chrono_rank,path,et,mph,sixty_ft,three_thirty_ft,eighth_et,eighth_mph,distance,track,conditions,kind,t
+caprice_rival,caprice_rival,uiyJESyt3HA,381,passes/0,10.1,140.0,,,,,,,,True,"2:03, 39:37"
+caprice_rival,caprice_rival,uiyJESyt3HA,381,targets,9.0,,,,,,,,,,40:17
+cleetus_c8_zr1,cleetus_c8_zr1,8FFwqm17Vow,1796,passes/0,9.59,151.0,,,,,,,,True,9:00-10:59
+cleetus_c8_zr1,cleetus_c8_zr1,8FFwqm17Vow,1796,passes/1,9.42,151.0,1.56,,6.19,121.0,,,,True,13:46-14:50
+cleetus_c8_zr1,cleetus_c8_zr1,8FFwqm17Vow,1796,targets,8.0,,,,,,,,,,14:50
+crc12_jackstand_240,crc1_240sx_coupe,SAwRbNvp22c,1598,predictions,200.0,,1.3,,,,,,,,"10:50-11:17, 29:41"
+crc12_jackstand_240,crc2_jackstand_240,mls_oZ9EQQg,1674,passes/0,8.7,141.0,1.26,,,,,Byron Dragway,,measured,"10:00-11:16, 13:57"
+crc12_tom_bailey_camaro,crc2_tom_bailey_camaro,mls_oZ9EQQg,1674,passes/0,9.72,,,,,,,,,measured,11:16-12:56
+crc12_tom_bailey_camaro,crc2_tom_bailey_camaro,mls_oZ9EQQg,1674,passes/1,8.97,152.0,,,,,,,,measured,18:45-19:15
+crc12_tye_mustang,crc1_mustang,w4q6pp2mesc,1863,passes/0,,,1.55,,,,,,,True,27:06-30:37
+crc2_mr_sam_truck,crc2_mr_sam_truck,mls_oZ9EQQg,1674,passes/0,10.12,130.0,,,,,,,,measured,7:37
+crc2_mr_sam_truck,crc2_mr_sam_truck,mls_oZ9EQQg,1674,passes/1,9.89,138.0,,,,,,,,measured,23:06-25:04
+crc3_240sx_hatch,crc3_240sx_hatch,fLFD8Q0nthA,1833,targets,7.9,,,,,,,,,,40:04
+crc3_95_mustang,crc3_95_mustang,geuWzFpnQNQ,1798,targets,7.9,,,,,,,,,,28:07
+crc3_express_van,crc3_express_van,geuWzFpnQNQ,1798,targets,9.0,,,,,,,,,,0:38
+crc3_gen1_s10,crc3_gen1_s10,1DL_XEuSOGU,1823,targets,8.0,,,,,,,,,,22:49
+crc3_gen1_s10,crc3_gen1_s10,fLFD8Q0nthA,1833,targets,8.0,,,,,,,,,,12:26
+django_stick_promod,django_stick_promod,VWcUtGO1yrQ,1779,passes/0,,,1.19,,4.51,,,TX2K26,,announced,"14:28-14:47, 18:15"
+eagle,eagle,XgXpvu6Q52Y,1488,targets,5.0,,,,,,,,,,"1:24, 10:48-11:17, 14:14"
+eagle,eagle,wkQiI5gN6Hs,1731,passes/0,5.75,,,,,,,,,,1:57-2:17
+eagle,eagle,wkQiI5gN6Hs,1731,passes/1,5.74,259.0,1.05,2.67,,,,,,measured (timeslip read on video),"16:12, 18:28, 19:43-20:38"
+eagle,eagle,wkQiI5gN6Hs,1731,targets,70.0,,,,,,,,,,8:09
+george_blazer,george_blazer,_zG9CUX1vmI,1386,passes/0,8.92,136.0,1.33,,,,,Bradenton Motorsports Park,,measured,17:23-19:12
+george_blazer,george_blazer,_zG9CUX1vmI,1386,passes/1,8.95,153.0,1.48,,,,,Bradenton Motorsports Park,,measured,25:51-27:18
+giveaway_zr1_apr,giveaway_zr1_apr,8FFwqm17Vow,1796,passes/0,,,1.97,,,,,,,True,6:32-8:12
+giveaway_zr1_apr,giveaway_zr1_apr,8FFwqm17Vow,1796,passes/1,10.55,137.0,1.93,,,106.0,,,"~90 F, very humid",True,11:35-13:11
+giveaway_zr1_sep,giveaway_zr1_sep,w4q6pp2mesc,1863,targets,9.0,,,,,,,,,,"1:38, 24:22"
+giveaway_zr1_sep,giveaway_zr1_sep,w4q6pp2mesc,1863,passes/0,9.47,148.0,1.49,,,,,,,True,19:31-23:02
+giveaway_zr1_sep,giveaway_zr1_sep,w4q6pp2mesc,1863,passes/1,9.34,145.0,1.36,,5.97,117.0,,,,True,23:02-26:41
+giveaway_zr1_sep,giveaway_zr1_sep,w4q6pp2mesc,1863,passes/2,9.11,148.0,1.3,,5.83,119.0,,,"~85-86 F after 30 min cool-down, iced blower",True,31:00-35:05
+leroy,leroy,dOjDCuSFso8,739,passes/0,7.79,,,,,,,,,,15:49
+leroy,leroy,_zG9CUX1vmI,1386,passes/0,,,,,4.98,144.0,1/8,Bradenton Motorsports Park,,measured,19:57-22:43
+leroy,leroy,_zG9CUX1vmI,1386,passes/1,,,1.209,,,,1/8,Bradenton Motorsports Park,,measured,24:00-24:41
+leroy,leroy,_zG9CUX1vmI,1386,passes/2,7.48,182.0,1.18,3.14,4.8,148.0,,Bradenton Motorsports Park,,measured,28:42-31:44
+leroy,leroy,_zG9CUX1vmI,1386,targets,1.25,,,,,,,,,,"0:00, 24:41"
+leroy,leroy,z2E_owm9Vrs,1563,passes/0,6.92,,,,,,,,,,9:24
+leroy,leroy,PgdQ91n0Bmw,1707,passes/0,7.45,146.0,1.159,3.094,4.597,163.0,,Bradenton Motorsports Park,,measured,16:46-17:22
+leroy,leroy,PgdQ91n0Bmw,1707,passes/1,6.93,211.9,1.18,3.11,4.6,165.0,,Bradenton Motorsports Park,,measured,34:22-38:12
+leroy,leroy,PgdQ91n0Bmw,1707,passes/2,7.43,150.0,1.152,3.098,4.612,159.0,,Bradenton Motorsports Park,,measured,57:17-59:51
+leroy,leroy,PgdQ91n0Bmw,1707,targets,,,,,4.4,,,,,,"57:17, 38:36"
+leroy,leroy,wkQiI5gN6Hs,1731,passes/0,6.86,216.0,,,,,,,,measured,10:51-14:55
+leroy,leroy,wkQiI5gN6Hs,1731,passes/1,6.89,216.0,,,,,,,,measured,29:09-32:37
+leroy,leroy,wkQiI5gN6Hs,1731,previous_best,6.81,,,,,,,,,stated PB,2:37
+leroy,leroy,wkQiI5gN6Hs,1731,targets,6.7,,,,,,,,,,3:01
+leroy,leroy,VWcUtGO1yrQ,1779,passes/0,6.91,214.0,1.13,,4.59,166.0,,TX2K26 (Texas),"sun out, warm",measured,12:18-17:33
+leroy,leroy,VWcUtGO1yrQ,1779,passes/1,6.71,219.0,1.11,2.99,4.45,170.0,,TX2K26 (Texas),after sun down,measured,24:49-30:13
+leroy,leroy,VWcUtGO1yrQ,1779,targets,6.8,,,,,,,,,,"10:06, 19:46"
+lumberjack,crc1_el_camino,SAwRbNvp22c,1598,targets,10.0,,,,,,,,,,"50:19, 38:50"
+lumberjack,crc2_lumberjack,mls_oZ9EQQg,1674,passes/0,,,60.0,,,,,,,measured,"8:51, 13:26-14:56"
+lumberjack,crc2_lumberjack,mls_oZ9EQQg,1674,passes/1,9.49,142.0,,,,,,Byron Dragway,,measured,15:48-16:45
+lumberjack,lumberjack,5ibvcauFris,1859,passes/0,9.45,143.0,1.46,,6.06,117.0,,Bradenton Motorsports Park,,measured,25:17-26:22
+lumberjack,lumberjack,5ibvcauFris,1859,passes/1,9.3,144.0,1.432,,5.967,119.0,,Bradenton Motorsports Park,,measured,32:33-36:58
+mcflurry,mcflurry,jqpXbu36rjQ,1259,passes/1,,,,,5.28,117.6,,,,True,8:03-10:19
+mcflurry,mcflurry,jqpXbu36rjQ,1259,passes/2,7.8,166.0,1.15,,5.0,140.0,,Bradenton Motorsports Park,,True,14:38-20:44
+mcflurry,mcflurry,jqpXbu36rjQ,1259,targets,8.5,,,,,,,,,,"18:37, 20:09"
+mcflurry,mcflurry,pFJadF2mmXE,1372,passes/0,8.17,122.0,1.2,,4.89,145.9,,,,measured,6:03-7:36
+mcflurry,mcflurry,jBug09pPpv4,1395,targets,6.0,,,,,,,,,,"19:37, 24:18"
+mcflurry,mcflurry,PgdQ91n0Bmw,1707,passes/0,,,1.12,,4.78,147.0,1/8,Bradenton Motorsports Park,,measured,27:49-29:15
+mcflurry,mcflurry,PgdQ91n0Bmw,1707,passes/1,,,1.11,,4.76,147.0,1/8,Bradenton Motorsports Park,,measured,38:36-43:01
+mcflurry,mcflurry,PgdQ91n0Bmw,1707,passes/2,7.12,189.0,1.1,,4.58,155.0,,Bradenton Motorsports Park,,measured,49:55-56:14
+mcflurry,mcflurry,PgdQ91n0Bmw,1707,targets,,,,,4.5,,,,,,41:03
+mcflurry,mcflurry,wkQiI5gN6Hs,1731,passes/1,7.26,193.0,,,,,,,,measured,27:47
+mullet,mullet,wkQiI5gN6Hs,1731,passes/0,6.6,214.0,1.1,2.92,4.34,173.0,,,,measured,"25:54, 32:37-33:56"
+mullet,mullet,m-X8-o0myuw,1743,passes/0,6.5,,,,,,,,,recalled,2:12
+mullet,mullet,m-X8-o0myuw,1743,passes/2,,,1.09,2.89,,,,,,measured (timeslip),7:20-9:32
+mullet,mullet,m-X8-o0myuw,1743,passes/3,,,1.08,,,,,,,measured (timeslip),12:25-13:55
+mullet,mullet,m-X8-o0myuw,1743,passes/5,,,1.09,,,,,,,measured (timeslip),18:41
+mullet,mullet,m-X8-o0myuw,1743,targets,6.0,,,,4.1,,,,,,"1:44-2:35, 9:32"
+mullet,mullet,6_quJlgCSC0,1864,passes/0,6.4,,,,,,,,,recalled claim,11:23
+mullet,mullet,aEdFIigQk9g,1871,passes/0,,,1.1,2.92,,,,,,measured (timeslip read aloud),14:43-16:52
+ruby,ruby,arp0aL0C86A,629,passes/0,8.3,,,,,,,,,,"0:00, 10:17"
+ruby,ruby,arp0aL0C86A,629,targets,7.0,,,,,,,,,,6:51
+ruby,ruby,dOjDCuSFso8,739,passes/1,7.74,,1.16,,4.9,,,,,,"10:55-11:51, 16:01"
+ruby,ruby,_ibg4g-Ovbs,1439,targets,8.5,,,,,,,,,,"8:18, 19:29"
+ruby,ruby,PgdQ91n0Bmw,1707,passes/1,8.15,169.0,1.33,,5.3,137.0,,,,measured,"21:23, 24:47"
+ruby,ruby,PgdQ91n0Bmw,1707,passes/2,8.27,166.0,1.32,,,,,,,measured,30:59-33:01
+ruby,ruby,PgdQ91n0Bmw,1707,passes/4,8.41,162.0,1.3,,5.42,130.0,,,,measured,45:42-48:19
+ruby,ruby,PgdQ91n0Bmw,1707,passes/5,8.66,,1.34,,5.56,127.0,,,,measured,1:01:13-1:02:28
+ruby,ruby,VWcUtGO1yrQ,1779,passes/0,8.33,166.0,1.29,,,,,TX2K26,,measured,"6:05-8:31, 10:39"
+ruby,ruby,VWcUtGO1yrQ,1779,targets,8.5,,,,,,,,,,"1:50, 2:54"
+tye_ranger,ty_coyote_ranger,jqpXbu36rjQ,1259,passes/0,,,,,6.13,113.0,,,,True,11:08-14:12
+tye_ranger,tye_ranger,pFJadF2mmXE,1372,passes/0,9.92,139.0,1.6,,6.4,111.0,,,,measured,19:41-20:24
+tye_ranger,tye_ranger,pFJadF2mmXE,1372,passes/1,9.77,139.0,1.45,,6.26,112.0,,,,measured,22:34-23:28
+tye_ranger,tye_ranger,pFJadF2mmXE,1372,targets,9.5,,,,,,,,,,"20:24, 21:16, 21:58"

@@ -1,0 +1,15 @@
+car,build,weight_lb,power_hp,et,mph,sixty_ft,implied_hp_per_lb,implied_lb_per_hp,implied_weight_lb,implied_hp,hale_et,hale_mph,et_error_s,note
+eagle,,2600,,5.74,259,1.05,1.356,0.74,,3526,,,,
+leroy,Leroy 2.0 (2023),,950,7.48,182,1.18,0.4705,2.13,,,,,,"dyno at 9.4 psi, pass at 20 psi: power and pass not comparable"
+leroy,TX2K26 (2026),,,6.71,219,1.11,0.8198,1.22,,,,,,
+mullet,"big block, World Cup",2762,,6.6,214,1.1,0.7649,1.31,,2113,,,,
+mcflurry,7.3 Godzilla twin turbo,,730,7.8,166,1.15,0.357,2.8,,,,,,"dyno at 6 psi on pump gas, pass on higher boost: not comparable"
+mcflurry,Coyote single 76 mm,,1394,7.12,189,1.1,0.5269,1.9,2646,,,,,
+ruby,Texas Speed 427,,1002,8.15,169,1.33,0.3767,2.65,,,,,,"dyno at 11 psi (2024), pass on ~15-20 psi (2025): not comparable"
+lumberjack,,,900,9.3,144,1.432,0.233,4.29,3863,,,,,
+crc12_jackstand_240,,2605,786,8.7,141,1.26,0.2188,4.57,3592,570,8.68,156.9,0.02,
+crc12_tom_bailey_camaro,,,,8.97,152,,0.2741,3.65,,,,,,
+crc3_240sx_hatch,,2400,460,,,,,,,,10.1,134.9,,
+tye_ranger,,,,9.77,139,1.45,0.2096,4.77,,,,,,
+giveaway_zr1_sep,,,995,9.11,148,1.3,0.253,3.95,3933,,,,,
+cleetus_c8_zr1,,,,9.42,151,1.56,0.2687,3.72,,,,,,

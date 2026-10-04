@@ -1,0 +1,49 @@
+car_id,source_car_id,video_id,chrono_rank,path,hp,whp,torque_lbft,boost_psi,fuel,dyno_type,kind,notes,t
+blazer,blazer,1Xwy_TeHkpc,1119,dyno/1,1012.0,,1145.0,23.8,,,True,"caption 'one thousand twelve ... the torque eleven forty five'; over 1,000 lb-ft by 4,000 rpm; hp/torque assignment medium confidence; whp vs crank not stated","6:20-6:26, 7:01-7:10, 8:06"
+blazer,blazer,biZF2mOZaYI,1292,dyno/0,,,798.0,14.0,,,True,,8:23-8:32
+blazer,blazer,biZF2mOZaYI,1292,dyno/1,1003.0,,1037.0,15.0,,,True,,10:04-11:02
+cleetus_c8_zr1,cleetus_c8_zr1,8FFwqm17Vow,1796,dyno/0,,1180.0,,,,,"previously, claimed",,1:10
+crc12_jackstand_240,crc2_jackstand_240,-dDkkIHyQRM,1669,dyno/0,520.0,,,,,"chassis dyno (car strapped down, run through gears) - wheel vs crank not stated",measured,"flat power from 6,000 up; throttle stuck once, front seal leak",11:05-11:36
+crc12_jackstand_240,crc2_jackstand_240,-dDkkIHyQRM,1669,dyno/1,786.0,,,,,chassis dyno,measured,~250 hp gain; leaking nitrous solenoid replaced before pull,11:36-13:30
+crc12_tye_mustang,crc2_tye_mustang,-dDkkIHyQRM,1669,dyno/0,593.0,,,13.0,,,measured,"spike, sounded lean/unclean",35:13-36:11
+crc12_tye_mustang,crc2_tye_mustang,-dDkkIHyQRM,1669,dyno/1,850.0,,,14.0,,,measured,also quoted 843 hp; lifted early,37:04-38:03
+crc12_tye_mustang,crc2_tye_mustang,-dDkkIHyQRM,1669,dyno/2,927.0,,,22.0,,,measured,,38:31
+crc3_240sx_hatch,crc3_240sx_hatch,fLFD8Q0nthA,1833,engine/na_dyno_claim,460.0,,,,,,"claimed, not shown",,36:09-36:33
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno_history/0,803.0,,,,,,,,2:57
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno_history/1,730.0,,,,,,,,2:57-3:23
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno_history/2,809.0,,,,,,,,"11:58, 15:03"
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/0,819.0,,707.0,16.0,,,,,"10:38-11:58, 13:35"
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/1,819.0,,712.0,,,,,,15:03-16:28
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/2,810.0,,,,,,,,16:28
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/3,844.0,,727.0,17.0,,,,,17:51
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/4,846.0,,761.0,19.0,,,,,21:28-22:33
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/5,851.0,,755.0,19.0,,,,,23:06
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/6,872.0,,763.0,,,,,,25:50-26:00
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/7,897.0,,785.0,,,,,"boost only, through stock cast manifolds","27:01-28:44, 38:08"
+crown_vic_gt500,crown_vic_gt500,uiyJESyt3HA,381,dyno/8,1068.0,,967.0,22.8,,,,,"32:14-34:14, 36:03"
+giveaway_zr1_sep,giveaway_zr1_sep,w4q6pp2mesc,1863,dyno/0,877.0,,,,,,True,partial pull,3:40
+giveaway_zr1_sep,giveaway_zr1_sep,w4q6pp2mesc,1863,dyno/1,937.0,,,,,,True,,5:15-6:19
+giveaway_zr1_sep,giveaway_zr1_sep,w4q6pp2mesc,1863,dyno/2,995.0,,,23.0,~70% ethanol,,True,"driver lifted early; ~1,000 claimed possible if 2 F cooler",7:39-9:54
+james_240sx_turbo,james_240sx_turbo,dOjDCuSFso8,739,dyno/0,,1320.0,,15.0,,"measured (wheel, through automatic)",,,"2:00, 16:10"
+leroy,leroy,_zG9CUX1vmI,1386,dyno/0,580.0,,,,,,measured (chassis dyno),break-in partial pull,7:55
+leroy,leroy,_zG9CUX1vmI,1386,dyno/1,800.0,,,,,,measured,,9:18-10:36
+leroy,leroy,_zG9CUX1vmI,1386,dyno/2,950.0,,,9.4,,,measured,both 950 and 970 stated,"13:49, 15:30"
+leroy,leroy,_zG9CUX1vmI,1386,dyno/3,,,,17.5,,,measured,boost spiked to 17.5 psi briefly; caption '8300 new record' (unclear if rpm or hp),16:57-17:23
+lumberjack,lumberjack,5ibvcauFris,1859,dyno/1,900.0,,,26.0,,,measured,"boost turned down 10 psi vs previous; AFR on target, tune pulling 5-8% fuel; oil pressure 84 psi",18:15-19:27
+marauder,marauder,ArK5sv0Xi2U,1020,dyno/0,,450.0,,4.0,93,,,,2:12-3:07
+marauder,marauder,ArK5sv0Xi2U,1020,dyno/1,,476.0,,5.6,93,,,,3:47-4:42
+marauder,marauder,ArK5sv0Xi2U,1020,dyno/2,,514.0,555.0,7.7,93,,,,5:09-5:57
+marauder,marauder,ArK5sv0Xi2U,1020,dyno/3,,542.0,,3.0,E90 blend,,,"+~30 hp from ethanol alone, no timing added",7:42-8:31
+marauder,marauder,ArK5sv0Xi2U,1020,dyno/4,,580.0,,,E90 blend,,,hit rev limiter; boost spoken as 11-12 (garbled),8:52-9:22
+marauder,marauder,ArK5sv0Xi2U,1020,dyno/5,,672.0,,9.0,E90 blend,,,,10:00-11:34
+marauder,marauder,ArK5sv0Xi2U,1020,dyno/6,,693.0,,13.0,E90 blend,,True,goal 700 not reached; fuel system 'right on the edge',12:58-14:23
+mcflurry,mcflurry_godzilla_mustang,PMZzslG5uLg,1248,dyno/0,,551.0,,6.0,93,measured,,,16:22-18:01
+mcflurry,mcflurry_godzilla_mustang,PMZzslG5uLg,1248,dyno/1,,593.0,,6.0,,measured (partial),,"hit boost/lean cut at 5,300 rpm (engine protection)",20:34-21:35
+mcflurry,mcflurry_godzilla_mustang,PMZzslG5uLg,1248,dyno/2,,730.0,,6.0,,measured,,rolled in late; low torque reading,22:03-23:42
+mcflurry,mcflurry,pFJadF2mmXE,1372,dyno/0,1355.0,,,,,,stated dyno result (fresh off dyno),,4:25
+mcflurry,mcflurry,IHi9RJU_nVs,1704,dyno/1,1124.0,,,20.0,,,True,,30:00
+mcflurry,mcflurry,IHi9RJU_nVs,1704,dyno/2,1307.0,,,26.0,,,True,,31:55-33:25
+mcflurry,mcflurry,IHi9RJU_nVs,1704,dyno/3,1394.0,,,31.0,,,True,,35:07-36:16
+ruby,ruby,_ibg4g-Ovbs,1439,dyno/0,,839.0,770.0,5.0,,"measured (chassis dyno, wheel)",,,18:18-19:29
+ruby,ruby,_ibg4g-Ovbs,1439,dyno/1,,930.0,,6.0,,measured,,+~90 hp,20:20-21:23
+ruby,ruby,_ibg4g-Ovbs,1439,dyno/2,,1002.0,,11.0,,measured (value low-confidence from caption),,"caption '1,2 horsepowers'; goal of 1,000 met; breaking up on the way up",21:53-22:18
