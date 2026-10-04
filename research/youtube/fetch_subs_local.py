@@ -91,7 +91,9 @@ def main():
         "noprogress": True,
         "extractor_retries": 2,
         "sleep_interval_requests": 1,
+        "sleep_interval_subtitles": 3,
     }
+    backoff_s = [120, 300, 900]
 
     fetched = 0
     with YoutubeDL(opts) as ydl, open(manifest_path, "a", encoding="utf-8") as mf:
@@ -100,26 +102,42 @@ def main():
                 break
             vid = r["id"]
             rec = {"id": vid, "title": r["title"], "chrono_rank": int(r["chrono_rank"])}
-            try:
-                info = ydl.extract_info(f"https://www.youtube.com/watch?v={vid}", download=True)
-                sub = raw_dir / f"{vid}.en.json3"
-                if not sub.exists():
-                    rec["status"] = "no_subs"
-                else:
-                    lines = json3_to_lines(sub)
-                    (tx_dir / f"{vid}.ts.txt").write_text("\n".join(lines), encoding="utf-8")
-                    rec.update(status="ok", kind="manual" if "en" in (info.get("subtitles") or {}) else "auto",
-                               lines=len(lines), duration_s=info.get("duration"))
-            except Exception as e:
-                msg = str(e)
-                rec.update(status="error", error=msg[:300])
+            stop = False
+            for attempt in range(len(backoff_s) + 1):
+                try:
+                    info = ydl.extract_info(f"https://www.youtube.com/watch?v={vid}", download=True)
+                    sub = raw_dir / f"{vid}.en.json3"
+                    if not sub.exists():
+                        rec["status"] = "no_subs"
+                    else:
+                        lines = json3_to_lines(sub)
+                        (tx_dir / f"{vid}.ts.txt").write_text("\n".join(lines), encoding="utf-8")
+                        rec.update(status="ok", kind="manual" if "en" in (info.get("subtitles") or {}) else "auto",
+                                   lines=len(lines), duration_s=info.get("duration"))
+                    break
+                except Exception as e:
+                    msg = str(e)
+                    rec.update(status="error", error=msg[:300])
+                    if "confirm you" in msg.lower():
+                        print(f"\nYouTube asks for a bot check ({vid}). Stopping to protect your IP.")
+                        stop = True
+                        break
+                    if "429" in msg and attempt < len(backoff_s):
+                        wait = backoff_s[attempt]
+                        print(f"[{i}/{len(todo)}] {vid} rate-limited (429), waiting {wait // 60} min, retry {attempt + 1}/{len(backoff_s)}")
+                        time.sleep(wait)
+                        continue
+                    if "429" in msg:
+                        print(f"\nStill rate-limited after {len(backoff_s)} retries ({vid}). Stopping.")
+                        stop = True
+                    break
+            if rec["status"] == "error":
                 mf.write(json.dumps(rec) + "\n")
                 mf.flush()
-                if "confirm you" in msg.lower() or "429" in msg:
-                    print(f"\nYouTube is rate-limiting or asking for a bot check ({vid}). Stopping to protect your IP.")
+                if stop:
                     print("Wait a few hours and run the same command again; it resumes where it stopped.")
                     break
-                print(f"[{i}/{len(todo)}] {vid} error: {msg[:120]}")
+                print(f"[{i}/{len(todo)}] {vid} error: {rec['error'][:120]}")
                 continue
             mf.write(json.dumps(rec) + "\n")
             mf.flush()
