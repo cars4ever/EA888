@@ -1169,6 +1169,8 @@
   }
   // Can the active car race? The Scirocco needs a completed pull of its current build; a roster car runs on its
   // measured curve, but not once it is worn through until it is rebuilt.
+  // The career rules judge the car that races, with the player's own budget and reputation.
+  function careerCarState() { return activeRosterId() ? { ...raceCarState(), bank: state.bank, career: state.career } : state; }
   function raceReady() {
     const id = activeRosterId();
     if (id) {
@@ -3528,7 +3530,7 @@
       </div>`;
     }
     const events = C.CAREER_EVENTS.map(ev => {
-      const why = C.careerEligibility(state, ev.id);
+      const why = C.careerEligibility(careerCarState(), ev.id);
       return `<article class="career-event ${why.length ? 'locked' : ''}">
         <div><span class="eyebrow">${ev.format === 'bracket' ? 'BRACKET · DIAL-IN' : 'HEADS-UP'} · ${ev.rounds} rondes</span><h3>${esc(ev.name)}</h3><p>${esc(ev.detail)}</p>
         <small>Inschrijven ${euro(ev.entry)} · winnaar ${euro(ev.prize)} · +${ev.rep} reputatie${ev.repRequired ? ` · vanaf ${ev.repRequired} rep` : ''}</small>
@@ -3553,7 +3555,7 @@
   function careerEnter(eventId) {
     try {
       const ev = C.CAREER_EVENT_MAP[eventId];
-      state = C.startCareerEvent(state, eventId);
+      state = C.startCareerEvent(state, eventId, undefined, { raceCar: activeRosterId() ? raceCarState() : null });
       state.career.active.dialIn = careerSuggestedDial();
       saveState(); haptic([12, 20, 12]); render();
       showToast(`Ingeschreven voor ${ev.name} (−${euro(ev.entry)}).`);

@@ -56,5 +56,16 @@ for (let i = 0; i < 200; i++) b.step(0.01, { throttle: true });
 const bp = b.point();
 assert(Number.isFinite(bp.rpm) && bp.rpm > 3000 && bp.tyreSurfaceC > 30, 'roster burnout');
 
+// Career rules judge the car that races: a roster V8 on drag radials is not a pump-fuel, street-tyre, 2.0-litre car.
+{
+  const car = { ...C.rosterState(id), bank: 50000, career: { ...C.defaultCareer(), rep: 500 } };
+  assert(C.careerEligibility(car, 'outlaw_20').some(w => /Cilinderinhoud/.test(w)), 'a V8 is not a 2.0-litre car');
+  assert(C.careerEligibility(car, 'street_night').some(w => /Banden/.test(w)), 'drag radials are not street tyres');
+  assert.deepStrictEqual(C.careerEligibility(car, 'real_builds'), [], 'open bracket: allowed');
+  const entered = C.startCareerEvent({ ...fresh, bank: 50000, career: { ...C.defaultCareer(), rep: 500 } }, 'real_builds', undefined, { raceCar: C.rosterState(id) });
+  assert.strictEqual(entered.career.active.eventId, 'real_builds');
+  assert.throws(() => C.startCareerEvent({ ...fresh, career: { ...C.defaultCareer(), rep: 500 } }, 'outlaw_20', undefined, { raceCar: C.rosterState(id) }), /Cilinderinhoud/);
+}
+
 console.log('PASS garage tests');
 module.exports = { forSale: C.rosterOpponents().filter(o => C.rosterCarPrice(o.id)).length, coupeEur: price.eur };

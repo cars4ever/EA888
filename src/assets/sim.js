@@ -3600,7 +3600,9 @@
     st.tune = { ...st.tune, launchRpm: Math.min(spec.launchRpm, spec.engine.revLimit - 300), tractionControl: spec.tractionControl };
     st.rosterCar = {
       id, engine: spec.engine, transmission: spec.transmission, massKg: spec.massKg, frontStatic: spec.frontStatic,
-      nitrous: spec.nitrous, shiftRpm: spec.shiftRpm, tractionControl: spec.tractionControl
+      nitrous: spec.nitrous, shiftRpm: spec.shiftRpm, tractionControl: spec.tractionControl,
+      // what the career rules read: the engine is a V8; pump fuel only when the research says so
+      engineFamily: spec.engine.family, pumpFuel: /\bpump\b|\b9[1-8]\b|\bE10\b/i.test(rosterCarData(id)?.description?.fuel?.text || '')
     };
     return normalizeState(st);
   }
@@ -4637,9 +4639,12 @@
     const r = ev.rules || {}, c = s.career || defaultCareer();
     if ((c.rep || 0) < ev.repRequired) out.push(`Reputatie ${ev.repRequired} nodig (nu ${c.rep || 0}).`);
     if (r.tyres && !r.tyres.includes(s.vehicle.tireCompound)) out.push(`Banden: alleen ${r.tyres.map(t => TIRE_MAP[t]?.name || t).join(', ')}.`);
-    if (r.fuels && !r.fuels.includes(s.selections.fuel)) out.push('Brandstof: alleen pompbrandstof (geen race-brandstof of methanol).');
+    // A roster car is judged on what is known of it: every roster engine is a V8 (well over 2.1 litres), and a
+    // fuel the research does not name as pump fuel does not count as pump fuel.
+    const rc = s.rosterCar;
+    if (r.fuels && (rc ? !rc.pumpFuel : !r.fuels.includes(s.selections.fuel))) out.push(rc ? 'Brandstof: alleen pompbrandstof (voor deze auto niet als pompbrandstof bekend).' : 'Brandstof: alleen pompbrandstof (geen race-brandstof of methanol).');
     if (r.drivetrain && !r.drivetrain.includes(s.vehicle.drivetrain)) out.push(`Aandrijving: alleen ${r.drivetrain.join('/')}.`);
-    if (r.maxDisplacementCc && engineGeometry(s).displacementCc > r.maxDisplacementCc) out.push(`Cilinderinhoud max ${r.maxDisplacementCc} cc.`);
+    if (r.maxDisplacementCc && (rc ? true : engineGeometry(s).displacementCc > r.maxDisplacementCc)) out.push(rc ? `Cilinderinhoud max ${r.maxDisplacementCc} cc (deze V8 is groter).` : `Cilinderinhoud max ${r.maxDisplacementCc} cc.`);
     if ((s.bank || 0) < ev.entry) out.push(`Inschrijfgeld € ${ev.entry} (budget te laag).`);
     return out;
   }
@@ -4682,9 +4687,11 @@
     if (pBreak !== oBreak) return { ...base, won: !pBreak, reason: pBreak ? `break-out: ${(p.dialIn - p.et).toFixed(3)} s sneller dan je dial-in` : 'rivaal break-out' };
     return { ...base, won: pFinish < oFinish, reason: pFinish < oFinish ? 'eerst over de finish op je dial-in' : 'rivaal eerst over de finish' };
   }
-  function startCareerEvent(inputState, eventId, nowIso = new Date().toISOString()) {
+  // opts.raceCar: the state of the car that will race (a roster car from the garage); the rules judge that car,
+  // with the player's own budget and reputation.
+  function startCareerEvent(inputState, eventId, nowIso = new Date().toISOString(), opts = {}) {
     const s = normalizeState(inputState), ev = CAREER_EVENT_MAP[eventId];
-    const why = careerEligibility(s, eventId);
+    const why = careerEligibility(opts.raceCar ? { ...opts.raceCar, bank: s.bank, career: s.career } : s, eventId);
     if (why.length) throw new Error(why[0]);
     s.bank -= ev.entry;
     s.career = { ...defaultCareer(), ...(s.career || {}) };
