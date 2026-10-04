@@ -1,0 +1,126 @@
+{
+ "schemaVersion": 1,
+ "about": "Regels voor wat het onderzoek niet zegt maar de sim nodig heeft. Elke regel geldt per klasse (carrosserie, motorfamilie, bak) en is niet op een auto afgesteld; waarden komen uit publieke specificaties of typische waarden en worden in het spel als kind 'modeled' getoond met de reden hieronder. Een feit uit het onderzoek (cars.json facts) gaat altijd voor.",
+ "bodies": {
+  "tube_chassis": {
+   "label": "buizenframe met klassieke carrosserie",
+   "cdA": {"value": 0.8, "reason": "typische Cd ~0.40 x frontaal ~2.0 m2 voor een jaren-60 coupé-carrosserie; niet gemeten"},
+   "wheelbaseM": {"value": 2.74, "reason": "wielbasis van de carrosserie (108 in); een buizenframe houdt die meestal aan"},
+   "cgHeightM": {"value": 0.46, "reason": "laag zwaartepunt van een dragchassis; typische waarde"},
+   "frontWeightPct": {"value": 52, "reason": "typische verdeling voor een V8-dragauto met motor voor de vooras; niet gemeten"}
+  },
+  "ute": {
+   "label": "coupé-pick-up (ute)",
+   "cdA": {"value": 1.0, "reason": "typische Cd ~0.47 x frontaal ~2.15 m2 voor een jaren-70 ute; niet gemeten"},
+   "wheelbaseM": {"value": 2.95, "reason": "fabriekswielbasis van het basismodel (116 in)"},
+   "cgHeightM": {"value": 0.52, "reason": "typische waarde voor een verlaagde full-size auto"},
+   "frontWeightPct": {"value": 55, "reason": "typische verdeling met grote V8 voor; niet gemeten"}
+  },
+  "eighties_coupe": {
+   "label": "compacte jaren-80 coupé",
+   "cdA": {"value": 0.78, "reason": "typische Cd ~0.39 x frontaal ~2.0 m2; niet gemeten"},
+   "wheelbaseM": {"value": 2.55, "reason": "fabriekswielbasis van het basismodel (100.5 in)"},
+   "cgHeightM": {"value": 0.5, "reason": "typische waarde"},
+   "frontWeightPct": {"value": 55, "reason": "typische verdeling met V8 voor; niet gemeten"}
+  },
+  "small_coupe": {
+   "label": "kleine coupé of hatchback",
+   "cdA": {"value": 0.62, "reason": "typische Cd ~0.33 x frontaal ~1.9 m2; niet gemeten"},
+   "wheelbaseM": {"value": 2.47, "reason": "fabriekswielbasis van het basismodel (97.4 in)"},
+   "cgHeightM": {"value": 0.48, "reason": "typische waarde"},
+   "frontWeightPct": {"value": 54, "reason": "typische verdeling met V8-swap; voor de coupé is 54 % gemeten"}
+  },
+  "sports_car": {
+   "label": "sportwagen met motor voor",
+   "cdA": {"value": 0.76, "reason": "typische Cd ~0.37 x frontaal ~2.05 m2 met spoiler; niet gemeten"},
+   "wheelbaseM": {"value": 2.71, "reason": "fabriekswielbasis van het basismodel (106.7 in)"},
+   "cgHeightM": {"value": 0.46, "reason": "typische waarde voor een lage sportwagen"},
+   "frontWeightPct": {"value": 51, "reason": "fabrieksverdeling van het type (transaxle achter); niet gemeten"}
+  }
+ },
+ "carBody": {
+  "eagle": "tube_chassis", "mullet": "ute", "lumberjack": "ute", "mcflurry": "eighties_coupe",
+  "crc12_jackstand_240": "small_coupe", "crc3_240sx_hatch": "small_coupe", "giveaway_zr1_sep": "sports_car"
+ },
+ "engines": {
+  "about": "Koppelkromme genormaliseerd: x = toerental / toerental van piekvermogen, s = koppel / piekkoppel. De sim schaalt de kromme zo dat het piekvermogen precies het gemeten of opgegeven getal is. Met een opgegeven piekkoppel volgt het toerental van piekvermogen uit P = T s(1) w.",
+  "families": {
+   "na_v8": {
+    "label": "atmosferische V8 met stoterstangen",
+    "shape": [[0.25, 0.7], [0.4, 0.8], [0.55, 0.92], [0.7, 1.0], [0.85, 0.98], [1.0, 0.9], [1.08, 0.83], [1.15, 0.75]],
+    "peakPowerRpm": 6300, "revLimitFactor": 1.08,
+    "inertiaKgM2": 0.32,
+    "reason": "typische vorm van een atmosferische stoterstang-V8; vliegwiel/flexplate plus converterpomp ~0.32 kg m2"
+   },
+   "turbo_v8": {
+    "label": "turbo-V8 met stoterstangen (straat/budget)",
+    "shape": [[0.25, 0.45], [0.4, 0.7], [0.55, 0.92], [0.7, 1.0], [0.85, 1.0], [1.0, 0.93], [1.08, 0.86], [1.15, 0.78]],
+    "peakPowerRpm": 6800, "revLimitFactor": 1.08,
+    "inertiaKgM2": 0.34,
+    "reason": "vlakke kromme op volle boost (boost op de transbrake opgebouwd); typische toerentallen voor een turbo-LS"
+   },
+   "turbo_v8_race": {
+    "label": "biturbo race-V8 (billet/big-block, methanol)",
+    "shape": [[0.25, 0.45], [0.4, 0.7], [0.55, 0.92], [0.7, 1.0], [0.85, 1.0], [1.0, 0.93], [1.08, 0.86], [1.15, 0.78]],
+    "peakPowerRpm": 7500, "revLimitFactor": 1.08,
+    "inertiaKgM2": 0.4,
+    "reason": "zelfde vorm als turbo_v8; race-big-blocks draaien hoger; zwaardere roterende massa"
+   },
+   "turbo_v8_dohc": {
+    "label": "turbo-V8 met dubbele bovenliggende nokkenas",
+    "shape": [[0.25, 0.45], [0.4, 0.7], [0.55, 0.92], [0.7, 1.0], [0.85, 1.0], [1.0, 0.93], [1.08, 0.86], [1.15, 0.78]],
+    "peakPowerRpm": 7600, "revLimitFactor": 1.09,
+    "inertiaKgM2": 0.3,
+    "reason": "DOHC-V8 draait hoger; voor deze auto is een 1-2-schakelpunt van 8.100 rpm opgegeven"
+   },
+   "sc_v8": {
+    "label": "V8 met verdringercompressor",
+    "shape": [[0.25, 0.8], [0.4, 0.92], [0.55, 0.98], [0.7, 1.0], [0.85, 0.97], [1.0, 0.9], [1.08, 0.83], [1.15, 0.76]],
+    "peakPowerRpm": 6300, "revLimitFactor": 1.06,
+    "inertiaKgM2": 0.3,
+    "reason": "een verdringercompressor geeft al vroeg vol koppel (voor deze auto: ~925 lb-ft vanaf 4.300 rpm opgegeven)"
+   }
+  },
+  "carEngine": {
+   "eagle": "turbo_v8_race", "mullet": "turbo_v8_race", "mcflurry": "turbo_v8_dohc", "lumberjack": "turbo_v8",
+   "crc12_jackstand_240": "na_v8", "crc3_240sx_hatch": "na_v8", "giveaway_zr1_sep": "sc_v8"
+  }
+ },
+ "wheelToCrank": {
+  "reason": "een vermogen 'aan de wielen' wordt door het rendement van de aandrijflijn in de sim gedeeld; bij 'onbekend' geldt het getal als motorvermogen en dat staat erbij"
+ },
+ "transmissions": {
+  "powerglide": {"label": "Powerglide 2-traps", "gears": [1.76, 1.0], "efficiency": 0.93, "shiftS": 0.12,
+   "reason": "standaardverhoudingen van de Powerglide (publieke specificatie); rendement en schakeltijd typisch"},
+  "th400": {"label": "TH400 3-traps", "gears": [2.48, 1.48, 1.0], "efficiency": 0.92, "shiftS": 0.15,
+   "reason": "standaardverhoudingen van de TH400 (publieke specificatie); rendement en schakeltijd typisch"},
+  "lenco": {"label": "Lenco met converter", "gears": [2.48, 1.48, 1.0], "efficiency": 0.93, "shiftS": 0.08,
+   "reason": "de verhoudingen van deze Lenco zijn niet genoemd; gemodelleerd met TH400-verhoudingen, met de kortere schakeltijd van een luchtgeschakelde Lenco"},
+  "oem_auto": {"label": "fabrieksautomaat 8-traps", "gears": [4.56, 2.97, 2.08, 1.69, 1.27, 1.0, 0.85, 0.65], "efficiency": 0.9, "shiftS": 0.15,
+   "reason": "generatie niet zeker; verhoudingen van de 8-traps fabrieksautomaat van het type (publieke specificatie)"},
+  "default": {"value": "th400", "reason": "bak niet genoemd: de TH400 is de meest voorkomende drag-automaat in deze roster"}
+ },
+ "converters": {
+  "race": {"torqueRatio": 1.8, "couplingSr": 0.85, "flashStallFactor": 0.78,
+   "reason": "dragconverter: koppelvermeerdering ~1.8 bij stilstand, koppelpunt bij 85 % snelheidsverhouding; flash-stall ~0.78 x toerental van piekvermogen, tenzij opgegeven"},
+  "oem": {"torqueRatio": 2.0, "couplingSr": 0.88, "stallRpm": 2800,
+   "reason": "fabrieksconverter: hogere vermeerdering, stall ~2.800 rpm; typische waarden"}
+ },
+ "tires": {
+  "byGroup": {"hero": "pro_radial", "cheap_racecar": "drag_radial", "street": "drag_radial", "burnout": "slick"},
+  "reason": "band niet (volledig) genoemd: de radialklasse van de groep, in de standaardmaat van dat bandtype in het spel"
+ },
+ "finalDrive": {
+  "minRatio": 2.3, "maxRatio": 4.6, "lineRpmFactor": 1.04,
+  "reason": "achterasverhouding nergens genoemd: zo gekozen dat de auto net voorbij het piekvermogen over de streep gaat (1.04 x) bij de snelheid die Hale bij vermogen en gewicht voorspelt, in de hoogste versnelling die een verhouding tussen 2.3 en 4.6 toelaat. Dit gebruikt nooit de gemeten trap van de auto zelf."
+ },
+ "nitrous": {
+  "progressiveS": 1.0, "delayS": 0.25,
+  "reason": "geen controller genoemd: een progressieve opbouw van 1 s die 0.25 s na de start begint (typisch voor een radialauto met lachgas)"
+ },
+ "driver": {"skill": 0.92, "reason": "ervaren coureurs; het rijdersmodel doseert gas bij wielspin"},
+ "conditions": {
+  "ambientC": 25, "trackTempC": 40, "altitudeM": 100, "humidityPct": 55, "preparedTrack": true,
+  "reason": "weer en baan van de run niet genoemd: een warme, geprepareerde dragstrip"
+ }
+}

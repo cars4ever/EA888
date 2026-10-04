@@ -1,0 +1,23 @@
+{
+ "_about": "Weergavenamen in het spel. Pas ze vrij aan; een nieuwe import overschrijft ze niet.",
+ "eagle": "Biturbo V8 buizenframe",
+ "leroy": "Biturbo V8 sportwagen",
+ "mullet": "Biturbo big-block ute",
+ "mcflurry": "Turbo-V8 coupé (jaren 80)",
+ "ruby": "Turbo-V8 coupé (rood)",
+ "blazer": "Turbo-V8 SUV",
+ "toast": "Compressor-V8 burnoutauto",
+ "crown_vic_gt500": "Compressor-V8 sedan",
+ "marauder": "Turbo-V8 sedan",
+ "galaxie_cummins": "Turbodiesel klassieker",
+ "lumberjack": "Turbo-V8 ute",
+ "crc12_jackstand_240": "Lachgas-V8 coupé",
+ "crc12_tye_mustang": "Budgetturbo-V8 coupé",
+ "crc12_tom_bailey_camaro": "Lachgas big-block coupé",
+ "crc3_gen1_s10": "Biturbo-V8 pick-up",
+ "crc3_95_mustang": "Turbo-V8 coupé (jaren 90)",
+ "crc3_240sx_hatch": "Lachgas-V8 hatchback",
+ "tye_ranger": "Turbo-V8 pick-up",
+ "giveaway_zr1_sep": "Compressor-V8 sportwagen",
+ "cleetus_c8_zr1": "Middenmotor V8 sportwagen"
+}

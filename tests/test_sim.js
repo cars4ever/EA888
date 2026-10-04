@@ -205,6 +205,8 @@ const partsDataSuite = require('./test_parts_data.js');
 const swapSuite = require('./test_swaps.js');
 const gripSuite = require('./test_grip.js');
 const maxBuildSuite = require('./test_max_builds.js');
+// Real cars from the YouTube research: provenance of every value, calibration pairs.
+const rosterDataSuite = require('./test_roster_data.js');
 
 const self = C.selfTest();
 assert(self.ok, JSON.stringify(self.checks, null, 2));
@@ -238,7 +240,8 @@ const report = {
   partsData: partsDataSuite,
   swaps: swapSuite,
   grip: gripSuite,
-  maxBuilds: maxBuildSuite
+  maxBuilds: maxBuildSuite,
+  rosterData: rosterDataSuite
 };
 console.log('PASS EA888 Lab v1.2 simulation tests');
 console.log(JSON.stringify(report, null, 2));

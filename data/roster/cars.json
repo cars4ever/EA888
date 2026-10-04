@@ -1,0 +1,2962 @@
+{
+ "schemaVersion": 1,
+ "source": {
+  "repo": "github.com/cars4ever/EA888",
+  "branch": "claude/laughing-babbage-ls6v7d",
+  "commit": "334e31d",
+  "path": "research/youtube/cleetusm",
+  "importedBy": "tools/import_roster.py"
+ },
+ "about": "Curated drag-sim roster from @CleetusM transcripts. Every value cites video_id@timestamp from extract/. kind: measured = timeslip/dyno/scale read in the video; stated = said by the team without proof shown; estimate = team's own estimate; null = not said in the 46 processed videos. Dyno numbers are as stated (wheel vs crank is rarely specified).",
+ "kinds": {
+  "measured": "timeslip, dyno sheet or scale read in the video",
+  "stated": "said by the team without the number being shown",
+  "estimate": "the team's own estimate",
+  "modeled": "not in the research; derived by the game from the calibration data or a documented rule, with the reason"
+ },
+ "cars": [
+  {
+   "id": "eagle",
+   "sourceName": "Eagle",
+   "group": "hero",
+   "description": {
+    "base": {
+     "text": "1969 Chevrolet Camaro body on CJ Race Cars tube chassis",
+     "source": null
+    },
+    "engine": {
+     "text": "Proline billet Hemi, 564 ci, 4.5 in stroke",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "twin turbo, 98 mm",
+     "source": null
+    },
+    "fuel": {
+     "text": "methanol",
+     "source": null
+    },
+    "ecu": {
+     "text": "FuelTech",
+     "source": null
+    },
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": {
+     "text": "Mickey Thompson radials",
+     "source": null
+    },
+    "suspension": null
+   },
+   "weightLb": {
+    "value": 2600,
+    "unit": "lb",
+    "kind": "estimate",
+    "source": {
+     "video": "XgXpvu6Q52Y",
+     "t": "13:28"
+    },
+    "note": "team estimate of race weight with driver (2,400 without)"
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null,
+    "note": "Proline quotes ~5,400 hp for the combination on their dyno; this engine not dyno'd"
+   },
+   "bestPass": {
+    "et": {
+     "value": 5.74,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "16:12, 18:28, 19:43-20:38"
+     }
+    },
+    "mph": {
+     "value": 259,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "16:12, 18:28, 19:43-20:38"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.05,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "16:12, 18:28, 19:43-20:38"
+     }
+    },
+    "eighthEt": {
+     "value": null,
+     "unit": "s",
+     "kind": null,
+     "source": null
+    },
+    "eighthMph": {
+     "value": null,
+     "unit": "mph",
+     "kind": null,
+     "source": null
+    },
+    "track": "World Cup Finals (radial)"
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [
+    {
+     "item": "connecting rod set, replace every 25-30 runs",
+     "priceUsd": 2000,
+     "confidence": "medium",
+     "source": {
+      "video": "-fr9v9bLk0w",
+      "t": null
+     }
+    }
+   ],
+   "failures": [],
+   "builds": [],
+   "facts": {
+    "transmission": {
+     "value": "th400",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "XgXpvu6Q52Y",
+      "t": "11:58, 13:54"
+     },
+     "note": "lock-up Turbo 400 (planned at the build start, medium confidence)"
+    },
+    "tires": {
+     "value": "pro_radial",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "0:48-1:18"
+     },
+     "note": "Mickey Thompson radials; '275' said at the build start (low confidence)"
+    }
+   },
+   "opponent": {
+    "usable": true,
+    "weightLb": {
+     "value": 2600.0,
+     "unit": "lb",
+     "kind": "estimate",
+     "source": {
+      "video": "XgXpvu6Q52Y",
+      "t": "13:28"
+     },
+     "note": "team estimate of race weight with driver (2,400 without)"
+    },
+    "powerHp": {
+     "value": 3526,
+     "unit": "hp",
+     "kind": "modeled",
+     "source": null,
+     "basis": "crank",
+     "reason": "not in the research; from the trap speed and the weight with Hale (MPH = 234 (hp/lb)^(1/3))",
+     "derivedFrom": {
+      "mph": 259.0,
+      "lb": 2600.0,
+      "file": "calibration/hale_check.csv implied_hp"
+     }
+    },
+    "notes": [
+     "power derived from the trap speed: trap mph is not a test for this car"
+    ]
+   }
+  },
+  {
+   "id": "leroy",
+   "sourceName": "Leroy",
+   "group": "hero",
+   "description": {
+    "base": {
+     "text": "Chevrolet Corvette C5, manual transmission",
+     "source": null
+    },
+    "engine": null,
+    "powerAdder": null,
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null,
+    "note": "not stated; 2026 build targets ~150 lb less"
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": {
+    "et": {
+     "value": 6.71,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "VWcUtGO1yrQ",
+      "t": "24:49-30:13"
+     }
+    },
+    "mph": {
+     "value": 219,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "VWcUtGO1yrQ",
+      "t": "24:49-30:13"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.11,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "VWcUtGO1yrQ",
+      "t": "24:49-30:13"
+     }
+    },
+    "eighthEt": {
+     "value": 4.45,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "VWcUtGO1yrQ",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 170,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "VWcUtGO1yrQ",
+      "t": null
+     }
+    },
+    "track": "TX2K26, #1 qualifier",
+    "build": "TX2K26 (2026)"
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [
+    {
+     "version": "Leroy 2.0 (2023)",
+     "engine": "LS, 392 ci",
+     "powerAdder": "turbo",
+     "transmission": null,
+     "fuel": null,
+     "power": {
+      "value": 950,
+      "unit": "hp",
+      "kind": "measured",
+      "source": {
+       "video": "_zG9CUX1vmI",
+       "t": "13:49, 15:30"
+      },
+      "basis": "unknown",
+      "boostPsi": 9.4
+     },
+     "bestPass": {
+      "et": {
+       "value": 7.48,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "_zG9CUX1vmI",
+        "t": "28:42-31:44"
+       }
+      },
+      "mph": {
+       "value": 182,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "_zG9CUX1vmI",
+        "t": "28:42-31:44"
+       }
+      },
+      "sixtyFt": {
+       "value": 1.18,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "_zG9CUX1vmI",
+        "t": "28:42-31:44"
+       }
+      },
+      "eighthEt": {
+       "value": 4.8,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "_zG9CUX1vmI",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": 148,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "_zG9CUX1vmI",
+        "t": null
+       }
+      },
+      "track": "Bradenton Motorsports Park"
+     },
+     "note": "dyno at 9.4 psi, pass at 20 psi: power and pass not comparable",
+     "source": []
+    },
+    {
+     "version": "TX2K26 (2026)",
+     "engine": "LS, Pete Harrell engine program",
+     "powerAdder": "twin turbo",
+     "transmission": "manual",
+     "fuel": null,
+     "power": null,
+     "bestPass": {
+      "et": {
+       "value": 6.71,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "VWcUtGO1yrQ",
+        "t": "24:49-30:13"
+       }
+      },
+      "mph": {
+       "value": 219,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "VWcUtGO1yrQ",
+        "t": "24:49-30:13"
+       }
+      },
+      "sixtyFt": {
+       "value": 1.11,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "VWcUtGO1yrQ",
+        "t": "24:49-30:13"
+       }
+      },
+      "eighthEt": {
+       "value": 4.45,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "VWcUtGO1yrQ",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": 170,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "VWcUtGO1yrQ",
+        "t": null
+       }
+      },
+      "track": "TX2K26, #1 qualifier"
+     },
+     "note": null,
+     "source": []
+    },
+    {
+     "version": "2026 rebuild (in progress)",
+     "engine": "Pete Harrell billet tall-deck LS (~100 lb lighter on the nose than iron block), Mast 'Moses 2.0' heads (brand from caption, medium confidence)",
+     "powerAdder": "bigger twin turbos, ~88 mm (medium confidence); ~60 psi mentioned as future level",
+     "transmission": "Liberty billet manual",
+     "fuel": null,
+     "power": null,
+     "bestPass": null,
+     "note": null,
+     "source": [
+      "fzddx_3njA4",
+      "5ibvcauFris"
+     ]
+    }
+   ],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null,
+     "note": "not stated; 2026 build targets ~150 lb less"
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [
+     "build: TX2K26 (2026)"
+    ],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "mullet",
+   "sourceName": "Mullet",
+   "group": "hero",
+   "description": {
+    "base": {
+     "text": "Chevrolet El Camino",
+     "source": null
+    },
+    "engine": null,
+    "powerAdder": null,
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": 2762,
+    "unit": "lb",
+    "kind": "measured",
+    "source": {
+     "video": "aEdFIigQk9g",
+     "t": "8:18-8:45"
+    },
+    "note": "without nose; 200 lb lead available; class target ~3,000 lb plus driver"
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": {
+    "et": {
+     "value": 6.6,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "25:54, 32:37-33:56"
+     }
+    },
+    "mph": {
+     "value": 214,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "25:54, 32:37-33:56"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.1,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "25:54, 32:37-33:56"
+     }
+    },
+    "eighthEt": {
+     "value": 4.34,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 173,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": null
+     }
+    },
+    "track": null,
+    "build": "big block, World Cup"
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [
+    {
+     "version": "SMX big block (2023)",
+     "engine": "Steve Morris SMX billet big block",
+     "powerAdder": "twin Precision turbos; ~70 psi limit stated, ~85 expected",
+     "transmission": null,
+     "fuel": "methanol",
+     "power": null,
+     "bestPass": null,
+     "note": null,
+     "source": [
+      "WS5pkbwfpVY"
+     ]
+    },
+    {
+     "version": "big block, World Cup",
+     "engine": null,
+     "powerAdder": null,
+     "transmission": null,
+     "fuel": null,
+     "power": null,
+     "bestPass": {
+      "et": {
+       "value": 6.6,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "wkQiI5gN6Hs",
+        "t": "25:54, 32:37-33:56"
+       }
+      },
+      "mph": {
+       "value": 214,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "wkQiI5gN6Hs",
+        "t": "25:54, 32:37-33:56"
+       }
+      },
+      "sixtyFt": {
+       "value": 1.1,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "wkQiI5gN6Hs",
+        "t": "25:54, 32:37-33:56"
+       }
+      },
+      "eighthEt": {
+       "value": 4.34,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "wkQiI5gN6Hs",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": 173,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "wkQiI5gN6Hs",
+        "t": null
+       }
+      },
+      "track": null
+     },
+     "note": null,
+     "source": []
+    },
+    {
+     "version": "Mullet 2.0, ~400 lb removed",
+     "engine": null,
+     "powerAdder": null,
+     "transmission": null,
+     "fuel": null,
+     "power": null,
+     "bestPass": {
+      "et": {
+       "value": null,
+       "unit": "s",
+       "kind": null,
+       "source": null
+      },
+      "mph": {
+       "value": null,
+       "unit": "mph",
+       "kind": null,
+       "source": null
+      },
+      "sixtyFt": {
+       "value": 1.09,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "m-X8-o0myuw",
+        "t": "7:20-9:32"
+       }
+      },
+      "eighthEt": {
+       "value": 4.27,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "m-X8-o0myuw",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": null,
+       "unit": "mph",
+       "kind": null,
+       "source": null
+      },
+      "track": null,
+      "note": "1/8 mile only; earlier 4.29 @ 176"
+     },
+     "note": null,
+     "source": []
+    },
+    {
+     "version": "tall-deck big block (2026)",
+     "engine": "tall-deck (+0.4 in) Brodix big block, Diamond pistons, R&R rods, dry sump",
+     "powerAdder": "twin turbo, larger turbos",
+     "transmission": null,
+     "fuel": "methanol",
+     "power": null,
+     "bestPass": null,
+     "note": "two standard-deck Brodix blocks broke before this",
+     "source": [
+      "6_quJlgCSC0",
+      "PxE5quw5IoM",
+      "aEdFIigQk9g"
+     ]
+    }
+   ],
+   "facts": {
+    "tires": {
+     "value": "pro_radial",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "6_quJlgCSC0",
+      "t": "2:12, 2:56"
+     },
+     "note": "on radials until the 2026 switch to big tires"
+    },
+    "worldCupWeightLb": {
+     "value": 3330,
+     "unit": "lb",
+     "kind": "measured",
+     "source": {
+      "video": "m-X8-o0myuw",
+      "t": "3:35-3:55"
+     },
+     "note": "World Cup trim before the ~400 lb diet; with or without driver not said"
+    }
+   },
+   "opponent": {
+    "usable": true,
+    "weightLb": {
+     "value": 3330,
+     "unit": "lb",
+     "kind": "measured",
+     "source": {
+      "video": "m-X8-o0myuw",
+      "t": "3:35-3:55"
+     },
+     "note": "World Cup trim before the ~400 lb diet; with or without driver not said"
+    },
+    "powerHp": {
+     "value": 2547,
+     "unit": "hp",
+     "kind": "modeled",
+     "source": null,
+     "basis": "crank",
+     "reason": "not in the research; from the trap speed and the weight with Hale (MPH = 234 (hp/lb)^(1/3))",
+     "derivedFrom": {
+      "mph": 214,
+      "lb": 3330
+     }
+    },
+    "notes": [
+     "build: big block, World Cup",
+     "the World Cup trim weight; roster.json gives 2,762 lb from the 2026 build",
+     "approximate: the World Cup pass \"stopped accelerating late\" (thumb on the transbrake button pulled timing); the trap speed understates the power, and the power would have to come from that trap speed"
+    ],
+    "reason": null
+   }
+  },
+  {
+   "id": "mcflurry",
+   "sourceName": "McFlurry",
+   "group": "hero",
+   "description": {
+    "base": {
+     "text": "Ford Mustang (Fox body per titles)",
+     "source": null
+    },
+    "engine": null,
+    "powerAdder": null,
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": {
+    "et": {
+     "value": 7.12,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": "49:55-56:14"
+     }
+    },
+    "mph": {
+     "value": 189,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": "49:55-56:14"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.1,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": "49:55-56:14"
+     }
+    },
+    "eighthEt": {
+     "value": 4.58,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 155,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": null
+     }
+    },
+    "track": "Bradenton Motorsports Park",
+    "build": "Coyote single 76 mm"
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [
+    {
+     "part": "stock head gasket",
+     "cause": "36 psi",
+     "source": {
+      "video": "pFJadF2mmXE",
+      "t": null
+     }
+    }
+   ],
+   "builds": [
+    {
+     "version": "7.3 Godzilla twin turbo",
+     "engine": "Ford 7.3 Godzilla V8",
+     "powerAdder": "twin turbo, no intercooler",
+     "transmission": "Lenco 5-speed with Bruno",
+     "fuel": "C16 planned",
+     "power": {
+      "value": 730,
+      "unit": "whp",
+      "kind": "measured",
+      "source": {
+       "video": "PMZzslG5uLg",
+       "t": "22:03-23:42"
+      },
+      "basis": "wheel",
+      "boostPsi": 6,
+      "fuel": "93 pump gas"
+     },
+     "bestPass": {
+      "et": {
+       "value": 7.8,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "jqpXbu36rjQ",
+        "t": "14:38-20:44"
+       }
+      },
+      "mph": {
+       "value": 166,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "jqpXbu36rjQ",
+        "t": "14:38-20:44"
+       }
+      },
+      "sixtyFt": {
+       "value": 1.15,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "jqpXbu36rjQ",
+        "t": "14:38-20:44"
+       }
+      },
+      "eighthEt": {
+       "value": 5.0,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "jqpXbu36rjQ",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": 140,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "jqpXbu36rjQ",
+        "t": null
+       }
+      },
+      "track": null
+     },
+     "note": "dyno at 6 psi on pump gas, pass on higher boost: not comparable",
+     "source": []
+    },
+    {
+     "version": "Coyote single 76 mm",
+     "engine": "Ford Coyote (TKM-built)",
+     "powerAdder": "single turbo, 76 mm",
+     "transmission": null,
+     "fuel": null,
+     "power": {
+      "value": 1394,
+      "unit": "whp",
+      "kind": "measured",
+      "source": {
+       "video": "IHi9RJU_nVs",
+       "t": "35:07-36:16"
+      },
+      "basis": "wheel",
+      "boostPsi": 31
+     },
+     "bestPass": {
+      "et": {
+       "value": 7.12,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": "49:55-56:14"
+       }
+      },
+      "mph": {
+       "value": 189,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": "49:55-56:14"
+       }
+      },
+      "sixtyFt": {
+       "value": 1.1,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": "49:55-56:14"
+       }
+      },
+      "eighthEt": {
+       "value": 4.58,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": 155,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": null
+       }
+      },
+      "track": "Bradenton Motorsports Park"
+     },
+     "note": null,
+     "source": []
+    }
+   ],
+   "facts": {
+    "transmission": {
+     "value": "lenco",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "jBug09pPpv4",
+      "t": "4:10, 5:36"
+     },
+     "note": "Lenco with a PTC converter matched to the Coyote"
+    },
+    "converterFlashRpm": {
+     "value": 8080,
+     "unit": "rpm",
+     "kind": "stated",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "36:58-37:35"
+     },
+     "note": "the Florida best pass flashed the converter to 8,080 rpm"
+    },
+    "shiftRpm": {
+     "value": 8100,
+     "unit": "rpm",
+     "kind": "stated",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "36:58-37:35"
+     },
+     "note": "1-2 shift set at 8,100 rpm in the Haltech"
+    }
+   },
+   "opponent": {
+    "usable": true,
+    "weightLb": {
+     "value": 2646,
+     "unit": "lb",
+     "kind": "modeled",
+     "source": null,
+     "reason": "not in the research; from the trap speed and the dyno power with Hale (MPH = 234 (hp/lb)^(1/3))",
+     "derivedFrom": {
+      "mph": 189,
+      "hp": 1394
+     }
+    },
+    "powerHp": {
+     "value": 1394,
+     "unit": "whp",
+     "kind": "measured",
+     "source": {
+      "video": "IHi9RJU_nVs",
+      "t": "35:07-36:16"
+     },
+     "basis": "wheel",
+     "boostPsi": 31
+    },
+    "notes": [
+     "build: Coyote single 76 mm",
+     "approximate: dyno 1,394 whp at 31 psi; the 7.12 pass ran 36-37 psi peak and 33 psi at the trap: different boost"
+    ],
+    "reason": null
+   }
+  },
+  {
+   "id": "ruby",
+   "sourceName": "Ruby (Auction Corvette)",
+   "group": "hero",
+   "description": {
+    "base": {
+     "text": "Chevrolet Corvette (auction car)",
+     "source": null
+    },
+    "engine": null,
+    "powerAdder": null,
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": {
+    "et": {
+     "value": 8.15,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": "21:23, 24:47"
+     }
+    },
+    "mph": {
+     "value": 169,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": "21:23, 24:47"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.33,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": "21:23, 24:47"
+     }
+    },
+    "eighthEt": {
+     "value": 5.3,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 137,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "PgdQ91n0Bmw",
+      "t": null
+     }
+    },
+    "track": null,
+    "build": "Texas Speed 427"
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [
+    {
+     "part": "oil feed/return lines swapped",
+     "cause": "assembly error, ~7 s without oil pressure at first start",
+     "source": {
+      "video": "_ibg4g-Ovbs",
+      "t": null
+     }
+    },
+    {
+     "part": "head gasket",
+     "cause": "junkyard LS at 30 psi, 18 deg timing",
+     "source": {
+      "video": "arp0aL0C86A",
+      "t": null
+     }
+    }
+   ],
+   "builds": [
+    {
+     "version": "first 7-second build (2019)",
+     "engine": null,
+     "powerAdder": "turbo, 24.2 psi peak",
+     "transmission": null,
+     "fuel": null,
+     "power": null,
+     "bestPass": {
+      "et": {
+       "value": 7.74,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "dOjDCuSFso8",
+        "t": "10:55-11:51, 16:01"
+       }
+      },
+      "mph": {
+       "value": null,
+       "unit": "mph",
+       "kind": null,
+       "source": null
+      },
+      "sixtyFt": {
+       "value": 1.16,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "dOjDCuSFso8",
+        "t": "10:55-11:51, 16:01"
+       }
+      },
+      "eighthEt": {
+       "value": 4.9,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "dOjDCuSFso8",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": null,
+       "unit": "mph",
+       "kind": null,
+       "source": null
+      },
+      "track": null
+     },
+     "note": null,
+     "source": []
+    },
+    {
+     "version": "Texas Speed 427",
+     "engine": "Texas Speed 427 (7.0 L), PRC heads, 1/2 in studs (ex-Leroy engine)",
+     "powerAdder": "single turbo, 98 mm",
+     "transmission": null,
+     "fuel": "E85/E90",
+     "power": {
+      "value": 1002,
+      "unit": "whp",
+      "kind": "measured",
+      "source": {
+       "video": "_ibg4g-Ovbs",
+       "t": "21:53-22:18"
+      },
+      "basis": "wheel",
+      "boostPsi": 11
+     },
+     "bestPass": {
+      "et": {
+       "value": 8.15,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": "21:23, 24:47"
+       }
+      },
+      "mph": {
+       "value": 169,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": "21:23, 24:47"
+       }
+      },
+      "sixtyFt": {
+       "value": 1.33,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": "21:23, 24:47"
+       }
+      },
+      "eighthEt": {
+       "value": 5.3,
+       "unit": "s",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": null
+       }
+      },
+      "eighthMph": {
+       "value": 137,
+       "unit": "mph",
+       "kind": "measured",
+       "source": {
+        "video": "PgdQ91n0Bmw",
+        "t": null
+       }
+      },
+      "track": null
+     },
+     "note": "dyno at 11 psi (2024), pass on ~15-20 psi (2025): not comparable",
+     "source": []
+    }
+   ],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [
+     "build: Texas Speed 427"
+    ],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "blazer",
+   "sourceName": "Blazer",
+   "group": "hero",
+   "description": {
+    "base": {
+     "text": "2000 Chevrolet Blazer",
+     "source": null
+    },
+    "engine": null,
+    "powerAdder": null,
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": null,
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [
+    {
+     "part": "crankshaft snapped at #1 main",
+     "cause": "blower pulley load",
+     "source": {
+      "video": "biZF2mOZaYI",
+      "t": null
+     }
+    }
+   ],
+   "builds": [
+    {
+     "version": "supercharged LS",
+     "engine": null,
+     "powerAdder": "supercharger",
+     "transmission": null,
+     "fuel": null,
+     "power": {
+      "value": 1012,
+      "unit": "hp",
+      "kind": "measured",
+      "source": {
+       "video": "1Xwy_TeHkpc",
+       "t": "6:20-6:26, 7:01-7:10, 8:06"
+      },
+      "basis": "unknown",
+      "boostPsi": 23.8
+     },
+     "bestPass": null,
+     "note": null,
+     "source": []
+    },
+    {
+     "version": "Texas Speed 427 after crank failure",
+     "engine": "Texas Speed 427 + crank-snout support",
+     "powerAdder": "supercharger",
+     "transmission": null,
+     "fuel": null,
+     "power": null,
+     "bestPass": null,
+     "note": null,
+     "source": []
+    }
+   ],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "toast",
+   "sourceName": "Toast",
+   "group": "burnout",
+   "description": {
+    "base": {
+     "text": "Chevrolet Camaro (per titles)",
+     "source": null
+    },
+    "engine": {
+     "text": "Castlemaine Rod Shop 540 ci big block, Callies crank and rods, CP pistons, dry sump, magneto",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "14-71 Roots blower",
+     "source": null
+    },
+    "fuel": {
+     "text": "methanol, mechanical injection",
+     "source": null
+    },
+    "ecu": null,
+    "transmission": {
+     "text": "Powerglide",
+     "source": null
+    },
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null,
+    "note": "target 1,500 hp"
+   },
+   "bestPass": null,
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null,
+     "note": "target 1,500 hp"
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "crown_vic_gt500",
+   "sourceName": "GT500 Cop Car",
+   "group": "street",
+   "description": {
+    "base": {
+     "text": "Ford Crown Victoria (retired police car)",
+     "source": null
+    },
+    "engine": {
+     "text": "Ford GT500 supercharged V8, stock forged bottom end, Frankenstein-ported heads, VMP cams",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "supercharger (2.4-2.6 in pulleys) + one-off nitrous",
+     "source": null
+    },
+    "fuel": {
+     "text": "ethanol",
+     "source": null
+    },
+    "ecu": {
+     "text": "Holley Dominator",
+     "source": null
+    },
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": 897,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "uiyJESyt3HA",
+     "t": "27:01-28:44, 38:08"
+    },
+    "note": "boost only; 1,068 hp / 967 lb-ft with nitrous at 22.8 psi",
+    "basis": "unknown"
+   },
+   "bestPass": null,
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "torqueLbft": {
+    "value": 785,
+    "unit": "lbft",
+    "kind": "measured",
+    "source": {
+     "video": "uiyJESyt3HA",
+     "t": null
+    }
+   },
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": 897,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "uiyJESyt3HA",
+      "t": "27:01-28:44, 38:08"
+     },
+     "note": "boost only; 1,068 hp / 967 lb-ft with nitrous at 22.8 psi",
+     "basis": "unknown"
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "marauder",
+   "sourceName": "Sleeper Marauder",
+   "group": "street",
+   "description": {
+    "base": {
+     "text": "Mercury Marauder",
+     "source": null
+    },
+    "engine": null,
+    "powerAdder": {
+     "text": "single turbo kit",
+     "source": null
+    },
+    "fuel": {
+     "text": "E90 flex",
+     "source": null
+    },
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": 693,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "ArK5sv0Xi2U",
+     "t": null
+    },
+    "basis": "unknown"
+   },
+   "bestPass": null,
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "boostPsi": {
+    "value": 13,
+    "unit": "psi",
+    "kind": "measured",
+    "source": {
+     "video": "ArK5sv0Xi2U",
+     "t": null
+    }
+   },
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": 693,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "ArK5sv0Xi2U",
+      "t": null
+     },
+     "basis": "unknown"
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "galaxie_cummins",
+   "sourceName": "Cummins Galaxie",
+   "group": "street",
+   "description": {
+    "base": {
+     "text": "1965 Ford Galaxie",
+     "source": {
+      "video": "Nncf55RaKm0",
+      "t": null
+     }
+    },
+    "engine": {
+     "text": "Cummins turbo diesel",
+     "source": {
+      "video": "Nncf55RaKm0",
+      "t": null
+     }
+    },
+    "powerAdder": {
+     "text": "turbo + nitrous",
+     "source": {
+      "video": "Nncf55RaKm0",
+      "t": null
+     }
+    },
+    "fuel": null,
+    "ecu": null,
+    "transmission": {
+     "text": "automatic, manually shifted, lockup converter",
+     "source": {
+      "video": "Nncf55RaKm0",
+      "t": null
+     }
+    },
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": null,
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "lumberjack",
+   "sourceName": "Lumberjack",
+   "group": "cheap_racecar",
+   "description": {
+    "base": {
+     "text": "1973 Chevrolet El Camino",
+     "source": null
+    },
+    "engine": {
+     "text": "turbo LS",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "Precision 7675 reman, T4 1.15 divided ($700)",
+     "source": null
+    },
+    "fuel": {
+     "text": "C16, 88 psi fuel pressure",
+     "source": null
+    },
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": 900,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "5ibvcauFris",
+     "t": "18:15-19:27"
+    },
+    "basis": "unknown"
+   },
+   "bestPass": {
+    "et": {
+     "value": 9.3,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "5ibvcauFris",
+      "t": "32:33-36:58"
+     }
+    },
+    "mph": {
+     "value": 144,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "5ibvcauFris",
+      "t": "32:33-36:58"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.432,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "5ibvcauFris",
+      "t": "32:33-36:58"
+     }
+    },
+    "eighthEt": {
+     "value": 5.967,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "5ibvcauFris",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 119,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "5ibvcauFris",
+      "t": null
+     }
+    },
+    "track": "Bradenton Motorsports Park"
+   },
+   "purchaseUsd": {
+    "value": 5350,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "SAwRbNvp22c",
+     "t": null
+    }
+   },
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "boostPsi": {
+    "value": 26,
+    "unit": "psi",
+    "kind": "measured",
+    "source": {
+     "video": "5ibvcauFris",
+     "t": null
+    }
+   },
+   "facts": {
+    "trapRpm": {
+     "value": 7100,
+     "unit": "rpm",
+     "kind": "stated",
+     "source": {
+      "video": "5ibvcauFris",
+      "t": "32:33-36:58"
+     },
+     "note": "7,100 rpm through the traps on the best pass"
+    }
+   },
+   "opponent": {
+    "usable": true,
+    "weightLb": {
+     "value": 3862,
+     "unit": "lb",
+     "kind": "modeled",
+     "source": null,
+     "reason": "not in the research; from the trap speed and the dyno power with Hale (MPH = 234 (hp/lb)^(1/3))",
+     "derivedFrom": {
+      "mph": 144,
+      "hp": 900
+     }
+    },
+    "powerHp": {
+     "value": 900,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "5ibvcauFris",
+      "t": "18:15-19:27"
+     },
+     "basis": "unknown"
+    },
+    "notes": [
+     "approximate: dyno 900 hp at 26 psi; for the 9.30 pass the boost was raised +5 (29.4 psi peak): different boost"
+    ],
+    "reason": null
+   }
+  },
+  {
+   "id": "crc12_jackstand_240",
+   "sourceName": "Jackstand's 240SX (CRC 1/2)",
+   "group": "cheap_racecar",
+   "description": {
+    "base": {
+     "text": "1990 Nissan 240SX coupe",
+     "source": null
+    },
+    "engine": {
+     "text": "GM LS 6.0 L, Texas Speed rotating assembly, PRC 237 heads",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "nitrous, ~225 hp jet",
+     "source": null
+    },
+    "fuel": {
+     "text": "TRC carburetor",
+     "source": null
+    },
+    "ecu": null,
+    "transmission": {
+     "text": "Powerglide",
+     "source": null
+    },
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": 2605,
+    "unit": "lb",
+    "kind": "measured",
+    "source": {
+     "video": "-dDkkIHyQRM",
+     "t": "14:42-15:15"
+    },
+    "note": "with driver; 2,408 without; 54% front"
+   },
+   "powerHp": {
+    "value": 786,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "-dDkkIHyQRM",
+     "t": "11:36-13:30"
+    },
+    "note": "520 hp without nitrous",
+    "basis": "unknown"
+   },
+   "bestPass": {
+    "et": {
+     "value": 8.7,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "10:00-11:16, 13:57"
+     }
+    },
+    "mph": {
+     "value": 141,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "10:00-11:16, 13:57"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.26,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "10:00-11:16, 13:57"
+     }
+    },
+    "eighthEt": {
+     "value": null,
+     "unit": "s",
+     "kind": null,
+     "source": null
+    },
+    "eighthMph": {
+     "value": null,
+     "unit": "mph",
+     "kind": null,
+     "source": null
+    },
+    "track": "Byron Dragway"
+   },
+   "purchaseUsd": {
+    "value": 7000,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "SAwRbNvp22c",
+     "t": null
+    },
+    "note": "delivered with LS, carb, nitrous, Powerglide"
+   },
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "powerWithoutNitrousHp": {
+    "value": 520.0,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "-dDkkIHyQRM",
+     "t": "11:05-11:36"
+    },
+    "note": "dyno pull without nitrous"
+   },
+   "facts": {
+    "transmission": {
+     "value": "powerglide",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "PSGvE8jkSoc",
+      "t": "33:39, 41:38"
+     },
+     "note": "Powerglide, rebuild kit only, no upgrades"
+    },
+    "frontWeightPct": {
+     "value": 54,
+     "unit": "%",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "14:42-15:15"
+     },
+     "note": "scales, with driver"
+    },
+    "naPowerHp": {
+     "value": 520,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "11:05-11:36"
+     },
+     "note": "chassis dyno without nitrous; flat power from 6,000 rpm up"
+    },
+    "naTorqueLbft": {
+     "value": 433,
+     "unit": "lbft",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "11:05-11:36"
+     }
+    },
+    "revLimitRpm": {
+     "value": 7500,
+     "unit": "rpm",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "11:05-11:36"
+     },
+     "note": "pull from 3,500 to ~7,500 rpm where it hit the limiter"
+    },
+    "nitrousShotHp": {
+     "value": 266,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "11:36-13:30"
+     },
+     "note": "dyno gain 520 -> 786 hp; the jet is a ~225 hp shot (\"two and a quarter\", the lightest, used all week); the pull ended at ~6,500 rpm still climbing"
+    },
+    "nitrousRetardDeg": {
+     "value": 6,
+     "unit": "deg",
+     "kind": "stated",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "12:24-14:00"
+     },
+     "note": "timing pulled for the shot"
+    },
+    "driverLiftFt": {
+     "value": 1000,
+     "unit": "ft",
+     "kind": "stated",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "10:00-11:16, 13:57"
+     },
+     "note": "lifted around 1,000 ft; driver estimated ~5.40 eighth"
+    }
+   },
+   "opponent": {
+    "usable": true,
+    "weightLb": {
+     "value": 2605.0,
+     "unit": "lb",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "14:42-15:15"
+     },
+     "note": "with driver; 2,408 without; 54% front"
+    },
+    "powerHp": {
+     "value": 786.0,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "11:36-13:30"
+     },
+     "note": "520 hp without nitrous",
+     "basis": "unknown"
+    },
+    "notes": []
+   }
+  },
+  {
+   "id": "crc12_tye_mustang",
+   "sourceName": "Zach & Tye's Mustang (CRC 1/2)",
+   "group": "cheap_racecar",
+   "description": {
+    "base": {
+     "text": "Ford Mustang (auction car)",
+     "source": null
+    },
+    "engine": {
+     "text": "junkyard Gen 3 Coyote bottom end, Gen 1 heads",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "budget turbo (Amazon, later Precision ~82 mm class)",
+     "source": null
+    },
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": 927,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "-dDkkIHyQRM",
+     "t": "38:31"
+    },
+    "note": "850 hp at 14 psi",
+    "basis": "unknown"
+   },
+   "bestPass": null,
+   "purchaseUsd": {
+    "value": 5775,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "B9BPtlgCxy8",
+     "t": null
+    },
+    "note": "incl. auction fees and shipping; $5,200 stated earlier"
+   },
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "boostPsi": {
+    "value": 22,
+    "unit": "psi",
+    "kind": "measured",
+    "source": {
+     "video": "-dDkkIHyQRM",
+     "t": null
+    }
+   },
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": 927,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "-dDkkIHyQRM",
+      "t": "38:31"
+     },
+     "note": "850 hp at 14 psi",
+     "basis": "unknown"
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "crc12_tom_bailey_camaro",
+   "sourceName": "Tom Bailey's Camaro (CRC 2)",
+   "group": "cheap_racecar",
+   "description": {
+    "base": {
+     "text": "Chevrolet Camaro",
+     "source": null
+    },
+    "engine": {
+     "text": "Chevy big block (swapped from small block)",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "nitrous",
+     "source": null
+    },
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": {
+    "et": {
+     "value": 8.97,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "18:45-19:15"
+     }
+    },
+    "mph": {
+     "value": 152,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "18:45-19:15"
+     }
+    },
+    "sixtyFt": {
+     "value": null,
+     "unit": "s",
+     "kind": null,
+     "source": null
+    },
+    "eighthEt": {
+     "value": null,
+     "unit": "s",
+     "kind": null,
+     "source": null
+    },
+    "eighthMph": {
+     "value": null,
+     "unit": "mph",
+     "kind": null,
+     "source": null
+    },
+    "track": null
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "crc3_gen1_s10",
+   "sourceName": "Cleetus & McNutt's S10 (CRC 3)",
+   "group": "cheap_racecar",
+   "description": {
+    "base": {
+     "text": "Chevrolet S10, first generation",
+     "source": null
+    },
+    "engine": {
+     "text": "GM LS ($3,750)",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "twin unbranded T4 turbos ($500 pair), no intercooler",
+     "source": null
+    },
+    "fuel": null,
+    "ecu": {
+     "text": "Holley Terminator X (used, $900)",
+     "source": null
+    },
+    "transmission": {
+     "text": "Powerglide with converter ($3,000)",
+     "source": null
+    },
+    "converter": null,
+    "rearEnd": {
+     "text": "Ford 8.8, 3.73 (junkyard)",
+     "source": null
+    },
+    "tires": null,
+    "suspension": {
+     "text": "CalTracs",
+     "source": null
+    }
+   },
+   "weightLb": {
+    "value": 1700,
+    "unit": "lb",
+    "kind": "stated",
+    "source": {
+     "video": "fLFD8Q0nthA",
+     "t": null
+    },
+    "note": "stripped, steel bumpers on, before engine weight is final; 1,940 lb earlier without engine"
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null,
+    "note": "~1,000 hp at 30 psi claimed as goal"
+   },
+   "bestPass": null,
+   "purchaseUsd": {
+    "value": 1000,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "F1pY9m1yhWM",
+     "t": null
+    }
+   },
+   "budgetSpentUsd": {
+    "value": 9750,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "JguV0Y7ZbD0",
+     "t": null
+    },
+    "note": "sum of listed items on the spending board"
+   },
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": 1700,
+     "unit": "lb",
+     "kind": "stated",
+     "source": {
+      "video": "fLFD8Q0nthA",
+      "t": null
+     },
+     "note": "stripped, steel bumpers on, before engine weight is final; 1,940 lb earlier without engine"
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null,
+     "note": "~1,000 hp at 30 psi claimed as goal"
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "crc3_95_mustang",
+   "sourceName": "Zach & Tye's '95 Mustang (CRC 3)",
+   "group": "cheap_racecar",
+   "description": {
+    "base": {
+     "text": "1995 Ford Mustang SN95",
+     "source": null
+    },
+    "engine": {
+     "text": "Ford Coyote core ($500), rebuilt",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "used Ranger turbo kit + new wastegates",
+     "source": null
+    },
+    "fuel": null,
+    "ecu": null,
+    "transmission": {
+     "text": "TH400 ($1,700 incl. bellhousing)",
+     "source": null
+    },
+    "converter": {
+     "text": "FTI ($1,150)",
+     "source": null
+    },
+    "rearEnd": {
+     "text": "Ford 8.8 ($150)",
+     "source": null
+    },
+    "tires": null,
+    "suspension": {
+     "text": "UPR front coilover conversion",
+     "source": null
+    }
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": null,
+   "purchaseUsd": {
+    "value": 500,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "geuWzFpnQNQ",
+     "t": null
+    }
+   },
+   "budgetSpentUsd": {
+    "value": 7105,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "JguV0Y7ZbD0",
+     "t": null
+    },
+    "note": "sum of listed items"
+   },
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "crc3_240sx_hatch",
+   "sourceName": "Jackstand's 240SX hatch (CRC 3)",
+   "group": "cheap_racecar",
+   "description": {
+    "base": {
+     "text": "Nissan 240SX hatchback, 97,000 mi",
+     "source": null
+    },
+    "engine": {
+     "text": "GM LS ($4,000)",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "Nitrous Express kit ($1,531)",
+     "source": null
+    },
+    "fuel": {
+     "text": "carburetor",
+     "source": null
+    },
+    "ecu": null,
+    "transmission": {
+     "text": "Powerglide with trans brake ($700)",
+     "source": null
+    },
+    "converter": null,
+    "rearEnd": null,
+    "tires": {
+     "text": "Mickey Thompson radials ($572)",
+     "source": null
+    },
+    "suspension": null
+   },
+   "weightLb": {
+    "value": 2400,
+    "unit": "lb",
+    "kind": "estimate",
+    "source": {
+     "video": "PTORqnT_zT4",
+     "t": "56:43-57:38"
+    },
+    "note": "2,273 lb measured without driver"
+   },
+   "powerHp": {
+    "value": 460,
+    "unit": "hp",
+    "kind": "stated",
+    "source": {
+     "video": "fLFD8Q0nthA",
+     "t": "36:09-36:33"
+    },
+    "note": "without nitrous",
+    "basis": "unknown"
+   },
+   "bestPass": null,
+   "purchaseUsd": {
+    "value": 2500,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "geuWzFpnQNQ",
+     "t": null
+    }
+   },
+   "budgetSpentUsd": {
+    "value": 10374,
+    "unit": "USD",
+    "kind": "stated",
+    "source": {
+     "video": "JguV0Y7ZbD0",
+     "t": null
+    },
+    "note": "sum of listed items"
+   },
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {
+    "transmission": {
+     "value": "powerglide",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "JguV0Y7ZbD0",
+      "t": null
+     },
+     "note": "Powerglide with trans brake ($700, stock case and planetary)"
+    },
+    "tires": {
+     "value": "drag_radial",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "38:50-39:09"
+     },
+     "note": "brand new Mickey Thompson radials"
+    },
+    "weightWithoutDriverLb": {
+     "value": 2273,
+     "unit": "lb",
+     "kind": "measured",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "56:43-57:38"
+     },
+     "note": "no driver, springs not yet cut"
+    }
+   },
+   "opponent": {
+    "usable": true,
+    "weightLb": {
+     "value": 2400,
+     "unit": "lb",
+     "kind": "estimate",
+     "source": {
+      "video": "PTORqnT_zT4",
+      "t": "56:43-57:38"
+     },
+     "note": "2,273 lb measured without driver"
+    },
+    "powerHp": {
+     "value": 460,
+     "unit": "hp",
+     "kind": "stated",
+     "source": {
+      "video": "fLFD8Q0nthA",
+      "t": "36:09-36:33"
+     },
+     "note": "without nitrous",
+     "basis": "unknown"
+    },
+    "notes": [],
+    "reason": null
+   }
+  },
+  {
+   "id": "tye_ranger",
+   "sourceName": "Tye's Ranger",
+   "group": "street",
+   "description": {
+    "base": {
+     "text": "Ford Ranger, street-driven, no cage",
+     "source": null
+    },
+    "engine": {
+     "text": "Ford Coyote",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "single turbo",
+     "source": null
+    },
+    "fuel": null,
+    "ecu": {
+     "text": "Holley",
+     "source": null
+    },
+    "transmission": {
+     "text": "TH400, foot-brake launch",
+     "source": null
+    },
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": {
+    "et": {
+     "value": 9.77,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "pFJadF2mmXE",
+      "t": "22:34-23:28"
+     }
+    },
+    "mph": {
+     "value": 139,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "pFJadF2mmXE",
+      "t": "19:41-20:24"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.45,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "pFJadF2mmXE",
+      "t": "22:34-23:28"
+     }
+    },
+    "eighthEt": {
+     "value": 6.26,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "pFJadF2mmXE",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 112,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "pFJadF2mmXE",
+      "t": null
+     }
+    },
+    "track": null
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  },
+  {
+   "id": "giveaway_zr1_sep",
+   "sourceName": "Orange giveaway ZR1",
+   "group": "street",
+   "description": {
+    "base": {
+     "text": "Chevrolet Corvette ZR1 (supercharged; generation not clearly stated)",
+     "source": null
+    },
+    "engine": {
+     "text": "LME head porting and cam",
+     "source": null
+    },
+    "powerAdder": {
+     "text": "factory supercharger ported by Kong Performance, 23 psi",
+     "source": null
+    },
+    "fuel": {
+     "text": "~70% ethanol",
+     "source": null
+    },
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": 995,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "w4q6pp2mesc",
+     "t": "7:39-9:54"
+    },
+    "basis": "unknown"
+   },
+   "bestPass": {
+    "et": {
+     "value": 9.11,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "31:00-35:05"
+     }
+    },
+    "mph": {
+     "value": 148,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "19:31-23:02"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.3,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "31:00-35:05"
+     }
+    },
+    "eighthEt": {
+     "value": 5.83,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 119,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": null
+     }
+    },
+    "track": null
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "torqueLbft": {
+    "value": 961,
+    "unit": "lbft",
+    "kind": "measured",
+    "source": {
+     "video": "w4q6pp2mesc",
+     "t": null
+    }
+   },
+   "boostPsi": {
+    "value": 23,
+    "unit": "psi",
+    "kind": "measured",
+    "source": {
+     "video": "w4q6pp2mesc",
+     "t": null
+    }
+   },
+   "facts": {
+    "transmission": {
+     "value": "oem_auto",
+     "unit": null,
+     "kind": "stated",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "6:19-6:47, 15:07-15:26"
+     },
+     "note": "automatic with paddle/manual mode; 'seven gears' mentioned"
+    },
+    "launchGear": {
+     "value": 1,
+     "unit": null,
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "31:00-35:05"
+     },
+     "note": "best run launched in 1st gear (run 1 left in 2nd)"
+    },
+    "ambientC": {
+     "value": 29.7,
+     "unit": "C",
+     "kind": "stated",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "31:00-35:05"
+     },
+     "note": "~85-86 F after a 30 min cool-down, iced blower"
+    },
+    "peakTorqueLbft": {
+     "value": 961,
+     "unit": "lbft",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "7:39-9:54"
+     },
+     "note": "driver lifted early on this pull; ~1,000 hp said possible"
+    }
+   },
+   "opponent": {
+    "usable": true,
+    "weightLb": {
+     "value": 3933,
+     "unit": "lb",
+     "kind": "modeled",
+     "source": null,
+     "reason": "not in the research; from the trap speed and the dyno power with Hale (MPH = 234 (hp/lb)^(1/3))",
+     "derivedFrom": {
+      "mph": 148.0,
+      "hp": 995.0,
+      "file": "calibration/hale_check.csv implied_weight_lb"
+     }
+    },
+    "powerHp": {
+     "value": 995.0,
+     "unit": "hp",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "7:39-9:54"
+     },
+     "basis": "unknown",
+     "boostPsi": 23
+    },
+    "notes": [
+     "weight derived from the trap speed: trap mph is not a test for this car"
+    ]
+   }
+  },
+  {
+   "id": "cleetus_c8_zr1",
+   "sourceName": "Cleetus's C8 ZR1",
+   "group": "street",
+   "description": {
+    "base": {
+     "text": "Chevrolet Corvette ZR1 (C8), factory twin turbo",
+     "source": null
+    },
+    "engine": null,
+    "powerAdder": null,
+    "fuel": null,
+    "ecu": null,
+    "transmission": null,
+    "converter": null,
+    "rearEnd": null,
+    "tires": null,
+    "suspension": null
+   },
+   "weightLb": {
+    "value": null,
+    "unit": "lb",
+    "kind": null,
+    "source": null
+   },
+   "powerHp": {
+    "value": null,
+    "unit": "hp",
+    "kind": null,
+    "source": null
+   },
+   "bestPass": {
+    "et": {
+     "value": 9.42,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "8FFwqm17Vow",
+      "t": "13:46-14:50"
+     }
+    },
+    "mph": {
+     "value": 151,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "8FFwqm17Vow",
+      "t": "9:00-10:59"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.56,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "8FFwqm17Vow",
+      "t": "13:46-14:50"
+     }
+    },
+    "eighthEt": {
+     "value": 6.19,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "8FFwqm17Vow",
+      "t": null
+     }
+    },
+    "eighthMph": {
+     "value": 121,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "8FFwqm17Vow",
+      "t": null
+     }
+    },
+    "track": null
+   },
+   "purchaseUsd": null,
+   "budgetSpentUsd": null,
+   "maintenance": [],
+   "failures": [],
+   "builds": [],
+   "facts": {},
+   "opponent": {
+    "usable": false,
+    "weightLb": {
+     "value": null,
+     "unit": "lb",
+     "kind": null,
+     "source": null
+    },
+    "powerHp": {
+     "value": null,
+     "unit": "hp",
+     "kind": null,
+     "source": null
+    },
+    "notes": [],
+    "reason": "weight and power not both known or derivable"
+   }
+  }
+ ]
+}

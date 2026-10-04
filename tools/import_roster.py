@@ -1,0 +1,458 @@
+#!/usr/bin/env python3
+"""Import the YouTube research roster into the game's data format.
+
+    python3 tools/import_roster.py --research <dir>/research/youtube/cleetusm --commit <sha>
+
+Reads roster.json and calibration/*.csv (read only) and writes data/roster/cars.json and
+data/roster/calibration.json. data/roster/display-names.json is created for new ids only, so
+names you edited survive a re-import. Run tools/build_roster_data.js afterwards.
+
+Every value keeps where it came from: {value, unit, kind, source: {video, t}, note}. kind is the
+research's measured / stated / estimate. A value the game needs but the research does not have is
+filled only when the calibration data allow it, as kind "modeled" with the formula and its inputs;
+everything else stays null.
+"""
+import argparse
+import csv
+import json
+import math
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / 'data' / 'roster'
+
+# Neutral display names (no brand, model or person). The file is yours to edit.
+DEFAULT_NAMES = {
+    'eagle': 'Biturbo V8 buizenframe',
+    'leroy': 'Biturbo V8 sportwagen',
+    'mullet': 'Biturbo big-block ute',
+    'mcflurry': 'Turbo-V8 coupé (jaren 80)',
+    'ruby': 'Turbo-V8 coupé (rood)',
+    'blazer': 'Turbo-V8 SUV',
+    'toast': 'Compressor-V8 burnoutauto',
+    'crown_vic_gt500': 'Compressor-V8 sedan',
+    'marauder': 'Turbo-V8 sedan',
+    'galaxie_cummins': 'Turbodiesel klassieker',
+    'lumberjack': 'Turbo-V8 ute',
+    'crc12_jackstand_240': 'Lachgas-V8 coupé',
+    'crc12_tye_mustang': 'Budgetturbo-V8 coupé',
+    'crc12_tom_bailey_camaro': 'Lachgas big-block coupé',
+    'crc3_gen1_s10': 'Biturbo-V8 pick-up',
+    'crc3_95_mustang': 'Turbo-V8 coupé (jaren 90)',
+    'crc3_240sx_hatch': 'Lachgas-V8 hatchback',
+    'tye_ranger': 'Turbo-V8 pick-up',
+    'giveaway_zr1_sep': 'Compressor-V8 sportwagen',
+    'cleetus_c8_zr1': 'Middenmotor V8 sportwagen',
+}
+
+# Facts the sim needs that roster.json dropped but the per-video extracts have (extract/<video>.json),
+# copied by hand with their timestamps. kind is what the extract says it is.
+F = lambda value, unit, kind, video, t, note=None: val(value, unit, kind, video, t, note)
+FACTS = {
+    'crc12_jackstand_240': {
+        'transmission': lambda: F('powerglide', None, 'stated', 'PSGvE8jkSoc', '33:39, 41:38', 'Powerglide, rebuild kit only, no upgrades'),
+        'frontWeightPct': lambda: F(54, '%', 'measured', '-dDkkIHyQRM', '14:42-15:15', 'scales, with driver'),
+        'naPowerHp': lambda: F(520, 'hp', 'measured', '-dDkkIHyQRM', '11:05-11:36', 'chassis dyno without nitrous; flat power from 6,000 rpm up'),
+        'naTorqueLbft': lambda: F(433, 'lbft', 'measured', '-dDkkIHyQRM', '11:05-11:36'),
+        'revLimitRpm': lambda: F(7500, 'rpm', 'measured', '-dDkkIHyQRM', '11:05-11:36', 'pull from 3,500 to ~7,500 rpm where it hit the limiter'),
+        'nitrousShotHp': lambda: F(266, 'hp', 'measured', '-dDkkIHyQRM', '11:36-13:30',
+                                   'dyno gain 520 -> 786 hp; the jet is a ~225 hp shot ("two and a quarter", the lightest, used all week); the pull ended at ~6,500 rpm still climbing'),
+        'nitrousRetardDeg': lambda: F(6, 'deg', 'stated', '-dDkkIHyQRM', '12:24-14:00', 'timing pulled for the shot'),
+        'driverLiftFt': lambda: F(1000, 'ft', 'stated', 'mls_oZ9EQQg', '10:00-11:16, 13:57', 'lifted around 1,000 ft; driver estimated ~5.40 eighth'),
+    },
+    'crc3_240sx_hatch': {
+        'transmission': lambda: F('powerglide', None, 'stated', 'JguV0Y7ZbD0', None, 'Powerglide with trans brake ($700, stock case and planetary)'),
+        'tires': lambda: F('drag_radial', None, 'stated', 'PTORqnT_zT4', '38:50-39:09', 'brand new Mickey Thompson radials'),
+        'weightWithoutDriverLb': lambda: F(2273, 'lb', 'measured', 'PTORqnT_zT4', '56:43-57:38', 'no driver, springs not yet cut'),
+    },
+    'giveaway_zr1_sep': {
+        'transmission': lambda: F('oem_auto', None, 'stated', 'w4q6pp2mesc', '6:19-6:47, 15:07-15:26',
+                                  "automatic with paddle/manual mode; 'seven gears' mentioned"),
+        'launchGear': lambda: F(1, None, 'measured', 'w4q6pp2mesc', '31:00-35:05', 'best run launched in 1st gear (run 1 left in 2nd)'),
+        'ambientC': lambda: F(29.7, 'C', 'stated', 'w4q6pp2mesc', '31:00-35:05', '~85-86 F after a 30 min cool-down, iced blower'),
+        'peakTorqueLbft': lambda: F(961, 'lbft', 'measured', 'w4q6pp2mesc', '7:39-9:54', 'driver lifted early on this pull; ~1,000 hp said possible'),
+    },
+    'eagle': {
+        'transmission': lambda: F('th400', None, 'stated', 'XgXpvu6Q52Y', '11:58, 13:54', 'lock-up Turbo 400 (planned at the build start, medium confidence)'),
+        'tires': lambda: F('pro_radial', None, 'stated', 'wkQiI5gN6Hs', '0:48-1:18', "Mickey Thompson radials; '275' said at the build start (low confidence)"),
+    },
+    'mullet': {
+        'tires': lambda: F('pro_radial', None, 'stated', '6_quJlgCSC0', '2:12, 2:56', 'on radials until the 2026 switch to big tires'),
+        'worldCupWeightLb': lambda: F(3330, 'lb', 'measured', 'm-X8-o0myuw', '3:35-3:55', 'World Cup trim before the ~400 lb diet; with or without driver not said'),
+    },
+    'mcflurry': {
+        'transmission': lambda: F('lenco', None, 'stated', 'jBug09pPpv4', '4:10, 5:36', 'Lenco with a PTC converter matched to the Coyote'),
+        'converterFlashRpm': lambda: F(8080, 'rpm', 'stated', 'wkQiI5gN6Hs', '36:58-37:35', 'the Florida best pass flashed the converter to 8,080 rpm'),
+        'shiftRpm': lambda: F(8100, 'rpm', 'stated', 'wkQiI5gN6Hs', '36:58-37:35', '1-2 shift set at 8,100 rpm in the Haltech'),
+    },
+    'lumberjack': {
+        'trapRpm': lambda: F(7100, 'rpm', 'stated', '5ibvcauFris', '32:33-36:58', '7,100 rpm through the traps on the best pass'),
+    },
+}
+
+# Calibration pairs the extracts rule out, with the same reasoning the Hale check uses for its notes.
+EXCLUDE = {
+    'mullet': ('the World Cup pass "stopped accelerating late" (thumb on the transbrake button pulled timing); '
+               'the trap speed understates the power, and the power would have to come from that trap speed',
+               'wkQiI5gN6Hs', '25:54, 32:37-33:56'),
+    'mcflurry': ('dyno 1,394 whp at 31 psi; the 7.12 pass ran 36-37 psi peak and 33 psi at the trap: different boost',
+                 'PgdQ91n0Bmw', '53:45-54:08, 48:40'),
+    'lumberjack': ('dyno 900 hp at 26 psi; for the 9.30 pass the boost was raised +5 (29.4 psi peak): different boost',
+                   '5ibvcauFris', '32:33-36:58'),
+}
+
+HALE_ET = 5.825   # ET  = 5.825 (lb / hp)^(1/3)   Roger Hale's quarter-mile rules
+HALE_MPH = 234.0  # MPH = 234   (hp / lb)^(1/3)
+
+
+def num(v):
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return v
+    v = str(v).strip()
+    if v == '':
+        return None
+    try:
+        return float(v)
+    except ValueError:
+        return None
+
+
+def read_csv(path):
+    with open(path, newline='', encoding='utf-8') as f:
+        return list(csv.DictReader(f))
+
+
+def norm_kind(k):
+    """The research marks a timeslip read on video as measured=True; keep the four kinds only."""
+    k = str(k or '').strip().lower()
+    if k in ('true', 'measured') or k.startswith('measured'):
+        return 'measured'
+    if k.startswith('stated') or k.startswith('claimed'):
+        return 'stated'
+    if k.startswith('estimate'):
+        return 'estimate'
+    if k.startswith('recalled'):
+        return 'stated'
+    return k or None
+
+
+class Lookup:
+    """Timestamps live in the calibration CSVs; roster.json only names the video."""
+
+    def __init__(self, cal):
+        self.passes = read_csv(cal / 'passes.csv')
+        self.dyno = read_csv(cal / 'dyno.csv')
+        self.weights = read_csv(cal / 'weights.csv')
+
+    def t(self, table, car, video, field, value):
+        rows = getattr(self, table)
+        for r in rows:
+            if r['car_id'] == car and r['video_id'] == video and num(r.get(field)) is not None and value is not None \
+                    and abs(num(r[field]) - float(value)) < 1e-6:
+                return r['t'] or None
+        return None
+
+
+def val(value, unit, kind, video=None, t=None, note=None, **extra):
+    out = {'value': value, 'unit': unit, 'kind': kind if value is not None else None,
+           'source': {'video': video, 't': t} if video and value is not None else None}
+    if note:
+        out['note'] = note
+    out.update({k: v for k, v in extra.items() if v is not None})
+    return out
+
+
+def unknown(unit, note=None):
+    return val(None, unit, None, note=note)
+
+
+def roster_val(entry, unit, lk, car, table, field):
+    """A roster value {value, kind, note, src} in the game's format."""
+    if not isinstance(entry, dict) or entry.get('value') is None:
+        return unknown(unit, (entry or {}).get('note') if isinstance(entry, dict) else None)
+    video = entry.get('src')
+    t = lk.t(table, car, video, field, entry['value']) if table else None
+    return val(entry['value'], unit, norm_kind(entry.get('kind')) or 'stated', video, t, entry.get('note'))
+
+
+def text(value, video):
+    return {'text': value, 'source': {'video': video, 't': None} if video else None} if value else None
+
+
+def power_basis(car_id, roster_car, dyno_rows):
+    """wheel / crank / unknown, only from what the research says."""
+    for b in roster_car.get('builds', []) or []:
+        p = b.get('power') or {}
+        if p.get('unit') == 'whp' and p.get('value') == (roster_car.get('power') or {}).get('value'):
+            return 'wheel'
+    note = ' '.join((r.get('dyno_type') or '') + ' ' + (r.get('notes') or '') for r in dyno_rows if r['car_id'] == car_id)
+    if 'wheel vs crank not stated' in note:
+        return 'unknown'
+    return 'unknown'
+
+
+# The pairs the calibration may use: the latest measured pass of a build together with weight and power
+# of that same build. Built by hand from roster.json + hale_check.csv, because the roster mixes eras for
+# one car (see 'mullet') and the Hale check flags dyno/pass pairs at different boost.
+def calibration(roster, hale, lk, cal_dir):
+    cars = {c['id']: c for c in roster['cars']}
+    points, excluded = [], []
+    for row in hale:
+        cid = row['car']
+        if row.get('note'):
+            excluded.append({'carId': cid, 'build': row.get('build') or None, 'reason': row['note'],
+                             'from': 'calibration/hale_check.csv note'})
+            continue
+        if num(row['et']) is None:
+            excluded.append({'carId': cid, 'build': row.get('build') or None, 'reason': 'no quarter-mile pass for this build',
+                             'from': 'calibration/hale_check.csv'})
+            continue
+        weight, power = num(row['weight_lb']), num(row['power_hp'])
+        if weight is None and power is None:
+            excluded.append({'carId': cid, 'build': row.get('build') or None,
+                             'reason': 'neither weight nor power known: one pass cannot give both',
+                             'from': 'calibration/hale_check.csv'})
+            continue
+        points.append((cid, row))
+
+    out = []
+    for cid, row in points:
+        if cid in EXCLUDE:
+            reason, video, t = EXCLUDE[cid]
+            excluded.append({'carId': cid, 'build': row.get('build') or None, 'reason': reason,
+                             'source': {'video': video, 't': t}, 'from': 'extract (not flagged in hale_check.csv)'})
+            continue
+        c = cars[cid]
+        et, mph, sixty = num(row['et']), num(row['mph']), num(row['sixty_ft'])
+        build = row.get('build') or None
+        best = c.get('best_pass') or {}
+        pass_src = best.get('src')
+        if build:
+            for b in c.get('builds', []) or []:
+                if b.get('version') == build and b.get('best_pass'):
+                    best = b['best_pass']
+                    pass_src = best.get('src')
+        p = {
+            'et': val(et, 's', 'measured', pass_src, lk.t('passes', cid, pass_src, 'et', et)),
+            'mph': val(mph, 'mph', 'measured', pass_src, lk.t('passes', cid, pass_src, 'mph', mph)),
+            'sixtyFt': val(sixty, 's', 'measured', pass_src, lk.t('passes', cid, pass_src, 'sixty_ft', sixty)),
+            'track': best.get('track'),
+        }
+        w = num(row['weight_lb'])
+        hp = num(row['power_hp'])
+        weight_v = power_v = None
+        notes = []
+        if cid == 'mullet':
+            # roster.json pairs the World Cup pass (video #1731) with 2,762 lb measured for the 2026
+            # tall-deck build without its nose (video #1871). The World Cup trim weighed 3,330 lb on the
+            # scale (video #1743, 'before' the ~400 lb diet). Use the weight of the pass's own era.
+            w = 3330.0
+            weight_v = val(w, 'lb', 'measured', 'm-X8-o0myuw', '3:35-3:55',
+                           'World Cup trim before the ~400 lb diet (scale read aloud); with or without driver not said')
+            notes.append('roster.json pairs this pass with 2,762 lb from the 2026 build (video #1871); '
+                         'the pass is from the heavier World Cup trim (3,330 lb, video #1743)')
+        if weight_v is None and w is not None:
+            rv = c.get('weight_lb') or {}
+            weight_v = val(w, 'lb', norm_kind(rv.get('kind')) or 'stated', rv.get('src'),
+                           lk.t('weights', cid, rv.get('src'), 'weight_lb', w), rv.get('note'))
+        if hp is not None:
+            src = None
+            dyno_t = None
+            for b in [c] + (c.get('builds') or []):
+                pv = b.get('power') or {}
+                if pv.get('value') == hp:
+                    src = pv.get('src')
+                    dyno_t = lk.t('dyno', cid, src, 'hp', hp) or lk.t('dyno', cid, src, 'whp', hp)
+                    unit = 'whp' if pv.get('unit') == 'whp' else 'hp'
+                    power_v = val(hp, unit, norm_kind(pv.get('kind')) or 'measured', src, dyno_t, pv.get('note'),
+                                  basis='wheel' if unit == 'whp' else 'unknown',
+                                  boostPsi=pv.get('boost_psi'))
+                    break
+        metrics = ['et', 'sixtyFt']
+        if weight_v is None:
+            # weight from trap speed and power (Hale): the trap is then an input, not a test
+            lb = hp / math.pow(mph / HALE_MPH, 3)
+            weight_v = val(round(lb), 'lb', 'modeled', None, None, None,
+                           reason='not in the research; from the trap speed and the dyno power with Hale (MPH = 234 (hp/lb)^(1/3))',
+                           derivedFrom={'mph': mph, 'hp': hp, 'file': 'calibration/hale_check.csv implied_weight_lb'})
+            notes.append('weight derived from the trap speed: trap mph is not a test for this car')
+        elif power_v is None:
+            hp_m = w * math.pow(mph / HALE_MPH, 3)
+            power_v = val(round(hp_m), 'hp', 'modeled', None, None, None, basis='crank',
+                          reason='not in the research; from the trap speed and the weight with Hale (MPH = 234 (hp/lb)^(1/3))',
+                          derivedFrom={'mph': mph, 'lb': w, 'file': 'calibration/hale_check.csv implied_hp'})
+            notes.append('power derived from the trap speed: trap mph is not a test for this car')
+        else:
+            metrics.append('mph')
+        independent = 'mph' in metrics
+        out.append({'carId': cid, 'build': build, 'pass': p, 'weight': weight_v, 'power': power_v,
+                    'metrics': metrics, 'independent': independent, 'notes': notes})
+    return out, excluded
+
+
+def pass_values(cid, pb, lk):
+    src, kind = pb.get('src'), norm_kind(pb.get('kind'))
+    out = {k: val(pb.get(rk), unit, kind, src, lk.t('passes', cid, src, rk, pb.get(rk)) if rk in ('et', 'mph', 'sixty_ft') else None)
+           for k, rk, unit in (('et', 'et', 's'), ('mph', 'mph', 'mph'), ('sixtyFt', 'sixty_ft', 's'),
+                               ('eighthEt', 'eighth_et', 's'), ('eighthMph', 'eighth_mph', 'mph'))}
+    out['track'] = pb.get('track')
+    if pb.get('note'):
+        out['note'] = pb['note']
+    return out
+
+
+def build_entry(cid, b, lk):
+    p = b.get('power') or None
+    power = None
+    if p and p.get('value') is not None:
+        unit = 'whp' if p.get('unit') == 'whp' else 'hp'
+        power = val(p['value'], unit, norm_kind(p.get('kind')) or 'stated', p.get('src'),
+                    lk.t('dyno', cid, p.get('src'), 'whp' if unit == 'whp' else 'hp', p['value']) or lk.t('dyno', cid, p.get('src'), 'hp', p['value']),
+                    None, basis='wheel' if unit == 'whp' else 'unknown', boostPsi=p.get('boost_psi'), fuel=p.get('fuel'))
+    src = b.get('src')
+    return {'version': b.get('version'), 'engine': b.get('engine'), 'powerAdder': b.get('power_adder'),
+            'transmission': b.get('transmission'), 'fuel': b.get('fuel'), 'power': power,
+            'bestPass': pass_values(cid, b['best_pass'], lk) if b.get('best_pass') else None,
+            'note': b.get('power_vs_pass') or b.get('note'),
+            'source': src if isinstance(src, list) else ([src] if src else [])}
+
+
+def build_car(c, lk, dyno_rows):
+    cid = c['id']
+    weight = roster_val(c.get('weight_lb'), 'lb', lk, cid, 'weights', 'weight_lb')
+    power = roster_val(c.get('power'), 'hp', lk, cid, 'dyno', 'hp')
+    if power['value'] is not None:
+        power['basis'] = power_basis(cid, c, dyno_rows)
+    best = c.get('best_pass') or {}
+    bp = None
+    if best.get('et') is not None or best.get('sixty_ft') is not None:
+        src = best.get('src')
+        bp = {
+            'et': val(best.get('et'), 's', norm_kind(best.get('kind')), src, lk.t('passes', cid, src, 'et', best.get('et'))),
+            'mph': val(best.get('mph'), 'mph', norm_kind(best.get('kind')), src, lk.t('passes', cid, src, 'mph', best.get('mph'))),
+            'sixtyFt': val(best.get('sixty_ft'), 's', norm_kind(best.get('kind')), src, lk.t('passes', cid, src, 'sixty_ft', best.get('sixty_ft'))),
+            'eighthEt': val(best.get('eighth_et'), 's', norm_kind(best.get('kind')), src),
+            'eighthMph': val(best.get('eighth_mph'), 'mph', norm_kind(best.get('kind')), src),
+            'track': best.get('track'),
+        }
+    src = c.get('src') if isinstance(c.get('src'), str) else None
+    car = {
+        'id': cid,
+        'sourceName': c.get('name'),
+        'group': c.get('group'),
+        'description': {k: text(c.get(rk), src) for k, rk in (
+            ('base', 'base_vehicle'), ('engine', 'engine'), ('powerAdder', 'power_adder'), ('fuel', 'fuel'),
+            ('ecu', 'ecu'), ('transmission', 'transmission'), ('converter', 'converter'), ('rearEnd', 'rear_end'),
+            ('tires', 'tires'), ('suspension', 'suspension'))},
+        'weightLb': weight,
+        'powerHp': power,
+        'bestPass': bp,
+        'purchaseUsd': roster_val(c.get('purchase_usd'), 'USD', lk, cid, None, None) if c.get('purchase_usd') else None,
+        'budgetSpentUsd': roster_val(c.get('budget_spent_usd'), 'USD', lk, cid, None, None) if c.get('budget_spent_usd') else None,
+        'maintenance': [{'item': m.get('item'), 'priceUsd': m.get('price_usd'), 'confidence': m.get('confidence'),
+                         'source': {'video': m.get('src'), 't': None}} for m in c.get('maintenance') or []],
+        'failures': [{'part': f.get('part'), 'cause': f.get('cause'), 'source': {'video': f.get('src'), 't': None}}
+                     for f in c.get('failures') or []],
+        'builds': [build_entry(cid, b, lk) for b in c.get('builds') or []],
+    }
+    # extra stated numbers the sim can use (power with nitrous vs without, peak torque, boost)
+    pnote = (c.get('power') or {}).get('note') or ''
+    m = re.search(r'([\d,]+) hp without nitrous', pnote)
+    if m and power['value'] is not None:
+        base = float(m.group(1).replace(',', ''))
+        car['powerWithoutNitrousHp'] = val(base, 'hp', power['kind'], power['source']['video'],
+                                           lk.t('dyno', cid, power['source']['video'], 'hp', base), 'dyno pull without nitrous')
+    if (c.get('power') or {}).get('torque_lbft') is not None:
+        car['torqueLbft'] = val(c['power']['torque_lbft'], 'lbft', norm_kind(c['power'].get('kind')), c['power'].get('src'))
+    if (c.get('power') or {}).get('boost_psi') is not None:
+        car['boostPsi'] = val(c['power']['boost_psi'], 'psi', norm_kind(c['power'].get('kind')), c['power'].get('src'))
+    car['facts'] = {k: f() for k, f in FACTS.get(cid, {}).items()}
+    return car
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--research', required=True, type=Path, help='.../research/youtube/cleetusm')
+    ap.add_argument('--commit', required=True, help='research commit the data comes from')
+    ap.add_argument('--branch', default='claude/laughing-babbage-ls6v7d')
+    args = ap.parse_args()
+    res = args.research
+    cal = res / 'calibration'
+    roster = json.loads((res / 'roster.json').read_text(encoding='utf-8'))
+    lk = Lookup(cal)
+    dyno_rows = read_csv(cal / 'dyno.csv')
+    hale = read_csv(cal / 'hale_check.csv')
+
+    source = {'repo': 'github.com/cars4ever/EA888', 'branch': args.branch, 'commit': args.commit,
+              'path': 'research/youtube/cleetusm', 'importedBy': 'tools/import_roster.py'}
+    kinds = {
+        'measured': 'timeslip, dyno sheet or scale read in the video',
+        'stated': 'said by the team without the number being shown',
+        'estimate': "the team's own estimate",
+        'modeled': 'not in the research; derived by the game from the calibration data or a documented rule, with the reason',
+    }
+    cars = [build_car(c, lk, dyno_rows) for c in roster['cars']]
+    points, excluded = calibration(roster, hale, lk, cal)
+
+    # What an opponent races with: the calibration pair where there is one, otherwise the same Hale
+    # derivation from its best pass, with the caveat why it is only approximate.
+    by_point = {pt['carId']: pt for pt in points}
+    caveat = {e['carId']: e['reason'] for e in excluded if e.get('source')}
+    for car in cars:
+        cid = car['id']
+        if cid in by_point:
+            pt = by_point[cid]
+            car['opponent'] = {'usable': True, 'weightLb': pt['weight'], 'powerHp': pt['power'], 'notes': pt['notes']}
+            continue
+        w, hp = car['weightLb'], car['powerHp']
+        bp = car.get('bestPass') or {}
+        mph = (bp.get('mph') or {}).get('value')
+        notes = []
+        if mph is None:
+            # the car's numbers live per build: take the latest build with a full pass, and its own dyno
+            for b in reversed(car['builds']):
+                pb = b.get('bestPass') or {}
+                if (pb.get('mph') or {}).get('value') and (pb.get('et') or {}).get('value'):
+                    mph = pb['mph']['value']
+                    car['bestPass'] = {**pb, 'build': b['version']}
+                    if hp['value'] is None and b.get('power') and not b.get('note'):
+                        hp = b['power']
+                    notes.append(f"build: {b['version']}")
+                    break
+        if cid == 'mullet':
+            w = car['facts']['worldCupWeightLb']
+            notes.append('the World Cup trim weight; roster.json gives 2,762 lb from the 2026 build')
+        if w['value'] is not None and hp['value'] is None and mph:
+            hp = val(round(w['value'] * math.pow(mph / HALE_MPH, 3)), 'hp', 'modeled', None, None, None, basis='crank',
+                     reason='not in the research; from the trap speed and the weight with Hale (MPH = 234 (hp/lb)^(1/3))',
+                     derivedFrom={'mph': mph, 'lb': w['value']})
+        elif hp['value'] is not None and w['value'] is None and mph:
+            w = val(round(hp['value'] / math.pow(mph / HALE_MPH, 3)), 'lb', 'modeled', None, None, None,
+                    reason='not in the research; from the trap speed and the dyno power with Hale (MPH = 234 (hp/lb)^(1/3))',
+                    derivedFrom={'mph': mph, 'hp': hp['value']})
+        if cid in caveat:
+            notes.append('approximate: ' + caveat[cid])
+        usable = w['value'] is not None and hp['value'] is not None
+        car['opponent'] = {'usable': usable, 'weightLb': w, 'powerHp': hp, 'notes': notes,
+                           'reason': None if usable else 'weight and power not both known or derivable'}
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / 'cars.json').write_text(json.dumps({'schemaVersion': 1, 'source': source, 'about': roster.get('about'),
+                                               'kinds': kinds, 'cars': cars}, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+    (OUT / 'calibration.json').write_text(json.dumps({'schemaVersion': 1, 'source': source,
+                                                      'points': points, 'excluded': excluded}, indent=1, ensure_ascii=False) + '\n',
+                                          encoding='utf-8')
+    names_path = OUT / 'display-names.json'
+    names = json.loads(names_path.read_text(encoding='utf-8')) if names_path.exists() else {}
+    names.setdefault('_about', 'Weergavenamen in het spel. Pas ze vrij aan; een nieuwe import overschrijft ze niet.')
+    for c in cars:
+        names.setdefault(c['id'], DEFAULT_NAMES.get(c['id'], c['id']))
+    names_path.write_text(json.dumps(names, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+    print(f"{len(cars)} cars, {len(points)} calibration points, {len(excluded)} excluded -> {OUT.relative_to(ROOT)}")
+
+
+if __name__ == '__main__':
+    main()

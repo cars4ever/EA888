@@ -1,0 +1,284 @@
+{
+ "schemaVersion": 1,
+ "source": {
+  "repo": "github.com/cars4ever/EA888",
+  "branch": "claude/laughing-babbage-ls6v7d",
+  "commit": "334e31d",
+  "path": "research/youtube/cleetusm",
+  "importedBy": "tools/import_roster.py"
+ },
+ "points": [
+  {
+   "carId": "eagle",
+   "build": null,
+   "pass": {
+    "et": {
+     "value": 5.74,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "16:12, 18:28, 19:43-20:38"
+     }
+    },
+    "mph": {
+     "value": 259.0,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "16:12, 18:28, 19:43-20:38"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.05,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "wkQiI5gN6Hs",
+      "t": "16:12, 18:28, 19:43-20:38"
+     }
+    },
+    "track": "World Cup Finals (radial)"
+   },
+   "weight": {
+    "value": 2600.0,
+    "unit": "lb",
+    "kind": "estimate",
+    "source": {
+     "video": "XgXpvu6Q52Y",
+     "t": "13:28"
+    },
+    "note": "team estimate of race weight with driver (2,400 without)"
+   },
+   "power": {
+    "value": 3526,
+    "unit": "hp",
+    "kind": "modeled",
+    "source": null,
+    "basis": "crank",
+    "reason": "not in the research; from the trap speed and the weight with Hale (MPH = 234 (hp/lb)^(1/3))",
+    "derivedFrom": {
+     "mph": 259.0,
+     "lb": 2600.0,
+     "file": "calibration/hale_check.csv implied_hp"
+    }
+   },
+   "metrics": [
+    "et",
+    "sixtyFt"
+   ],
+   "independent": false,
+   "notes": [
+    "power derived from the trap speed: trap mph is not a test for this car"
+   ]
+  },
+  {
+   "carId": "crc12_jackstand_240",
+   "build": null,
+   "pass": {
+    "et": {
+     "value": 8.7,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "10:00-11:16, 13:57"
+     }
+    },
+    "mph": {
+     "value": 141.0,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "10:00-11:16, 13:57"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.26,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "mls_oZ9EQQg",
+      "t": "10:00-11:16, 13:57"
+     }
+    },
+    "track": "Byron Dragway"
+   },
+   "weight": {
+    "value": 2605.0,
+    "unit": "lb",
+    "kind": "measured",
+    "source": {
+     "video": "-dDkkIHyQRM",
+     "t": "14:42-15:15"
+    },
+    "note": "with driver; 2,408 without; 54% front"
+   },
+   "power": {
+    "value": 786.0,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "-dDkkIHyQRM",
+     "t": "11:36-13:30"
+    },
+    "note": "520 hp without nitrous",
+    "basis": "unknown"
+   },
+   "metrics": [
+    "et",
+    "sixtyFt",
+    "mph"
+   ],
+   "independent": true,
+   "notes": []
+  },
+  {
+   "carId": "giveaway_zr1_sep",
+   "build": null,
+   "pass": {
+    "et": {
+     "value": 9.11,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "31:00-35:05"
+     }
+    },
+    "mph": {
+     "value": 148.0,
+     "unit": "mph",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "19:31-23:02"
+     }
+    },
+    "sixtyFt": {
+     "value": 1.3,
+     "unit": "s",
+     "kind": "measured",
+     "source": {
+      "video": "w4q6pp2mesc",
+      "t": "31:00-35:05"
+     }
+    },
+    "track": null
+   },
+   "weight": {
+    "value": 3933,
+    "unit": "lb",
+    "kind": "modeled",
+    "source": null,
+    "reason": "not in the research; from the trap speed and the dyno power with Hale (MPH = 234 (hp/lb)^(1/3))",
+    "derivedFrom": {
+     "mph": 148.0,
+     "hp": 995.0,
+     "file": "calibration/hale_check.csv implied_weight_lb"
+    }
+   },
+   "power": {
+    "value": 995.0,
+    "unit": "hp",
+    "kind": "measured",
+    "source": {
+     "video": "w4q6pp2mesc",
+     "t": "7:39-9:54"
+    },
+    "basis": "unknown",
+    "boostPsi": 23
+   },
+   "metrics": [
+    "et",
+    "sixtyFt"
+   ],
+   "independent": false,
+   "notes": [
+    "weight derived from the trap speed: trap mph is not a test for this car"
+   ]
+  }
+ ],
+ "excluded": [
+  {
+   "carId": "leroy",
+   "build": "Leroy 2.0 (2023)",
+   "reason": "dyno at 9.4 psi, pass at 20 psi: power and pass not comparable",
+   "from": "calibration/hale_check.csv note"
+  },
+  {
+   "carId": "leroy",
+   "build": "TX2K26 (2026)",
+   "reason": "neither weight nor power known: one pass cannot give both",
+   "from": "calibration/hale_check.csv"
+  },
+  {
+   "carId": "mcflurry",
+   "build": "7.3 Godzilla twin turbo",
+   "reason": "dyno at 6 psi on pump gas, pass on higher boost: not comparable",
+   "from": "calibration/hale_check.csv note"
+  },
+  {
+   "carId": "ruby",
+   "build": "Texas Speed 427",
+   "reason": "dyno at 11 psi (2024), pass on ~15-20 psi (2025): not comparable",
+   "from": "calibration/hale_check.csv note"
+  },
+  {
+   "carId": "crc12_tom_bailey_camaro",
+   "build": null,
+   "reason": "neither weight nor power known: one pass cannot give both",
+   "from": "calibration/hale_check.csv"
+  },
+  {
+   "carId": "crc3_240sx_hatch",
+   "build": null,
+   "reason": "no quarter-mile pass for this build",
+   "from": "calibration/hale_check.csv"
+  },
+  {
+   "carId": "tye_ranger",
+   "build": null,
+   "reason": "neither weight nor power known: one pass cannot give both",
+   "from": "calibration/hale_check.csv"
+  },
+  {
+   "carId": "cleetus_c8_zr1",
+   "build": null,
+   "reason": "neither weight nor power known: one pass cannot give both",
+   "from": "calibration/hale_check.csv"
+  },
+  {
+   "carId": "mullet",
+   "build": "big block, World Cup",
+   "reason": "the World Cup pass \"stopped accelerating late\" (thumb on the transbrake button pulled timing); the trap speed understates the power, and the power would have to come from that trap speed",
+   "source": {
+    "video": "wkQiI5gN6Hs",
+    "t": "25:54, 32:37-33:56"
+   },
+   "from": "extract (not flagged in hale_check.csv)"
+  },
+  {
+   "carId": "mcflurry",
+   "build": "Coyote single 76 mm",
+   "reason": "dyno 1,394 whp at 31 psi; the 7.12 pass ran 36-37 psi peak and 33 psi at the trap: different boost",
+   "source": {
+    "video": "PgdQ91n0Bmw",
+    "t": "53:45-54:08, 48:40"
+   },
+   "from": "extract (not flagged in hale_check.csv)"
+  },
+  {
+   "carId": "lumberjack",
+   "build": null,
+   "reason": "dyno 900 hp at 26 psi; for the 9.30 pass the boost was raised +5 (29.4 psi peak): different boost",
+   "source": {
+    "video": "5ibvcauFris",
+    "t": "32:33-36:58"
+   },
+   "from": "extract (not flagged in hale_check.csv)"
+  }
+ ]
+}
