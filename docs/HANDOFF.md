@@ -8,6 +8,10 @@ Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.m
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
 - Laatste release: **1.27.0 (versionCode 370)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke groen.
+- **Echte auto's en prijzen** uit het YouTube-onderzoek: `data/roster/` (zie de README daar), import met
+  `tools/import_roster.py`, bundel met `tools/build_roster_data.js`. Kalibratie tegen echte runs:
+  `docs/CALIBRATION.md` en `node tools/roster_calibration.js [--before]`. Fase 2 (auto's speelbaar/koopbaar,
+  onderdelen echt kopen) staat nog open.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
 

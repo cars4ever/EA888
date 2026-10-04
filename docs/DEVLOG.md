@@ -1222,6 +1222,43 @@ out of room. Closing it needs a better search - a restart from several starting 
 that can move two axes at once - not a longer one. The test guards 96 % so a regression still shows, and
 reports which engines are below the 98 % goal.
 
+## 33. Real cars from the research, and a drag model calibrated on them (after v1.28.0)
+
+**Data.** `tools/import_roster.py` turns the research roster (`roster.json`, `calibration/*.csv`, commit
+`334e31d` on `claude/laughing-babbage-ls6v7d`) into `data/roster/*.json`; `tools/build_roster_data.js` bundles it
+as `roster-data.js` (a plain script, no fetch). Every value keeps its video and timestamp and the research's kind;
+a value the game needs and the research lacks is filled only where the calibration data allow it (weight or power
+from the trap speed with Hale), as `modeled` with the formula and its inputs. Facts the roster summary dropped
+(gearbox, converter flash, front weight, launch boost, a lift at 1,000 ft) are copied from the per-video extracts
+with their timestamps. What the research does not say at all (aero, wheelbase, gearbox ratios, converter, curve
+shape, rear gear) comes from per-class rules in `model-rules.json`, each with its reason — never per car.
+
+Three things in the research are wrong or incomplete and are handled, not copied: `roster.json` pairs Mullet's
+World Cup pass with the weight of the 2026 build; the Hale check does not flag that McFlurry's and Lumberjack's
+best passes ran more boost than their dyno pulls. All three stay out of the calibration.
+
+**Runtime.** A roster car carries its own engine curve, gearbox, converter, weight and weight split in
+`state.rosterCar`; every gearing/driveline lookup goes through `transmissionFor` / `drivelineFor`, which return the
+fitted part for the player, so the player's path is unchanged. The engine is its dyno number on a curve shape per
+engine family (`curveEngineMap`, compatible with `engineMapLookup`), turbo torque scales with manifold pressure
+and the boost comes up with time from the launch; no combustion model, so no knock and no head lift for these
+engines (their gasket clamp is unknown). The torque converter (`converterTorques`) is integrated implicitly with
+the wheels: near coupling it is a stiff link, and a short first gear (an 8-speed automatic's 4.56 over the rear
+gear) made the explicit step blow up.
+
+**Calibration.** `docs/CALIBRATION.md` has the before/after table and the reasoning; `tools/roster_calibration.js
+--before` reproduces the "before" by reversing the listed steps on a copy of `sim.js`. In short: timing as the
+beams measure it, anti-squat from the axle torque, converter capacity past the coupling point, the prepared-strip
+grip of the drag compounds ×1.28 (the fully known car only hooks the way its 60 ft says from ~1.25×), slip heat at
+peak slip into the tread bulk, launch management for the roster cars. One player-side test moved: the tyre
+temperature test now runs on an unprepared surface, where the calibrated grip still leaves the launch
+traction-limited (on a prepared strip the temperature no longer shows in a 477 pk FWD car's 60 ft).
+
+**Same rules.** `raceWearFromResult` is the player's per-pass wear rule moved into `sim.js` unchanged; opponents go
+through it too (`applyRosterRun`), with the service interval the research gives and "worn through = rebuilt before
+the next race". A curve engine cannot fail mid-run (no combustion model), so an opponent cannot break during a
+pass yet; McFlurry's blown head gasket at 36 psi is in the data but not reproducible for the same reason.
+
 ## Changelog (claude-dev)
 
 - `25f8a37` dyno abort consistency (strict result model, legacy repair, tests)
@@ -1233,6 +1270,10 @@ reports which engines are below the 98 % goal.
 - v1.3.1: build mass, continuous ALS bang rate/flame, auto tree, flame layer, ALS sound, rival on track
 
 ## Remaining known inaccuracies
+
+- Roster cars (see `docs/CALIBRATION.md`): no aero downforce and no lock-up converter (the 3,500 hp radial car is
+  ~1.8 s slow), the engine voice is the EA888 four-cylinder for every car (V8 firing not synthesized), the 3D rival
+  is the generic rival model, opponents cannot break mid-pass (curve engines have no combustion model).
 
 - Engine: single-zone cycle with Wiebe combustion (no turbulence/flame model), end-gas knock from a
   correlation fitted to estimated knock-limited spark points (+/-3 deg), no cylinder-to-cylinder spread.

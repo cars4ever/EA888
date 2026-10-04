@@ -12,6 +12,24 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
+## Unreleased (after v1.28.0) — real cars from the YouTube research, and a drag model calibrated on them
+
+- **Real cars as opponents.** 20 cars from the research roster (`data/roster`, every value with its video and
+  timestamp and its kind: measured / stated / estimate / modeled), 7 of them with enough data to race: a group
+  "Echte builds" in the rival picker and a bracket event "Echte builds". They race on their own dyno curve,
+  torque converter, Powerglide/TH400/Lenco/factory automatic, weight and tyres on the same race runtime as the
+  player. Neutral names, editable in `data/roster/display-names.json`; no logos, images or audio from the videos.
+- **Same rules for opponents.** One wear rule for the player and every opponent; each opponent has a record in
+  the save (runs, wear, damage) and services on the interval the research gives (connecting rods every 25–30
+  runs); worn through = rebuilt before its next race.
+- **Real part prices.** 103 parts from the videos with price (USD, and euros at a fixed game rate), condition and
+  source on the Data page; budget-board totals, whole cars, repairs and quotes kept apart with the reason. The one
+  part that is the same as a game part (the Precision 7675) shows its real used price on its card. Buying: phase 2.
+- **Calibrated physics** (see `docs/CALIBRATION.md`, before/after table): timing as the beams measure it
+  (rollout, 66-ft speed trap — ETs and 60 fts are ~0.3–0.4 s shorter, green-to-finish unchanged), anti-squat,
+  prepared-strip grip of the drag compounds ×1.28, slip heat at peak slip into the tread, a torque converter model.
+  The fully known car lands within 4 % on ET and trap; the documented deviations are in the calibration doc.
+
 ## v1.27.0 (branch `claude-dev`) — reference builds for every engine
 
 - A `max_*` preset per engine: the best build the catalogue allows, searched offline over every part,

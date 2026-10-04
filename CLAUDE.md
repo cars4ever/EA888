@@ -1,6 +1,6 @@
 # EA888 LAB — Claude handoff
 
-> **Current state (v1.15.0): read `docs/HANDOFF.md` first** — status, commands, release signing and the next step (Hunyuan3D-2 car model).
+> **Current state: read `docs/HANDOFF.md` first** — status, commands, release signing and open work. Real cars, part prices and the calibration against real passes: `data/roster/README.md` and `docs/CALIBRATION.md`.
 
 ## Starting point
 Use **EA888 Lab v1.2.0 source** as the canonical codebase, not an older APK screenshot/build.
