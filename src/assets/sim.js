@@ -312,8 +312,10 @@
       career: defaultCareer(),
       // what the roster opponents have been through in this save (runs, wear, damage, services)
       rosterOpponents: {},
+      // parts the player owns ('category:partId' -> how it was bought); filled from the mounted build when missing
+      owned: null,
       buildSlots: [null, null, null],
-      settings: { sound: true, haptics: true, reducedMotion: false, graphics3d: true, engineSound: 'synth', mix: { engine: 100, turbo: 100, als: 100, tyre: 100, rival: 100, ui: 100 } },
+      settings: { sound: true, haptics: true, reducedMotion: false, graphics3d: true, freeBuild: false, engineSound: 'synth', mix: { engine: 100, turbo: 100, als: 100, tyre: 100, rival: 100, ui: 100 } },
       history: []
     };
   }
@@ -401,6 +403,8 @@
     s.dragRuns = Array.isArray(input.dragRuns) ? input.dragRuns.slice(0, 30) : [];
     s.history = Array.isArray(input.history) ? input.history.slice(0, 60) : [];
     s.rosterOpponents = input.rosterOpponents && typeof input.rosterOpponents === 'object' ? { ...input.rosterOpponents } : {};
+    // Ownership: a save from before parts were bought keeps everything its build and build slots use.
+    s.owned = input.owned && typeof input.owned === 'object' ? { ...input.owned } : inheritedOwnership(s);
     s.version = 12;
     // v1.3.0 generic turbos were replaced by the Precision catalogue: map old ids to the nearest model.
     if (LEGACY_TURBO_IDS[s.selections.turbo]) s.selections.turbo = LEGACY_TURBO_IDS[s.selections.turbo];
@@ -4454,6 +4458,67 @@
     state.tune.ecu = buildEcu(state);
     return state;
   }
+  // ---- Economy: parts you own, parts you buy ------------------------------------------------------------
+  // In career mode a part you mount and do not own is bought at its price (bank down); a part you own you can
+  // swap back for free. OEM parts (price 0) are always yours. 'Vrij bouwen' (settings.freeBuild) is the sandbox:
+  // nothing costs anything. The compound kit counts as one part. A used offer from the research catalogue
+  // (data/roster/parts-catalog.json) buys the same part at its real used price.
+  const COMPOUND_KIT_KEY = 'kit:compound';
+  const ownKey = (categoryId, partId) => `${categoryId}:${partId}`;
+  function buildPartKeys(sel) {
+    const keys = CATEGORIES.map(cat => ownKey(cat.id, sel[cat.id] || cat.items[0].id));
+    if (sel.turboHp) keys.push(ownKey('turbo', sel.turboHp), COMPOUND_KIT_KEY);
+    return keys;
+  }
+  function inheritedOwnership(s) {
+    const out = {};
+    const sets = [s.selections || {}, ...((s.buildSlots || []).filter(Boolean).map(b => b.selections || {}))];
+    for (const sel of sets) for (const k of buildPartKeys({ ...defaultSelections(), ...sel })) out[k] = { how: 'inherited' };
+    return out;
+  }
+  function partPriceEur(key) {
+    if (key === COMPOUND_KIT_KEY) return COMPOUND_KIT.price;
+    const [cat, id] = key.split(':');
+    const part = CATEGORY_MAP[cat] && CATEGORY_MAP[cat].items.find(i => i.id === id);
+    return part ? Number(part.price) || 0 : 0;
+  }
+  function ownsPart(inputState, key) {
+    return partPriceEur(key) === 0 || !!(inputState.owned && inputState.owned[key]);
+  }
+  // What it costs to have these selections fitted: every part not owned, at its new price.
+  function buildCost(inputState, selections) {
+    if (inputState.settings && inputState.settings.freeBuild) return { total: 0, items: [], free: true };
+    const items = [];
+    for (const key of [...new Set(buildPartKeys({ ...defaultSelections(), ...selections }))]) {
+      if (ownsPart(inputState, key)) continue;
+      const [cat, id] = key.split(':');
+      const name = key === COMPOUND_KIT_KEY ? COMPOUND_KIT.name : CATEGORY_MAP[cat].items.find(i => i.id === id)?.name || id;
+      items.push({ key, name, priceEur: partPriceEur(key) });
+    }
+    return { total: items.reduce((a, b) => a + b.priceEur, 0), items, free: false };
+  }
+  // Buy what the selections need and record it; refuses (unchanged state) when the bank cannot pay.
+  function purchaseBuild(inputState, selections, how = 'new') {
+    const cost = buildCost(inputState, selections);
+    const bank = Number(inputState.bank || 0);
+    if (cost.total > bank) return { ok: false, cost, shortEur: cost.total - bank };
+    const owned = { ...(inputState.owned || {}) };
+    for (const it of cost.items) owned[it.key] = { how, paidEur: it.priceEur };
+    return { ok: true, cost, bank: bank - cost.total, owned };
+  }
+  // Buy one part through a used offer from the catalogue (its real price in dollars at the game rate).
+  function purchaseUsedOffer(inputState, categoryId, partId, offerId) {
+    const offer = rosterPartOffers(categoryId, partId).find(o => o.id === offerId);
+    if (!offer) return { ok: false, reason: 'aanbod niet gevonden' };
+    const key = ownKey(categoryId, partId);
+    if (ownsPart(inputState, key)) return { ok: false, reason: 'al in bezit' };
+    const eur = Math.round(usdToEur(offer.priceUsd));
+    if (!(eur > 0)) return { ok: false, reason: 'geen koers ingesteld' };
+    const bank = Number(inputState.bank || 0);
+    if (eur > bank) return { ok: false, reason: 'budget te laag', shortEur: eur - bank };
+    return { ok: true, bank: bank - eur, paidEur: eur, owned: { ...(inputState.owned || {}), [key]: { how: 'used', condition: offer.condition, paidEur: eur, offerId, source: offer.source } } };
+  }
+
   function createInitialState() {
     let state = blankState(),
       result = simulateEngine(state, { noise: false });
@@ -4736,6 +4801,12 @@
     rosterSpec,
     rosterState,
     ROSTER_VERSION,
+    ownKey,
+    ownsPart,
+    buildCost,
+    purchaseBuild,
+    purchaseUsedOffer,
+    COMPOUND_KIT_KEY,
     usdToEur,
     rosterPartOffers,
     raceWearFromResult,

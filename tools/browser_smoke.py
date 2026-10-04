@@ -170,7 +170,12 @@ def main() -> None:
             page.locator('.bench-panel').screenshot(path=str(screenshots / 'EA888-Lab-v1.2.0-bench.png'))
 
         click(page, '[data-motor-panel="hardware"]')
+        # career mode: mounting a part you do not own buys it at its price
+        bank_before = page.evaluate("() => __EA888_DEBUG__.career().bank")
         click(page, '[data-part-id="hx52"]')
+        bank_after = page.evaluate("() => __EA888_DEBUG__.career().bank")
+        owned_after = page.evaluate("() => __EA888_DEBUG__.owned()")
+        report['checks']['part_bought_on_mount'] = bank_before - bank_after == 3900 and 'turbo:hx52' in owned_after
         click(page, '[data-nav="bank"]')
         stale_text = page.locator('.v5-status-grid').inner_text() + '\n' + page.locator('.v5-car-card').inner_text()
         report['checks']['power_hidden_after_part_change'] = '? pk' in stale_text and 'ONGETESTE BUILD' in stale_text

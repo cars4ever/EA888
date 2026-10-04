@@ -385,6 +385,7 @@
   function loadBuildSlot(index) {
     const slot = state.buildSlots?.[index];
     if (!slot) return showToast('Dit buildslot is nog leeg.');
+    if (!payForBuild(slot.selections || {}, slot.buildName || `slot ${index + 1}`)) return;
     for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) {
       if (slot[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(slot[key])) };
     }
@@ -1707,11 +1708,17 @@
       return presetCard(id, pre.name, sub, detail);
     }).join('\n        ');
   }
+  function presetButton(id) {
+    const cost = C.buildCost(state, C.PRESETS[id]?.selections || {});
+    if (cost.free || cost.total <= 0) return `<button class="btn small" data-preset="${id}">Build laden</button>`;
+    const enough = Number(state.bank || 0) >= cost.total;
+    return `<button class="btn small" data-preset="${id}" ${enough ? '' : 'disabled'}>Build laden · ${euro(cost.total)}</button>${enough ? '' : `<small class="muted">${cost.items.length} onderdelen te kopen, ${euro(cost.total - Number(state.bank || 0))} tekort</small>`}`;
+  }
   function presetCard(id, title, subtitle, detail, highlighted = false) {
     return `<article class="preset-card ${highlighted ? 'highlighted' : ''}">
       ${highlighted ? '<span class="randy-badge">RANDY SPEC</span>' : ''}
       <h3>${esc(title)}</h3><b>${esc(subtitle)}</b><p>${esc(detail)}</p>
-      <button class="btn small" data-preset="${id}">Build laden</button>
+      ${presetButton(id)}
     </article>`;
   }
 
@@ -1891,7 +1898,11 @@
     }
     // the same part for sale in the research videos (data/roster/parts-catalog.json): a real price and condition
     const offers = C.rosterPartOffers(cat.id, part.id);
-    const offerMeta = offers.length ? `<div class="part-offers"><span class="eyebrow">Echte prijs uit de video's</span>${offers.map(o => `<small>${esc(CONDITION_LABEL[o.condition] || 'conditie niet genoemd')} · <b>$${Math.round(o.priceUsd)}</b>${C.usdToEur(o.priceUsd) != null ? ` (≈ ${euro(C.usdToEur(o.priceUsd))})` : ''} · bron ${esc(o.source.video)}${o.source.t ? ` @ ${esc(o.source.t)}` : ''}</small>`).join('')}</div>` : '';
+    const owned = C.ownsPart(state, C.ownKey(cat.id, part.id)), career = !state.settings?.freeBuild;
+    const offerMeta = offers.length ? `<div class="part-offers"><span class="eyebrow">Echte prijs uit de video's</span>${offers.map(o => {
+      const eur = C.usdToEur(o.priceUsd), canBuy = career && !owned && eur != null;
+      return `<small>${esc(CONDITION_LABEL[o.condition] || 'conditie niet genoemd')} · <b>$${Math.round(o.priceUsd)}</b>${eur != null ? ` (≈ ${euro(eur)})` : ''} · bron ${esc(o.source.video)}${o.source.t ? ` @ ${esc(o.source.t)}` : ''}</small>${canBuy ? `<button class="btn small secondary" data-buy-used="${cat.id}:${part.id}:${o.id}" ${Number(state.bank || 0) >= eur ? '' : 'disabled'}>Tweedehands kopen · ${euro(Math.round(eur))}</button>` : ''}`;
+    }).join('')}</div>` : '';
     const turboMeta = cat.id === 'turbo' ? `<div class="part-meter"><span>Compressor</span><b>${part.compressorMm || 'OEM'} mm</b><i style="--fill:${clamp(((part.compressorMm || 45)-40)/80*100,8,100)}%"></i></div>` : '';
     return `<article class="part-card part-row ${selected ? 'selected' : ''}" data-part-row="${key}">
       <details ${openPartRows.has(key) ? 'open' : ''} data-part-details="${key}">
@@ -1902,9 +1913,16 @@
         </summary>
         <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${tqMeta}${turboMeta}${hopMeta}${offerMeta}</div>
       </details>
-      ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`}
+      ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : mountButton(cat, part)}
       ${cat.id === 'turbo' ? compoundButton(part, selected) : ''}
     </article>`;
+  }
+  // Mount (owned or 'Vrij bouwen') or buy-and-mount at the new price; a part the budget cannot pay is disabled.
+  function mountButton(cat, part) {
+    const cost = C.buildCost(state, { ...state.selections, [cat.id]: part.id }).total;
+    if (cost <= 0) return `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`;
+    const enough = Number(state.bank || 0) >= cost;
+    return `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}" ${enough ? '' : 'disabled'} title="${enough ? '' : 'Budget te laag'}">Kopen · ${euro(cost)}</button>`;
   }
   function compoundButton(part, selected) {
     if (selected) return '';
@@ -5713,6 +5731,7 @@
 
       <div class="card settings-card">
         <span class="eyebrow">Spelervaring</span><h2>Interface & feedback</h2>
+        ${switchRow('freeBuild', 'Vrij bouwen', 'Sandbox: onderdelen, builds en presets zonder kosten. Uit = carrière: wat je monteert en niet hebt, koop je van je budget.', 'settings')}
         ${switchRow('sound', 'Motorgeluid', 'Synthesiseert toerental- en loadfeedback tijdens dyno en drag.', 'settings')}
         ${switchRow('haptics', 'Trillingsfeedback', 'Trilling bij schakelen, tree-lampen, fouten en dynostart.', 'settings')}
         ${switchRow('reducedMotion', 'Minder animatie', 'Versnelt dyno- en raceanimaties en beperkt beweging.', 'settings')}
@@ -6090,6 +6109,17 @@
   });
 
   // Undo for tapped changes (parts, presets, switches): the old value of the touched paths only.
+  // Career mode: buy what these selections need before they are fitted. Returns false (with the shortfall
+  // shown) when the budget cannot pay; parts already owned and 'Vrij bouwen' cost nothing.
+  function payForBuild(selections, what) {
+    const res = C.purchaseBuild(state, selections);
+    if (!res.ok) { showToast(`Budget te laag voor ${what}: ${euro(res.cost.total)} nodig, ${euro(res.shortEur)} tekort.`); haptic([30, 40, 30]); return false; }
+    if (res.cost.total > 0) {
+      state.bank = res.bank; state.owned = res.owned;
+      pushHistory({ type: 'purchase', label: `Gekocht voor ${what}: ${res.cost.items.map(i => i.name).join(', ')} · ${euro(res.cost.total)}` });
+    }
+    return true;
+  }
   function offerUndo(paths, label) {
     const before = paths.map(p => [p, readPath(p)]);
     return () => showToast(label, { label: 'Ongedaan', run: () => { before.forEach(([p, v]) => writePath(p, v)); pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId; saveState(); render(); showToast('Ongedaan gemaakt.'); } });
@@ -6296,6 +6326,7 @@
       saveState(); haptic(10); return render();
     }
     if (btn.dataset.preset) {
+      if (!payForBuild(C.PRESETS[btn.dataset.preset]?.selections || {}, C.PRESETS[btn.dataset.preset]?.name || 'deze build')) return;
       const announce = offerUndo(['selections', 'tune', 'assembly', 'service', 'vehicle', 'dynoConfig', 'buildName'].map(k => ['__root', k]), 'Build geladen. Het resultaat blijft verborgen tot de dyno.');
       state = C.applyPreset(state, btn.dataset.preset);
       markOnboarding('built');
@@ -6308,18 +6339,32 @@
       if (btn.disabled) return;
       const id = btn.dataset.compoundHp;
       const before = C.compoundHp(state);
+      if (id && !payForBuild({ ...state.selections, turboHp: id }, 'de compound-HP-trap')) return;
       const announce = offerUndo([['selections', 'turboHp']], id ? `Compound: HP-trap ${C.CATEGORY_MAP.turbo.items.find(x => x.id === id)?.name || id}` : `Compound: HP-trap ${before?.item?.name || ''} eraf`);
       state.selections.turboHp = id;
       saveState(); haptic(16);
       render();
       return announce();
     }
+    if (btn.dataset.buyUsed) {
+      if (btn.disabled) return;
+      const [catId, partId, offerId] = btn.dataset.buyUsed.split(':');
+      const res = C.purchaseUsedOffer(state, catId, partId, offerId);
+      if (!res.ok) { showToast(`Niet gekocht: ${res.reason}${res.shortEur ? ` (${euro(res.shortEur)} tekort)` : ''}.`); return; }
+      const part = C.CATEGORY_MAP[catId].items.find(x => x.id === partId);
+      state.bank = res.bank; state.owned = res.owned; state.selections[catId] = partId;
+      pushHistory({ type: 'purchase', label: `Tweedehands gekocht en gemonteerd: ${part?.name || partId} · ${euro(res.paidEur)}` });
+      markOnboarding('built'); saveState(); haptic(16); render();
+      return showToast(`${part?.name || partId} tweedehands gekocht (${euro(res.paidEur)}) en gemonteerd.`);
+    }
     if (btn.dataset.partCat && btn.dataset.partId) {
       if (btn.disabled) return;
       const cat = C.CATEGORY_MAP[btn.dataset.partCat];
       const oldName = C.getPart(state, btn.dataset.partCat)?.name || '';
       if (state.selections[btn.dataset.partCat] === btn.dataset.partId) return;
-      const announce = offerUndo([['selections', btn.dataset.partCat]], `${cat?.short || 'Onderdeel'}: ${oldName} → ${cat?.items.find(x => x.id === btn.dataset.partId)?.name || btn.dataset.partId}`);
+      const newName = cat?.items.find(x => x.id === btn.dataset.partId)?.name || btn.dataset.partId;
+      if (!payForBuild({ ...state.selections, [btn.dataset.partCat]: btn.dataset.partId }, newName)) return;
+      const announce = offerUndo([['selections', btn.dataset.partCat]], `${cat?.short || 'Onderdeel'}: ${oldName} → ${newName}`);
       state.selections[btn.dataset.partCat] = btn.dataset.partId;
       markOnboarding('built');
       saveState(); haptic(16);
@@ -6597,6 +6642,7 @@
     audio: () => audioDiagnostics(),
     turbo: () => raceGame ? { phase: raceGame.phase, snap: raceGame.run?.turboSnap || raceGame.turboSnap || null, als: raceGame.alsInfo ? { enabled: raceGame.alsInfo.enabled, mode: raceGame.alsInfo.mode } : null, flames: (raceGame.flameLog || []).slice(-30), wear: raceGame.turbo ? cloneJson(raceGame.turbo.state.wear) : null, alsSeconds: raceGame.turbo?.state.alsSeconds || 0 } : null,
     stateWear: () => ({ wear: cloneJson(state.wear), damage: cloneJson(state.damage) }),
+    owned: () => cloneJson(state.owned || {}),
     rosterRival: id => { const p = RIVALS[`roster:${id}`]; if (!p) return null; const e = rivalPass(p); return { quarter: e.quarter, trapKmh: e.trapKmh, sixtyFt: e.sixtyFt, peakHp: e.peakHp, record: C.rosterRecord(state, id) }; },
     enterStageForTest: () => { if (!raceGame?.open) return false; enterV7Stage(); return true; },
     stageState: () => raceGame?.stage ? { progress: raceGame.stage.progress, staged: raceGame.stage.staged, rpm: raceGame.stage.rpm, treeStarted: raceGame.stage.treeStarted, green: !!raceGame.stage.green, launchArmed: !!raceGame.stage.launchArmed, launched: !!raceGame.stage.launched, launchFromRpm: raceGame.stage.launchFromRpm || 0 } : null,
