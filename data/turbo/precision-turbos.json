@@ -1,0 +1,122 @@
+{
+  "description": "Precision Turbo & Engine catalogue selection, small to large (product pages retrieved 2026-09-23). Model numbers: first two digits = compressor inducer (mm), last digits = turbine wheel (mm; Pro Mod '03' = 103 mm). hp ratings are Precision's own. Where Precision publishes a compressor map for the wheel (CM-60/64/68/76), mapType is 'vendor'. Other models have no public map: their compressor map is the nearest Precision CM map scaled by inducer area (flow) and inducer diameter (shaft speed at equal tip speed), tagged 'modeled'.",
+  "turbineRule": "Precision publishes no turbine flow maps on these pages: turbine flow capacity is modeled from the Garrett G25 0.72 A/R curve scaled by (turbine wheel mm / 49 mm)^2 for a mid A/R housing; turbine efficiency 0.74.",
+  "turbos": {
+    "pt5558": {
+      "name": "Precision Gen2 PT5558",
+      "series": "Gen 2",
+      "ratedHp": 650,
+      "compressorInducerMm": 55,
+      "turbineMm": 58,
+      "baseMap": "CM-60-0001",
+      "priceUsd": 1919.53,
+      "url": "https://www.precisionturbo.com/p372173-turbochargers-street-race-gen-2-gen-2-pt5558"
+    },
+    "pt5862": {
+      "name": "Precision Gen2 PT5862",
+      "series": "Gen 2",
+      "ratedHp": 700,
+      "compressorInducerMm": 58,
+      "turbineMm": 62,
+      "baseMap": "CM-60-0001",
+      "priceUsd": 1919.53,
+      "url": "https://www.precisionturbo.com/p372175-turbochargers-street-race-gen-2-gen-2-pt5862"
+    },
+    "pt6062": {
+      "name": "Precision Gen2 PT6062",
+      "series": "Gen 2",
+      "ratedHp": 750,
+      "compressorInducerMm": 60.4,
+      "turbineMm": 62,
+      "baseMap": "CM-60-0001",
+      "vendor": true,
+      "priceUsd": 1931.84,
+      "url": "https://www.precisionturbo.com/p372176-turbochargers-street-race-gen-2-gen-2-pt6062"
+    },
+    "pt6466": {
+      "name": "Precision Gen2 PT6466",
+      "series": "Gen 2",
+      "ratedHp": 900,
+      "compressorInducerMm": 64.4,
+      "turbineMm": 66,
+      "baseMap": "CM-64-0001",
+      "vendor": true,
+      "priceUsd": 2248.07,
+      "url": "https://www.precisionturbo.com/p372179-turbochargers-street-race-gen-2-gen-2-pt6466"
+    },
+    "pt6870": {
+      "name": "Precision Gen2 PT6870",
+      "series": "Gen 2",
+      "ratedHp": 1100,
+      "compressorInducerMm": 68.02,
+      "turbineMm": 70,
+      "baseMap": "CM-68-0001",
+      "vendor": true,
+      "priceUsd": 2582.68,
+      "url": "https://www.precisionturbo.com/p372180-turbochargers-street-race-gen-2-gen-2-pt6870"
+    },
+    "pt7675": {
+      "name": "Precision 7675 CEA",
+      "series": "Sport Series (CM-76 wheel)",
+      "ratedHp": 1250,
+      "compressorInducerMm": 76.5,
+      "turbineMm": 75,
+      "baseMap": "CM-76-0001",
+      "vendor": true,
+      "priceUsd": 3348.19,
+      "url": "https://www.precisionturbo.com/p551667-turbochargers-sport-series-1100-1600hp-7675-mfs-h-cover-s-32207012229",
+      "note": "Precision rates the Sport Series 7675 at 1250 hp (Next Gen 7675: 1480 hp with ~10% more flow); the published CM-76 map matches the 1250 hp wheel. Price is the Next Gen list price."
+    },
+    "pt8085": {
+      "name": "Precision Next Gen Sportsman 8085",
+      "series": "Next Gen Sportsman",
+      "ratedHp": 1600,
+      "compressorInducerMm": 80,
+      "turbineMm": 85,
+      "baseMap": "CM-76-0001",
+      "priceUsd": 5109.28,
+      "url": "https://www.precisionturbo.com/p372206-turbochargers-street-race-next-gen-next-gen-sportsman-8085"
+    },
+    "pt8685": {
+      "name": "Precision Next Gen Sportsman 8685",
+      "series": "Next Gen Sportsman",
+      "ratedHp": 1800,
+      "compressorInducerMm": 86,
+      "turbineMm": 85,
+      "baseMap": "CM-76-0001",
+      "priceUsd": 5400.39,
+      "url": "https://www.precisionturbo.com/p410883-turbochargers-street-race-next-gen-next-gen-sportsman-8685"
+    },
+    "pt9103": {
+      "name": "Precision Gen2 PT9103 Pro Mod",
+      "series": "Gen 2 Pro Mod",
+      "ratedHp": 1725,
+      "compressorInducerMm": 91,
+      "turbineMm": 103,
+      "baseMap": "CM-76-0001",
+      "priceUsd": 4609.77,
+      "url": "https://www.precisionturbo.com/p372185-turbochargers-street-race-gen-2-gen-2-pt9103-promod"
+    },
+    "pt9803": {
+      "name": "Precision Gen2 PT9803 Pro Mod",
+      "series": "Gen 2 Pro Mod",
+      "ratedHp": 2100,
+      "compressorInducerMm": 98,
+      "turbineMm": 103,
+      "baseMap": "CM-76-0001",
+      "priceUsd": 4725.13,
+      "url": "https://www.precisionturbo.com/p372187-turbochargers-street-race-gen-2-gen-2-pt9803-promod"
+    },
+    "pt10603": {
+      "name": "Precision Gen2 PT10603 Pro Mod",
+      "series": "Gen 2 Pro Mod",
+      "ratedHp": 2500,
+      "compressorInducerMm": 106,
+      "turbineMm": 103,
+      "baseMap": "CM-76-0001",
+      "priceUsd": 6951.0,
+      "url": "https://www.precisionturbo.com/p372169-turbochargers-street-race-gen-2-gen-2-pt10603-promod"
+    }
+  },
+  "pricesNote": "USD list prices from the product listing pages on 2026-09-23 (base configuration, turbine housing extra)."
+}

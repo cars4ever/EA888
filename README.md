@@ -12,6 +12,234 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
+## v1.27.0 (branch `claude-dev`) — reference builds for every engine
+
+- A `max_*` preset per engine: the best build the catalogue allows, searched offline over every part,
+  every turbo pairing and eleven tune axes — from 786 pk (13B bridgeport) to 4574 pk (Steve Morris SMX).
+- The in-game tuner is measured against them: it reaches 98 % or better on five of the eight, and beats
+  the reference outright on the two-litre compound.
+- Getting there fixed three things in the tuner: it now sweeps the boost range up front in three shapes,
+  its lambda floor follows the fuel, and its rungs reach the bottom of the range as well as the top.
+- See DEVLOG 32.
+
+## v1.26.0 — traction, gearing and reading the timeslip back
+
+- A 2500 pk build was slipping its **clutch**, not its tyres: the compound and Lenco gearboxes had no
+  driveline entry, so they ran the OEM clutch rated 430 Nm. 18.3 s at 108 km/h becomes 11.07 s at 233.
+- Big drag rubber (Mega drag radial 315, Pro Mod slick 34x17), a drag four-wheel-drive, and a **throttle
+  slider** in the race with the percentage on the HUD.
+- **Traction control** is a strategy now — a slip target against the tyre's own peak and an aggression
+  setting — and only on ECUs that have the inputs for it.
+- **Gearing**: every ratio, the final drive and a close/wide spread knob, all tunable, all read from one
+  place by the dyno, the race and the shift-point model.
+- The tuner masters the gearing too, tunes for the grip your last pass measured using virtual runs that
+  cost the engine nothing, and **reads your timeslip back as advice**.
+- See DEVLOG 31.
+
+## v1.23.1 — the limit names itself
+
+- A torque or power abort now says which part is the limit, what it is rated for and what the engine actually
+  made, instead of "engine or transmission".
+- The tuner upgrades the part that is actually the limit, and for a swapped engine offers one entry that
+  lifts everything below it at once rather than walking you from wall to wall.
+- The part picker shows each part's torque limit and whether something else is the weaker link.
+- See DEVLOG 29.
+
+## v1.23.0 — compound that stacks, and engine swaps
+
+- Compound boost now multiplies pressure ratio instead of only helping a turbo spool: **2533 pk from two
+  litres** (`compound2500`), and 2640 pk on the full-stroke two litre.
+- Surge was treated as a ceiling on boost and searched for backwards, so the biggest turbo in the catalogue
+  made 350 pk. It is a flow floor; the first stage now has a wastegate controller that holds it right of its
+  own line.
+- Seven engine swaps, each a block with its own cylinder count, bore, stroke and head: **VR6 3.2, 2.5 TFSI
+  DAZA, RB25DET Neo, RB26DETT, 2JZ-GTE VVTi, 13B-REW bridgeport** and the **Steve Morris SMX 540 at 4019 pk**
+  as a complete package.
+- New parts for what that needs: 10 bar dome control and ignition, billet compound block/head, pneumatic
+  valvetrain, a Lenco, a parallel PT9803 pair, and the fuel to feed 4000 pk.
+- The owner's K04 hybrid runs the 3 bar gauge they say it runs: its modelled map had taken a cast-wheel
+  tip-speed fallback, and it is a billet wheel. 3.00 bar and 553 pk, given the wastegates, coils and
+  injectors to hold it.
+- See DEVLOG 28.
+
+## v1.22.0 — the tuner reaches the whole build
+
+- The paid tuner now sets eleven things instead of six (rail pressure, the rev limiter, cam timing, the
+  wastegate and the ethanol blend included) and names every change it makes, with units and both values.
+- A third goal: **as much power as will hold 80 reliability**. On the reference build it finds 507 pk at 80.
+- The reliability score stops punishing a working knock controller, stops taxing revs the fitted parts are
+  rated for, and judges oil film against the load instead of absolutely.
+- Compound boost hands over the way it should: the bypass opens as the HP stage runs out, boost rises the
+  whole way, and a compound costs a few per cent of peak power instead of a fifth.
+- See DEVLOG 27.
+
+## v1.21.0 — the car stops looking like dough
+
+- The body carries the 1.23M triangle shape pass's geometry with the textured pass's UVs projected onto it:
+  40k triangles where the textured export alone gave 21k.
+- The tail lights glow in the shape the photographs painted, from an emissive map built out of the atlas.
+- See DEVLOG 26.
+
+## v1.20.0 (branch `claude-dev`) — the studio-lit scan
+
+- The car is rescanned from studio-lit photos: clean paint, no baked-in sky on the roof and bonnet, and the lightest frame cost yet (30.8k triangles).
+- Tail lights sit on the actual lenses, measured off this body rather than carried over from the last one.
+
+## v1.19.0 — the car carries its own paint
+
+- The body is photo-textured from the owner's scan: real paint, VW badges, tinted glass, headlight and tail-light detail.
+- Both registrations are blanked in the texture itself, found through the mesh rather than by colour.
+- Smaller and lighter than the flat-material version it replaces (403 KB against 552 KB, 34.7k triangles a frame against 38k).
+
+## v1.18.0 — the owner's own scan, wheels and all
+
+- The car is a multi-view scan the owner made themselves: clean nose with grille and bumper intakes, mirrors, roof spoiler and their own wheels.
+- The wheels are cut off the scan onto the game's axle line, so they are the scan's wheels and they still spin.
+- See DEVLOG 23 for what the measurements settled and what is still soft.
+
+## v1.17.1 — headlight fix
+
+- Removes the headlight patch that 1.17.0 shipped lying flat on the bonnet as a white rectangle. See DEVLOG 22.
+
+## v1.17.0 — the car is a scan of the real Scirocco
+
+- The player's car is now a body generated from the owner's own photos (Hunyuan3D multi-view, cleaned up in Blender), not the procedural shell.
+- The procedural car stays as the ghost, as the fallback, and on the lowest quality setting.
+- Wheels, exhaust flames and the brake light work exactly as before.
+- Honest limits: the front has no crisp headlight or grille shapes and there are no panel gaps. See DEVLOG 21.
+
+## v1.16.0 — night lighting, photo track surfaces, quality tiers
+
+- Bloom over the whole race: the floodlights, the tree, the tail lights and the exhaust flames glow.
+- The strip and the launch pad are photographed asphalt and concrete (Poly Haven, CC0) under the painted markings.
+- Tyre smoke is lit: it goes warm where it rises into the floodlights, red behind the tail lights, and takes the colour of an exhaust flame.
+- The water box mirrors the car, the walls and the floodlights.
+- Quality is per feature (bloom, reflections, lit smoke, pixel ratio) in three tiers, set in the settings (Automatisch / Hoog / Gemiddeld / Laag). On 'Automatisch' the renderer measures its own frame cost, steps down on a phone that cannot hold ~45 fps, and the settings page says it did.
+- A 3D car pipeline (photos → Hunyuan3D → Blender → GLB) is in `tools/car3d/`. The car in this build is still the procedural model: see DEVLOG 20 for what the generated body did and did not deliver.
+
+## v1.15.0 — physics audit, a sensible tuner, clutch-slip burnout
+
+- The model is checked against the rules of thumb in Graham Bell's Forced Induction Performance Tuning (airflow per hp, BSFC, EGT, compressor outlet temperature, intercooler, back pressure, VE, turbo lag); turbine efficiency and turbo lag corrected.
+- Tuner advice never calls a fix that halves your power the best choice; maps are better, safer (explained) or not sold.
+- Burnout: the driver slips the clutch while the turbo builds boost, so FWD/AWD no longer bog.
+
+## v1.14.0 — tuner help, optimised maps, N2O switch
+
+- Compound fix: the HP bypass keeps the manifold pressure in check (no more absurd EMP/EGT with a small HP turbo), smooth handover to the big turbo.
+- Tuner advice: tick several recommendations and apply them together; the advice stays visible after applying.
+- Buy an optimised street or race map from the tuner.
+- N2O is an on/off switch in the race (sprays at full throttle while armed); the rival badge no longer covers it.
+
+## v1.13.0 — rev limits, real compound turbos, full-throttle burnout, the Scirocco
+
+- Over-rev names the part that limits the revs; with pro-mod parts the engine revs to 10 500 rpm. The ECU caps the limiter instead of breaking the engine.
+- Compound: fit a smaller turbo from the turbo list as the high-pressure stage; the two turbos work in series (pressure ratios multiply, interstage heat, two turbine stages, HP bypass).
+- Burnout: hold for full throttle, no controller backing it off; optional burnout limiter.
+- The 3D car is now a proper Scirocco Mk3; the registration is erased everywhere.
+
+## v1.12.0 — nitrous, welded head, stroker/destroker, compound boost
+
+- Nitrous kits (dry, wet, progressive, direct port) with an N2O button in the race and a bottle to refill.
+- Head lift under extreme cylinder pressure; a head welded to the block cannot lift.
+- Stroker and destroker kits; compound boost to spool big turbos on 2.0 litres.
+
+## v1.11.0 — wheel hop, mounts, tuner advice
+
+- Wheel hop from the driveline's torsional mode; mounts and bushings (dogbone insert to solid race mounts) stop it.
+- Tuner advice per dyno notice: exact parts and settings, each tested on the dyno simulation, applied with one tap.
+- Burnout from the water box at a set rpm, without anti-lag.
+
+## v1.10.0 — phase 7: tyres, a physical burnout, knock in the race
+
+- Tyre skin and core temperatures from the slip power; one grip window per compound for everything.
+- The burnout runs on the vehicle model (clutch dump, rpm held, slip power, smoke from a hot skin) and predicts the tyre temperature at the launch; staging cools the tyres.
+- Knocking cycles in the race: knock control pulls timing, without it the engine takes damage.
+
+## v1.9.0 — phase 6: engine voice, acoustics, 3D burnout and staging
+
+- Engine sound built live from every combustion event (firing order 1-3-4-2, exhaust pulses through your exhaust, limiter/two-step/shift cuts, afterfire, ALS bangs, knock), not from recordings.
+- Acoustics per place: garage, dry dyno cell, open strip with pit-wall and grandstand echoes; the rival is heard from its lane.
+- Sound mixer in settings; the recorded-sample sound stays selectable.
+- Burnout and staging in 3D: tyre smoke from the driven tyres, staging beams and a live tree.
+
+## v1.8.0 — phase 5: career and bracket racing
+
+- Career events with class rules, entry fees, prize money, reputation and knock-out rounds against real rival builds.
+- Bracket racing with dial-in: handicap start, breakout rule, red light, package.
+- ECU tables: hold and drag to select a block; tap a row/column header for the whole row/column.
+
+## v1.7.0 — phase 4: one physical simulation
+
+- Combustion-cycle engine model: power, spark, knock, EGT and fuel follow from physics (stock CAWB 194 pk / 273 Nm vs VW 200 PS / 280 Nm).
+- ECU tables with a table editor, base maps, knock control; real fuel hardware (HPFP, DI window, MPI), flex fuel.
+- Dyno with DIN/ISO/SAE correction, wheel power, heat soak; datalog channels with cursor and CSV export.
+- One vehicle model (clutch, tyres, load transfer, gearboxes) for the race, the quick pass and real rival builds.
+
+## v1.6.0 — phase 3: race 2.0
+
+- WebGL drag strip with a 3D Scirocco and rival, smoke and flames from the simulation, chase camera that feels the g-forces.
+- Ghost of your fastest run, replay with director cameras on the finish screen, compact race HUD.
+- 2D view stays available (setting "3D-racebeeld") and is the automatic fallback without WebGL.
+
+## v1.5.0 — phase 2: design system and controls
+
+- Design tokens, bundled fonts, one component library, docked navigation, readable type everywhere.
+- Steppers, tap-to-type values, confirmation above hardware limits and undo after every change.
+- A/B dyno comparison, guided first build, much shorter pages.
+
+## v1.4.0 — phase 1: foundation
+
+- **Real Android project** (`android/`, Gradle + AGP 8.13): targetSdk 35, minSdk 26, v2 + v3 signing, APK and
+  AAB (Play Store), adaptive launcher icon, edge-to-edge with system-bar insets passed to the CSS, Android back
+  button closes the top layer first, screen stays on during pulls and races, assets served by
+  WebViewAssetLoader from a fixed https origin (no file:// access).
+- **One permanent release key**, supplied only through the environment (see below). No more uninstalling for
+  updates after this version.
+- **Web build step** (`tools/build_web.py` → `build/web`): esbuild bundle of `src/web/platform.js`,
+  version from `version.json`, images recompressed to WebP (web app 11 → 5.2 MB, APK 7.8 → 4.4 MB).
+- **Targeted DOM updates** (morphdom): re-rendering no longer swaps whole pages, so scroll position, focus and
+  canvases stay put.
+- **Full backup to a file** (Data page): the whole game, restorable after a reinstall or on a new phone.
+
+## Styles
+
+`src/styles/` is the source (the build concatenates it into `styles.css`):
+`fonts.css` (bundled Barlow Condensed / Inter / JetBrains Mono, OFL) → `tokens.css` (colour, type, spacing,
+radius, elevation, motion) → `app.css` (pages) → `race.css` (fullscreen race scenes, rebuilt in phase 3) →
+`components.css` (the design system: every shared component defined once; last in the cascade so it wins).
+The browser smoke test runs against `build/web`.
+
+## v1.3.1
+
+- **Precision Turbo catalogue** (small to large, PT5558 … PT10603 Pro Mod) replaces the generic modeled
+  turbos. PT6062/6466/6870/7675 use Precision's published compressor maps (CM-60/64/68/76, digitized); the
+  others are scaled from the nearest CM map and marked *modeled*. Old saves migrate automatically.
+- **Auto-start tree**: once fully staged the tree starts by itself after a random 0.5–5 s. Holding LAUNCH
+  (two-step) before that arms a release launch; otherwise press LAUNCH on green for a pedal launch.
+- **Flames visible**: the flame layer sits above the info panels; aggressive ALS gives a continuous
+  flickering flame (bangs overlap) with pops on top.
+- **ALS sound**: original synthesized bang set (4 variants) and after-burn crackle bed, at the simulated
+  bang rate (firing frequency × ALS cut fraction).
+- **Heads-up rival on the track**: two-lane strip, the rival drives in the right lane in the same
+  perspective as the track instead of floating in the sky.
+- Part masses now count in the drag race.
+
+## v1.3.0
+
+- **Strict dyno results**: completed / aborted / failed-to-start. An aborted pull only contains and reports
+  samples up to the abort rpm (highest *observed* values, marked partial), has no reliability score, and wear
+  and damage come from the simulated portion only.
+- **Compressor-map turbo model**: Garrett G25-660 and G30-770 vendor maps (digitized from Garrett's published
+  maps); all other turbos use clearly marked *modeled* maps. Surge, choke, shaft speed, efficiency, charge
+  temperature, intercooler loss, EMP, wastegate creep and rotor-inertia spool. Dyno channel "Turbokaart".
+- **Anti-lag**: Tune → Anti-lag (off/mild/street/rally/drag/custom, all parameters, ECU/hardware limits, stand
+  test). HOLD ANTILAG in staging, rolling ALS on shifts, with real EGT/EMP/shaft-speed/fuel/wear cost.
+- **Exhaust flames** only from simulated events (shift, limiter, two-step, ALS), sized by unburnt fuel and
+  exhaust temperature.
+- **Audio**: turbo whine follows simulated shaft speed; separate ALS, two-step, limiter and shift layers.
+
+See `docs/DEVLOG.md` for design notes, data provenance and known inaccuracies.
+
 ## Development
 
 Claude Code should read `CLAUDE.md` before making changes.
@@ -19,22 +247,33 @@ Claude Code should read `CLAUDE.md` before making changes.
 Baseline test commands:
 
 ```bash
-node tests/test_sim.js
+node tests/test_sim.js            # runs all suites (dyno result, turbo map, anti-lag)
+node tools/build_turbo_data.js    # regenerate src/assets/turbo-data.js from data/turbo/*.json
 
 python3 tools/browser_smoke.py \
   --assets src/assets \
   --screenshots /tmp/ea888-shots \
   --report /tmp/ea888-browser-report.json
 
-python3 tools/build_apk.py --output /tmp/EA888-Lab.apk
+npm install                       # esbuild + morphdom
+python3 tools/build_web.py        # build/web (Android assets, browser test target); styles from src/styles
+python3 tools/browser_smoke.py --assets build/web --report /tmp/ea888-browser-report.json
+
+tools/setup_android_sdk.sh        # once: Android SDK platform 35 + build-tools
+python3 tools/build_android.py --debug   # debug APK (package .dev, installs next to the release)
+python3 tools/build_android.py           # release APK + AAB in dist/, signed with the permanent key
 ```
+
+Release signing reads `EA888_KEYSTORE` (path) or `EA888_KEYSTORE_B64` (base64, for cloud environments),
+`EA888_KEY_ALIAS` and `EA888_KEY_PASSWORD` from the environment. Never commit the keystore or its password.
+The build prints the signing certificate SHA-256; it must be the same for every release.
+`tools/build_apk.py` (hand-patched template APK, v1 signing) is legacy and only kept for reference.
 
 ## Android identity
 
 - App label: `EA888 LAB`
 - Package: `nl.randy.ea888lab.stabl`
-- Baseline version: `1.2.0-debug`
-- Baseline version code: `120`
+- Version: from `version.json` (now `1.4.0`, code `140`); debug builds are `nl.randy.ea888lab.stabl.dev`
 
 ## Accuracy boundary
 

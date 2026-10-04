@@ -1,0 +1,73 @@
+{
+  "description": "Reference turbos without a trustworthy public vendor map (OEM K03/K04, the user's K04 hybrid and HX52). Each map is MODELED: the digitized Garrett G25-660 map shape is rescaled to the flow capacity, pressure ratio and shaft speed below. This is not a manufacturer map. Aftermarket choices use the Precision catalogue (precision-turbos.json).",
+  "templateMap": "g25",
+  "method": "Corrected flow scales with chokeFlowLbMin / 59.9. Pressure ratio is scaled in isentropic-work space (PR^0.2857 - 1) to prTop. Shaft speed scales to maxShaftRpm. Efficiency is offset so the peak equals peakEfficiency. Turbine flow scales the G25 0.72 A/R curve to turbineChokeFlowLbMin.",
+  "shaftSpeedRule": "When the catalogue gives no limit, maxShaftRpm follows from a 560 m/s compressor tip speed with exducer = inducer / 0.806 (trim 65).",
+  "turbos": {
+    "k03": {
+      "name": "OEM K03",
+      "compressorInducerMm": 41,
+      "turbineMm": 45,
+      "chokeFlowLbMin": 26,
+      "prTop": 2.4,
+      "maxShaftRpm": 210000,
+      "peakEfficiency": 0.7,
+      "turbineChokeFlowLbMin": 7.6,
+      "turbineEfficiency": 0.68,
+      "twinScroll": false,
+      "basis": "OEM CAWB K03 is commonly quoted at about 25 lb/min / 250 hp; small journal-bearing wheel. Turbine flow re-sized in phase 4 (engine airflow now from the physical VE model) so the K03 reaches full boost near 2000 rpm like the production CAWB."
+    },
+    "k04": {
+      "name": "K04-064",
+      "compressorInducerMm": 46,
+      "turbineMm": 50,
+      "chokeFlowLbMin": 38,
+      "prTop": 3.05,
+      "maxShaftRpm": 187000,
+      "peakEfficiency": 0.72,
+      "turbineChokeFlowLbMin": 17.2,
+      "turbineEfficiency": 0.7,
+      "twinScroll": true,
+      "basis": "K04-064 is commonly quoted around 36-38 lb/min. No official map is used."
+    },
+    "k04_hybrid": {
+      "name": "Randy K04-064 hybrid 500",
+      "compressorInducerMm": 52,
+      "turbineMm": 52,
+      "chokeFlowLbMin": 57,
+      "prTop": 4.4,
+      "maxShaftRpm": 174000,
+      "peakEfficiency": 0.72,
+      "turbineChokeFlowLbMin": 18.6,
+      "turbineEfficiency": 0.7,
+      "twinScroll": true,
+      "basis": "The owner's own hybrid, rated about 500 hp, which they run at 3 bar gauge. Billet 52 mm wheel in a K04 frame; flow sized to the rating. Both the shaft limit and the pressure ratio come from tip speed on a 64.5 mm exducer (inducer / 0.806, trim 65). This entry used the file's generic 560 m/s fallback, which is a cast-wheel figure: 166k rpm and a 3.75 ceiling, and on the engine that stopped at 2.87 bar with the shaft at 98 % of its limit. A billet wheel runs higher, and 590 m/s - normal for modern billet compressors - gives 174k rpm and PR = (1 + eta*psi*U^2/(cp*T1))^3.5 = 4.4 at eta 0.72, psi 0.65. That is what is used here, so the owner's 3 bar gauge sits inside the map rather than just outside it. Modelled, not a manufacturer map; the owner's statement about their own hardware is what prompted revisiting the fallback, not a measurement of this wheel."
+    },
+    "hx52": {
+      "name": "Randy HX52 67-mm twin-scroll",
+      "compressorInducerMm": 67,
+      "turbineMm": 70,
+      "chokeFlowLbMin": 86,
+      "prTop": 4.4,
+      "maxShaftRpm": 129000,
+      "peakEfficiency": 0.73,
+      "turbineChokeFlowLbMin": 33.8,
+      "turbineEfficiency": 0.72,
+      "twinScroll": true,
+      "basis": "Holset HX52 reference; no official Cummins map is published, so it is modeled."
+    },
+    "twin_pt9803": {
+      "name": "Twin PT9803 (2×)",
+      "compressorInducerMm": 98,
+      "turbineMm": 113.6,
+      "chokeFlowLbMin": 436,
+      "prTop": 5.36,
+      "maxShaftRpm": 90785,
+      "peakEfficiency": 0.76,
+      "turbineChokeFlowLbMin": 178,
+      "turbineEfficiency": 0.74,
+      "twinScroll": false,
+      "basis": "Two Precision PT9803 in parallel on one engine, the way a 4000 hp V8 is fed. Identical wheels side by side pass twice the flow at the same pressure ratio and the same shaft speed, so the single's capacity is scaled on flow alone and the pressure ratio, shaft limit and efficiency are unchanged. Each rotor still only has to spin itself, so the inertia stays that of one. MODELED, not a manufacturer map."
+    }
+  }
+}
