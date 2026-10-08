@@ -7,7 +7,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { buildScirocco } from './scirocco.js';
+import { buildVehicle } from './vehicles.js';
+import { createShowroom } from './showroom.js';
 
 const LANE = 4.3;               // lane width: car half width 0.91 m + 1.22 m of allowed drift to the line
 const FINISH = 402.336;         // quarter mile
@@ -212,11 +213,11 @@ function makeEnvironment(renderer) {
 }
 
 // ---------------------------------------------------------------- car (Scirocco Mk3, procedural: scirocco.js)
-function buildCar({ color = 0x1f4fd8, envMap, ghost = false, model = true }) {
-  const car = buildScirocco({ color, envMap, ghost, model, plateTexture: ghost ? null : plateTexture() });
+function buildCar({ color = 0x1f4fd8, envMap, ghost = false, model = true, carId = 'scirocco', onStatus }) {
+  const car = buildVehicle({ carId, onStatus, color, envMap, ghost, model, plateTexture: ghost ? null : plateTexture() });
   // Soft contact shadow.
   if (!ghost) {
-    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 5.0), new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(0,0,0,.85)', 'rgba(0,0,0,0)'), transparent: true, depthWrite: false }));
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, car.dimensions?.length || 5.0), new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(0,0,0,.85)', 'rgba(0,0,0,0)'), transparent: true, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012;
     car.root.add(shadow);
   }
@@ -572,9 +573,9 @@ export function create(canvas, opts = {}) {
   // The scanned body is 36k triangles a car; with a rival on the strip that is 72k on top of the track, so
   // the low tier keeps the procedural body (~7k) and everything else about the car stays the same.
   const useModel = quality.tier !== 'low';
-  const player = buildCar({ color: opts.playerColor ?? 0x1f4fd8, envMap, model: useModel });
+  const player = buildCar({ carId: opts.playerCarId || 'scirocco', onStatus: opts.onVehicleStatus, color: opts.playerColor ?? 0x1f4fd8, envMap, model: useModel });
   scene.add(player.root);
-  const rival = opts.headsUp ? buildCar({ color: opts.rivalColor ?? 0x6b1a1a, envMap, model: useModel }) : null;
+  const rival = opts.headsUp ? buildCar({ carId: opts.rivalCarId || 'scirocco', onStatus: opts.onVehicleStatus, color: opts.rivalColor ?? 0x6b1a1a, envMap, model: useModel }) : null;
   if (rival) { rival.root.position.set(LANE, 0, 0); scene.add(rival.root); }
   const ghost = opts.ghost?.length ? buildCar({ ghost: true, envMap }) : null;
   if (ghost) scene.add(ghost.root);
@@ -664,9 +665,10 @@ export function create(canvas, opts = {}) {
   // Where the car stands while staging: from 3 m short of the pre-stage beam (progress 0) to the pre-stage
   // beam (25 %), the stage beam (56 %) and deep (past 90 %, the pre-stage light goes out). z of the car
   // root equals the front tyre's distance past the stage beam (the run starts at root z = 0).
-  function stageRootZ(progress) {
+  function axleOffset(car) { return STAGE_Z + (car.dimensions?.wheelbase || WHEELBASE) / 2 + (car.radii?.[0] || WHEEL_R); }
+  function stageRootZ(progress, car = player) {
     const p = Math.max(0, Math.min(100, progress));
-    return p < 25 ? PRESTAGE_M + (25 - p) / 25 * 3.0 : PRESTAGE_M - (p - 25) / 31 * PRESTAGE_M;
+    return axleOffset(car) + (p < 25 ? PRESTAGE_M + (25 - p) / 25 * 3.0 : PRESTAGE_M - (p - 25) / 31 * PRESTAGE_M);
   }
   const pre = { z: null, lastZ: null, mode: '' };
   // Burnout and staging. frame: { scene, rpm, wheelSpeedKmh (driven tyre surface), smoke 0..1, tyreTempC,
@@ -681,7 +683,7 @@ export function create(canvas, opts = {}) {
     player.root.position.set(0, 0, pre.z);
     player.root.rotation.y = 0;
     const vSurf = Math.max(vCar, (Number(frame.wheelSpeedKmh) || 0) / 3.6);
-    player.wheels.forEach((w, i) => { w.rotation.x -= (driven.includes(i) ? vSurf : vCar) * dt / WHEEL_R; });
+    player.wheels.forEach((w, i) => { w.rotation.x -= (driven.includes(i) ? vSurf : vCar) * dt / (player.radii?.[i] || WHEEL_R); });
     const smokeK = Math.max(0, Math.min(1, Number(frame.smoke) || 0));
     const rpm = Number(frame.rpm) || 900;
     // Engine rock on its mounts under load, the body shaking on spinning tyres.
@@ -689,7 +691,7 @@ export function create(canvas, opts = {}) {
     player.body.rotation.z = THREE.MathUtils.lerp(player.body.rotation.z, (Math.random() - .5) * shake * 4, Math.min(1, dt * 12));
     player.body.rotation.x = THREE.MathUtils.lerp(player.body.rotation.x, mode === 'burnout' ? -smokeK * .012 : 0, Math.min(1, dt * 4));
     player.body.position.y = (Math.random() - .5) * shake;
-    if (rival) { rival.root.position.set(LANE, 0, stageRootZ(60)); rivalFlames.update(dt, time); }
+    if (rival) { rival.root.position.set(LANE, 0, stageRootZ(60, rival)); rivalFlames.update(dt, time); }
     if (ghost) ghost.root.visible = false;
     // Burnout smoke: rubber boils off the driven tyres; the amount follows the slip power (tyre surface
     // speed) and the tyre state from the burnout model. Thrown rearwards by the tread, drifting in the wind.
@@ -716,7 +718,7 @@ export function create(canvas, opts = {}) {
       // A front (FWD/AWD) or rear (RWD) three-quarter view of the driven axle; a side view does not fit
       // between the pit wall (3.45 m left) and the far wall.
       const base = opts.drivetrain === 'RWD' ? 0.5 : 2.72;
-      const ang = base + Math.sin(time * .16) * .12, R = fitR(4.6, 48);
+      const ang = base + Math.sin(time * .16) * .12, R = fitR(player.dimensions?.length || 4.6, 48);
       const x = Math.max(-2.8, Math.min(7.2, Math.sin(ang) * R));
       camera.position.set(x, 1.6 + Math.sin(time * .1) * .12, pre.z + Math.cos(ang) * R);
       tmp.set(0.4, .7, pre.z + (opts.drivetrain === 'RWD' ? .8 : -.4));
@@ -748,7 +750,7 @@ export function create(canvas, opts = {}) {
     const accG = Number(frame.accelerationG) || 0;
     // Player car.
     const z = -d;
-    player.root.position.set(Number(frame.lateralM) || 0, 0, z);
+    player.root.position.set(Number(frame.lateralM) || 0, 0, z + axleOffset(player));
     player.root.rotation.y = -Math.atan2(Number(frame.lateralVelocity) || 0, Math.max(3, v)) * .9;
     // Squat under acceleration (nose up), roll with lateral velocity.
     player.body.rotation.x = THREE.MathUtils.lerp(player.body.rotation.x, -Math.min(accG, 1.4) * .026, Math.min(1, dt * 6));
@@ -759,14 +761,17 @@ export function create(canvas, opts = {}) {
     player.body.rotation.x += hop * .012;
     wheelAngle -= (last ? (d - last.distanceM) : 0) / WHEEL_R;
     const spin = (Number(frame.wheelspinPct) || 0) / 100;
-    player.wheels.forEach((w, i) => { w.rotation.x = wheelAngle - (driven.includes(i) ? spin * time * 40 : 0); });
+    player.wheels.forEach((w, i) => {
+      w.rotation.x -= ((last ? d-last.distanceM : 0) + (driven.includes(i) ? Math.max(v,1)*spin*dt : 0)) / (player.radii?.[i] || WHEEL_R);
+    });
+    player.steering?.slice(0,2).forEach(p=>{p.rotation.y=-Math.atan2(Number(frame.lateralVelocity)||0,Math.max(v,3));});
     // Rival.
     if (rival) {
       const od = Number(frame.opponentDistanceM) || 0;
       const oz = -od;
       rivalWheel -= last ? (od - (last.opponentDistanceM || 0)) / WHEEL_R : 0;
-      rival.root.position.set(LANE + Math.sin(time * .7) * .05, 0, oz);
-      rival.wheels.forEach(w => { w.rotation.x = rivalWheel; });
+      rival.root.position.set(LANE + Math.sin(time * .7) * .05, 0, oz + axleOffset(rival));
+      rival.wheels.forEach((w,i) => { w.rotation.x -= (last ? od-(last.opponentDistanceM||0) : 0)/(rival.radii?.[i]||WHEEL_R); });
       const ov = last ? (od - last.opponentDistanceM) / Math.max(dt, 1e-3) : 0;
       const oa = last ? (ov - last.oppV) / Math.max(dt, 1e-3) / 9.81 : 0;
       rival.body.rotation.x = THREE.MathUtils.lerp(rival.body.rotation.x, -Math.min(1.2, Math.max(0, oa)) * .026, Math.min(1, dt * 6));
@@ -812,7 +817,7 @@ export function create(canvas, opts = {}) {
     cam.lagZ += (targetLag - cam.lagZ) * Math.min(1, dt * 2.2);
     cam.x += (player.root.position.x * .75 - cam.x) * Math.min(1, dt * 3.5);
     const shake = (Math.min(1, v / 70) * .018 + Math.max(0, accG - .6) * .02) * (opts.reducedMotion ? 0 : 1);
-    camera.position.set(cam.x + (Math.random() - .5) * shake, 2.35 + (Math.random() - .5) * shake - cam.lagZ * .06, z + 8.2 + cam.lagZ);
+    camera.position.set(cam.x + (Math.random() - .5) * shake, 2.35 + (Math.random() - .5) * shake - cam.lagZ * .06, z + Math.max(8.2,(player.dimensions?.length || 4.3)+3.5) + cam.lagZ);
     tmp.set(player.root.position.x * .9, 0.35, z - 12);
     camera.lookAt(tmp);
     const fov = 55 + Math.min(1, v / 85) * 13;
@@ -827,6 +832,7 @@ export function create(canvas, opts = {}) {
     stopReplay();
     disposed = true;
     smoke.dispose(); flames.dispose(); rivalFlames?.dispose();
+    player.dispose?.(); rival?.dispose?.(); ghost?.dispose?.();
     scene.traverse(o => {
       o.geometry?.dispose();
       const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
@@ -877,6 +883,9 @@ export function create(canvas, opts = {}) {
     rivalFlame: fe => rivalFlames?.pop(fe),
     sustain: (k, color) => flames.setSustain(k, color),
     renderer,
+    vehicles: () => ({ player: player.status, rival: rival?.status || null }),
+    rig: () => ({ spin:player.wheels.map(w=>w.rotation.x),steer:player.steering?.map(w=>w.rotation.y),resources:{...renderer.info.memory} }),
+    ready: Promise.all([player.ready,rival?.ready]),
     dispose,
     scene: () => ({ mode: pre.mode || 'run', carZ: player.root.position.z, lit: litKey ? litKey.split(',') : [], smoke: smoke.active() }),
     quality: () => ({ ...quality }),
@@ -893,4 +902,4 @@ export function create(canvas, opts = {}) {
 }
 
 export { buildCar, makeEnvironment };
-window.EA888Race3D = { create, supported };
+window.EA888Race3D = { create, supported, showroom: (canvas,opts) => createShowroom(canvas,{...opts,envFactory:makeEnvironment}) };

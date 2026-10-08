@@ -303,6 +303,7 @@ function surfaceLamps(bodyScene, M, override = null) {
 }
 
 export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTexture = null, model = true }) {
+  let disposed = false;
   const root = new THREE.Group(), body = new THREE.Group();
   root.add(body);
   const G = ghost ? new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: .22, depthWrite: false }) : null;
@@ -481,7 +482,7 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
   // and M.head, so tailMat still drives the brake light.
   if (!ghost && model) {
     loadBody().then(loaded => {
-      if (!loaded) return;                             // no GLB: the procedural body stays
+      if (!loaded || disposed) return;                             // no GLB: the procedural body stays
       // One Object3D cannot hang in two cars: adding it to the second reparents it out of the first, which
       // left the player with wheels and no body as soon as a rival was on the strip. Clone per car; the
       // geometry is shared, only the node tree is new.
@@ -494,7 +495,8 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
       const dress = m => {
         if (!m?.map) return byName[String(m?.name || '').toLowerCase().split('.')[0]] || M.paint;
         if (!atlas) {
-          atlas = m;
+          atlas = m.clone();
+          for(const [k,v] of Object.entries(atlas)) if(v?.isTexture && k !== 'envMap') atlas[k]=v.clone();
           atlas.envMap = envMap;
           atlas.envMapIntensity = 1.35;
           atlas.metalness = 0.35;
@@ -505,11 +507,12 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
       };
       scene.traverse(o => {
         if (!o.isMesh) return;
+        o.geometry=o.geometry.clone();
         const named = Array.isArray(o.material) ? o.material : [o.material];
         o.material = named.length === 1 ? dress(named[0]) : named.map(dress);
         o.castShadow = o.receiveShadow = false;
       });
-      for (const child of [...procedural]) body.remove(child);
+      for (const child of [...procedural]) { body.remove(child); child.traverse(o=>o.geometry?.dispose()); }
       body.add(scene);
       tips.forEach((anchor, i) => anchor.position.set((i === 0 ? 1 : -1) * BODY_TIPS.x, BODY_TIPS.y, BODY_TIPS.z));
       // Only on a flat-shaded scan. A photo-textured body carries its lights in the texture and lights
@@ -523,10 +526,12 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
         // turn about the vertical rather than mirrored: a negative scale would invert the winding and the
         // wheel would light from the inside.
         wheels.forEach((group, i) => {
+          group.traverse(o=>o.geometry?.dispose());
           group.clear();
           const w = loaded.wheel.clone(true);
           w.traverse(o => {
             if (!o.isMesh) return;
+            o.geometry=o.geometry.clone();
             // the wheel ships UVs into the body's atlas and no texture of its own
             const named = Array.isArray(o.material) ? o.material : [o.material];
             // A wheel with named materials (tyre/rim) brings its own; one with bare UVs shares the atlas.
@@ -541,5 +546,11 @@ export function buildScirocco({ color = 0x1f4fd8, envMap, ghost = false, plateTe
 
     });
   }
-  return { root, body, wheels, tips, tailMat: M.tail, tailPieces };
+  return { root, body, wheels, tips, tailMat: M.tail, tailPieces, dispose() {
+    disposed=true;
+    for(const m of Object.values(M)) if(m?.isMaterial){
+      for(const [k,v] of Object.entries(m))if(v?.isTexture && k!=='envMap')v.dispose();
+      m.dispose();
+    }
+  } };
 }

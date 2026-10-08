@@ -328,3 +328,16 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .gear-table th { color:var(--muted); font-weight:600; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
 .gear-table input[type="number"] { width:5.2rem; }
 .tune-segments.seven { grid-template-columns:repeat(7,minmax(0,1fr)); }
+
+/* Vehicle selection and the shared 3D showroom. */
+.vehicle-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px; }
+.vehicle-choice { display:flex;flex-direction:column;text-align:left;gap:9px;background:#161e29;color:#eef3fa;border:2px solid #354152;border-radius:14px;padding:14px;cursor:pointer; }
+.vehicle-choice.selected { border-color:#ffad20;box-shadow:0 0 0 1px #ffad20; }
+.vehicle-choice img { width:100%;height:155px;object-fit:contain; }
+.vehicle-choice strong { font-size:20px; }.vehicle-choice small { color:#b7c4d5;line-height:1.5; }
+.vehicle-choice b { margin-top:auto;color:#ffbd55; }
+.vehicle-showroom-card canvas { display:block;width:100%;height:clamp(260px,45vw,480px);touch-action:none;border-radius:12px; }
+#vehicle-model-status { font-size:13px;color:#bfcedc; }#vehicle-model-status[data-state=fallback] { color:#ffac42; }
+.starter-selection .vehicle-showroom-card { margin-top:20px; }
+
+.vehicle-model-error{position:fixed;top:64px;left:10%;right:10%;z-index:1000;background:#572509;color:#ffe1bc;padding:12px;border:1px solid #ffa345;border-radius:8px;text-align:center;}

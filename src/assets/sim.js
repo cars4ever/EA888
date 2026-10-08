@@ -408,6 +408,9 @@
     // Ownership: a save from before parts were bought keeps everything its build and build slots use.
     s.owned = input.owned && typeof input.owned === 'object' ? { ...input.owned } : inheritedOwnership(s);
     s.garage = garageOf(input);
+    // v1 migration: old saves have already started. Pending selection persists across restart.
+    s.vehicleSaveVersion = 1;
+    s.starterSelection = input.starterSelection === 'pending' ? 'pending' : 'complete';
     s.version = 12;
     // v1.3.0 generic turbos were replaced by the Precision catalogue: map old ids to the nearest model.
     if (LEGACY_TURBO_IDS[s.selections.turbo]) s.selections.turbo = LEGACY_TURBO_IDS[s.selections.turbo];
@@ -3738,7 +3741,7 @@
   function garageOf(inputState) {
     const g = (inputState && inputState.garage) || {};
     const cars = g.cars && typeof g.cars === 'object' ? g.cars : {};
-    const active = g.active && (g.active === 'scirocco' || cars[g.active]) ? g.active : 'scirocco';
+    const active = g.active && (g.active === 'scirocco' || (cars[g.active] && rosterCarData(g.active)?.opponent?.usable)) ? g.active : 'scirocco';
     return { active, cars };
   }
   function buyRosterCar(inputState, id) {
@@ -3752,8 +3755,35 @@
   }
   function setActiveCar(inputState, id) {
     const g = garageOf(inputState);
-    return { ...g, active: id === 'scirocco' || g.cars[id] ? id : g.active };
+    return { ...g, active: id === 'scirocco' || (g.cars[id] && rosterCarData(id)?.opponent?.usable) ? id : g.active };
   }
+  function createCareerSelection() {
+    return { ...createInitialState(), vehicleSaveVersion: 1, starterSelection: 'pending' };
+  }
+  function confirmStarter(inputState, id) {
+    if (inputState.starterSelection !== 'pending') return { ok: false, reason: 'Startauto is al bevestigd' };
+    if (!['scirocco','eagle','mullet','mcflurry','lumberjack','crc12_jackstand_240'].includes(id)) return { ok: false, reason: 'Onbekende startauto' };
+    let next = normalizeState(inputState);
+    if (id !== 'scirocco') {
+      const bought = buyRosterCar(next, id);
+      if (!bought.ok) return bought;
+      next = { ...next, bank: bought.bank, garage: bought.garage };
+    }
+    next.garage = setActiveCar(next, id);
+    next.starterSelection = 'complete';
+    return { ok: true, state: next };
+  }
+  // The caller stores this ONLY in the separate QA namespace, never in the career key.
+  function createVehicleQA() {
+    const s = createInitialState();
+    s.bank = 10000000; s.qaCashVersion = 1;
+    for (const id of ['eagle','mullet','mcflurry','lumberjack','crc12_jackstand_240'])
+      s.garage.cars[id] = { paidEur: 0, qa: true, record: rosterRecord({},id), best: null };
+    s.vehicleSaveVersion = 1; s.starterSelection = 'complete'; s.qaProfile = true;
+    return s;
+  }
+  function workshopAvailable(inputState) { return garageOf(inputState).active === 'scirocco'; }
+
   function applyOwnedCarRun(inputState, id, pass) {
     const g = garageOf(inputState), car = g.cars[id];
     if (!car) return { garage: g, events: [] };
@@ -4890,6 +4920,7 @@
     applyRosterRun,
     rosterCarPrice,
     garageOf,
+    createCareerSelection, confirmStarter, createVehicleQA, workshopAvailable,
     buyRosterCar,
     setActiveCar,
     applyOwnedCarRun,

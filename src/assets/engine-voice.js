@@ -159,6 +159,12 @@
       set(params) {
         if (!params) return;
         for (const k in params) if (params[k] !== undefined) this.p[k] = params[k];
+        if (params.cylinders && params.cylinders !== this.slots.length) {
+          const order = params.cylinders === 8 ? [1,8,4,3,6,5,7,2] : FIRING;
+          this.slots = order.map(cyl => ({ cyl, outcome:'burn', amp:0, age:1, tau:.002, dispAmp:0,
+            dispTau:.006, jet:0, jn:0, runner:new Delay(256), runnerM:RUNNER_M[cyl] || .38,
+            intakeAmp:0, intakeAge:1 }));
+        }
         if (params.exhaust && params.exhaust !== this.exhaustId) this.setExhaust(params.exhaust);
         if (Number.isFinite(params.boreMm)) {
           // First circumferential mode of the chamber in the hot burnt gas (c ~ 1000 m/s at 2400 K).
@@ -301,12 +307,12 @@
           if (next >= 720) next -= 720;
           this.theta = next;
           let collector = 0, bay = 0;
-          for (let s = 0; s < 4; s++) {
+          for (let s = 0; s < this.slots.length; s++) {
             const slot = this.slots[s];
-            const tdc = 180 * s;
+            const tdc = (720 / this.slots.length) * s;
             if (this.rpm > 60) {
               if (this.crossed(prev, next, tdc === 0 ? 720 : tdc)) this.decide(slot);
-              if (this.crossed(prev, next, tdc + EVO_DEG)) this.openExhaust(slot);
+              if (this.crossed(prev, next, (tdc + EVO_DEG) % 720)) this.openExhaust(slot);
               if (this.crossed(prev, next, (tdc + IVO_DEG) % 720)) this.openIntake(slot);
               if (this.crossed(prev, next, (tdc + INJ_DEG) % 720) && slot.outcome !== 'fuelcut') this.tickExc = 0.5 + 0.5 * this.rand();
             }

@@ -2,7 +2,9 @@
   'use strict';
 
   const C = window.EA888Core;
-  const STORAGE_KEY = 'ea888_lab_v120_state';
+  const V = window.EA888Vehicles;
+  const QA_PROFILE = new URLSearchParams(location.search).get('profile') === 'vehicle-qa';
+  const STORAGE_KEY = QA_PROFILE ? 'ea888_vehicle_qa_v1' : 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
   const APP_VERSION = '1.3.3';
   // Platform layer (build/web/platform.js): targeted DOM updates and the Android bridge. Without it (tests
@@ -41,6 +43,7 @@
 
   let state = loadState();
   let activeTab = 'bank';
+  let starterId = 'scirocco', showroom = null, afterRenderRaf = 0;
   let activeCategory = 'turbo';
   let motorPanel = 'hardware';
   let engineView = 'realistic';
@@ -286,7 +289,7 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) parsed = JSON.parse(raw);
       if (!parsed) {
-        for (const key of LEGACY_KEYS) {
+        for (const key of QA_PROFILE ? [] : LEGACY_KEYS) {
           const legacy = localStorage.getItem(key);
           if (legacy) { parsed = JSON.parse(legacy); sourceKey = key; break; }
         }
@@ -294,7 +297,7 @@
     } catch (e) { parsed = null; }
 
     if (!parsed) {
-      const fresh = C.createInitialState();
+      const fresh = QA_PROFILE ? C.createVehicleQA() : C.createCareerSelection();
       fresh.version = 12;
       fresh.settings.sound = true;
       fresh.buildSlots = [null, null, null];
@@ -302,8 +305,17 @@
       return fresh;
     }
 
+    // Keep the exact pre-migration save recoverable, once, in its own profile namespace.
+    if (!parsed.vehicleSaveVersion) try {
+      if (!localStorage.getItem(STORAGE_KEY + '_before_vehicles_v1'))
+        localStorage.setItem(STORAGE_KEY + '_before_vehicles_v1', JSON.stringify(parsed));
+    } catch (e) { /* quota failure must not discard the original */ }
     const oldVersion = Number(parsed.version || 2);
     let loaded = C.normalizeState(parsed);
+    if (parsed.garage?.active && parsed.garage.active !== loaded.garage.active)
+      loaded.vehicleSelectionNotice = `Opgeslagen auto ${parsed.garage.active} is niet beschikbaar. Scirocco is geselecteerd; het oude garagebestand blijft bewaard.`;
+    // One-time test-budget migration, exclusively inside the QA storage namespace.
+    if (QA_PROFILE && !loaded.qaCashVersion) { loaded.bank = 10000000; loaded.qaCashVersion = 1; }
     loaded.version = 12;
     loaded.buildSlots = Array.isArray(parsed.buildSlots) ? parsed.buildSlots.slice(0, 3) : [null, null, null];
     while (loaded.buildSlots.length < 3) loaded.buildSlots.push(null);
@@ -638,11 +650,12 @@
       rpm, load: audio.lastLoad, mapBar: fin(x.mapBar) ? x.mapBar : NaN, boostBar: Math.max(0, Number(x.boostBar) || 0),
       egtC: fin(x.egtC) && x.egtC > 0 ? x.egtC : NaN, wastegatePct: fin(x.wastegatePct) ? x.wastegatePct : NaN,
       knock: clamp(Number(x.knock) || 0, 0, 1), alsActive: !!x.alsActive, retardDeg, lambda: fin(x.lambda) && x.lambda > 0 ? x.lambda : 1,
-      cutFraction, cutKind, exhaust: state.selections?.exhaust || 'oem_exhaust', boreMm: audio.boreMm, running: true
+      cutFraction, cutKind, exhaust: state.selections?.exhaust || 'oem_exhaust', boreMm: audio.boreMm, running: true,
+      ...vehicleSound((raceGame?.carState?.rosterCar?.id || activeRosterId() || 'scirocco'))
     };
   }
   function engineWorkletSupported(ctx) {
-    return !synthBroken && !!(ctx?.audioWorklet && typeof AudioWorkletNode === 'function' && window.EA888EngineVoice?.moduleSource && state.settings?.engineSound !== 'samples');
+    return !synthBroken && !!(ctx?.audioWorklet && typeof AudioWorkletNode === 'function' && window.EA888EngineVoice?.moduleSource && (activeRosterId() || state.settings?.engineSound !== 'samples'));
   }
   function loadEngineWorklet(ctx) {
     if (!engineWorkletSupported(ctx)) return Promise.resolve(false);
@@ -659,7 +672,9 @@
       let exhaust = 'race_3';
       try { exhaust = rivalState(profile).selections.exhaust || exhaust; } catch (e) {}
       const ctx = audio.ctx;
-      const node = createEngineVoiceNode(ctx, 991, { exhaust, rpm: 900, load: .1 });
+      const voice = vehicleSound(profile.rosterId || 'scirocco');
+      exhaust = voice.exhaust || exhaust;
+      const node = createEngineVoiceNode(ctx, 991, { exhaust, rpm: 900, load: .1, ...voice });
       const sum = ctx.createGain(); sum.gain.value = 1;
       node.connect(sum, 0); node.connect(sum, 1); node.connect(sum, 2);
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6000; lp.Q.value = .5;
@@ -900,6 +915,7 @@
       audio.readyPromise = Promise.all([decodeSampleBank(ctx), loadEngineWorklet(ctx)]).then(([buffers, worklet]) => {
         if (engineAudio !== audio || ctx.state === 'closed') return audio;
         audio.buffers = buffers;
+        const soundProfile=vehicleSound(activeRosterId() || 'scirocco');
         if (worklet) {
           try {
             // Synthesized voice: exhaust and afterfire on their own mixer channels, the engine bay
@@ -912,10 +928,26 @@
             exh.connect(mix.engine); bay.connect(mix.engine); pops.connect(mix.als);
             node.port.onmessage = ev => { if (ev.data?.type === 'stats') audio.synthStats = ev.data.stats; };
             audio.synth = { node, exh, bay, pops };
-            audio.model = 'EA888 combustion synth v1 (AudioWorklet)';
+            audio.model = `${soundProfile.cylinders} cilinders · verbrandingssynthese (AudioWorklet)`;
           } catch (error) { audio.synth = null; console.warn('EA888 engine voice failed, using samples:', error?.message || error); }
         }
-        if (!audio.synth) audio.layers = Object.entries(buffers)
+        // Reuse the existing layered fallback, with PCM generated by the same V8 voice.
+        // Never use the four-cylinder recordings for a roster V8, even on an older WebView.
+        let engineBuffers=buffers;
+        if (!audio.synth && soundProfile.cylinders===8) {
+          engineBuffers={};
+          for(const rpm of [900,1800,3000,4500,6500,8500]) {
+            const voice=new window.EA888EngineVoice.EngineVoice(ctx.sampleRate,rpm);
+            voice.set({...soundProfile,rpm,load:.7});
+            const n=Math.ceil(ctx.sampleRate*.5),e=new Float32Array(n),b=new Float32Array(n),p=new Float32Array(n);
+            voice.render(e,b,p,n); voice.render(e,b,p,n);
+            const buffer=ctx.createBuffer(1,n,ctx.sampleRate),channel=buffer.getChannelData(0);
+            for(let i=0;i<n;i++)channel[i]=e[i]*.55+b[i]*.45+p[i]*.6;
+            engineBuffers[`engine_${rpm}`]={rpm,buffer};
+          }
+          audio.model='8 cilinders · synthetische PCM-fallback';
+        }
+        if (!audio.synth) audio.layers = Object.entries(engineBuffers)
           .filter(([name, meta]) => name.startsWith('engine_') && Number(meta.rpm))
           .sort((a, b) => Number(a[1].rpm) - Number(b[1].rpm))
           .map(([name, meta]) => {
@@ -923,7 +955,7 @@
             const source = startLoopSource(ctx, meta.buffer, gain, 1);
             return { name, rpm: Number(meta.rpm), gain, source };
           });
-        if (buffers.turbo?.buffer) audio.turboSource = startLoopSource(ctx, buffers.turbo.buffer, turboFilter, .8);
+        if (soundProfile.turbo && buffers.turbo?.buffer) audio.turboSource = startLoopSource(ctx, buffers.turbo.buffer, turboFilter, .8);
         if (buffers.tyre?.buffer) audio.tyreSource = startLoopSource(ctx, buffers.tyre.buffer, tyreFilter, 1);
         if (!audio.synth && buffers.als_crackle?.buffer) audio.alsBedSource = startLoopSource(ctx, buffers.als_crackle.buffer, alsBedGain, 1);
         audio.ready = true; audio.loading = false;
@@ -1232,6 +1264,7 @@
   }
 
   function go(tab) {
+    if (state.starterSelection === 'pending') return;
     if (![...NAV.map(n => n[0]), 'data'].includes(tab)) return;
     if (raceGame?.open && tab !== 'drag') closeDragGame({ silent: true, noRender: true });
     if (dynoRunning && tab !== 'dyno') {
@@ -1272,6 +1305,61 @@
       </button>`).join(''));
   }
 
+  function vehicleSound(id) {
+    const sound = V?.get(id)?.sound;
+    return sound ? { cylinders:sound.cylinders, turbo:sound.turbo, ...(sound.exhaust ? {exhaust:sound.exhaust} : {}) } : {cylinders:id === 'scirocco' ? 4 : 8};
+  }
+  function vehicleStatus(status) {
+    const label = $('#vehicle-model-status');
+    if (raceGame?.open) {
+      let notice=$('#race-model-status');
+      if(status.state==='fallback') {
+        if(!notice){notice=document.createElement('div');notice.id='race-model-status';notice.className='vehicle-model-error';$('#race-game-root').append(notice);}
+        notice.textContent=`MODEL ONTBREEKT: ${V?.get(status.carId)?.name || status.carId} · schematische fallback`;
+      }
+    }
+    if (label) { label.textContent = status.state === 'ready' ? '3D-model geladen · sleep om rond te kijken' : status.state === 'loading' ? '3D-model laden…' : `MODEL ONTBREEKT · schematische fallback: ${status.error}`; label.dataset.state=status.state; }
+    if (status.state === 'fallback') showToast(`Model ${V?.get(status.carId)?.name || status.carId} ontbreekt: zichtbare fallback.`);
+  }
+  function vehicleRenderOptions() {
+    return { playerCarId:raceGame?.carState?.rosterCar?.id || 'scirocco',
+      rivalCarId:raceGame?.rivalProfile?.rosterId || raceGame?.run?.opponent?.profile?.rosterId || 'scirocco',
+      onVehicleStatus:vehicleStatus };
+  }
+  function vehicleShowroomCard(id=C.garageOf(state).active) {
+    return `${state.vehicleSelectionNotice?`<p role="status" class="notice">${esc(state.vehicleSelectionNotice)}</p>`:''}<div class="card vehicle-showroom-card"><span class="eyebrow">${QA_PROFILE ? 'GEÏSOLEERD QA-PROFIEL · TESTBUDGET' : 'ACTIEVE AUTO'}</span><h2>${esc(V?.get(id)?.name || rosterName(id))}</h2>
+      <canvas id="vehicle-showroom" aria-label="3D-auto · sleep om te draaien"></canvas>
+      <p id="vehicle-model-status" role="status">3D-model laden…</p><div class="button-row"><button class="btn small" data-view-angle="3.141593">Voor</button><button class="btn small" data-view-angle="-1.570796">Zij</button><button class="btn small" data-view-angle="0">Achter</button></div></div>`;
+  }
+  function vehicleSpecText(id) {
+    if(id==='scirocco')return 'EA888-project · bestaande Randy JE83 K04-build · vermogen meten op dyno';
+    const s=C.rosterSpec(id),v=s.values;
+    return `${Math.round(v.enginePowerHp.value)} ${v.enginePowerHp.unit || 'pk'} ${KIND_LABEL[v.enginePowerHp.kind]} · ${Math.round(s.massKg)} kg ${KIND_LABEL[v.weightLb.kind]} · ${s.transmission.name}`;
+  }
+  function renderStarterSelection() {
+    const bank=Number(state.bank),selected=V.get(starterId),price=C.rosterCarPrice(starterId);
+    const available=starterId==='scirocco' || !!price && price.eur<=bank;
+    return `<section class="page garage-page starter-selection"><span class="eyebrow">NIEUWE CARRIÈRE</span><h1>Kies je startauto</h1><p>Startbudget ${euro(bank)}. De Scirocco blijft je werkplaatsproject. Een aangekochte startauto wordt één keer betaald.</p>
+      <div class="vehicle-grid">${V.ids.map(id=>{
+        const v=V.get(id),p=C.rosterCarPrice(id),ok=id==='scirocco'||!!p&&p.eur<=bank;
+        const reason=id==='scirocco'?'Starter · inbegrepen':!p?'Gesloten · geen onderzoeksprijs':p.eur>bank?'Gesloten · budget te laag':`Beschikbaar · ${euro(p.eur)}`;
+        return `<button class="vehicle-choice ${id===starterId?'selected':''}" data-starter-car="${id}" aria-pressed="${id===starterId}"><img src="${v.image}" alt="${esc(v.name)}"><strong>${esc(v.name)}</strong><small>${esc(vehicleSpecText(id))}</small><b>${reason}</b></button>`;
+      }).join('')}</div>${vehicleShowroomCard(starterId)}
+      <div class="card"><h2>Geselecteerd: ${esc(selected.name)}</h2><p>${available ? `Aankoop ${euro(price?.eur||0)} · resterend ${euro(bank-(price?.eur||0))}` : 'Deze auto kan nu niet als carrièrestarter worden gekozen.'}</p>
+      <button class="btn" data-action="confirm-starter" ${available?'':'disabled'}>Bevestig ${esc(selected.name)} en begin</button></div>
+      <button class="btn secondary" data-action="qa-profile">Alle vijf rijden in geïsoleerd QA-profiel</button></section>`;
+  }
+  function renderRosterGarage() {
+    const id=activeRosterId(),rec=C.garageOf(state).cars[id]?.record || {};
+    return `<section class="page garage-page">${vehicleShowroomCard()}<div class="card"><h2>${esc(rosterName(id))}</h2><p>${esc(vehicleSpecText(id))}</p><p>Budget ${euro(state.bank)} · ${rec.runs||0} runs · motorslijtage ${Math.round(rec.wear?.engine||0)}%</p><button class="btn" data-go="drag">Naar de dragstrip</button></div>${garageCarsCard()}${QA_PROFILE?'<button class="btn secondary" data-action="career-profile">Terug naar carrière</button>':''}</section>`;
+  }
+  function renderRosterWorkshop() {
+    const id=activeRosterId(),rec=C.garageOf(state).cars[id]?.record || {};
+    return `<section class="page roster-workshop"><h1>${esc(rosterName(id))}</h1><div class="card"><h2>${activeTab==='service'?'Service':'Werkplaats'}</h2><p>${esc(vehicleSpecText(id))}</p><p>Deze auto gebruikt de bestaande onderzoeksconfiguratie. Motoronderdelen, tune en dynometingen zijn voor deze build nog niet bewerkbaar.</p>
+      ${activeTab==='service'?`<p>Motor ${Math.round(rec.wear?.engine||0)}% slijtage · bak ${Math.round(rec.wear?.transmission||0)}% slijtage.</p><button class="btn" data-rebuild-car="${id}" ${state.bank>=C.REBUILD_BASE_EUR?'':'disabled'}>Deze auto reviseren · ${euro(C.REBUILD_BASE_EUR)}</button>`:''}
+      <button class="btn secondary" data-go="bank">Terug naar garage</button><button class="btn ghost" data-drive-car="scirocco">Selecteer het Scirocco-project</button></div></section>`;
+  }
+
   function render() {
     renderHeader();
     renderNav();
@@ -1279,11 +1367,23 @@
       bank: renderBank, build: renderBuild, tune: renderTune, dyno: renderDyno,
       drag: renderDrag, service: renderService, data: renderData
     };
-    patchHtml($('#content'), pages[activeTab]());
-    requestAnimationFrame(afterRender);
+    cancelAnimationFrame(afterRenderRaf);
+    showroom?.dispose(); showroom = null;
+    $('#vehicle-showroom')?.remove();
+    const workshopBlocked = !C.workshopAvailable(state) && ['build','tune','dyno','service'].includes(activeTab);
+    const html = state.starterSelection === 'pending' ? renderStarterSelection() : workshopBlocked ? renderRosterWorkshop() : pages[activeTab]();
+    patchHtml($('#content'), html);
+    afterRenderRaf = requestAnimationFrame(afterRender);
   }
 
   function afterRender() {
+    const canvas = $('#vehicle-showroom');
+    if (canvas && window.EA888Race3D?.showroom) {
+      const id = state.starterSelection === 'pending' ? starterId : C.garageOf(state).active;
+      try { showroom = window.EA888Race3D.showroom(canvas,{carId:id,onStatus:s=>{if(canvas.isConnected)vehicleStatus(s);}}); }
+      catch(e) { vehicleStatus({carId:id,state:'fallback',error:e.message}); }
+    }
+    if (state.starterSelection === 'pending' || (!C.workshopAvailable(state) && ['build','tune','dyno','service'].includes(activeTab))) return;
     if (activeTab === 'tune' && tunePanel === 'als') drawAlsTestChart();
     if (activeTab === 'dyno') {
       const canvas = $('#dyno-chart');
@@ -1577,6 +1677,7 @@
   }
 
   function renderBank() {
+    if (activeRosterId()) return renderRosterGarage();
     const earned = syncAchievements();
     const r = state.lastDyno;
     const clean = currentDyno();
@@ -1601,6 +1702,7 @@
         <div><span class="eyebrow">BOUW · MEET · OVERLEEF · RACE</span><h1>EA888 Lab</h1><p>Een complete virtuele CAWB-workshop. Monteer onderdelen, controleer de motor, meet op de dyno en zet daarna pas een geldige quarter-mile neer.</p></div>
         <div class="v5-wallet"><span>WORKSHOP</span><b>${euro(state.bank)}</b></div>
       </div>
+      ${vehicleShowroomCard()}
       ${onboardingCard()}
 
       <div class="v5-engine-dashboard">
@@ -1706,7 +1808,7 @@
       const items = price.items.length ? `<details><summary>${price.items.length} uitgaven bovenop de aankoop van $${Math.round(price.value.derivedFrom?.purchaseUsd || 0)}</summary>${price.items.map(i => `<small>$${Math.round(i.priceUsd)} · ${esc(i.item)}</small>`).join('<br>')}</details>` : '';
       return `<div class="run-row garage-car"><span>TE KOOP</span><div><b>${esc(o.displayName)}</b><small>${real} · $${Math.round(price.usd)} ${kind(price.value)} (≈ ${euro(price.eur)})${price.value.kind === 'modeled' ? ' · som van de genoemde uitgaven' : ' · budgetbord van het team'}</small>${items}</div><button class="btn small" data-buy-car="${o.id}" ${bank >= price.eur ? '' : 'disabled'}>Kopen · ${euro(price.eur)}</button></div>`;
     }).join('');
-    return `<div class="card garage-cars-card"><div class="section-head small"><div><span class="eyebrow">Garage · racewagen: ${esc(active === 'scirocco' ? state.buildName : rosterName(active))}</span><h2>Je auto's</h2><p class="muted">Motor, tune en dyno zijn van je Scirocco-project; de race rijdt met de auto die je hier kiest. Een echte auto rijdt op zijn gemeten kromme, met zijn eigen bak, converter, gewicht en banden.</p></div></div>
+    return `<div class="card garage-cars-card"><div class="section-head small"><div><span class="eyebrow">Garage · racewagen: ${esc(active === 'scirocco' ? state.buildName : rosterName(active))}</span><h2>Je auto's</h2><p class="muted">Je actieve auto bepaalt model, motorcurve, bak, gewicht en banden. Werkplaatsfuncties tonen de ondersteuning voor die auto.</p></div></div>
       <div class="run-table">
         <div class="run-row garage-car ${active === 'scirocco' ? 'active' : ''}"><span>PROJECT</span><div><b>${esc(state.buildName)}</b><small>EA888-build · motor, tune en dyno in de app</small></div>${active === 'scirocco' ? '<span class="part-row-mounted">Rijdt</span>' : '<button class="btn small" data-drive-car="scirocco">Rijden met deze auto</button>'}</div>
         ${rows}
@@ -3577,7 +3679,32 @@
     saveState(); render(); showToast('Evenement opgegeven.');
   }
 
+  function renderRosterDrag() {
+    const id=activeRosterId(), car=raceCarState(), v=car.vehicle, ready=raceReady(), rival=selectedRival();
+    const last=state.lastDrag?.rosterId===id ? state.lastDrag : null;
+    const owned=C.garageOf(state).cars[id], headsUp=raceIsHeadsUp();
+    let panel='';
+    if(racePanel==='career') panel=renderCareerPanel();
+    else if(racePanel==='telemetry') panel=last ? renderDragTelemetryPanel() : '<div class="card">Nog geen telemetrie voor deze auto.</div>';
+    else if(racePanel==='history') panel=`<div class="card"><h2>Records · ${esc(rosterName(id))}</h2><p>${owned.best ? `${owned.best.quarter.toFixed(3)} s @ ${owned.best.trapKmh.toFixed(1)} km/u` : 'Nog geen geldig record'}</p>${(state.dragRuns||[]).filter(r=>r.rosterId===id).slice(0,10).map(r=>`<pre>${esc(timeslipText(r))}</pre>`).join('')}</div>`;
+    else if(racePanel==='setup') panel=`<div class="card"><h2>Baan en tegenstander</h2><p>Motor, bak, massa en banden volgen de bestaande voertuigconfiguratie. Werkplaatstuning is voor deze auto nog niet beschikbaar.</p>
+      <div class="v12-mode-toggle"><button data-race-mode="solo" class="${!headsUp?'active':''}">SOLO</button><button data-race-mode="heads_up" class="${headsUp?'active':''}">HEADS-UP</button></div>
+      <div class="v12-rival-picker">${Object.values(RIVALS).map(r=>`<button data-rival-level="${r.id}" class="${r.id===rival.id?'active':''}" ${headsUp?'':'disabled'}><b>${esc(r.name)}</b><small>${esc(r.description)}</small></button>`).join('')}</div>
+      ${switchRow('preparedTrack','Geprepareerde baan','De gedeelde baanconditie geldt ook voor deze auto.','vehicle')}
+      ${vehicleRange('ambientTempC','Luchttemperatuur',-5,45,1,state.vehicle.ambientTempC,'°C',0)}
+      ${vehicleRange('trackTempC','Baantemperatuur',0,65,1,state.vehicle.trackTempC,'°C',0)}
+      ${vehicleRange('headwindKmh','Tegenwind',-20,35,1,state.vehicle.headwindKmh,' km/u',0)}</div>`;
+    else panel=`<div class="card"><img src="${V.get(id).image}" alt="${esc(rosterName(id))}" style="width:100%;max-height:280px;object-fit:contain"><h2>Burnout → staging → race</h2>
+      <p>${esc(vehicleSpecText(id))}</p><p>${v.drivetrain} · ${v.tireWidthMm}/${v.aspectRatio} R${v.rimDiameterIn} · launch ${car.tune.launchRpm} rpm</p>
+      <p>${headsUp ? `Tegen ${esc(rival.name)}` : 'Solo testpass'} · ${v.preparedTrack?'geprepareerde':'ongeprepareerde'} baan</p>
+      <div class="button-row"><button class="btn" data-action="open-drag-game" ${ready.ok?'':'disabled'}>START DRAG EXPERIENCE</button><button class="btn secondary" data-action="auto-drag-game" ${ready.ok?'':'disabled'}>SNELTEST / AUTO PASS</button></div>
+      <pre>${last ? esc(timeslipText(last)) : 'Nog geen run met deze auto.'}</pre></div>`;
+    return `<section class="page drag-page"><h1>${esc(rosterName(id))}</h1><p>${ready.ok?'Auto vrijgegeven · eigen onderzoeksconfiguratie':esc(ready.why||'Revisie nodig voor de volgende race.')}</p>
+      <div class="segment-control race-segments">${[['tree','Race'],['setup','Setup'],['telemetry','Telemetrie'],['career','Carrière'],['history','Records']].map(([key,name])=>`<button data-race-panel="${key}" class="${racePanel===key?'active':''}">${name}</button>`).join('')}</div>${panel}</section>`;
+  }
+
   function renderDrag() {
+    if (activeRosterId()) return renderRosterDrag();
     const ready = raceReady().ok;
     const v = state.vehicle;
     const fit = C.wheelFitment(v);
@@ -3662,10 +3789,10 @@
         <div class="v7-overview-scene">
           <div class="v7-overview-track"></div>
           <div class="v7-overview-light light-a"></div><div class="v7-overview-light light-b"></div>
-          <img class="v7-overview-car" src="images/randy-scirocco-rear.svg" alt="Randy's blauwe Scirocco van achteren op de dragstrip">
+          <img class="v7-overview-car" src="${activeRosterId() ? V?.get(activeRosterId())?.image || 'images/drag-v8-race.webp' : 'images/randy-scirocco-rear.svg'}" alt="${esc(activeRosterId() ? rosterName(activeRosterId()) : state.buildName)}">
           <div class="v7-overview-tree">${v7TreeMarkup('preview')}</div>
           <div class="v7-overview-copy"><span>${headsUp?'HEADS-UP RACEWEEKEND':'SOLO TESTPASS'}</span><h2>Burnout → staging → tree → run</h2><p>${headsUp?`Je rijdt naast ${esc(rival.name)}. Beide auto’s krijgen een eigen reactie, acceleratiecurve en finishmoment.`:'Focus op de perfecte pass zonder rivaal; alle physics en telemetrie blijven actief.'}</p></div>
-          ${headsUp?`<div class="v12-overview-rival"><img src="images/rival-scirocco.svg" alt="Graphite Scirocco-rivaal"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>${esc(rivalSpec(rival))} · ${euro(rival.reward)} winstpremie</small></div>`:''}
+          ${headsUp?`<div class="v12-overview-rival"><img src="${V?.get((raceGame?.rivalProfile || selectedRival()).rosterId)?.image || 'images/rival-scirocco.svg'}" alt="Graphite Scirocco-rivaal"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>${esc(rivalSpec(rival))} · ${euro(rival.reward)} winstpremie</small></div>`:''}
           <div class="v7-overview-best"><span>${record ? `${v.drivetrain} RECORD` : 'LAATSTE RUN'}</span><b>${record ? `${record.quarter.toFixed(3)} s` : lastSummary}</b><small>${record ? `${record.trapKmh.toFixed(1)} km/u` : `${v.drivetrain} · ${esc(tire.name)}`}</small></div>
         </div>
         <div class="v7-overview-actions">
@@ -3799,6 +3926,7 @@
   function startBurnout(pointerId = null) {
     if (activeTab !== 'drag' || racePanel !== 'tree') return;
     if (!raceReady().ok) return showToast(raceReady().why);
+    showroom?.dispose();showroom=null;$('#vehicle-showroom')?.remove();
     if (racePhase === 'running') return;
     clearTreeTimers(); resetTreeBulbs();
     if (dragAnimation) { cancelAnimationFrame(dragAnimation); dragAnimation = null; }
@@ -4110,7 +4238,7 @@
           <div class="v8-wheelspin-card"><span>BAND SLIP</span><b id="v8-burn-wheelspin">0 km/u</b><small id="v7-burn-time">${b.timeLeft.toFixed(1)} s over</small></div>
         </section>
         <div class="v8-burn-smoke" id="v8-burn-smoke">${Array.from({length:14},(_,i)=>`<i style="--i:${i}"></i>`).join('')}</div>
-        ${rival ? `<div class="v12-event-opponent"><img src="images/rival-scirocco.svg" alt="Rivaal"><span>VOLGENDE: ${rival.tag}</span><b>${esc(rival.name)}</b></div>` : ''}
+        ${rival ? `<div class="v12-event-opponent"><img src="${V?.get((raceGame?.rivalProfile || selectedRival()).rosterId)?.image || 'images/rival-scirocco.svg'}" alt="Rivaal"><span>VOLGENDE: ${rival.tag}</span><b>${esc(rival.name)}</b></div>` : ''}
         <div class="v8-burnout-status" id="v7-burn-instruction"><b>HOUD VAST VOOR BURNOUT</b><span>Vasthouden = vol gas, loslaten = gas eraf. Mik op de groene temperatuurband.</span></div>
         <div class="v8-burn-score"><b id="v7-burn-label">KOUD</b><span id="v7-burn-score">0% gripvenster</span></div>
         <button class="v8-burnout-button" id="v7-burn-throttle" data-v7-control="burnout"><span>VOL GAS · HOUD VAST</span><small>LAAT LOS OM TE STOPPEN</small></button>
@@ -4135,7 +4263,7 @@
         </section>
         <div class="v13-turbo-hud" id="v13-stage-turbo"><span>TURBO<b id="v13-stage-shaft">0k</b></span><span>EGT<b id="v13-stage-egt">—</b></span><span>ALS<b id="v13-stage-als">${raceGame?.alsInfo?.enabled ? 'GEREED' : 'UIT'}</b></span><span>SLIJTAGE<b id="v13-stage-wear">+0.000%</b></span><span>BAND<b id="v13-stage-tyre">—</b></span></div>
         <div class="v8-tree-wrap"><div class="v8-tree-copy"><span>PRE-STAGE</span><span>STAGE</span></div>${v7TreeMarkup(false)}</div>
-        ${rival ? `<div class="v12-stage-rival"><img src="images/rival-scirocco.svg" alt="${esc(rival.name)}"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>RT-venster ${rival.reactionMin.toFixed(3)}–${rival.reactionMax.toFixed(3)} s</small></div>` : ''}
+        ${rival ? `<div class="v12-stage-rival"><img src="${V?.get((raceGame?.rivalProfile || selectedRival()).rosterId)?.image || 'images/rival-scirocco.svg'}" alt="${esc(rival.name)}"><span>${rival.tag}</span><b>${esc(rival.name)}</b><small>RT-venster ${rival.reactionMin.toFixed(3)}–${rival.reactionMax.toFixed(3)} s</small></div>` : ''}
         <div class="v8-stage-message"><span id="v7-stage-status">KRUIP NAAR PRE-STAGE</span><b id="v7-stage-depth">${Math.round(s.progress)}%</b></div>
         <div class="v8-rpm-hold"><span>HOUD TOERENTAL VAST</span><div><i id="v8-stage-rpm-fill"></i><em></em></div><b><strong id="v8-stage-rpm-number">${Math.round(s.rpm)}</strong> RPM</b></div>
         <div class="v8-stage-beam"><i class="pre-zone"></i><i class="stage-zone"></i><em id="v7-stage-marker" style="left:${s.progress}%"></em></div>
@@ -4161,7 +4289,7 @@
     const point = r?.point || {rpm:state.tune.launchRpm,gear:1,speedKmh:0,distanceM:0,boostBar:0,lateralM:0};
     const dsg = !!r?.autoShift;
     const shiftControl = dsg
-      ? `<div class="v9-dsg-control v10-dsg-control" id="v7-dsg-status"><small>TRANSMISSIE</small><span>DSG AUTO</span><b id="v7-shift-cue">VOL AUTOMATISCH</b></div>`
+      ? `<div class="v9-dsg-control v10-dsg-control" id="v7-dsg-status"><small>TRANSMISSIE</small><span>${activeRosterId()?'AUTOMAAT':'DSG AUTO'}</span><b id="v7-shift-cue">VOL AUTOMATISCH</b></div>`
       : `<button class="v8-shift-button v9-shift-button v10-shift-button" id="v7-shift-button" data-action="v7-shift"><small>TIK OM TE SCHAKELEN</small><span>SHIFT</span><b id="v7-shift-cue">WACHT</b></button>`;
     const opponent = r?.opponent;
     const raceSubtitle = opponent ? `Heads-up tegen ${opponent.profile.name} · stuur en schakel onder druk` : (dsg ? 'DSG schakelt zelf · stuur tussen de lijnen' : 'Schakel zelf · stuur tussen de lijnen');
@@ -4182,8 +4310,8 @@
           <div class="v8-timer-card v10-timer"><span>TIJD</span><b id="v7-run-et">0.000</b><small>s</small></div>
         </section>
         <div class="v8-split-board v9-split-board v10-split-board"><span><i id="v8-split-60"></i>60 FT <b id="v8-time-60">—</b></span><span><i id="v8-split-330"></i>330 FT <b id="v8-time-330">—</b></span><span><i id="v8-split-8"></i>1/8 MIJL <b id="v8-time-8">—</b></span><span><i id="v8-split-4"></i>1/4 MIJL <b id="v8-time-4">—</b></span></div>
-        ${opponent ? `<div class="v12-rival-hud" id="v12-rival-hud"><span>${opponent.profile.tag} RIVAAL</span><b>${esc(opponent.profile.name)}</b><small id="v12-rival-gap">TREE: ${opponent.reactionTime.toFixed(3)} s</small></div><div class="v12-rival-car" id="v12-rival-car"><img src="images/rival-scirocco.svg" alt="Graphite Scirocco-rivaal"><i></i></div>` : ''}
-        <div class="v9-live-car v10-live-car" id="v7-run-car"><img src="images/randy-scirocco-race-v10.png" alt="Randy's blauwe Scirocco van achteren"><span class="ea-flame-sustain left"></span><span class="ea-flame-sustain right"></span><span class="v7-flame left"></span><span class="v7-flame right"></span><b class="v9-car-smoke"></b></div>
+        ${opponent ? `<div class="v12-rival-hud" id="v12-rival-hud"><span>${opponent.profile.tag} RIVAAL</span><b>${esc(opponent.profile.name)}</b><small id="v12-rival-gap">TREE: ${opponent.reactionTime.toFixed(3)} s</small></div><div class="v12-rival-car" id="v12-rival-car"><img src="${V?.get((raceGame?.rivalProfile || selectedRival()).rosterId)?.image || 'images/rival-scirocco.svg'}" alt="Graphite Scirocco-rivaal"><i></i></div>` : ''}
+        <div class="v9-live-car v10-live-car" id="v7-run-car"><img src="${activeRosterId() ? V?.get(activeRosterId())?.image || 'images/drag-v8-race.webp' : 'images/randy-scirocco-race-v10.png'}" alt="2D-weergave van geselecteerde auto"><span class="ea-flame-sustain left"></span><span class="ea-flame-sustain right"></span><span class="v7-flame left"></span><span class="v7-flame right"></span><b class="v9-car-smoke"></b></div>
         <div class="v7-speed-lines v10-speed-lines" id="v7-speed-lines"></div>
         <div class="v8-run-progress v9-run-progress v10-run-progress"><i id="v7-run-progress"></i><span id="v7-run-distance">0 m</span><b id="v7-run-split">LAUNCH</b><em>402 m</em></div>
         <div class="v9-lane-status v10-lane-status" id="v9-lane-status"><span>LIJNPOSITIE</span><b>IN LIJN</b><div><i id="v9-lane-marker"></i></div></div>
@@ -4429,7 +4557,7 @@
   }
 
   function updateV7Tach(prefix, rpm, gear = 1) {
-    const limit = Math.max(6500, Number(state.tune.revLimitRpm || 8000));
+    const limit = Math.max(6500, Number((raceGame?.carState || state).tune.revLimitRpm || 8000));
     const fraction = clamp(Number(rpm || 0) / limit, 0, 1);
     const tach = $(`#${prefix}-tach`); if (tach) { tach.style.setProperty('--rpm-frac', fraction); tach.style.setProperty('--tach-angle', `${fraction * 252}deg`); }
     const rpmNode = $(`#${prefix}-rpm`); if (rpmNode) rpmNode.textContent = Math.round(rpm);
@@ -4732,7 +4860,7 @@
     if(!raceGame?.stage||!raceGame.stage.treeStarted||raceGame.stage.launched)return showToast('Start eerst de tree.');
     const s=raceGame.stage;s.launched=true;
     // Two-step launch leaves at the launch-control rpm; a pedal launch leaves from what the engine was doing.
-    const launchTarget=Number(state.tune.launchRpm||4200);
+    const launchTarget=Number((raceGame.carState || state).tune.launchRpm||4200);
     s.launchFromRpm=s.launchArmed?launchTarget:clamp(Math.max(s.rpm,2200),2200,launchTarget);
     const reactionTime=(performance.now()-s.plannedGreen)/1000;
     if(reactionTime<0){clearRaceGameTimers();v7SetBulbs(['a1L','a1R','a2L','a2R','a3L','a3R','gL','gR'],false);v7SetBulbs(['rL','rR'],true);haptic([70,40,70]);raceGameTone(180,.22,.06);}else haptic(30);
@@ -5048,7 +5176,8 @@
     try {
       raceGame.r3d = window.EA888Race3D.create(canvas, {
         headsUp: !!run.opponent,
-        drivetrain: state.vehicle.drivetrain,
+        drivetrain: (raceGame?.carState || state).vehicle.drivetrain,
+        ...vehicleRenderOptions(),
         rivalColor: run.opponent ? parseInt(String(run.opponent.profile.color || '#6b1a1a').replace('#', ''), 16) : undefined,
         ghost: ghostData,
         reducedMotion: !!state.settings?.reducedMotion,
@@ -5087,7 +5216,8 @@
     try {
       raceGame.r3d = window.EA888Race3D.create(canvas, {
         headsUp: !!rival,
-        drivetrain: state.vehicle.drivetrain,
+        drivetrain: (raceGame?.carState || state).vehicle.drivetrain,
+        ...vehicleRenderOptions(),
         rivalColor: rival ? parseInt(String(rival.color || '#6b1a1a').replace('#', ''), 16) : undefined,
         reducedMotion: !!state.settings?.reducedMotion,
         ...race3DQualityOpts()
@@ -5102,9 +5232,10 @@
   }
   // Driven tyre surface speed with the clutch locked in first gear (the car is held on the brakes).
   function firstGearTyreKmh(rpm) {
-    const t = C.getPart(state, 'transmission');
+    const t = C.transmissionFor(raceGame?.carState || raceCarState());
     const overall = Number(t.gearRatios?.[0] || 3.36) * Number(t.finalDrive || 3.94);
-    return rpm / overall / 60 * 2 * Math.PI * .323 * 3.6;
+    const radius = V.get(raceGame?.carState?.rosterCar?.id || 'scirocco')?.wheels.radii[2] || .323;
+    return rpm / overall / 60 * 2 * Math.PI * radius * 3.6;
   }
   function updatePreRace3D(mode, dt) {
     const r3d = raceGame?.r3d;
@@ -5163,7 +5294,8 @@
     try {
       raceGame.replay3d = window.EA888Race3D.create(canvas, {
         headsUp: !!run.opponent,
-        drivetrain: state.vehicle.drivetrain,
+        drivetrain: (raceGame?.carState || state).vehicle.drivetrain,
+        ...vehicleRenderOptions(),
         rivalColor: run.opponent ? parseInt(String(run.opponent.profile.color || '#6b1a1a').replace('#', ''), 16) : undefined,
         reducedMotion: !!state.settings?.reducedMotion
       });
@@ -5548,7 +5680,7 @@
     }
     if (run.feedbackUntil && performance.now() > run.feedbackUntil) {
       const fb = $('#v7-shift-feedback');
-      if (fb) { fb.textContent = run.laneWarning ? (run.lateralM > 0 ? 'STUUR LINKS' : 'STUUR RECHTS') : run.autoShift ? 'DSG AUTO · BLIJF IN DE LIJN' : 'SCHAKEL OP DE GROENE CUE'; fb.className = 'v7-shift-feedback v9-shift-feedback'; }
+      if (fb) { fb.textContent = run.laneWarning ? (run.lateralM > 0 ? 'STUUR LINKS' : 'STUUR RECHTS') : run.autoShift ? `${activeRosterId()?'AUTOMAAT':'DSG AUTO'} · BLIJF IN DE LIJN` : 'SCHAKEL OP DE GROENE CUE'; fb.className = 'v7-shift-feedback v9-shift-feedback'; }
       run.feedbackUntil = 0;
     }
   }
@@ -5913,7 +6045,7 @@
       <details class="card build-table-card fold-card"><summary><span><span class="eyebrow">Gemonteerde hardware</span><b>${C.CATEGORIES.length} onderdelen · ${euro(C.totalPartsPrice(state))}</b></span><i aria-hidden="true">${icon('chevron')}</i></summary><h2>${esc(state.buildName)}</h2><table class="build-table">${buildRows}<tr class="total"><td>Totaal onderdelen</td><td>${euro(C.totalPartsPrice(state))}</td></tr></table></details>
       <div class="card"><span class="eyebrow">Logboek</span><h2>Laatste gebeurtenissen</h2><div class="log-list">${history || '<p class="muted">Nog geen logboekitems.</p>'}</div></div>
       <div class="card model-card"><span class="eyebrow">Modelgrenzen</span><h2>Engineering-game, geen ECU-map</h2><p>Het model combineert airflow, spool, wastegatecontrole, EMP, brandstofcapaciteit, BMEP, knock, EGT, turbospeed, zuigersnelheid, oliedruk, aeratie, oliefilm, clearances en componentgrenzen. De dragintegratie gebruikt vervolgens de gemeten curve, gearing, wielradius, roterende massa, tractie, luchtweerstand en gewichtsverplaatsing.</p><p>Een veilige score in het spel is nooit een bouwgarantie. Een echte motor moet worden gevalideerd met raildruk, lambda, knock, EGT, turbospeed, cilinderdruk, carterdruk en oliedruk.</p></div>
-      <div class="button-row"><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Alles resetten</button></div>
+      <div class="button-row"><button class="btn secondary" data-action="qa-profile">Geïsoleerd voertuig-QA</button><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Alles resetten</button></div>
     </section>`;
   }
 
@@ -6052,11 +6184,12 @@
   }
 
   function doReset() {
-    state = C.createInitialState();
+    state = QA_PROFILE ? C.createVehicleQA() : C.createCareerSelection();
+    activeTab = 'bank'; starterId = 'scirocco';
     state.version = 12;
     pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
     saveState(); closeModal(); haptic(35);
-    showToast('EA888 Lab teruggezet naar de Randy JE83 K04-referentie.'); render();
+    showToast('Nieuw spel: bevestig je startauto.'); render();
   }
 
   // ---- Controls: steppers, tap-to-type, safe-limit confirmation and undo --------------------------------
@@ -6080,6 +6213,14 @@
     if (!path || rangeEdit?.el === el) return;
     rangeEdit = { el, path, before: readPath(path), fromValue: el.dataset.committed ?? el.getAttribute('value') ?? el.value };
   }
+  // Reject events from stale controls/modals after changing to a roster vehicle.
+  for(const type of ['input','change']) document.addEventListener(type, event => {
+    if(C.workshopAvailable(state))return;
+    const e=event.target;
+    if(e.matches?.('[data-tune],[data-tune-range],[data-tune-range-num],[data-gear-ratio],[data-als],[data-assembly],[data-dyno-config],[data-service],[data-service-select],#build-name-input')) {
+      event.stopImmediatePropagation();event.preventDefault();showToast('Deze bewerking is niet beschikbaar voor de actieve auto.');
+    }
+  },true);
   document.addEventListener('input', ev => { if (ev.target.matches?.('input[type="range"]')) beginRangeEdit(ev.target); }, true);
 
   // Hardware limits that deserve a confirmation when a value is pushed past them.
@@ -6365,7 +6506,21 @@
   document.addEventListener('click', event => {
     if (event.target.matches('[data-modal-backdrop]')) { closeModal(); return; }
     const btn = event.target.closest('button,[data-action]');
-    if (!btn) return;
+    if (!btn || btn.disabled) return;
+    if (btn.dataset.starterCar) { starterId = btn.dataset.starterCar; return render(); }
+    if (btn.dataset.action === 'confirm-starter') {
+      const result = C.confirmStarter(state, starterId);
+      if (!result.ok) return showToast(result.reason);
+      state=result.state; saveState(); render(); return showToast(`Startauto bevestigd: ${V.get(starterId).name}`);
+    }
+    if (btn.dataset.action === 'qa-profile') { location.search='?profile=vehicle-qa'; return; }
+    if (btn.dataset.action === 'career-profile') { location.search=''; return; }
+    if (btn.dataset.viewAngle) { showroom?.view(Number(btn.dataset.viewAngle)); return; }
+    if (state.starterSelection === 'pending') return;
+    if (!C.workshopAvailable(state) && (btn.closest('.workshop-controls') ||
+      btn.dataset.openCategory || btn.dataset.preset || btn.dataset.part || btn.dataset.partCat || btn.dataset.buyUsed || btn.dataset.switch ||
+      ['start-dyno','run-dyno','bench-test','reset-tune','apply-tune','confirm-rebuild','refill-nitrous'].includes(btn.dataset.action)))
+      return showToast('Deze werkplaatsbewerking is niet beschikbaar voor de geselecteerde auto.');
     if (btn.dataset.nav) { haptic(8); return go(btn.dataset.nav); }
     if (btn.dataset.go) { haptic(8); return go(btn.dataset.go); }
     if (btn.dataset.openCategory) { haptic(10); return openCategoryTile(btn.dataset.openCategory); }
@@ -6454,6 +6609,9 @@
       return showToast(`${rosterName(btn.dataset.buyCar)} staat in je garage.`);
     }
     if (btn.dataset.driveCar) {
+      closeModal();
+      if (raceGame?.open || dynoRunning) return showToast('Sluit de actieve run voordat je van auto wisselt.');
+      stopEngineAudio({hard:true});
       state.garage = C.setActiveCar(state, btn.dataset.driveCar);
       rivalCache.clear();
       saveState(); haptic(12); render();
@@ -6749,6 +6907,13 @@
 
   window.__EA888_DEBUG__ = {
     rerender: () => { render(); return true; },
+    vehicle: () => ({active:C.garageOf(state).active,simId:raceCarState().rosterCar?.id || 'scirocco',qa:QA_PROFILE,
+      showroom:showroom?.car.status || null, race:raceGame?.r3d?.vehicles?.(), replay:raceGame?.replay3d?.vehicles?.(),rig:raceGame?.r3d?.rig?.(),sound:engineAudio?.model}),
+    showroomView: a => { showroom?.view(a); return showroom?.car.status; },
+    showroomClay: on => { showroom?.clay(on); return true; },
+    qaDrive: id => { if(!QA_PROFILE || raceGame?.open)return false; state.garage=C.setActiveCar(state,id); saveState(); activeTab='bank';render();return state.garage.active===id; },
+    qaCloseRace: () => { if(!QA_PROFILE)return false;closeDragGame();render();return true; },
+    qaStartRun: () => { if(!QA_PROFILE)return false; startDragGame(); if(!raceGame?.open)return false; startV7Run(.12,true); return true; },
     holdFinishForTest: on => { holdFinishForTest = !!on; return holdFinishForTest; },
     setGraphics3dForTest: on => { state.settings.graphics3d = !!on; saveState(); return state.settings.graphics3d; },
     ecu: () => cloneJson({ edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor }),
