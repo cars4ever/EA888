@@ -67,11 +67,17 @@ def signing_env() -> tuple[dict, Path | None]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument('--debug', action='store_true')
+    ap.add_argument('--skip-web', action='store_true', help='Package the already tested build/web of this version')
     args = ap.parse_args()
     version = json.loads((ROOT / 'version.json').read_text())
     sdk = sdk_root()
 
-    subprocess.run([sys.executable, str(ROOT / 'tools' / 'build_web.py')], check=True)
+    if args.skip_web:
+        built = ROOT / 'build/web/app.js'
+        if not built.exists() or f"const APP_VERSION = '{version['versionName']}';" not in built.read_text():
+            sys.exit('build/web is missing or does not match version.json')
+    else:
+        subprocess.run([sys.executable, str(ROOT / 'tools' / 'build_web.py')], check=True)
     env, temp_key = signing_env()
     env['ANDROID_HOME'] = str(sdk)
     if not args.debug and not (env.get('EA888_KEYSTORE') and env.get('EA888_KEY_PASSWORD')):

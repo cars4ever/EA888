@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / 'src' / 'assets'
 OUT = ROOT / 'build' / 'web'
 ESBUILD = ROOT / 'node_modules' / '.bin' / 'esbuild'
-TEXT_FILES = ('app.js', 'styles.css', 'index.html')
+TEXT_FILES = ('app.js', 'styles.css', 'index.html', 'vehicle-assets.js')
 # styles.css is assembled from src/styles in this order (cascade order matters).
 STYLE_ORDER = ('fonts.css', 'tokens.css', 'app.css', 'race.css', 'components.css')
 # The launcher/favicon PNG stays PNG (the legacy APK pipeline and some launchers expect it).
@@ -67,6 +67,9 @@ def stamp_version() -> str:
     if n != 1:
         sys.exit('APP_VERSION constant not found in app.js')
     app.write_text(text, encoding='utf-8')
+    index = OUT / 'index.html'
+    index.write_text(re.sub(r'((?:src|href)="[^"?]+\.(?:js|css))"',
+                            lambda m: m[1] + '?v=' + version + '"', index.read_text()), encoding='utf-8')
     return version
 
 

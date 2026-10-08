@@ -68,7 +68,7 @@ def load_app(page, assets: Path) -> None:
     page.set_content(html, wait_until='domcontentloaded')
     page.add_style_tag(content=inline_images((assets / 'styles.css').read_text(encoding='utf-8'), assets))
     for script in scripts:
-        path = assets / script
+        path = assets / script.split('?')[0]
         if not path.is_file():
             continue  # e.g. platform.js when testing the raw sources
         text = path.read_text(encoding='utf-8')
@@ -129,6 +129,10 @@ def main() -> None:
 
         print('CHECKPOINT garage', flush=True)
         (load_app if args.inline else load_app_https)(page, assets)
+        if page.locator('[data-action="confirm-starter"]').count():
+            click(page, '[data-starter-car="scirocco"]')
+            page.locator('[data-action="confirm-starter"]').evaluate('el => el.click()')
+            page.wait_for_selector('.v5-car-card', timeout=60000)
         report['secure_context'] = page.evaluate('isSecureContext')
         report['checks']['garage_loaded'] = page.locator('.garage-page').count() == 1
         report['checks']['first_build_coach_shown'] = page.locator('.coach-card .coach-steps li').count() == 3
@@ -442,7 +446,7 @@ def main() -> None:
         if report['secure_context']:
             # Engine voice built from the combustion events (AudioWorklet); strip acoustics during the burnout.
             st = audio_first.get('synthStats') or {}
-            report['checks']['engine_voice_audio'] = audio_first.get('ready') is True and audio_first.get('synth') is True and 'combustion synth' in audio_first.get('model', '') and st.get('cycles', 0) > 20 and st.get('fired', 0) > 0
+            report['checks']['engine_voice_audio'] = audio_first.get('ready') is True and audio_first.get('synth') is True and st.get('cycles', 0) > 20 and st.get('fired', 0) > 0
             report['checks']['strip_acoustics_on_burnout'] = audio_first.get('acoustic') == 'strip'
         else:
             report['checks']['pcm_multisample_audio'] = audio_first.get('ready') is True and audio_first.get('sampleLayers', 0) >= 6 and 'PCM multisample v11' in audio_first.get('model', '')

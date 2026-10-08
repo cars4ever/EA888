@@ -144,5 +144,14 @@ assert.deepStrictEqual(V.FIRING, [1, 3, 4, 2], 'EA888 firing order');
   assert.strictEqual(proc.process([], outs), false, 'a stopped processor ends (the node can be collected)');
 }
 
+// A selected V8 must produce eight combustion events per 720 degrees, including the final EVO wrap.
+{
+  const four=measure({rpm:3000,load:.6,cylinders:4,turbo:false});
+  const eight=measure({rpm:3000,load:.6,cylinders:8,turbo:false});
+  assert.equal(eight.v.slots.length,8);
+  assert(Math.abs(eight.d.fired/four.d.fired-2)<.08,'V8 firing rate is twice the four-cylinder rate');
+  assert(rms(eight.exh)>0 && eight.exh.every(Number.isFinite));
+  eight.v.set({cylinders:4});assert.equal(eight.v.slots.length,4,'switch back to Scirocco');
+}
 module.exports = { exhausts: Object.keys(V.EXHAUSTS).length };
 console.log('PASS audio tests');
