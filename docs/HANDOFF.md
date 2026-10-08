@@ -1,4 +1,7 @@
-# EA888 LAB — handoff (stand na v1.27.0)
+# EA888 LAB — handoff (stand na v1.29.0)
+
+**Voertuigenupdate:** zie [VEHICLE_AUDIT.md](VEHICLE_AUDIT.md) voor de vijf GLB's, selectie/saveketen, pipeline, tests, artifacts en start-routebeperking. [VEHICLE_ASSET_BRIEFS.md](VEHICLE_ASSET_BRIEFS.md) beschrijft de uitvoering en resterende visuele benaderingen. Werkmap is `EA888/` binnen `/home/scirockoe/projects/ea888`. Baseline van deze update: `540c0fb`; geen wijzigingen aan de voertuigfysica. QA-profiel heeft €10.000.000 en alle vijf auto's; echte carrièregeld blijft apart.
+
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
 `docs/DEVLOG.md` (per versie wat en waarom, secties 1–32).
@@ -6,7 +9,7 @@ Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.m
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste release: **1.27.0 (versionCode 370)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste build: **1.29.0 (versionCode 390)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke groen.
 - **Echte auto's en prijzen** uit het YouTube-onderzoek: `data/roster/` (zie de README daar), import met
   `tools/import_roster.py`, bundel met `tools/build_roster_data.js`. Kalibratie tegen echte runs:

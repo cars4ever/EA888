@@ -1330,3 +1330,10 @@ The repository has no signing key. Test APKs from this environment are signed wi
 so they **cannot update** an app signed with the original certificate: uninstall the old app first (export the
 build code on the Data page before uninstalling; localStorage is lost with the app). For releases, build with
 the permanent keystore via `EA888_KEYSTORE` / `EA888_KEY_ALIAS` / `EA888_KEY_PASSWORD`.
+
+
+## 35. Vijf afzonderlijke dragauto’s en voertuigselectie — 1.29.0
+
+Jackstand is eerst door reconstructie, reparatie, showroom, save, burnout/staging, run en replay verwerkt. Daarna Eagle, Mullet, McFlurry en Lumberjack met dezelfde gecontroleerde Hunyuan 2.1 single-image-pipeline. Elke auto heeft normale/lage GLB met eigen carrosserie, PBR, vier bewegende wielen en centrale carId-koppeling. De oorspronkelijke Scirocco blijft behouden. Details en bewijspaden: `VEHICLE_AUDIT.md`.
+
+Nieuwe carrière begint met bevestigde autokeuze en één betaling; bestaande saves slaan die stap over. Afzonderlijk QA-profiel met €10 miljoen op verzoek van de gebruiker. Rosterwerkplaats voorkomt mutaties aan de Scirocco. V8-profiel in bestaande audiosynthese, ook synthetische PCM-fallback. Geen wijziging aan specs, onderzoeksprijzen of fysieke formules.

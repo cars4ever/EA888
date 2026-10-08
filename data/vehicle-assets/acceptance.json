@@ -1,0 +1,296 @@
+{
+  "baselineCommit": "540c0fbc7f331405f40600fca2b7c763eb738313",
+  "gameCodeCommit": "5f5ed53",
+  "version": {
+    "versionName": "1.29.0",
+    "versionCode": 390
+  },
+  "recordedAtUtc": "2026-10-08T19:44:03.282458+00:00",
+  "cars": {
+    "crc12_jackstand_240": {
+      "activeSimModelMatch": true,
+      "workshopProtected": true,
+      "restartSelection": true,
+      "fullRunMetres": 402.3749809922559,
+      "quarterSecondsDefaultUnpreparedTrack": 16.25403996596257,
+      "replayCarId": "crc12_jackstand_240",
+      "preview": "reports/vehicle-acceptance-final/crc12_jackstand_240/preview-360.mp4"
+    },
+    "mcflurry": {
+      "activeSimModelMatch": true,
+      "workshopProtected": true,
+      "restartSelection": true,
+      "fullRunMetres": 402.50271335472206,
+      "quarterSecondsDefaultUnpreparedTrack": 12.46204560495656,
+      "replayCarId": "mcflurry",
+      "preview": "reports/vehicle-acceptance-final/mcflurry/preview-360.mp4"
+    },
+    "mullet": {
+      "activeSimModelMatch": true,
+      "workshopProtected": true,
+      "restartSelection": true,
+      "fullRunMetres": 402.61884004559084,
+      "quarterSecondsDefaultUnpreparedTrack": 12.368523352676501,
+      "replayCarId": "mullet",
+      "preview": "reports/vehicle-acceptance-final/mullet/preview-360.mp4"
+    },
+    "lumberjack": {
+      "activeSimModelMatch": true,
+      "workshopProtected": true,
+      "restartSelection": true,
+      "fullRunMetres": 402.39195824697083,
+      "quarterSecondsDefaultUnpreparedTrack": 16.598048736659457,
+      "replayCarId": "lumberjack",
+      "preview": "reports/vehicle-acceptance-final/lumberjack/preview-360.mp4"
+    },
+    "eagle": {
+      "activeSimModelMatch": true,
+      "workshopProtected": true,
+      "restartSelection": true,
+      "fullRunMetres": 402.4393601306615,
+      "quarterSecondsDefaultUnpreparedTrack": 11.96746698884266,
+      "replayCarId": "eagle",
+      "preview": "reports/vehicle-acceptance-final/eagle/preview-360.mp4"
+    }
+  },
+  "tests": {
+    "fiveCars": {
+      "ok": true,
+      "seconds": 661.25963139534,
+      "errors": []
+    },
+    "scirocco": {
+      "ok": true,
+      "checksPassed": 145,
+      "pageErrors": [],
+      "unexpectedConsoleErrors": []
+    },
+    "mobileRegression": {
+      "starterPurchaseOnce": true,
+      "legacyBackupAndNotice": true,
+      "rapidSwitchAndQaCash": true,
+      "staleWorkshopEventBlocked": true,
+      "missingModelVisible": true,
+      "resources": [
+        {
+          "id": "crc12_jackstand_240",
+          "loaded": {
+            "geometries": 44,
+            "textures": 7
+          },
+          "disposed": {
+            "geometries": 0,
+            "textures": 1
+          }
+        },
+        {
+          "id": "eagle",
+          "loaded": {
+            "geometries": 30,
+            "textures": 5
+          },
+          "disposed": {
+            "geometries": 0,
+            "textures": 1
+          }
+        },
+        {
+          "id": "mullet",
+          "loaded": {
+            "geometries": 32,
+            "textures": 5
+          },
+          "disposed": {
+            "geometries": 0,
+            "textures": 1
+          }
+        },
+        {
+          "id": "mcflurry",
+          "loaded": {
+            "geometries": 30,
+            "textures": 7
+          },
+          "disposed": {
+            "geometries": 0,
+            "textures": 1
+          }
+        },
+        {
+          "id": "lumberjack",
+          "loaded": {
+            "geometries": 32,
+            "textures": 5
+          },
+          "disposed": {
+            "geometries": 0,
+            "textures": 1
+          }
+        },
+        {
+          "id": "scirocco",
+          "loaded": {
+            "geometries": 18,
+            "textures": 4
+          },
+          "disposed": {
+            "geometries": 0,
+            "textures": 1
+          }
+        }
+      ],
+      "pairs": [
+        {
+          "identity": {
+            "player": {
+              "carId": "eagle",
+              "state": "ready",
+              "model": "models/eagle-low.glb",
+              "error": null
+            },
+            "rival": {
+              "carId": "mullet",
+              "state": "ready",
+              "model": "models/mullet-low.glb",
+              "error": null
+            }
+          },
+          "rig": {
+            "spin": [
+              -3.3333333333333335,
+              -3.3333333333333335,
+              -3.557312252964427,
+              -3.557312252964427
+            ],
+            "steer": [
+              -0.04995839572194276,
+              -0.04995839572194276,
+              0,
+              0
+            ],
+            "resources": {
+              "geometries": 190,
+              "textures": 29
+            }
+          }
+        },
+        {
+          "identity": {
+            "player": {
+              "carId": "mcflurry",
+              "state": "ready",
+              "model": "models/mcflurry-low.glb",
+              "error": null
+            },
+            "rival": {
+              "carId": "lumberjack",
+              "state": "ready",
+              "model": "models/lumberjack-low.glb",
+              "error": null
+            }
+          },
+          "rig": {
+            "spin": [
+              -3.3333333333333335,
+              -3.3333333333333335,
+              -3.557312252964427,
+              -3.557312252964427
+            ],
+            "steer": [
+              -0.04995839572194276,
+              -0.04995839572194276,
+              0,
+              0
+            ],
+            "resources": {
+              "geometries": 190,
+              "textures": 30
+            }
+          }
+        },
+        {
+          "identity": {
+            "player": {
+              "carId": "crc12_jackstand_240",
+              "state": "ready",
+              "model": "models/crc12_jackstand_240-low.glb",
+              "error": null
+            },
+            "rival": {
+              "carId": "crc12_jackstand_240",
+              "state": "ready",
+              "model": "models/crc12_jackstand_240-low.glb",
+              "error": null
+            }
+          },
+          "rig": {
+            "spin": [
+              -3.278688524590164,
+              -3.278688524590164,
+              -3.557312252964427,
+              -3.557312252964427
+            ],
+            "steer": [
+              -0.04995839572194276,
+              -0.04995839572194276,
+              0,
+              0
+            ],
+            "resources": {
+              "geometries": 203,
+              "textures": 31
+            }
+          }
+        }
+      ],
+      "v8TransmissionAndAudio": {
+        "model": "8 cilinders · verbrandingssynthese (AudioWorklet)",
+        "fired": 3795
+      },
+      "returnToCareerFromScirocco": true,
+      "careerIsolated": true,
+      "errors": [],
+      "platform": "Chromium mobile emulation + SwiftShader, not Android",
+      "ok": true
+    },
+    "physicsMaximumDelta": 0,
+    "fullSimSuite": "PASS",
+    "audioSuite": "PASS",
+    "vehicleAssetSuite": "PASS"
+  },
+  "build": {
+    "apk": "dist/EA888-Lab-1.29.0.apk",
+    "bytes": 9082429,
+    "sha256": "1a34ec162c07aa77d2d8cab83562144ee863787f0c6db8cabfca3159666c9cf6",
+    "webFilesMatched": 66,
+    "modelsPackaged": 12,
+    "developmentUrls": [],
+    "signingSha256": "74a2076d8d964584dadcb233eb5cd832de144a92173a1c74e4092fa0b3f1affb",
+    "package": "nl.randy.ea888lab.stabl",
+    "versionCode": 390,
+    "versionName": "1.29.0"
+  },
+  "platformsTested": [
+    "desktop Chromium with SwiftShader",
+    "Chromium mobile emulation 412x915 DPR1"
+  ],
+  "notVerified": [
+    "Android emulator or physical Android device",
+    "existing external browser game start port, unknown on this host"
+  ],
+  "remainingVisualLimits": [
+    "Small decals and obscured-side hardware are approximations of AI references",
+    "Some lamp details remain in the PBR atlas instead of separate geometry"
+  ],
+  "reports": {
+    "reports/vehicle-acceptance-final/smoke.json": "65f8ed59c7fb8be26af459e23746c7ce45b5bc826f2187fecea76ba7ba85d0b0",
+    "reports/vehicle-regression/report.json": "e9d9e3d1240355c8f7b8a394495429186bdcc8eef906968040fc5ed183e2ce47",
+    "reports/vehicle-scirocco.json": "1ae04bc31cd8ec653c760cc7c128ceae4c9f220f827bfdcdb1f22e43b549462d",
+    "reports/vehicle-physics-comparison.json": "2fe9e5e15798e16985ce0bbb76f08ae95aefb205a1f345c6e06bc809fcf43bb0",
+    "reports/vehicle-final-sim.log": "e7eeb50066278458315c07b9cc107e989b4376ef283e2ac43b02fb04cb974ca0",
+    "reports/vehicle-audio.log": "a42ed038c48eee54d30bb81d02720cf55df0a46aae3fa07583c44f5ee9774af2",
+    "reports/vehicle-assets.log": "36e514f1f43c18d00dc86a63a0999b107af0badf09cce09a05e9754adfb4a5c2",
+    "reports/vehicle-apk-verification.json": "adb67a6a7cda1bbdd78662bb973fb4be546ac7806e586d81fe5e5f72b1cace51"
+  },
+  "buildSourceCommit": "8de646e"
+}
