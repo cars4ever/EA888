@@ -1,0 +1,463 @@
+{
+  "schema": 1,
+  "baselineCommit": "540c0fbc7f331405f40600fca2b7c763eb738313",
+  "archive": {
+    "archiveSha256": "e47148c85682764d6507b0a95f2d051c45cbd34bad5503383f6f1cc2481cf758",
+    "files": [
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/01_Eagle_1969_Camaro/01_Eagle_1969_Camaro_front_3q.png",
+        "bytes": 1025172,
+        "sha256": "0f3454c9c852a48fa598ee84aaadf35aba48f88eb7123d87adeee1d747fb7be7"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/01_Eagle_1969_Camaro/01_Eagle_1969_Camaro_rear_3q.png",
+        "bytes": 889132,
+        "sha256": "7093c943ede2c58cbf3009fad8a8fbabcb3f6880de56c0aa573c713ad048e2cb"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/01_Eagle_1969_Camaro/01_Eagle_1969_Camaro_side.png",
+        "bytes": 624012,
+        "sha256": "517008769d1d7e66557a3c78196586bfc239140ab0e3624f56f981fe23de8308"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/02_Mullet_El_Camino/02_Mullet_El_Camino_front_3q.png",
+        "bytes": 1219082,
+        "sha256": "d9693ed96e6f9a7a88a286f5506e7039f389ae5cff4eadf98913fae99e6bdbcd"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/02_Mullet_El_Camino/02_Mullet_El_Camino_rear_3q.png",
+        "bytes": 1116233,
+        "sha256": "02d0bd5f197164471e49e9a074eac642b5e05acf93c6335242fc02c60ddc3351"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/02_Mullet_El_Camino/02_Mullet_El_Camino_side.png",
+        "bytes": 764067,
+        "sha256": "7e0547541d9ae21e69140689ab3d74a66b99e51312ee1bf6f093106efa7583a8"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/03_McFlurry_Foxbody_Mustang/03_McFlurry_Foxbody_Mustang_front_3q.png",
+        "bytes": 1279800,
+        "sha256": "529fc7a32c5ee4fdc31f5b6de751b3b7c20503c41d69bf2a1600f172b4368722"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/03_McFlurry_Foxbody_Mustang/03_McFlurry_Foxbody_Mustang_rear_3q.png",
+        "bytes": 1192006,
+        "sha256": "1460de5b4c757c57986cb91cd954a855cfc4313738deab9e876aed117bd59f28"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/03_McFlurry_Foxbody_Mustang/03_McFlurry_Foxbody_Mustang_side.png",
+        "bytes": 938110,
+        "sha256": "175d2c0600c8aea1654a084616d8cb02f07445d51f816986a50be244ecd8e620"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/04_Lumberjack_1973_El_Camino/04_Lumberjack_1973_El_Camino_front_3q.png",
+        "bytes": 1697405,
+        "sha256": "c4facbc39da720ce32a662d5acaf15b456f2be4ac29880c61649e7612e03a428"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/04_Lumberjack_1973_El_Camino/04_Lumberjack_1973_El_Camino_rear_3q.png",
+        "bytes": 1534728,
+        "sha256": "7c212c3561d326a670701cd1bc0c9b0538cefeb44130b21ecd4ff9d05dffb857"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/04_Lumberjack_1973_El_Camino/04_Lumberjack_1973_El_Camino_side.png",
+        "bytes": 1064463,
+        "sha256": "2d391ca31d11372f806c4f1d815e606f3117785274a0d0f94a699070317f56b1"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/05_Jackstand_1990_240SX_Coupe/05_Jackstand_1990_240SX_Coupe_front_3q.png",
+        "bytes": 1506204,
+        "sha256": "0beda0f72456ce0deacc7c7220e6d71f03ce3093248fac7afe4260f075e32a71"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/05_Jackstand_1990_240SX_Coupe/05_Jackstand_1990_240SX_Coupe_rear_3q.png",
+        "bytes": 1255473,
+        "sha256": "ce525aca763caef354edb13ddf47308babf3af38e888a4acbf52ffa379961e89"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/05_Jackstand_1990_240SX_Coupe/05_Jackstand_1990_240SX_Coupe_side.png",
+        "bytes": 898407,
+        "sha256": "3ab5b93a1f74e9c18a4b40a78475e95b662be51cf6a48b49fa1c793d466f9ab2"
+      },
+      {
+        "path": "Cleetus_Hunyuan3D_5_Cars/LEESMIJ.txt",
+        "bytes": 585,
+        "sha256": "d3a0c085b2382fc75a0035861bd2101408144ed451c116e648e2cf835f3175c5"
+      }
+    ]
+  },
+  "method": "Hunyuan 2.1 single-image front_3q; side/rear used for visual inspection and explicit surface decals, never oblique views mislabeled front/back",
+  "cars": {
+    "crc12_jackstand_240": {
+      "shape": {
+        "carId": "crc12_jackstand_240",
+        "inputSha256": "8de0567b2a1601f7ce44962c570e1dd2e6abc910994e23c8f26b2f00d4b07c89",
+        "method": "single-image front_3q",
+        "checkpoint": "0b94677654c57bb9a6b6845cd7b704ccf551d327",
+        "upstream": "82920d643c0dc2f7bfd7255f45f62d386edfe60c",
+        "seed": 240,
+        "steps": 50,
+        "octree": 384,
+        "guidance": 5,
+        "numChunks": 4000,
+        "textureModelLoaded": false,
+        "status": "complete",
+        "started": 1791482729.8458738,
+        "seconds": 125.92800974845886,
+        "vertices": 247499,
+        "triangles": 495020,
+        "peakAllocatedMiB": 7813.59716796875,
+        "rawSha256": "5230fd2cee7c6798e39b7b979c079bf94c54e7b66ee04e7c445008acaeba118a"
+      },
+      "paint": {
+        "status": "complete",
+        "reference": "input/front_3q.png",
+        "views": 6,
+        "resolution": 512,
+        "seed": 0,
+        "seconds": 1.240940809249878,
+        "peakAllocatedMiB": 0.0
+      },
+      "fit": {
+        "carId": "crc12_jackstand_240",
+        "source": "painted.glb",
+        "wheelbaseM": 2.47,
+        "trackM": 1.47,
+        "radii": [
+          0.305,
+          0.305,
+          0.3795,
+          0.3795
+        ],
+        "removedWheelVertices": 4694,
+        "removedFragmentVertices": 0,
+        "triangles": 29624,
+        "bytes": 6460528,
+        "repairs": [
+          "baked wheels removed",
+          "round independent wheels rebuilt",
+          "separate stationary calipers",
+          "fragile race hardware rebuilt"
+        ],
+        "estimatedHeightM": null,
+        "visualDimensionsKind": "estimate; wheelbase follows existing roster model; rear radius follows roster tyre size"
+      },
+      "runtime": {
+        "status": "complete",
+        "signature": "7ab12e402cbfe46a613c06332837a3b3efff71887af58173a7aa7bf572d901b9",
+        "outputs": [
+          {
+            "file": "src/assets/models/crc12_jackstand_240.glb",
+            "bytes": 524228,
+            "sha256": "5d67ed707060c213e796c37f5303d1eae3874575ba8867a2688b32735698ae51"
+          },
+          {
+            "file": "src/assets/models/crc12_jackstand_240-low.glb",
+            "bytes": 257904,
+            "sha256": "744a2e845a0f3568e00debfcaccfcb0dd233ba31b37f8b2c4ada682dd9cb90ff"
+          }
+        ],
+        "seconds": 4.5590550899505615
+      },
+      "master": "../work/cleetus/crc12_jackstand_240/master.blend",
+      "raw": "../work/cleetus/crc12_jackstand_240/raw.glb"
+    },
+    "eagle": {
+      "shape": {
+        "carId": "eagle",
+        "inputSha256": "efade8ab9c3e1209e11a830d21866961d9a6df709f33edbae344e6c1be94fd8f",
+        "method": "single-image front_3q",
+        "checkpoint": "0b94677654c57bb9a6b6845cd7b704ccf551d327",
+        "upstream": "82920d643c0dc2f7bfd7255f45f62d386edfe60c",
+        "seed": 240,
+        "steps": 50,
+        "octree": 384,
+        "guidance": 5,
+        "numChunks": 4000,
+        "textureModelLoaded": false,
+        "status": "complete",
+        "started": 1791485492.9233866,
+        "seconds": 114.49374747276306,
+        "vertices": 291409,
+        "triangles": 583042,
+        "peakAllocatedMiB": 7813.59716796875,
+        "rawSha256": "7665e21d5b446a8b0932236936c0a39742b8fdb4170236895b7e4f9a507ebefe"
+      },
+      "paint": {
+        "status": "complete",
+        "reference": "input/front_3q.png",
+        "views": 6,
+        "resolution": 512,
+        "seed": 0,
+        "offload": "DINO after conditioning; VAE slicing/tiling; allocator bounded by free VRAM",
+        "seconds": 102.14626026153564,
+        "peakAllocatedMiB": 8945.12939453125
+      },
+      "fit": {
+        "carId": "eagle",
+        "source": "painted.glb",
+        "wheelbaseM": 2.74,
+        "trackM": 1.55,
+        "radii": [
+          0.3,
+          0.3,
+          0.3795,
+          0.3795
+        ],
+        "removedWheelVertices": 4417,
+        "removedFragmentVertices": 3,
+        "triangles": 29616,
+        "bytes": 4724540,
+        "repairs": [
+          "baked wheels removed",
+          "round independent wheels rebuilt",
+          "separate stationary calipers",
+          "fragile race hardware rebuilt"
+        ],
+        "estimatedHeightM": null,
+        "visualDimensionsKind": "estimate; wheelbase follows existing roster model; rear radius follows roster tyre size"
+      },
+      "runtime": {
+        "status": "complete",
+        "signature": "8b7d0c410b167d21269e57b1248ec1c2942eafea8a3e64da677e637b2e5bce01",
+        "outputs": [
+          {
+            "file": "src/assets/models/eagle.glb",
+            "bytes": 480544,
+            "sha256": "adcac57d44f690021f9b779cd0e0fa82d494abd1bbb1ec37c29b149b11b6d561"
+          },
+          {
+            "file": "src/assets/models/eagle-low.glb",
+            "bytes": 253424,
+            "sha256": "d7bc0c5e5a94abf477123c42f1e900a072ed913267b9c4c9bcc2b07d69bb4f34"
+          }
+        ],
+        "seconds": 4.606037139892578
+      },
+      "master": "../work/cleetus/eagle/master.blend",
+      "raw": "../work/cleetus/eagle/raw.glb"
+    },
+    "mullet": {
+      "shape": {
+        "carId": "mullet",
+        "inputSha256": "df11b85f3bfdf48c4f6d54f40eb11913bf36213820cc106c08e3988982e01c84",
+        "method": "single-image front_3q",
+        "checkpoint": "0b94677654c57bb9a6b6845cd7b704ccf551d327",
+        "upstream": "82920d643c0dc2f7bfd7255f45f62d386edfe60c",
+        "seed": 240,
+        "steps": 50,
+        "octree": 384,
+        "guidance": 5,
+        "numChunks": 4000,
+        "textureModelLoaded": false,
+        "status": "complete",
+        "started": 1791485607.4522233,
+        "seconds": 81.65939211845398,
+        "vertices": 273086,
+        "triangles": 546236,
+        "peakAllocatedMiB": 7813.59716796875,
+        "rawSha256": "8febba8aa3e480001c36825b64bc14cd6bcd36eb2651131efe394cbca35197d0"
+      },
+      "paint": {
+        "status": "complete",
+        "reference": "input/front_3q.png",
+        "views": 6,
+        "resolution": 512,
+        "seed": 0,
+        "seconds": 67.05637717247009,
+        "peakAllocatedMiB": 9388.4345703125
+      },
+      "fit": {
+        "carId": "mullet",
+        "source": "painted.glb",
+        "wheelbaseM": 2.95,
+        "trackM": 1.58,
+        "radii": [
+          0.3,
+          0.3,
+          0.3795,
+          0.3795
+        ],
+        "removedWheelVertices": 3476,
+        "removedFragmentVertices": 17,
+        "triangles": 30159,
+        "bytes": 3816484,
+        "repairs": [
+          "baked wheels removed",
+          "round independent wheels rebuilt",
+          "separate stationary calipers",
+          "fragile race hardware rebuilt"
+        ],
+        "estimatedHeightM": 1.42,
+        "visualDimensionsKind": "estimate; wheelbase follows existing roster model; rear radius follows roster tyre size"
+      },
+      "runtime": {
+        "status": "complete",
+        "signature": "a58822b2eb5e29cd7c469b879a9374a9ad2fe957ac3448ee404d5adc8a5e3f7b",
+        "outputs": [
+          {
+            "file": "src/assets/models/mullet.glb",
+            "bytes": 398104,
+            "sha256": "ba50d89cd46f939e96884870bd43cf13518552fd05608c0627757dffe05625d4"
+          },
+          {
+            "file": "src/assets/models/mullet-low.glb",
+            "bytes": 214096,
+            "sha256": "ef9a33e3939fd26cecc1546b354ba674ca265373abb76f654efc2ead929a1cd8"
+          }
+        ],
+        "seconds": 4.8066253662109375
+      },
+      "master": "../work/cleetus/mullet/master.blend",
+      "raw": "../work/cleetus/mullet/raw.glb"
+    },
+    "mcflurry": {
+      "shape": {
+        "carId": "mcflurry",
+        "inputSha256": "8d1be3f88845c6fe46fbed4870e883c36268c7e141625538c0668477ef244a7d",
+        "method": "single-image front_3q",
+        "checkpoint": "0b94677654c57bb9a6b6845cd7b704ccf551d327",
+        "upstream": "82920d643c0dc2f7bfd7255f45f62d386edfe60c",
+        "seed": 240,
+        "steps": 50,
+        "octree": 384,
+        "guidance": 5,
+        "numChunks": 4000,
+        "textureModelLoaded": false,
+        "status": "complete",
+        "started": 1791485689.1464877,
+        "seconds": 82.8994767665863,
+        "vertices": 283981,
+        "triangles": 567980,
+        "peakAllocatedMiB": 7813.59716796875,
+        "rawSha256": "bbf20c3b18fefdde90c57cc9d12213e61534a65bbc4795c097a21b69f8b5ad11"
+      },
+      "paint": {
+        "status": "complete",
+        "reference": "input/front_3q.png",
+        "views": 6,
+        "resolution": 512,
+        "seed": 0,
+        "seconds": 69.78950500488281,
+        "peakAllocatedMiB": 9566.5205078125
+      },
+      "fit": {
+        "carId": "mcflurry",
+        "source": "painted.glb",
+        "wheelbaseM": 2.55,
+        "trackM": 1.49,
+        "radii": [
+          0.3,
+          0.3,
+          0.3795,
+          0.3795
+        ],
+        "removedWheelVertices": 3823,
+        "removedFragmentVertices": 14,
+        "triangles": 34152,
+        "bytes": 5609200,
+        "repairs": [
+          "baked wheels removed",
+          "round independent wheels rebuilt",
+          "separate stationary calipers",
+          "fragile race hardware rebuilt"
+        ],
+        "estimatedHeightM": 1.38,
+        "visualDimensionsKind": "estimate; wheelbase follows existing roster model; rear radius follows roster tyre size"
+      },
+      "runtime": {
+        "status": "complete",
+        "signature": "d1d59ac1c24c683c8908ce53279edf8014c26d525fe98ca4474180eb1598fac9",
+        "outputs": [
+          {
+            "file": "src/assets/models/mcflurry.glb",
+            "bytes": 582972,
+            "sha256": "029c4512192a4e758c0affac059cc50a99e6fc04046822d88d881d566d955ca0"
+          },
+          {
+            "file": "src/assets/models/mcflurry-low.glb",
+            "bytes": 321872,
+            "sha256": "27277005da2c22aaa978266ea78251e237b9c607c2ce6c11c487969afde4acc3"
+          }
+        ],
+        "seconds": 4.808404445648193
+      },
+      "master": "../work/cleetus/mcflurry/master.blend",
+      "raw": "../work/cleetus/mcflurry/raw.glb"
+    },
+    "lumberjack": {
+      "shape": {
+        "carId": "lumberjack",
+        "inputSha256": "9a1b89760138fc9450af39a44fb2c45d0bed852f19d6b88b4da2debdd777c1c1",
+        "method": "single-image front_3q",
+        "checkpoint": "0b94677654c57bb9a6b6845cd7b704ccf551d327",
+        "upstream": "82920d643c0dc2f7bfd7255f45f62d386edfe60c",
+        "seed": 240,
+        "steps": 50,
+        "octree": 384,
+        "guidance": 5,
+        "numChunks": 4000,
+        "textureModelLoaded": false,
+        "status": "complete",
+        "started": 1791485772.0804157,
+        "seconds": 84.37004780769348,
+        "vertices": 497442,
+        "triangles": 995608,
+        "peakAllocatedMiB": 7813.59716796875,
+        "rawSha256": "4396ec59b22d2b0049f2ac6a45511e7a3d8ab6d14cbab56c0267da5d843c1d3f"
+      },
+      "paint": {
+        "status": "complete",
+        "reference": "input/front_3q.png",
+        "views": 6,
+        "resolution": 512,
+        "seed": 0,
+        "seconds": 91.21020030975342,
+        "peakAllocatedMiB": 9377.95556640625
+      },
+      "fit": {
+        "carId": "lumberjack",
+        "source": "painted.glb",
+        "wheelbaseM": 2.95,
+        "trackM": 1.59,
+        "radii": [
+          0.325,
+          0.325,
+          0.3795,
+          0.3795
+        ],
+        "removedWheelVertices": 2262,
+        "removedFragmentVertices": 26,
+        "triangles": 29704,
+        "bytes": 4741844,
+        "repairs": [
+          "baked wheels removed",
+          "round independent wheels rebuilt",
+          "separate stationary calipers",
+          "fragile race hardware rebuilt"
+        ],
+        "estimatedHeightM": 1.48,
+        "visualDimensionsKind": "estimate; wheelbase follows existing roster model; rear radius follows roster tyre size"
+      },
+      "runtime": {
+        "status": "complete",
+        "signature": "2f040b16915aa4cb54b9b2fc7ae956c6720b3983a7b63e1982315c257dc4d566",
+        "outputs": [
+          {
+            "file": "src/assets/models/lumberjack.glb",
+            "bytes": 555772,
+            "sha256": "e1b8ccb9d622c9fcf5a3c2c204657f3a8479bbbb5397fdc03d83ea02116124d7"
+          },
+          {
+            "file": "src/assets/models/lumberjack-low.glb",
+            "bytes": 288964,
+            "sha256": "0127dc4a7b42d9774ec97005152e75035104c486cfc6de75d2f1421c1f015476"
+          }
+        ],
+        "seconds": 5.00824499130249
+      },
+      "master": "../work/cleetus/lumberjack/master.blend",
+      "raw": "../work/cleetus/lumberjack/raw.glb"
+    }
+  }
+}
