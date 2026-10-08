@@ -52,6 +52,19 @@ python3 tools/car_preview.py --out /tmp/car   # 3D-auto van 6 kanten (rear, chas
 
 ## Release bouwen (getekend)
 
+Op deze server is één kort commando voldoende, vanuit de repository:
+
+```bash
+python3 tools/build_android.py --local-signing
+```
+
+Dit leest de bestaande `~/keys/ea888-lab-release.jks` en `~/keys/ea888-lab-release-key.txt`
+(velden `Alias` en `Wachtwoord`). Het wachtwoord gaat uitsluitend naar de buildomgeving;
+geen terminalinvoer, nieuwe sleutel of secret in Git. Deze expliciete optie vervangt ook
+verkeerd geplakte signing-exports. Een ongeldig keystorepad wordt vóór de webbuild afgewezen.
+
+Voor andere omgevingen blijft de bestaande configuratie beschikbaar:
+
 ```bash
 EA888_KEYSTORE=/pad/naar/ea888-lab-release.jks EA888_KEY_ALIAS=ea888lab EA888_KEY_PASSWORD='…' \
 ANDROID_HOME=/pad/naar/android-sdk python3 tools/build_android.py

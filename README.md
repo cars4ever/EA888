@@ -294,11 +294,15 @@ python3 tools/browser_smoke.py --assets build/web --report /tmp/ea888-browser-re
 tools/setup_android_sdk.sh        # once: Android SDK platform 35 + build-tools
 python3 tools/build_android.py --debug   # debug APK (package .dev, installs next to the release)
 python3 tools/build_android.py           # release APK + AAB in dist/, signed with the permanent key
+python3 tools/build_android.py --local-signing  # existing ~/keys key + metadata, no password prompt
 ```
 
 Release signing reads `EA888_KEYSTORE` (path) or `EA888_KEYSTORE_B64` (base64, for cloud environments),
 `EA888_KEY_ALIAS` and `EA888_KEY_PASSWORD` from the environment. Never commit the keystore or its password.
 The build prints the signing certificate SHA-256; it must be the same for every release.
+The explicit `--local-signing` option reads `~/keys/ea888-lab-release.jks` and the `Alias` / `Wachtwoord`
+fields in `~/keys/ea888-lab-release-key.txt`, replacing stale signing exports only for the child build.
+No key is generated and no password is printed. Invalid keystore paths fail before the web build.
 `tools/build_apk.py` (hand-patched template APK, v1 signing) is legacy and only kept for reference.
 
 ## Android identity
