@@ -822,7 +822,7 @@
     audio.master.gain.setTargetAtTime(output + .0001, t, .025);
 
     // The limiter is now a real sampled cut/stutter instead of a text-only cue.
-    const limit = Number(state?.tune?.revLimitRpm || 8000);
+    const limit = Number((raceGame?.carState || state)?.tune?.revLimitRpm || 8000);
     const nowMs = performance.now();
     if (!audio.synth && boundedLoad > .58 && boundedRpm >= limit - 75 && nowMs - audio.lastLimiterMs > 470) {
       playSampleOneShot(audio, 'limiter', .34 + boundedLoad * .12, .96 + Math.random() * .05);
@@ -4292,7 +4292,7 @@
       ? `<div class="v9-dsg-control v10-dsg-control" id="v7-dsg-status"><small>TRANSMISSIE</small><span>${activeRosterId()?'AUTOMAAT':'DSG AUTO'}</span><b id="v7-shift-cue">VOL AUTOMATISCH</b></div>`
       : `<button class="v8-shift-button v9-shift-button v10-shift-button" id="v7-shift-button" data-action="v7-shift"><small>TIK OM TE SCHAKELEN</small><span>SHIFT</span><b id="v7-shift-cue">WACHT</b></button>`;
     const opponent = r?.opponent;
-    const raceSubtitle = opponent ? `Heads-up tegen ${opponent.profile.name} · stuur en schakel onder druk` : (dsg ? 'DSG schakelt zelf · stuur tussen de lijnen' : 'Schakel zelf · stuur tussen de lijnen');
+    const raceSubtitle = opponent ? `Heads-up tegen ${opponent.profile.name} · stuur en schakel onder druk` : (dsg ? `${activeRosterId()?'De automaat':'DSG'} schakelt zelf · stuur tussen de lijnen` : 'Schakel zelf · stuur tussen de lijnen');
     return `<div class="v8-game v8-run-game v9-realtime-race v10-realtime-race v12-heads-up-race ${opponent?'has-rival':'solo-run'}" data-transmission-mode="${dsg ? 'dsg-auto' : 'manual'}">
       <div class="v10-track-stage" id="v10-track-stage" aria-label="Realtime dragstrip">
         <div class="v10-track-horizon"></div>
@@ -5021,7 +5021,7 @@
     else if (delta < -145) { label = 'VROEGE SHIFT'; grade = 'good'; run.good++; }
     else if (delta > 420) { label = 'TE LAAT · BEGRENZER'; grade = 'late'; run.late++; }
     else { label = 'GOEDE SHIFT'; grade = 'good'; run.good++; }
-    if (source === 'dsg') { label = 'DSG SHIFT'; grade = 'perfect'; run.perfect++; }
+    if (source === 'dsg') { label = activeRosterId() ? 'AUTOMAAT SHIFT' : 'DSG SHIFT'; grade = 'perfect'; run.perfect++; }
     if (source === 'ai' && grade !== 'perfect') { label = 'AI SHIFT'; grade = 'good'; run.good++; }
     const duration = run.transInfo.shiftSeconds * (grade === 'late' ? 1.05 : grade === 'early' ? 1.08 : 1);
     run.gearboxTempC += grade === 'late' ? 2.2 : grade === 'early' ? 1.6 : .8;
@@ -5343,7 +5343,7 @@
   function handleV7Shift() {
     const run = raceGame?.run;
     if (!run || raceGame.phase !== 'run' || run.finished) return;
-    if (run.autoShift) { showV7ShiftFeedback('DSG SCHAKELT AUTOMATISCH', 'good'); return; }
+    if (run.autoShift) { showV7ShiftFeedback(activeRosterId()?'AUTOMAAT SCHAKELT ZELF':'DSG SCHAKELT AUTOMATISCH', 'good'); return; }
     requestRealtimeShift('manual');
   }
 
@@ -5662,7 +5662,7 @@
 
     const cue = $('#v7-shift-cue'); const button = $('#v7-shift-button');
     if (run.autoShift) {
-      if (cue) cue.textContent = run.shifting ? `NAAR ${run.shifting.to + 1}` : `DSG · G${run.gearIndex + 1}`;
+      if (cue) cue.textContent = run.shifting ? `NAAR ${run.shifting.to + 1}` : `${activeRosterId()?'AUTO':'DSG'} · G${run.gearIndex + 1}`;
       const dsg = $('#v7-dsg-status'); if (dsg) dsg.classList.toggle('shifting', !!run.shifting);
     } else if (run.gearIndex >= run.transInfo.gears.length - 1) {
       if (cue) cue.textContent = 'HOOGSTE VERSNELLING';
@@ -6045,7 +6045,7 @@
       <details class="card build-table-card fold-card"><summary><span><span class="eyebrow">Gemonteerde hardware</span><b>${C.CATEGORIES.length} onderdelen · ${euro(C.totalPartsPrice(state))}</b></span><i aria-hidden="true">${icon('chevron')}</i></summary><h2>${esc(state.buildName)}</h2><table class="build-table">${buildRows}<tr class="total"><td>Totaal onderdelen</td><td>${euro(C.totalPartsPrice(state))}</td></tr></table></details>
       <div class="card"><span class="eyebrow">Logboek</span><h2>Laatste gebeurtenissen</h2><div class="log-list">${history || '<p class="muted">Nog geen logboekitems.</p>'}</div></div>
       <div class="card model-card"><span class="eyebrow">Modelgrenzen</span><h2>Engineering-game, geen ECU-map</h2><p>Het model combineert airflow, spool, wastegatecontrole, EMP, brandstofcapaciteit, BMEP, knock, EGT, turbospeed, zuigersnelheid, oliedruk, aeratie, oliefilm, clearances en componentgrenzen. De dragintegratie gebruikt vervolgens de gemeten curve, gearing, wielradius, roterende massa, tractie, luchtweerstand en gewichtsverplaatsing.</p><p>Een veilige score in het spel is nooit een bouwgarantie. Een echte motor moet worden gevalideerd met raildruk, lambda, knock, EGT, turbospeed, cilinderdruk, carterdruk en oliedruk.</p></div>
-      <div class="button-row"><button class="btn secondary" data-action="qa-profile">Geïsoleerd voertuig-QA</button><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Alles resetten</button></div>
+      <div class="button-row"><button class="btn secondary" data-action="${QA_PROFILE?'career-profile':'qa-profile'}">${QA_PROFILE?'Terug naar carrière':'Geïsoleerd voertuig-QA'}</button><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Alles resetten</button></div>
     </section>`;
   }
 
