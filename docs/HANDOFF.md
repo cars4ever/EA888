@@ -1,21 +1,22 @@
-# EA888 LAB — handoff (stand na v1.29.0)
+# EA888 LAB — handoff (stand na v1.30.0)
 
-**Voertuigenupdate:** zie [VEHICLE_AUDIT.md](VEHICLE_AUDIT.md) voor de vijf GLB's, selectie/saveketen, pipeline, tests, artifacts en start-routebeperking. [VEHICLE_ASSET_BRIEFS.md](VEHICLE_ASSET_BRIEFS.md) beschrijft de uitvoering en resterende visuele benaderingen. Werkmap is `EA888/` binnen `/home/scirockoe/projects/ea888`. Baseline van deze update: `540c0fb`; geen wijzigingen aan de voertuigfysica. QA-profiel heeft €10.000.000 en alle vijf auto's; echte carrièregeld blijft apart.
+**Werkplaatsupdate:** alle vijf GLB-auto's zijn koopbaar en hebben eigen onderdelen, montage, benchtests, tune, dyno, race, onderhoud en buildslots. Zie [VEHICLE_AUDIT.md](VEHICLE_AUDIT.md) voor bewijs en aannames; [VEHICLE_ASSET_BRIEFS.md](VEHICLE_ASSET_BRIEFS.md) voor de ongewijzigde modellen. Werkmap is `EA888/` binnen `/home/scirockoe/projects/ea888`. Baseline: `ca84a337`. Spelerauto's gebruiken nu bewerkbare motorfysica; Scirocco en historische tegenstanderconfiguraties behouden hun resultaten. QA heeft €10.000.000 en alle vijf auto's; carrière blijft apart.
 
 
 Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.md` (productdoel en regels) en
-`docs/DEVLOG.md` (per versie wat en waarom, secties 1–32).
+`docs/DEVLOG.md` (per versie wat en waarom, secties 1–36).
 
 ## Stand van zaken
 
 - Repo `cars4ever/EA888`, werkbranch **`claude-dev`** (nooit direct op `main` werken of mergen).
-- Laatste build: **1.29.0 (versionCode 390)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
+- Laatste build: **1.30.0 (versionCode 400)**, `version.json`. Package `nl.randy.ea888lab.stabl`.
 - Tests: `node tests/test_sim.js` (alle suites, ~15 min), browser-smoke groen.
 - **Echte auto's en prijzen** uit het YouTube-onderzoek: `data/roster/` (zie de README daar), import met
   `tools/import_roster.py`, bundel met `tools/build_roster_data.js`. Kalibratie tegen echte runs:
   `docs/CALIBRATION.md` en `node tools/roster_calibration.js [--before]`.
-- **Fase 2 (gedaan):** onderdelen kopen (carrièremodus, 'Vrij bouwen' als sandbox), echte auto's kopen in de garage
-  en er zelf mee racen (DEVLOG §34). Nog open: verkopen, een eigen 3D-model en V8-geluid voor roster-auto's.
+- **Vijf werkplaatsauto's:** Eagle, Mullet, McFlurry, Lumberjack en Jackstand, naast Scirocco. Eigen 3D/V8-synthese sinds 1.29; eigen werkplaats sinds 1.30. Verkopen is nog geen spelactie. Overige onderzoeksauto's houden hun bestaande beperkte ondersteuning.
+- `data/roster/workshop.json`: 114 passende onderdelen en expliciete spelprijzen voor de drie auto's zonder onderzoeksprijs. `cars.json` blijft onderzoeksdata. Geen Godzilla/SMX-varianten door de gekozen builds mengen.
+- `persistGarageState`/`restoreGarageState` zijn verplicht aan de opslaggrens. Root-build blijft Scirocco voor compatibiliteit; actieve V8 leeft in `garage.cars[id].build`. `garageSaveVersion=2`, automatische back-up vóór migratie. `save-codec.js` comprimeert grote meetreeksen verliesloos; volledige exports blijven gewone JSON. Lees saves via `EA888SaveCodec.parse`, niet rechtstreeks `JSON.parse` als meetdata nodig zijn.
 - Commits klein en logisch, elke stap gepusht; iedere bugfix krijgt een regressietest die het fysische of
   toestands-invariant uitdrukt (niet alleen "groen maken").
 
@@ -36,11 +37,14 @@ Lees dit eerst bij een nieuwe sessie (ook op een eigen server). Daarna `CLAUDE.m
 ## Commando's
 
 ```bash
-npm install                                   # esbuild, three, morphdom
+npm ci                                        # esbuild, three, morphdom, lz-string
 node tests/test_sim.js                        # alle simulatietests
 python3 tools/build_web.py --no-images        # build/web
 python3 tools/browser_smoke.py --assets build/web --dpr 1 --screenshots /tmp/shots --report /tmp/smoke.json
 python3 tools/car_preview.py --out /tmp/car   # 3D-auto van 6 kanten (rear, chase, side, front34, rear34, top)
+node tests/test_workshop.js                  # identiteit, onderdelen, migratie, vijf motoren, referentiefysica
+python3 tools/workshop_smoke.py              # kopen → shop → bench → tune → dyno → service → herstart
+python3 tools/workshop_storage_smoke.py      # zes volle meetgeschiedenissen, quota en beschadigde save
 ```
 
 - De smoke-test duurt ~25 min. `--dpr 1` op trage software-GL-hosts (headless 3D ~1 fps); met een echte GPU kan

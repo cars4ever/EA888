@@ -1,3 +1,76 @@
+# Voertuigen en werkplaats 1.30.0 — audit
+
+Uitgangscommit `ca84a3373f346fb68af5c1b3ef0d10929d681579`, schone werkboom op `claude-dev`. Herstelpunt buiten Git: `../work/workshop/backups/20261009T224617Z/` (status, lokale patch, configuratiearchief). Geen bereikbare gebruikerssaves op server/toestel; browsermigratie bewaart daarom een eigen kopie. Bestaande keystore, package-id, modellen en onderzoeksrecords zijn behouden. Onderstaande 1.29-sectie is de historische assetaudit; haar werkplaatsbeperking is in 1.30 opgeheven.
+
+## Koopbare en bewerkbare auto's
+
+Alle vijf gebruiken nu dezelfde werkplaatscyclus als Scirocco: onderdelen kopen/monteren, montagewaarden, zes benchtests, tune/ECU-tabellen, tuneradvies, dyno, race/replay, olie, revisie, lachgas en drie eigen buildslots. Model, sound en simulatie volgen de actieve carId. Een nieuwe dyno is vereist na motorwijzigingen. De motorweergave is een expliciet schematische V8; de garage/race gebruiken de bestaande afzonderlijke GLB's.
+
+| Auto | Gekozen werkplaatsvariant | Carrièreprijs | Herkomst prijs |
+| --- | --- | ---: | --- |
+| Jackstand 240SX coupé | LS 6.0, PRC 237, carburateur, Powerglide, nominale 225 hp wet-N2O | €12.231 | bestaande berekening uit onderzoek |
+| Lumberjack | turbo-LS, Precision 7675, C16; onbekende inhoud gemodelleerd als 6.0 | €6.602 | bestaande berekening uit onderzoek |
+| McFlurry | Coyote, single 76 mm, E85 als expliciete werkplaatsaanname | €95.000 | geschatte spelprijs |
+| Mullet | World Cup big block; onbekende interne maten gemodelleerd als 540ci | €200.000 | geschatte spelprijs |
+| Eagle | PLR/AJPE 564ci Hemi, twin 98 mm, methanol | €450.000 | geschatte spelprijs |
+
+Deze bedragen worden precies één keer afgeschreven; onvoldoende budget blokkeert de koop. Geen fictieve onderzoeksprijzen toegevoegd. Normaal startbudget blijft €50.000: Scirocco, Lumberjack en Jackstand passen daarin. De drie duurdere auto's zijn later koopbaar. QA blijft een apart profiel met €10.000.000 en alle vijf auto's; terugkeer naar carrière verandert geen carrièregeld.
+
+## Onderdelen en fysica
+
+`data/roster/workshop.json` breidt de bestaande database uit met 114 onderdelen en fitment voor LS, Coyote, BBC en Hemi. Bestaande passende turbo's, banden en overige generieke onderdelen worden hergebruikt. De shop, gebruikte aanbiedingen, presets, import, slots en tuneradvies controleren compatibiliteit. Blokpakketten sluiten de afzonderlijke krukas uit. Eigendom is per auto: een al gekocht onderdeel terugplaatsen is gratis. EA888-onderdelen verschijnen niet als passende V8-motoronderdelen.
+
+Fabrikantreferenties staan per pakket in de shop en in de dataset (PRC/Texas Speed, Proline, Steve Morris, Holley, FTI en VP). De bron voor TKM gaf HTTP 403; er is geen prijs uit gehaald. Pakketprijzen, flow-/nokkencurves, mechanische limieten en ontbrekende maten blijven **modelwaarden**, geen fabrikantcertificering of voertuigspecifieke meting. Geen complete andere bouwversie binnengesmokkeld: McFlurry blijft Coyote en Mullet blijft de gekozen big-blockvariant, niet Godzilla/SMX.
+
+Werkende fysische verschillen: acht cilinders, eigen geometrie/koppen/nokken, 8/16/32 poortinjectoren met regeldruk, carburateurcapaciteit met lagedrukaanvoer, C16 met afzonderlijke VP-eigenschappen, grotere olievulling/thermiek, converter en autogebonden overbrengingen. Pushrodmotoren krijgen geen fictieve VVT. Een atmosferische auto heeft nul boost, turbotoerental en turboslijtage; geen verzonnen compressormap. Jackstands turboconversie vereist eerst passende EFI en boostregeling. Brandstofcapaciteit en gemonteerde onderdelen begrenzen ook de racefysica.
+
+De speler rijdt vanaf deze versie met zijn **eigen berekende build**, niet met de onveranderlijke historische vermogenskromme. De eerste maps zijn bruikbare spelafstellingen, geen nieuwe historische calibratie. Ruisvrije basisdyno's: Jackstand 595,954 pk, Lumberjack 1.101,018 pk, McFlurry 1.528,008 pk, Mullet 3.175,536 pk, Eagle 3.645,872 pk. Die getallen kunnen door onderdelen/tune/slijtage veranderen en zijn geen claims over de echte auto's. Er is geen ET-aanpassing uitgevoerd om deze werkplaatsbuilds naar een echte timeslip te dwingen.
+
+De Scirocco stock/Randy-configuraties en vijf historische tegenstanderconfiguraties zijn tegen een uit `ca84a337` gemaakte fixture vergeleken: vermogen/koppel binnen 0,000001 en race-ET/trapsnelheid binnen 0,000000001. Ook de oude Scirocco-dynosignatuur blijft gelijk. `tests/fixtures/workshop-physics-baseline.json` bewaart die controle.
+
+## Saves en isolatie
+
+`garageSaveVersion=2` migreert idempotent. De Scirocco blijft de compatibele root-build en heeft `garage.scirocco`; elke V8 bewaart `garage.cars[carId].build`. Geld/career/settings blijven globaal; hardware, tune, montage, bench, olie, schade/slijtage, nitrous, dyno's, races, records en slots zijn per auto. Bestaande records, aankoopbedragen en defectstatus gaan mee. Een verkeerde opgeslagen build-identiteit kan de geselecteerde carId niet overschrijven; niet-passende onderdelen worden met melding hersteld. Onbekende IDs blijven bewaard en vallen zichtbaar terug naar Scirocco.
+
+Vóór de eerste migratie wordt `<storage_key>_before_workshop_v2` bewaard indien de browser ruimte heeft. Grote meetreeksen worden verliesloos gecomprimeerd met lokaal verpakte `lz-string` 1.5.0 (MIT). Het maximale testprofiel met zes auto's × 20 dyno's × 30 races neemt circa 3,01 miljoen localStorage-tekens in, tegenover 55 MB ongecomprimeerde UTF-16-JSON. Chromium heeft dit met nog een miljoen tekens extra back-up werkelijk opgeslagen en alle geschiedenissen na herstart hersteld. Geld/hardware blijven gewone JSON. Exports zijn volledige, ongecomprimeerde JSON-back-ups. Beschadigde saves worden niet stilzwijgend overschreven; de UI vraagt om herstel. Quotafouten geven een exportmelding.
+
+Wisselen sluit oude modals/undo en reset lokale bedieningswaarden. Late gebeurtenissen uit een andere werkplaats worden geweigerd. Tijdens actieve dyno/race/betaalde tunerjob kan niet worden gewisseld. Zo kan een bewerking geen andere auto aanpassen.
+
+## Verificatie en build
+
+Concrete test- en buildresultaten staan in `data/vehicle-assets/workshop-acceptance.json`. Bewijs blijft lokaal onder `reports/workshop-*`; grote videoframes en testprofielen worden niet aan Git toegevoegd. Relevante reproduceerbare opdrachten:
+
+```bash
+node tools/build_roster_data.js
+node tools/build_engine_data.js
+node tools/build_turbo_data.js
+node tests/test_sim.js
+python3 tools/build_web.py
+python3 tools/workshop_smoke.py
+python3 tools/workshop_storage_smoke.py
+python3 tools/vehicle_regression.py
+python3 tools/vehicle_smoke.py --cars crc12_jackstand_240 --out reports/workshop-first-chain --video
+python3 tools/vehicle_smoke.py --cars eagle,mullet,mcflurry,lumberjack --out reports/workshop-races --video
+python3 tools/browser_smoke.py --assets build/web --dpr 1 --screenshots reports/workshop-browser-shots --report reports/workshop-browser.json
+ANDROID_HOME=/home/scirockoe/android-sdk python3 tools/build_android.py --local-signing --skip-web
+```
+
+Web: `build/web/`. Release: `dist/EA888-Lab-1.30.0.apk` en `.aab`, versionCode 400, dezelfde ondertekening en package `nl.randy.ea888lab.stabl`. JS/CSS krijgen versie 1.30.0; er is geen service worker. De Android-startroute en volledig offline verpakte assets blijven behouden. Er is opnieuw geen draaiende EA888-webserver of vastgelegde externe gamepoort gevonden; Music Factory-poorten zijn niet gewijzigd.
+
+Platform van de UI-proeven: desktop Chromium en mobiele emulatie met SwiftShader. Geen echt Android-toestel, emulator of S24 Ultra getest. Het spelmodel blijft een vereenvoudiging (onder meer empirische slijtage, benaderde flow/knock, geen cilinderverschillen); de echte historische motorvermogens zijn geen garanties voor de nieuwe bewerkbare builds. De visuele benaderingen van 1.29 blijven in `VEHICLE_ASSET_BRIEFS.md` beschreven.
+
+Simulatiecontrole: **alle 30 suites plus de hoofdasserties en self-test geslaagd**. De lange verzamelopdracht werd na `physics_audit` met SIGTERM (143) beëindigd, zonder assertiefout. De resterende modules zijn vervolgens in twee begrensde deelruns voltooid (`reports/workshop-sim-batch-0.json` en `-1.json`), inclusief 18 nieuwe werkplaatschecks en de maximale referentiebuilds. De eerste baselinepoging kon niet volledig worden afgerond doordat de calibratiebronmatcher tijdens de ontwikkeling gewijzigde broncode las; de expliciete fixture uit uitgangscommit `ca84a337` levert de controle op vóór/na-resultaten.
+
+Werkelijke UI-resultaten: vijf auto's gekocht, per auto een passende kop gekocht en gratis teruggeplaatst, zes benchtests, zeven tunepanelen, volledige dyno, oliebeurt/revisie en herstart: geslaagd in 205,43 s. De brede browsertest is 145/145 groen, zonder paginafouten of onverwachte consolefouten. Mobiele regressie controleert ook stale events, foutfallback, snelle wissels, geïsoleerde materialen/resources, stuur-/wielrigs en V8-audio (5.850 ontstekingsevents).
+
+Jackstand is eerst afzonderlijk volledig getest. De afsluitende herhaling op de releasebuild staat in `reports/workshop-jackstand-release/smoke.json` (126,32 s; nul turboslijtage voor de atmosferische build). De vier overige auto's reden achtereenvolgens in één QA-profiel: `reports/workshop-races/smoke.json` (595,89 s). Alle races inclusief resultaat en replay, alle vijf showroomrondgangen en herstarts zijn geslaagd. Bekijk **`reports/workshop-release/index.html`** voor de vijf echte 360°-previews, raceclip, werkplaatsbeelden en rapportlinks.
+
+Pakketcontrole: 70/70 webbestanden byte-identiek in de APK; twaalf GLB's. Releasecertificaat onveranderd: `74a2076d8d964584dadcb233eb5cd832de144a92173a1c74e4092fa0b3f1affb`. APK SHA-256: `201b6327f828c97b480753b18dc0c20e92ce9e6d3a512230e96989ad64be3c78` (9.101.809 bytes). De bestaande SDK XML 3/4-waarschuwing blokkeerde de build niet. Signing en package/version zijn daadwerkelijk gecontroleerd.
+
+Commits: `bb88dbd` bevat onderdelen, fysica en migratiehelpers; `b7b5161` bevat UI, gecomprimeerde opslag, regressietools en versie 1.30.0; `31f679f` herstelt de voertuigidentiteit op de dynobank. De afsluitende documentatiecommit bevat dit rapport en de machineleesbare acceptatie. Alle grote testbeelden, tussenbestanden en APK's blijven buiten Git; de gebouwde APK staat in `dist/`.
+
+---
+
 # Voertuigintegratie 1.29.0 — audit
 
 Uitgangspunt: `540c0fbc7f331405f40600fca2b7c763eb738313`, branch `claude-dev`, werkboom aanvankelijk schoon. De actuele repository is `/home/scirockoe/projects/ea888/EA888`; de bovenliggende map is geen tweede projectkopie. Bestaande brondata en calibratie zijn behouden. Geen force/reset/clean/push of dependency-/driverupdates uitgevoerd.

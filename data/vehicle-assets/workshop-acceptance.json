@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "baselineCommit": "ca84a3373f346fb68af5c1b3ef0d10929d681579",
+  "sourceCommit": "31f679f8c5ca6554c6347097a7027cdb2d4ca9bd",
+  "branch": "claude-dev",
+  "version": {
+    "versionName": "1.30.0",
+    "versionCode": 400
+  },
+  "newParts": 114,
+  "cars": {
+    "crc12_jackstand_240": {
+      "variant": "LS 6.0 / PRC 237 / carburateur / Powerglide",
+      "family": "ls",
+      "priceEur": 12231,
+      "priceKind": "existing research cost calculation",
+      "model": "src/assets/models/crc12_jackstand_240.glb",
+      "modelSha256": "5d67ed707060c213e796c37f5303d1eae3874575ba8867a2688b32735698ae51",
+      "modelBytes": 524228,
+      "status": "buyable, editable workshop, full dyno/race/replay/restart passed",
+      "workshopPurchaseBenchTuneServiceRestart": true,
+      "headUpgradePaidOnce": 3875,
+      "benchChecks": 6,
+      "raceEt": 9.838065930373865,
+      "raceModel": "crc12_jackstand_240",
+      "replayModel": "crc12_jackstand_240",
+      "deviations": "Visual approximations unchanged: docs/VEHICLE_ASSET_BRIEFS.md; player engine output is modeled, not a historical dyno claim."
+    },
+    "lumberjack": {
+      "variant": "Turbo LS / Precision 7675 / C16 (inhoud gemodelleerd 6.0)",
+      "family": "ls",
+      "priceEur": 6602,
+      "priceKind": "existing research cost calculation",
+      "model": "src/assets/models/lumberjack.glb",
+      "modelSha256": "e1b8ccb9d622c9fcf5a3c2c204657f3a8479bbbb5397fdc03d83ea02116124d7",
+      "modelBytes": 555772,
+      "status": "buyable, editable workshop, full dyno/race/replay/restart passed",
+      "workshopPurchaseBenchTuneServiceRestart": true,
+      "headUpgradePaidOnce": 3875,
+      "benchChecks": 6,
+      "raceEt": 10.957084023835199,
+      "raceModel": "lumberjack",
+      "replayModel": "lumberjack",
+      "deviations": "Visual approximations unchanged: docs/VEHICLE_ASSET_BRIEFS.md; player engine output is modeled, not a historical dyno claim."
+    },
+    "mcflurry": {
+      "variant": "Coyote single 76 mm; geen Godzilla-combinatie",
+      "family": "coyote",
+      "priceEur": 95000,
+      "priceKind": "modeled game price",
+      "model": "src/assets/models/mcflurry.glb",
+      "modelSha256": "029c4512192a4e758c0affac059cc50a99e6fc04046822d88d881d566d955ca0",
+      "modelBytes": 582972,
+      "status": "buyable, editable workshop, full dyno/race/replay/restart passed",
+      "workshopPurchaseBenchTuneServiceRestart": true,
+      "headUpgradePaidOnce": 9375,
+      "benchChecks": 6,
+      "raceEt": 10.641475881912474,
+      "raceModel": "mcflurry",
+      "replayModel": "mcflurry",
+      "deviations": "Visual approximations unchanged: docs/VEHICLE_ASSET_BRIEFS.md; player engine output is modeled, not a historical dyno claim."
+    },
+    "mullet": {
+      "variant": "World Cup big block; 540ci internals als werkplaatsmodel",
+      "family": "bbc",
+      "priceEur": 200000,
+      "priceKind": "modeled game price",
+      "model": "src/assets/models/mullet.glb",
+      "modelSha256": "ba50d89cd46f939e96884870bd43cf13518552fd05608c0627757dffe05625d4",
+      "modelBytes": 398104,
+      "status": "buyable, editable workshop, full dyno/race/replay/restart passed",
+      "workshopPurchaseBenchTuneServiceRestart": true,
+      "headUpgradePaidOnce": 9375,
+      "benchChecks": 6,
+      "raceEt": 10.863029636782203,
+      "raceModel": "mullet",
+      "replayModel": "mullet",
+      "deviations": "Visual approximations unchanged: docs/VEHICLE_ASSET_BRIEFS.md; player engine output is modeled, not a historical dyno claim."
+    },
+    "eagle": {
+      "variant": "564ci Proline Hemi / twin 98mm / methanol",
+      "family": "hemi",
+      "priceEur": 450000,
+      "priceKind": "modeled game price",
+      "model": "src/assets/models/eagle.glb",
+      "modelSha256": "adcac57d44f690021f9b779cd0e0fa82d494abd1bbb1ec37c29b149b11b6d561",
+      "modelBytes": 480544,
+      "status": "buyable, editable workshop, full dyno/race/replay/restart passed",
+      "workshopPurchaseBenchTuneServiceRestart": true,
+      "headUpgradePaidOnce": 9375,
+      "benchChecks": 6,
+      "raceEt": 10.592656335921133,
+      "raceModel": "eagle",
+      "replayModel": "eagle",
+      "deviations": "Visual approximations unchanged: docs/VEHICLE_ASSET_BRIEFS.md; player engine output is modeled, not a historical dyno claim."
+    }
+  },
+  "saves": {
+    "garageSaveVersion": 2,
+    "backupSuffix": "_before_workshop_v2",
+    "codec": "packaged lz-string 1.5.0, lossless telemetry fields",
+    "normalStartCash": 50000,
+    "isolatedQaCash": 10000000,
+    "storageStress": {
+      "ok": true,
+      "platform": "Chromium localStorage, isolated origin",
+      "corruptBytesPreserved": true,
+      "storedCharacters": 3012777,
+      "additionalBackupCharacters": 1000000,
+      "counts": {
+        "active": "crc12_jackstand_240",
+        "bank": 10000000,
+        "scirocco": [
+          20,
+          30
+        ],
+        "cars": {
+          "eagle": [
+            20,
+            30
+          ],
+          "mullet": [
+            20,
+            30
+          ],
+          "mcflurry": [
+            20,
+            30
+          ],
+          "lumberjack": [
+            20,
+            30
+          ],
+          "crc12_jackstand_240": [
+            20,
+            30
+          ]
+        }
+      }
+    }
+  },
+  "tests": {
+    "simulation": {
+      "ok": true,
+      "moduleCount": 30,
+      "foundationAssertions": true,
+      "selfTest": true,
+      "completedPrefixModules": [
+        "test_dyno_result.js",
+        "test_turbo_map.js",
+        "test_antilag.js",
+        "test_engine.js",
+        "test_vehicle.js",
+        "test_career.js",
+        "test_audio.js",
+        "test_tyres.js",
+        "test_advice.js",
+        "test_phase8.js",
+        "test_phase9.js",
+        "test_phase10.js",
+        "test_physics_audit.js"
+      ],
+      "completedBatchModules": [
+        "test_tuner.js",
+        "test_compound.js",
+        "test_parts_data.js",
+        "test_swaps.js",
+        "test_grip.js",
+        "test_max_builds.js",
+        "test_roster_data.js",
+        "test_converter.js",
+        "test_timing.js",
+        "test_roster_runtime.js",
+        "test_roster_calibration.js",
+        "test_roster_opponents.js",
+        "test_parts_catalog.js",
+        "test_economy.js",
+        "test_garage.js",
+        "test_workshop.js",
+        "test_save_codec.js"
+      ],
+      "note": "The single coordinator was interrupted by SIGTERM (exit 143) after physics_audit; all remaining modules and selfTest completed successfully in two bounded batches. No sim assertion failed in this final run.",
+      "baselineNote": "Initial baseline attempt did not finish: the calibration source matcher saw concurrently changed source. Exact pre-change stock/Randy and five reference-opponent fixtures were therefore taken directly from baseline commit and are regression-tested."
+    },
+    "workshopChecks": 18,
+    "browserChecks": 145,
+    "browserOk": true,
+    "unexpectedBrowserErrors": [],
+    "mobileOk": true,
+    "fiveWorkshopFlows": true,
+    "jackstandReleaseRunSeconds": 126.32126474380493,
+    "otherFourRunsSeconds": 595.8933970928192,
+    "identityLabels": true
+  },
+  "package": {
+    "ok": true,
+    "filesIdentical": 70,
+    "glbCount": 12,
+    "apk": "dist/EA888-Lab-1.30.0.apk",
+    "apkBytes": 9101809,
+    "apkSha256": "201b6327f828c97b480753b18dc0c20e92ce9e6d3a512230e96989ad64be3c78",
+    "aabSha256": "d417fe52e0389fecae8ac8098322e284c3563834252cc400c1bba63aeaf58bfc",
+    "package": "nl.randy.ea888lab.stabl",
+    "versionName": "1.30.0",
+    "versionCode": 400,
+    "certificateSha256": "74a2076d8d964584dadcb233eb5cd832de144a92173a1c74e4092fa0b3f1affb"
+  },
+  "evidenceIndex": "reports/workshop-release/index.html",
+  "platform": "desktop Chromium and mobile emulation with SwiftShader; no Android device or emulator tested",
+  "limitations": [
+    "Estimated component curves, prices and unknown internal dimensions are explicitly labeled; player builds are not new measured specifications.",
+    "Schematic V8 engine view; individual vehicle GLBs unchanged from the accepted 1.29 models.",
+    "No EA888 webserver/start port found on this server; other projects were left unchanged."
+  ],
+  "logSha256": {
+    "reports/workshop-full-sim.log": "359ffbe3b00db06efe312762732b119ed3f4957379ebba091826cf557995acd0",
+    "reports/workshop-sim-batch-0.json": "f16ce46ce4352965169d023be62f6dce7443d670719af082b8b1ac7f5967d888",
+    "reports/workshop-sim-batch-1.json": "1878dec5a8e4f8801282ca1e0b97c9b0a91b66dbd1204e3364169b1c57a7bc81",
+    "reports/workshop-regression.log": "55f76c3680f4a975e2ebd8955a330d9c9db7b178cc1720ce702fdef96e65f889",
+    "reports/workshop-save-codec.log": "84b86bb77b4d9d247b7a87dbbd7bec7981e88ee9b705f0d9bc38dbb6928ebfc7",
+    "reports/workshop-ui/report.json": "1eab6ba8f55891b0962c60537941646f86f95abaf910334624a9187634439926",
+    "reports/workshop-storage/report.json": "194feb9c6172a24b3053b9137c4243f7ec465189fb458778ef21afc20726d60c",
+    "reports/workshop-browser.json": "03f28cd8281ed3ad3efcead4ee599158c6f7b2522d3fe4739908bbc0fbf33ae3",
+    "reports/vehicle-regression/report.json": "edcae699e1996e3ab7f9dd6f03e2a5098069a2a3dea7a2e139aa6514472bf751",
+    "reports/workshop-jackstand-release/smoke.json": "800450fe7c4aee4b2ede5d2d968e2f36046e9574ff25eeec1c46af115da1d23f",
+    "reports/workshop-races/smoke.json": "a2c01ff0ca023ab71a1f56645a56dbf56c47d06f43789e2b2cdddeaf33d3e9d8",
+    "reports/workshop-labels.json": "2a466d5dc66f3b3d29341fec5df551500752f921fec9b8d62bc8a9be84248f29",
+    "reports/workshop-assets.log": "36e514f1f43c18d00dc86a63a0999b107af0badf09cce09a05e9754adfb4a5c2",
+    "reports/workshop-package.json": "0b521828a3ff7cec2d0d542ac2bd401aae003b1e930018da8ebdabaf8e9b1664",
+    "reports/workshop-web-build.log": "c13a57c87e99eebe3d3a9a4b2d98fe6341c4aef9070e4a3ffa78a447e7e97538",
+    "reports/workshop-android-build.log": "3b8e7addc393c141a5cc99a4a2196ed684ed11e7a03c77363716e86b44848dad"
+  }
+}

@@ -1339,3 +1339,12 @@ Jackstand is eerst door reconstructie, reparatie, showroom, save, burnout/stagin
 Nieuwe carrière begint met bevestigde autokeuze en één betaling; bestaande saves slaan die stap over. Afzonderlijk QA-profiel met €10 miljoen op verzoek van de gebruiker. Rosterwerkplaats voorkomt mutaties aan de Scirocco. V8-profiel in bestaande audiosynthese, ook synthetische PCM-fallback. Geen wijziging aan specs, onderzoeksprijzen of fysieke formules.
 
 Buildherstel: een afgebroken keystorepad bij het plakken gaf een generieke Gradle-signingfout. `python3 tools/build_android.py --local-signing` leest nu expliciet de bestaande sleutel en metadata buiten de repo, ook als er nog verkeerde signing-exports staan. Ongeldige paden stoppen vóór de webbuild. Drie gerichte signingtests en de volledige ondertekende releasebuild zijn geslaagd; webinhoud, package-id en certificaat blijven gelijk. Bewijs: `reports/release-signing-recovery.json` en `.log`.
+
+
+## 36. Vijf koopbare, afzonderlijke werkplaatsen — 1.30.0
+
+De vijf nieuwe auto's waren zichtbaar en berijdbaar, maar Motor/Tune/Dyno werkten nog met een blokkade en de speler reed een vaste onderzoekskromme. Elke auto heeft nu een eigen bewerkbare build en gebruikt de bestaande fysieke motor-, dyno- en raceruntime. 114 onderdelen voor LS/Coyote/BBC/Hemi met fitment, fabrikantreferenties en expliciete modelaannames; carburateur, port-EFI, C16, converter, olievulling en achtcilinderbenchtests hebben passend gedrag. De oude onderzoeksrecords en tegenstanderconfiguraties blijven ongewijzigd.
+
+Eagle, Mullet en McFlurry krijgen duidelijk gemarkeerde geschatte spelprijzen; Lumberjack/Jackstand behouden hun bronberekening. Geen dubbele afschrijving bij koop of terugplaatsen. Normale starters blijven binnen €50.000; QA blijft apart met €10 miljoen. Garage-saveversie 2 bewaart hardware, tune, slijtage, meetreeksen en slots per auto. Migratiebackup, stale-event/undo-beveiliging en verliesloze telemetrycompressie voorkomen verkeerde mutaties en te grote saves.
+
+Gerichte tests bestrijken alle vijf fysieke dyno's/races, koop/onderdelen/tune/bench/service/herstart, save-migratie, identiteitsherstel, volle meetgeschiedenis, beschadigde saves en ongewijzigde Scirocco-/tegenstanderresultaten. Werkelijke logs, beelden, build/certificaat en platformgrenzen: `VEHICLE_AUDIT.md` en `data/vehicle-assets/workshop-acceptance.json`. Release gebruikt de bestaande lokale signing key; geen installatieverwijdering of nieuwe package vereist.

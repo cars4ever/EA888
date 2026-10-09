@@ -12,7 +12,31 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
-## Unreleased (after v1.28.0) — phase 2: buy parts, buy real cars, race them
+## v1.30.0 — five complete vehicle workshops
+
+Eagle, Mullet, McFlurry, Lumberjack and Jackstand can all be bought and built alongside
+the Scirocco. Each has its own fitted parts, assembly, bench tests, tune, dyno, service,
+wear, nitrous bottle, build slots and race records. The shop adds 114 LS/Coyote/BBC/Hemi
+parts and filters incompatible hardware. Player output now follows the actual fitted
+motor and fuel system; historical research/opponent curves remain separate.
+
+New prices without research evidence are explicitly game estimates. Normal careers
+still begin with €50,000; the separate vehicle QA profile has €10 million and all five
+cars. Existing saves migrate with a backup, keeping Scirocco and every owned car.
+Large telemetry histories are compressed losslessly in storage; full backup files stay JSON.
+
+Build: `python3 tools/build_android.py --local-signing` using the existing server key.
+APK: **`dist/EA888-Lab-1.30.0.apk`**, web: `build/web/`.
+See [the current handoff](docs/HANDOFF.md) and [vehicle/workshop audit](docs/VEHICLE_AUDIT.md)
+for tests, source assumptions and remaining platform limitations. The release history below
+describes earlier behavior; the old restrictions on these five workshops no longer apply.
+
+## v1.29.0 — five individual 3D cars and new-career selection
+
+Separate Hunyuan/Blender GLBs, wheel rigs, PBR, showroom, player/opponent/replay identity,
+V8 combustion synthesis, and confirmed starter selection. Details: `docs/VEHICLE_AUDIT.md`.
+
+## Historical phase 2 (after v1.28.0): buy parts, buy real cars, race them
 
 - **Buying parts (career mode, default).** Fitting a part you do not own buys it at its price; parts you own swap
   back for free; presets and build slots pay for their missing parts first (refused with the shortfall). A save
