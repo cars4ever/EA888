@@ -174,6 +174,10 @@
     return map;
   }
   function getMap(id) {
+    // An atmospheric engine has no compressor map. Keep a distinct identity so the
+    // dyno and transient race runtime cannot silently substitute the OEM K03.
+    if (id === 'ws_na') return { id, name: 'Atmosferisch', naturallyAspirated: true,
+      mapType: 'not-applicable', maxShaftRpm: 1, inertia: 0, source: {} };
     if (!(id in compiled)) compiled[id] = compileMap(id);
     return compiled[id];
   }
@@ -283,6 +287,19 @@
   // rotor-inertia-limited transient from prevShaftRpm over dtS seconds.
   function matchEngine(ctx, target) {
     const map = ctx.map;
+    if (map.naturallyAspirated) {
+      const manifoldK = ctx.ambientK + 5;
+      const flow = ctx.airflowAt(0, manifoldK), lb = flow * LBMIN_PER_KGS;
+      const emp = ctx.baroBar + 0.025 * flow * flow;
+      return { boostBar: 0, targetBoostBar: 0, limitedBy: 'naturally-aspirated', surge: false,
+        shaftRpm: 0, shaftSpeedPct: 0, pressureRatio: 1, correctedFlowLbMin: lb,
+        massFlowLbMin: lb, massFlowKgS: flow, compressorEff: 1,
+        compressorOutC: ctx.ambientK - 273.15, manifoldC: manifoldK - 273.15,
+        surgeMarginPct: 100, chokeMarginPct: 100, compressorKw: 0, turbineKw: 0,
+        empBarAbs: emp, turbineOutBarAbs: emp, expansionRatio: 1,
+        wastegatePct: 0, wastegateFlowKgS: 0, exhaustFlowKgS: flow,
+        t3C: ctx.exhaustTempK(0) - 273.15 };
+    }
     const ev = makeEvaluator(ctx);
     const B0 = Math.max(0, target.targetBoostBar);
     let B = B0, limitedBy = 'target';

@@ -26,6 +26,13 @@
       "refFlowLbMin": 180,
       "lossBarAtRef": 0.12,
       "filterLossBarAtRef": 0.02
+    },
+    "ws_na_air": {
+      "pipeMm": 102,
+      "restriction": 0.2,
+      "refFlowLbMin": 100,
+      "pressureDropBar": 0,
+      "mapType": "modeled"
     }
   },
   "exhaust": {
@@ -53,6 +60,46 @@
     "open_headers_5": {
       "pipeMm": 127,
       "restriction": 0.35
+    },
+    "ws_ls_exhaust_base": {
+      "pipeMm": 127,
+      "restriction": 0.35,
+      "mapType": "modeled"
+    },
+    "ws_ls_exhaust_race": {
+      "pipeMm": 127,
+      "restriction": 0.25,
+      "mapType": "modeled"
+    },
+    "ws_coyote_exhaust_base": {
+      "pipeMm": 127,
+      "restriction": 0.35,
+      "mapType": "modeled"
+    },
+    "ws_coyote_exhaust_race": {
+      "pipeMm": 127,
+      "restriction": 0.25,
+      "mapType": "modeled"
+    },
+    "ws_bbc_exhaust_base": {
+      "pipeMm": 127,
+      "restriction": 0.35,
+      "mapType": "modeled"
+    },
+    "ws_bbc_exhaust_race": {
+      "pipeMm": 127,
+      "restriction": 0.25,
+      "mapType": "modeled"
+    },
+    "ws_hemi_exhaust_base": {
+      "pipeMm": 127,
+      "restriction": 0.35,
+      "mapType": "modeled"
+    },
+    "ws_hemi_exhaust_race": {
+      "pipeMm": 127,
+      "restriction": 0.25,
+      "mapType": "modeled"
     }
   },
   "wastegate": {
@@ -84,6 +131,12 @@
     "triple_60_compound": {
       "flowLbMin": 150,
       "shaftSpeedSensor": true
+    },
+    "ws_no_boost": {
+      "flowRatio": 0,
+      "flowLbMin": 0,
+      "springBar": 0,
+      "mapType": "not-applicable"
     }
   },
   "fuelStoichAfr": {

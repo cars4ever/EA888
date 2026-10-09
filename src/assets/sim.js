@@ -130,6 +130,11 @@
     { id: 'poly_mounts', name: 'Poly motor/bak-steunen + subframebussen', detail: 'Motor-, bak- en pendelsteun in poly en stijvere subframe- en draagarmbussen: de aandrijflijn blijft op zijn plek, wheel hop dooft uit.', specs: 'Poly 80A/90A · subframe + draagarmbussen · pendelsteun 90A', price: 520, hopStiffness: 2.8, hopDamping: 4.2, nvhWear: 0.05, visualKey: 'oem' },
     { id: 'solid_race', name: 'Massieve race-steunen + gelaste subframemounts', detail: 'Geen rubber meer: de motor staat vast en hop krijgt geen kans, maar elke trilling gaat de carrosserie en de bak in.', specs: 'Aluminium/massief · solid subframe · race-only', price: 1180, hopStiffness: 5, hopDamping: 7, nvhWear: 0.12, visualKey: 'oem' }
   ] });
+  const WORKSHOP = RosterData?.workshop || { cars: {}, parts: {}, shared: {} };
+  for (const cat of RAW_CATEGORIES) for (const p of WORKSHOP.parts[cat.id] || []) {
+    const base = p.base ? cat.items.find(i => i.id === p.base) : null;
+    cat.items.push({ ...base, ...p });
+  }
   const CATEGORIES = RAW_CATEGORIES.map(c => ({ ...c, items: c.items.map(p => ({ ...METRIC_DEFAULTS, ...p })) }));
   const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
   // prettier-ignore
@@ -367,7 +372,35 @@
   }
   function drivelineFor(state, trans = transmissionFor(state)) {
     const rc = state && state.rosterCar && state.rosterCar.transmission;
+    if (trans.converterStallRpm) return { type: 'converter', converter: converterSpec({
+      stallRpm: Number(state.tune.converterStallRpm || trans.converterStallRpm),
+      torqueNm: trans.converterTorqueNm, torqueRatio: trans.converterTorqueRatio || 2
+    }) };
     return (rc && rc.driveline) || DRIVELINE[trans.id] || DRIVELINE.oem_6mt;
+  }
+  function workshopSource(id) { return WORKSHOP.sources?.[id] || null; }
+  function workshopDefinition(state) { return WORKSHOP.cars[state?.workshopCarId] || null; }
+  function compatibleParts(state, categoryId) {
+    const def = workshopDefinition(state), items = CATEGORY_MAP[categoryId]?.items || [];
+    if (!def) return items.filter(p => !p.workshopOnly);
+    return items.filter(p => p.cars?.includes(state.workshopCarId) || p.families?.includes(def.family) ||
+      (WORKSHOP.shared[categoryId] || []).includes(p.id));
+  }
+  function categoriesFor(state) { return CATEGORIES.map(c => ({ ...c, items: compatibleParts(state, c.id) })).filter(c => c.items.length); }
+  function selectionCompatibility(state, selections) {
+    for (const [cat, id] of Object.entries(selections || {})) {
+      if (cat === 'turboHp') {
+        if (id && workshopDefinition(state)) return { ok: false, reason: 'Dit voertuig gebruikt single of parallel twin turbo; geen universele compound-conversie.' };
+        continue;
+      }
+      if (!compatibleParts(state, cat).some(p => p.id === id)) return { ok: false, reason: `Onderdeel ${id} past niet bij de actieve motorfamilie (${cat}).` };
+    }
+    if (selections.boostControl === 'ws_no_boost' && selections.turbo && selections.turbo !== 'ws_na') return {ok:false,reason:'Monteer passende wastegates/boostcontrol voordat je een turbo monteert.'};
+    if (selections.fuelSystem === 'ws_ls_carb' && selections.turbo && selections.turbo !== 'ws_na')
+      return { ok: false, reason: 'Deze carburateur is atmosferisch. Monteer eerst de passende EFI-conversie voor een turbo.' };
+    if (selections.fuelSystem === 'ws_ls_carb' && selections.fuel && !['ron98','ws_c16'].includes(selections.fuel))
+      return { ok: false, reason: 'Deze carburateur is voor benzine. Voor ethanol/methanol is een geschikte brandstofconversie nodig.' };
+    return { ok: true };
   }
   function compoundHpMap(state) {
     const c = compoundHp(state);
@@ -376,7 +409,7 @@
   function getPart(state, categoryId) {
     const cat = CATEGORY_MAP[categoryId];
     if (!cat) throw new Error(`Unknown category ${categoryId}`);
-    return cat.items.find(x => x.id === state.selections[categoryId]) || cat.items[0];
+    return cat.items.find(x => x.id === state.selections[categoryId]) || compatibleParts(state, categoryId)[0] || cat.items[0];
   }
   function normalizeState(input, opts = {}) {
     const base = blankState();
@@ -414,7 +447,16 @@
     s.version = 12;
     // v1.3.0 generic turbos were replaced by the Precision catalogue: map old ids to the nearest model.
     if (LEGACY_TURBO_IDS[s.selections.turbo]) s.selections.turbo = LEGACY_TURBO_IDS[s.selections.turbo];
-    for (const cat of CATEGORIES) if (!cat.items.some(x => x.id === s.selections[cat.id])) s.selections[cat.id] = cat.items[0].id;
+    const workshop = workshopDefinition(s);
+    for (const cat of CATEGORIES) {
+      const valid = compatibleParts(s,cat.id);
+      if (!valid.some(x => x.id === s.selections[cat.id])) {
+        s.selections[cat.id] = workshop?.selections[cat.id] || cat.items[0].id;
+        if (workshop) { s.tune.ecu=null; s.vehicleSelectionNotice='Een niet-passend of onbekend onderdeel is vervangen door de basisuitvoering van deze auto.'; }
+      }
+    }
+    if (workshop && workshop.family !== 'coyote') s.tune.vvtEnabled = false;
+    if (workshop && s.rosterCar) s.rosterCar.pumpFuel = ['ron95','ron98'].includes(s.selections.fuel);
     // 1.12 compound kits (a separate category) became a second turbo from the turbo list
     if (s.selections.compound) {
       const legacy = { compound_k04: 'k04', compound_g25: 'g25' }[s.selections.compound];
@@ -440,7 +482,7 @@
       s.tune.ecu = {
         ...e,
         boost: e.edited?.boost ? e.boost : legacyBoostTable(t),
-        lambda: e.edited?.lambda ? e.lambda : legacyLambdaTable(t),
+        lambda: e.edited?.lambda ? e.lambda : legacyLambdaTable(t, !!getPart(s, 'turbo').naturallyAspirated),
         cam: e.edited?.cam ? e.cam : legacyCamTable(t),
         quickKey: quickSetupKey(t)
       };
@@ -462,7 +504,7 @@
   // fourth by default), but the ECU calibration is built from all the gear rows and the trims still move
   // the measured figure - by about a horsepower, but measurably. Excluding them would make the signature
   // claim something the model does not do.
-  const RACE_ONLY_TUNE = Object.freeze({
+  const RACE_ONLY_TUNE = Object.freeze({ converterStallRpm: undefined,
     als: undefined, tractionControl: undefined, tcSlipPct: undefined, tcAggressionPct: undefined,
     gearRatios: undefined, finalDrive: undefined, gearSpreadPct: undefined, launchRpm: undefined
   });
@@ -640,7 +682,7 @@
         0.2,
         1.05 +
           a.bearingScore * 1.25 +
-          (s.service.liters - 4.1) * 0.28 +
+          (normalizedOilLevel(s) - 4.1) * 0.28 +
           (s.assembly.oilPrimed ? 0.45 : -1.1) -
           s.damage.engine * 0.015 +
           (rand() - 0.5) * 0.12
@@ -663,13 +705,13 @@
         spread = ((max - min) / max) * 100;
       score = clamp(100 - spread * 5 - Math.max(0, 9.5 - min) * 12, 0, 100);
       status = score >= 80 ? 'pass' : score >= 60 ? 'warn' : 'fail';
-      summary = `spreiding ${spread.toFixed(1)}% over vier cilinders`;
+      summary = `spreiding ${spread.toFixed(1)}% over ${cylCount} cilinders`;
       values = cylinders.map((v, i) => [`Cilinder ${i + 1}`, `${v.toFixed(1)} bar`]);
     } else if (id === 'leakdown') {
       const base = 3.0 + (1 - a.ringScore) * 9 + s.wear.engine * 0.1 + s.damage.engine * 0.3 + a.ringWideRisk * 4;
       const cyl = [];
-      for (let i = 0; i < 4; i++) cyl.push(Math.max(1, base + (rand() - 0.5) * 2.0 + (i === 0 ? s.damage.engine * 0.05 : 0)));
-      const avg = cyl.reduce((x, y) => x + y, 0) / 4,
+      for (let i = 0; i < g.cylinders; i++) cyl.push(Math.max(1, base + (rand() - 0.5) * 2.0 + (i === 0 ? s.damage.engine * 0.05 : 0)));
+      const avg = cyl.reduce((x, y) => x + y, 0) / g.cylinders,
         max = Math.max(...cyl);
       score = clamp(105 - avg * 4 - max * 1.2, 0, 100);
       status = max < 9 ? 'pass' : max < 15 ? 'warn' : 'fail';
@@ -817,8 +859,10 @@
       1
     );
   }
+  function oilCapacity(state) { return Number(getPart(state, 'oiling').oilCapacityL) || 4.6; }
+  function normalizedOilLevel(state) { return Number(state.service.liters) * (4.6 / oilCapacity(state)); }
   function calculateOilPressure(rpm, oilTemp, state, oiling, oil, filter, assembly = null) {
-    const liters = Number(state.service.liters),
+    const liters = normalizedOilLevel(state),
       levelFactor =
         liters < 4.1 ? clamp(0.55 + (liters - 3.5) * 0.75, 0.42, 1) : liters > 5.0 ? clamp(1 - (liters - 5.0) * 0.18, 0.82, 1) : 1,
       tempVisc = clamp(1.22 - Math.max(0, oilTemp - 90) * 0.0082, 0.48, 1.22),
@@ -974,7 +1018,7 @@
   // Power the compressor can flow at its choke limit (reference conditions).
   function turboFlowCapacityHp(turboId) {
     const map = Turbo.getMap(turboId);
-    return map ? map.wMax * HP_PER_LBMIN_AIR : 10000;
+    return map && !map.naturallyAspirated ? map.wMax * HP_PER_LBMIN_AIR : 10000;
   }
 
   // ---- Dyno result model ---------------------------------------------------
@@ -1179,7 +1223,9 @@
       crankcase = getPart(s, 'crankcase');
     const geometry = engineGeometry(s);
     const geo = Engine.makeGeometry({ boreMm: geometry.boreMm, strokeMm: geometry.strokeMm, rodMm: geometry.rodMm, compressionRatio: geometry.compressionRatio, cylinders: geometry.cylinders });
-    const headData = Engine.DATA.heads[head.id] || Engine.DATA.heads.oem_head;
+    const rawHead = Engine.DATA.heads[head.id] || Engine.DATA.heads.oem_head;
+    const cam = getPart(s, 'valvetrain');
+    const headData = cam.camRpmShift ? { ...rawHead, tuneRpm: rawHead.tuneRpm + cam.camRpmShift } : rawHead;
     const fuelSpec = fuelSpecFor(s);
     const fuel = Engine.fuelBlend(fuelSpec);
     const fuelSys = Engine.DATA.fuelSystems[s.selections.fuelSystem] || Engine.DATA.fuelSystems.oem_fuel;
@@ -1194,7 +1240,7 @@
       fuelSys,
       twinScroll: !!turboMap?.source?.turbine?.twinScroll || /twin-scroll/i.test(`${turbo.specs} ${turbo.name}`),
       // runners/plenum raise VE a little beyond the head's own breathing
-      veScale: 1 + (Number(manifold.intakeFlow || 1) - 1) * 0.45,
+      veScale: (1 + (Number(manifold.intakeFlow || 1) - 1) * 0.45) * Number(cam.camVeScale || 1),
       // hot viscosity relative to a 5W-40, plus crankcase vacuum (less windage and ring drag)
       viscosityFactor: (oil ? oil.hotViscosity / 0.94 : 1),
       extraFmepBar: crankcase.vacuumKpa < 0 ? -0.08 : 0,
@@ -1213,9 +1259,9 @@
     return Array.from({ length: ECU_GEARS }, (_, g) => legacyBoostRow(tune, g === 0 ? g1 : g === 1 ? g2 : 1));
   }
   // Lambda: near stoichiometric off boost, enriching to the full-load target (component protection).
-  function legacyLambdaTable(tune) {
+  function legacyLambdaTable(tune, naturallyAspirated = false) {
     const wot = clamp(Number(tune.lambda || 0.8), 0.6, 1.05);
-    return ECU_LOAD_AXIS.map(load => ECU_RPM_AXIS.map(rpm => round(load <= 1.1 ? 0.98 : load >= 1.9 ? wot : 0.98 + (wot - 0.98) * ((load - 1.1) / 0.8), 3)));
+    return ECU_LOAD_AXIS.map(load => ECU_RPM_AXIS.map(rpm => round(naturallyAspirated ? (load >= 0.8 ? wot : 0.98) : load <= 1.1 ? 0.98 : load >= 1.9 ? wot : 0.98 + (wot - 0.98) * ((load - 1.1) / 0.8), 3)));
   }
   function legacyCamTable(tune) {
     const adv = tune.vvtEnabled === false ? 0 : clamp(Number(tune.intakeCamAdvanceDeg ?? 8), -5, 42);
@@ -1259,7 +1305,7 @@
       rpmAxis: ECU_RPM_AXIS.slice(),
       loadAxis: ECU_LOAD_AXIS.slice(),
       boost: legacyBoostTable(t),
-      lambda: legacyLambdaTable(t),
+      lambda: legacyLambdaTable(t, !!getPart(s, 'turbo').naturallyAspirated),
       cam: legacyCamTable(t),
       spark: null,
       sparkTrimDeg: 0,
@@ -1394,7 +1440,7 @@
     const wearTotal = state.wear.engine * 0.72 + state.wear.turbo * 0.18 + state.damage.engine * 0.9 + state.damage.turbo * 0.35,
       wearFactor = 1 - clamp(wearTotal / 230, 0, 0.32),
       health = oilHealth(state),
-      oilLevel = Number(state.service.liters),
+      oilLevel = normalizedOilLevel(state),
       levelFilm = oilLevel < 4 ? clamp(0.45 + (oilLevel - 3.4) * 0.9, 0.35, 1) : oilLevel > 5.15 ? 0.93 : 1;
     const oilFilm = oil.film * health * levelFilm * (0.8 + oiling.oilControl * 0.2) * (0.86 + crankcase.crankcaseControl * 0.14),
       curve = [];
@@ -1540,7 +1586,7 @@
       const loss = dynoLossKw(state, rpm, rawHp / 1.359622, dynoGear);
       const wheelHp = Math.max(0, rawHp - loss.lossKw * 1.359622);
       const fuelDutyPct = Math.max(fd.dutyPct, fd.diDutyPct, fd.hpfpDutyPct, fd.mpiDutyPct);
-      const railBar = fd.railBar ?? (hw.fuelSys.mpiPressureBar || 4);
+      const railBar = fd.railBar ?? (hw.fuelSys.carburetor || hw.fuelSys.pressureControlled ? tune.railTargetBar : (hw.fuelSys.mpiPressureBar || 4));
       const turboLoadPct = Math.max(tp.shaftSpeedPct, tp.hpShaftPct || 0, 100 - tp.chokeMarginPct),
         shaftLimit = turboMap.maxShaftRpm,
         turboShaftRpm = tp.shaftRpm,
@@ -1549,13 +1595,14 @@
       // Turbine-inlet temperature: engine-out gas plus any spool-assist energy released in the manifold.
       const egtC = tp.t3C,
         bmepBar = op.bmepBar;
+      const heatPower = rawHp * (workshopDefinition(state) ? 4.6 / oilCapacity(state) : 1);
       const oilTempC =
           88 +
-          rawHp * (0.108 - oiling.oilCooling * 0.067) * heatSoak +
+          heatPower * (0.108 - oiling.oilCooling * 0.067) * heatSoak +
           Math.max(0, meanPistonSpeed - 22) * 1.8 +
           spoolAssist.spoolHeat * 16 +
           Math.max(0, oil.drag - 1) * 90 -
-          Math.max(0, rawHp - 700) * oiling.oilCooling * 0.028,
+          Math.max(0, heatPower - 700) * oiling.oilCooling * 0.028,
         oilPressureBar = calculateOilPressure(rpm, oilTempC, state, oiling, oil, filter, assembly),
         oilAerationPct = clamp(
           Math.max(0, oilLevel - 5) * 22 +
@@ -1802,14 +1849,14 @@
     );
     addWarning(
       warnings,
-      state.service.liters < 4.1,
+      normalizedOilLevel(state) < 4.1,
       `Oliepeil ${state.service.liters.toFixed(1)} L is te laag voor harde pulls.`,
       'danger',
       'olie'
     );
     addWarning(
       warnings,
-      state.service.liters > 5.1,
+      normalizedOilLevel(state) > 5.1,
       `Oliepeil ${state.service.liters.toFixed(1)} L kan windage/schuim veroorzaken.`,
       'warn',
       'olie'
@@ -1860,8 +1907,8 @@
     );
     addWarning(
       warnings,
-      turbo.compressorMm >= 94 && spoolAssist.id === 'none',
-      `${turbo.compressorMm}-mm turbo zonder spool assistance heeft op 2,0 liter een zeer smalle bruikbare powerband.`,
+      geometry.displacementL < 3 && turbo.compressorMm >= 94 && spoolAssist.id === 'none',
+      `${turbo.compressorMm}-mm turbo zonder spool assistance heeft op ${geometry.displacementL.toFixed(1)} liter een zeer smalle bruikbare powerband.`,
       'warn',
       'turbo'
     );
@@ -2001,6 +2048,7 @@
       damage = dynoFailureDamage(abort && abort.kind !== 'operator' && abort.code !== 'engine_destroyed' ? abort : null),
       airDensityKgM3 = 1.204 * airDensityFactor;
     // A partial peak is only quoted when enough of the pull was observed.
+    if (turbo.naturallyAspirated) { wear.turbo=0; damage.turbo=0; }
     const quotePeak = completed || summary.sampleCount >= DYNO_MIN_PARTIAL_SAMPLES;
     const plannedSamples = Math.floor((revLimit - DYNO_START_RPM) / DYNO_STEP_RPM) + 1;
     return {
@@ -2055,7 +2103,7 @@
       oilFilm,
       turboId: turbo.id,
       turboName: turbo.name,
-      turboMapType: turboMap.source.mapType,
+      turboMapType: turboMap.naturallyAspirated ? 'not-applicable' : turboMap.source.mapType,
       compressorMm: turbo.compressorMm,
       displacementCc: geometry.displacementCc,
       boreMm: geometry.boreMm,
@@ -2168,6 +2216,12 @@
     // a roster car races at its own weight (with driver), from the research or derived from it
     if (state.rosterCar && Number.isFinite(state.rosterCar.massKg)) return state.rosterCar.massKg;
     const vehicle = state.vehicle;
+    const def = workshopDefinition(state);
+    if (def) {
+      const delta = CATEGORIES.reduce((sum, cat) => sum + Number(getPart(state, cat.id).massDeltaKg || 0)
+        - Number(cat.items.find(p => p.id === def.selections[cat.id])?.massDeltaKg || 0), 0);
+      return Math.max(750, Number(vehicle.massKg) + delta);
+    }
     const c = compoundHp(state);
     const parts = CATEGORIES.reduce((sum, cat) => sum + Number(getPart(state, cat.id)?.massDeltaKg || 0), 0) + (c ? COMPOUND_KIT.massKg + Number(c.item.massDeltaKg || 0) : 0);
     const wheelMassPenalty = Math.max(0, Number(vehicle.wheelMassKg || 0) - 7.5) * 4 * 1.35;
@@ -2302,7 +2356,7 @@
       params.aggressiveness = cap.maxAggressiveness;
       notes.push(cap.ecuLevel === 'none' ? `${cap.ecuName} ondersteunt geen anti-lag.` : `${cap.ecuName} staat slechts beperkte anti-lag toe.`);
     }
-    const enabled = mode !== 'off' && cap.ecuLevel !== 'none' && params.aggressiveness > 0;
+    const enabled = !getPart(s, 'turbo').naturallyAspirated && mode !== 'off' && cap.ecuLevel !== 'none' && params.aggressiveness > 0;
     return { enabled, mode, params, capability: cap, notes };
   }
 
@@ -2357,11 +2411,17 @@
       const cam = state.tune.vvtEnabled === false ? 0 : ecuCell(ecuCal, 'cam', Math.max(1, mapAbs), rpm);
       const spark = ecuCell(ecuCal, 'spark', Math.max(1, mapAbs), rpm) + Number(ecuCal.sparkTrimDeg || 0) + Number(state.tune.ignitionTrimDeg || 0);
       const water = hw.wmi && mapAbs > 1.8 ? (hw.wmi.ratio * 0.5) / (hw.fuel.afrSt * lambda) : 0;
-      const op = Engine.operatingPoint({
+      let op = Engine.operatingPoint({
         geo: hw.geo, head: hw.head, rpm, mapBarAbs: mapAbs, manifoldK: ENGINE_MAP_REF_K, empBarAbs: mapAbs, lambda, fuel: hw.fuel, sparkCmdDeg: spark,
         camAdvanceDeg: cam, twinScroll: hw.twinScroll, exhaustK: 1100, waterPerAir: water, veScale: hw.veScale, viscosityFactor: hw.viscosityFactor,
         extraFmepBar: hw.extraFmepBar, knockControl: kc, stepDeg: 3, mbtDeg: 50
       });
+      if (workshopDefinition(state)) {
+        const delivery=Engine.fuelDelivery(hw.fuelSys,{rpm,demandKgS:op.fuelKgS,fuel:hw.fuel,railTargetBar:state.tune.railTargetBar,mapBarAbs:mapAbs});
+        const fraction=Math.min(1,delivery.deliveredKgS/Math.max(1e-9,op.fuelKgS));
+        if(fraction < 1) op={...op,torqueNm:op.torqueNm*fraction,fuelKgS:delivery.deliveredKgS,
+          knockIndex:op.knockIndex + (1-fraction)*.5};
+      }
       const vd = hw.geo.vd * hw.geo.cyl;
       return {
         torqueNm: op.torqueNm,
@@ -2540,11 +2600,11 @@
       // Wear (percent of component life) and damage from what this step actually did.
       const hot = Math.max(0, (rt.egtC - 950) / 100),
         vHot = Math.max(0, (rt.egtC - 980) / 100);
-      rt.wear.turbo += (0.02 * hot * hot + 0.05 * Math.max(0, shaftPct - 95) / 5 + (tp.surge ? 0.02 : 0)) * dt;
+      rt.wear.turbo += (map.naturallyAspirated ? 0 : 1) * (0.02 * hot * hot + 0.05 * Math.max(0, shaftPct - 95) / 5 + (tp.surge ? 0.02 : 0)) * dt;
       rt.wear.manifold += 0.03 * vHot * vHot * dt;
       rt.wear.valves += 0.02 * hot * Math.max(1, rt.empBar / 2) * dt;
       rt.wear.engine += (rt.alsActive ? 0.004 * k : 0) * dt;
-      if (rt.egtC > 1150) rt.damage.turbo += 0.6 * ((rt.egtC - 1150) / 50) * dt;
+      if (!map.naturallyAspirated && rt.egtC > 1150) rt.damage.turbo += 0.6 * ((rt.egtC - 1150) / 50) * dt;
       if (shaftPct > 112) rt.damage.turbo += 2.5 * dt;
       rt.fuelUsedG += fuelKgS * 1000 * dt;
       rt.maxEgtC = Math.max(rt.maxEgtC, rt.egtC);
@@ -2620,6 +2680,7 @@
     // OEM clutch at 430 Nm behind a 2500 pk engine: the clutch burned to 1228 C and slipped for the whole
     // quarter, which read as a 18-second run at 110 km/h with the wheelspin meter showing 0.7 %.
     compound_4speed: { type: 'dog', clutchNm: 3200, clutchKg: 8.5, engageS: 0.03, launchDumpS: 0.09 },
+    ...Object.fromEntries((WORKSHOP.parts.transmission || []).map(p => [p.id,{type:'converter',converter:converterSpec({stallRpm:p.converterStallRpm,torqueNm:p.converterTorqueNm,torqueRatio:p.converterTorqueRatio})}])),
     lenco_5speed: { type: 'dog', clutchNm: 5200, clutchKg: 11.0, engageS: 0.025, launchDumpS: 0.08 }
   });
   // Hydrodynamic torque converter (planetary automatics: Powerglide, TH400, a Lenco with converter).
@@ -2757,7 +2818,7 @@
     const drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
     const conv = dl.type === 'converter' ? dl.converter : null;
     // crank + flywheel/flexplate (+ converter pump); a roster engine brings its own
-    const engineI = Number(state.rosterCar?.engine?.inertiaKgM2) || ENGINE_INERTIA;
+    const engineI = Number(state.rosterCar?.engine?.inertiaKgM2 || state.rosterCar?.inertiaKgM2) || ENGINE_INERTIA;
     const ty = tyreFor(state, opts.tyreTempC);
     // Tyre temperatures carry over from the burnout and staging when given; otherwise a uniform tyre.
     const th = opts.tyreThermal ? { surfaceC: Number(opts.tyreThermal.surfaceC), bulkC: Number(opts.tyreThermal.bulkC) } : makeTyreThermal(ty.tempC);
@@ -2786,7 +2847,7 @@
     // engine torque is held to what the driven tyres can carry right now (grip x load, through the converter's
     // multiplication and the gearing), the way radial racers tune boost by time and timing to the tyre.
     const torqueManaged = !!(state.rosterCar && state.rosterCar.tractionControl) && (opts.tractionControl ?? state.tune.tractionControl !== false);
-    const tcCapable = state.rosterCar ? false : !!getPart(state, 'ecu').tractionControl;
+    const tcCapable = state.rosterCar?.engine ? false : !!getPart(state, 'ecu').tractionControl;
     const tcOn = tcCapable && (opts.tractionControl ?? state.tune.tractionControl !== false);
     const tcTarget = tcOn ? ty.peakSlip * clamp(Number(state.tune.tcSlipPct ?? 125) / 100, 0.4, 2.5) : 0;
     const tcGain = clamp(Number(state.tune.tcAggressionPct ?? 60) / 100, 0.1, 1) * 70;
@@ -3174,7 +3235,7 @@
     const em = opts.engineMap || (rc ? curveEngineMap(rc.engine) : buildEngineMap(state));
     const turbo = opts.turbo || (rc ? curveTurboRuntime(rc.engine) : createTurboRuntime(state, { engineMap: em }));
     const trans = transmissionFor(state);
-    const engineI = Number(rc?.engine?.inertiaKgM2) || ENGINE_INERTIA;
+    const engineI = Number(rc?.engine?.inertiaKgM2 || state.rosterCar?.inertiaKgM2) || ENGINE_INERTIA;
     const drive = DRIVETRAINS[state.vehicle.drivetrain] || DRIVETRAINS.FWD;
     const ty = tyreFor(state);
     const r = ty.geometry.radiusM, mass = buildMassKg(state), g = 9.80665;
@@ -3734,6 +3795,11 @@
   const REBUILD_BASE_EUR = 6500;
   function rosterCarPrice(id) {
     const car = rosterCarData(id), p = car && car.price;
+    const offer = WORKSHOP.cars[id]?.price;
+    if ((!p || !p.totalUsd || !(p.totalUsd.value > 0)) && offer) return {
+      eur: offer.eur, usd: null, gamePrice: true, items: [],
+      value: { value: offer.eur, unit: 'EUR', kind: 'modeled', reason: offer.reason, derivedFrom: offer.basis }
+    };
     if (!p || !p.totalUsd || !(p.totalUsd.value > 0)) return null;
     const eur = usdToEur(p.totalUsd.value);
     return eur ? { usd: p.totalUsd.value, eur: Math.round(eur), value: p.totalUsd, items: p.items || [] } : null;
@@ -3742,7 +3808,7 @@
     const g = (inputState && inputState.garage) || {};
     const cars = g.cars && typeof g.cars === 'object' ? g.cars : {};
     const active = g.active && (g.active === 'scirocco' || (cars[g.active] && rosterCarData(g.active)?.opponent?.usable)) ? g.active : 'scirocco';
-    return { active, cars };
+    return { ...g, active, cars };
   }
   function buyRosterCar(inputState, id) {
     const g = garageOf(inputState), price = rosterCarPrice(id);
@@ -3782,8 +3848,87 @@
     s.vehicleSaveVersion = 1; s.starterSelection = 'complete'; s.qaProfile = true;
     return s;
   }
-  function workshopAvailable(inputState) { return garageOf(inputState).active === 'scirocco'; }
+  function workshopAvailable(inputState) { return garageOf(inputState).active === 'scirocco' || !!WORKSHOP.cars[garageOf(inputState).active]; }
 
+  // Garage save v2: top-level build remains the legacy Scirocco on disk. The UI works on a
+  // detached active build; shared money/settings/career stay on the account. Never duplicate money.
+  const BUILD_FIELDS = ['buildName','selections','tune','assembly','bench','dynoConfig','dynoThermal',
+    'service','vehicle','wear','damage','owned','buildSlots','lastDyno','lastDynoSignature','lastDrag',
+    'dynoRuns','dragRuns','records','ghost','nitrous','advice','mapTunes','gripTunes','workshopCarId','rosterCar'];
+  function captureBuild(state) {
+    return deepClone(Object.fromEntries(BUILD_FIELDS.filter(k => state[k] !== undefined).map(k => [k,state[k]])));
+  }
+  function createWorkshopBuild(id, record = {}) {
+    const def = WORKSHOP.cars[id];
+    if (!def) throw new Error(`Geen werkplaatsconfiguratie voor ${id}`);
+    const spec = rosterSpec(id), st = blankState();
+    st.workshopCarId = id;
+    st.buildName = spec.displayName;
+    st.selections = { ...def.selections };
+    st.tune = { ...st.tune, ...def.tune, ecu: null, gearRatios: null, finalDrive: spec.transmission.finalDrive };
+    st.service = { ...st.service, ...def.service };
+    st.vehicle = { ...st.vehicle, ...spec.vehicle, drivetrain: 'RWD', massKg: spec.massKg,
+      tireCompound: spec.tire.compound, ...spec.tire.size, pressureBar: spec.tire.pressureBar,
+      wheelMassKg: 7.5, preparedTrack: true, burnoutLevel: 92, shiftRpm: spec.shiftRpm || def.tune.revLimitRpm-200 };
+    st.rosterCar = { id, workshop: true, frontStatic: spec.frontStatic, baseMassKg: spec.massKg, inertiaKgM2: spec.engine.inertiaKgM2,
+      engineFamily: spec.engine.family, pumpFuel: false };
+    st.wear = { engine:0,turbo:0,transmission:0,manifold:0,valves:0,...record.wear };
+    st.damage = { engine:0,turbo:0,transmission:0,...record.damage };
+    if (record.out) st.damage.engine = 100;
+    st.assembly = { ...st.assembly, ...assemblyTargets(st), balanceQualityPct:98,deckSealQualityPct:98,fastenerProcedurePct:98,oilPrimed:true };
+    st.owned = inheritedOwnership(st);
+    const kit = getPart(st,'nitrous');st.nitrous = { kitId:kit.id,kg:kit.bottleKg||0 };
+    return captureBuild(normalizeState(st));
+  }
+  function persistGarageState(input) {
+    const state = normalizeState(input), id = state.activeBuildId || 'scirocco';
+    const g = { ...garageOf(state), cars: { ...garageOf(state).cars } };
+    if (id === 'scirocco') g.scirocco = captureBuild(state);
+    else if (g.cars[id]) {
+      const car = g.cars[id], record = { ...car.record, wear:{...state.wear},damage:{...state.damage},
+        out:state.wear.engine>=100 || state.damage.engine>=100 || state.wear.transmission>=100 || state.damage.transmission>=100 };
+      g.cars[id] = { ...car, record, build:captureBuild(state) };
+    }
+    const root = { ...state, garage:g, garageSaveVersion:2 };
+    for(const k of BUILD_FIELDS) delete root[k];
+    Object.assign(root,deepClone(g.scirocco || captureBuild(blankState())));
+    delete root.activeBuildId; delete root.workshopCarId; delete root.rosterCar;
+    return root;
+  }
+  function restoreGarageState(input) {
+    const root = normalizeState(input), g = { ...garageOf(root), cars:{...garageOf(root).cars} };
+    if (!g.scirocco) g.scirocco = captureBuild(root);
+    const id = g.active;
+    let build = g.scirocco;
+    if (WORKSHOP.cars[id] && g.cars[id]) {
+      if (!g.cars[id].build) g.cars[id] = { ...g.cars[id], build:createWorkshopBuild(id,g.cars[id].record) };
+      build = g.cars[id].build;
+    }
+    const state = { ...root, garage:g,garageSaveVersion:2,activeBuildId:WORKSHOP.cars[id]?id:'scirocco' };
+    for(const k of BUILD_FIELDS) delete state[k];
+    Object.assign(state,deepClone(build));
+    if (WORKSHOP.cars[id]) {
+      state.workshopCarId=id;
+      const spec=rosterSpec(id);
+      state.rosterCar={id,workshop:true,frontStatic:spec.frontStatic,baseMassKg:spec.massKg,inertiaKgM2:spec.engine.inertiaKgM2,engineFamily:spec.engine.family,pumpFuel:false};
+    } else { delete state.workshopCarId; delete state.rosterCar; }
+    return normalizeState(state);
+  }
+  function switchGarageCar(input,id) {
+    const root = persistGarageState(input);
+    root.garage = setActiveCar(root,id);
+    return restoreGarageState(root);
+  }
+
+  function recordWorkshopPass(state, pass) {
+    const g=garageOf(state), id=state.workshopCarId, car=g.cars[id];
+    if(!car) return g;
+    const record={...car.record,runs:(car.record?.runs||0)+1,sinceService:(car.record?.sinceService||0)+1,
+      wear:{...state.wear},damage:{...state.damage}};
+    const best=pass.valid && Number.isFinite(pass.quarter) && (!car.best || pass.quarter<car.best.quarter)
+      ? {quarter:pass.quarter,trapKmh:pass.trapKmh,sixtyFt:pass.sixtyFt} : car.best;
+    return {...g,cars:{...g.cars,[id]:{...car,record,best}}};
+  }
   function applyOwnedCarRun(inputState, id, pass) {
     const g = garageOf(inputState), car = g.cars[id];
     if (!car) return { garage: g, events: [] };
@@ -3951,7 +4096,7 @@
       label: `Monteer ${item.name} (${CATEGORY_MAP[cat].label})`, patch: { selections: { [cat]: item.id } } });
     const nextParts = (cat, n, better = null) => {
       const cur = getPart(state, cat);
-      return CATEGORY_MAP[cat].items.filter(i => i.id !== cur.id && (better ? better(i, cur) : i.price > cur.price))
+      return compatibleParts(state,cat).filter(i => i.id !== cur.id && (better ? better(i, cur) : i.price > cur.price))
         .sort((a, b) => (better ? 0 : a.price - b.price) || a.price - b.price).slice(0, n).map(i => part(cat, i));
     };
     const boost = d => { const b = adviceBoostPatch(state, d); return { id: `boost:${d}`, kind: 'setting', cost: 0, ...b }; };
@@ -3962,7 +4107,7 @@
       fuel: () => [...byMetric('fuelSystem', 'fuelSystemHp', 3), boost(-0.1), boost(-0.2)],
       turbo: () => {
         const c = compoundHp(state), lp = getPart(state, 'turbo'), list = [boost(-0.1), boost(-0.2), boost(-0.3), ...nextParts('boostControl', 2)];
-        const turbos = CATEGORY_MAP.turbo.items;
+        const turbos = compatibleParts(state,'turbo');
         if (c && c.valid) {
           // compound: the next HP stage up (still smaller than the LP turbo), and the next LP turbo up
           const nextHp = turbos.filter(i => i.compressorMm > c.item.compressorMm && i.compressorMm < lp.compressorMm).sort((a, b) => a.compressorMm - b.compressorMm).slice(0, 2);
@@ -3977,7 +4122,7 @@
         state.dynoConfig.fanSpeedPct < 100 ? { id: 'fan:100', kind: 'setting', cost: 0, label: `Testcelfan ${Math.round(state.dynoConfig.fanSpeedPct)}% → 100% (Dyno → Testcel)`, patch: { dynoConfig: { fanSpeedPct: 100 } } } : null],
       oil: () => [...['10w50_ester', '10w60_race', '5w40_ester'].filter(id => id !== state.service.oilId && OIL_MAP[id]).map(id => ({ id: `oil:${id}`, kind: 'service', cost: OIL_MAP[id].price + FILTER_MAP[state.service.filterId].price, label: `Olie verversen naar ${OIL_MAP[id].name} (Service)`, patch: { service: { oilId: id, oilAgeKm: 0, oilRuns: 0 } } })),
         ...nextParts('oiling', 2), { id: 'rev:-300', kind: 'setting', cost: 0, label: `Toerenbegrenzer ${t.revLimitRpm} → ${t.revLimitRpm - 300} rpm (Tune)`, patch: { tune: { revLimitRpm: t.revLimitRpm - 300 } } }, toggle('oilPressureProtection', 'Oliedrukbeveiliging')],
-      cam: () => { const c = camTimingHealth(state); return [{ id: 'cam:target', kind: 'setting', cost: 0, label: `Noktiming op TDC: uitlaat ${Number(t.exhaustTdcLiftMm).toFixed(2)} → ${c.targetExhaustTdcMm.toFixed(2)} mm, inlaat ${Number(t.intakeTdcLiftMm).toFixed(2)} → ${c.targetIntakeTdcMm.toFixed(2)} mm (Bouw → Nokken)`, patch: { tune: { exhaustTdcLiftMm: c.targetExhaustTdcMm, intakeTdcLiftMm: c.targetIntakeTdcMm } } }]; },
+      cam: () => { const c = camTimingHealth(state); if(!c.applicable)return []; return [{ id: 'cam:target', kind: 'setting', cost: 0, label: `Noktiming op TDC: uitlaat ${Number(t.exhaustTdcLiftMm).toFixed(2)} → ${c.targetExhaustTdcMm.toFixed(2)} mm, inlaat ${Number(t.intakeTdcLiftMm).toFixed(2)} → ${c.targetIntakeTdcMm.toFixed(2)} mm (Bouw → Nokken)`, patch: { tune: { exhaustTdcLiftMm: c.targetExhaustTdcMm, intakeTdcLiftMm: c.targetIntakeTdcMm } } }]; },
       assembly: () => { const a = assemblyHealth(state).targets, cur = state.assembly; const f = v => round(v, 3);
         return [{ id: 'assembly:target', kind: 'setting', cost: 0, label: `Montage op maat: ringgap ${cur.topRingGapMm}/${cur.secondRingGapMm} → ${f(a.topRingGapMm)}/${f(a.secondRingGapMm)} mm, lagers ${cur.rodClearanceMm}/${cur.mainClearanceMm} → ${f(a.rodClearanceMm)}/${f(a.mainClearanceMm)} mm, bougiegap ${cur.sparkGapMm} → ${f(a.sparkGapMm)} mm, procedure 99%, geprimed (Bouw → Montage)`,
           patch: { assembly: { topRingGapMm: f(a.topRingGapMm), secondRingGapMm: f(a.secondRingGapMm), rodClearanceMm: f(a.rodClearanceMm), mainClearanceMm: f(a.mainClearanceMm), sparkGapMm: f(a.sparkGapMm), balanceQualityPct: 99, deckSealQualityPct: 99, fastenerProcedurePct: 99, oilPrimed: true } } }]; }
@@ -4047,10 +4192,11 @@
     else if (code === 'ecu_control') list = [...nextParts('ecu', 1), ...nextParts('sensors', 1), boost(-0.3)];
     else if (code === 'ring_butt' || code === 'bearing_clearance' || code.includes('prime')) list = groups.assembly();
     else list = [boost(-0.2), spark(-2)];
-    return list.filter(Boolean);
+    return list.filter(Boolean).filter(c => !c.patch.selections || selectionCompatibility(state,{...state.selections,...c.patch.selections}).ok);
   }
   function applyAdvicePatch(inputState, patch) {
     const state = normalizeState(inputState);
+    if (patch.selections && !selectionCompatibility(state,{...state.selections,...patch.selections}).ok) throw new Error('Advies bevat onderdelen die niet op deze auto passen.');
     for (const k of ['selections', 'tune', 'service', 'assembly', 'dynoConfig']) if (patch[k]) state[k] = { ...state[k], ...deepClone(patch[k]) };
     if (Number.isFinite(patch.boostTableDelta)) {
       const ecu = deepClone(state.tune.ecu);
@@ -4150,8 +4296,14 @@
   ];
   // Hardware bounds per parameter, so the tuner never proposes something the parts cannot do.
   function mapParamRange(state, p) {
-    const lo = p.min;
+    let lo = p.min;
     let hi = p.max;
+    if (workshopDefinition(state)) {
+      if (p.bound === 'boost' && getPart(state,'turbo').naturallyAspirated) return null;
+      if (p.key.endsWith('TdcLiftMm') && !camTimingHealth(state).applicable) return null;
+      if (p.key === 'intakeCamAdvanceDeg' && !state.tune.vvtEnabled) return null;
+      if (p.bound === 'rail') lo = engineHardware(state).fuelSys.carburetor ? 0.3 : 2;
+    }
     // A hardware-bounded parameter is bounded by the hardware, not by the static number: `max` is only the
     // fallback for a part that does not state one. It used to be a ceiling as well, so dome control good for
     // 10 bar could still only be asked for 4.5, and a valvetrain rated 11400 rpm could only be asked for
@@ -4403,7 +4555,7 @@
     const goal = MAP_TUNES[goalId] || MAP_TUNES.street;
     const base = normalizeState(inputState);
     // Only the parameters this hardware can actually move, each within its own range.
-    const active = MAP_PARAMS.map(p => ({ ...p, range: mapParamRange(base, p) })).filter(p => p.range);
+    const active = MAP_PARAMS.map(p => ({ ...p, ...(workshopDefinition(base) && p.bound === 'rail' ? {step: getPart(base,'fuelSystem').maxRailBar < 1 ? .05 : .5, decimals:2} : {}), range: mapParamRange(base, p) })).filter(p => p.range);
     const soakK = clamp(Number(opts.soakK) || 0, 0, 60);
     const run = tune => simulateEngine(applyAdvicePatch(base, { tune: { ...tune, ecu: null } }), { noise: false, soakK });
     const pick = t => Object.fromEntries(active.map(p => [p.key, Number(t[p.key])]));
@@ -4546,6 +4698,7 @@
     const state = normalizeState(inputState, { noEcu: true }),
       p = PRESETS[presetId];
     if (!p) throw new Error(`Unknown preset ${presetId}`);
+    if (!selectionCompatibility(state,{...state.selections,...p.selections}).ok) throw new Error('Preset past niet bij de actieve auto.');
     state.buildName = p.name;
     state.selections = { ...state.selections, ...deepClone(p.selections) };
     state.tune = { ...state.tune, ...deepClone(p.tune) };
@@ -4599,6 +4752,9 @@
   }
   // Buy what the selections need and record it; refuses (unchanged state) when the bank cannot pay.
   function purchaseBuild(inputState, selections, how = 'new') {
+    if (workshopDefinition(inputState)) selections = {...inputState.selections,...selections};
+    const compatibility = selectionCompatibility(inputState,selections);
+    if (!compatibility.ok) return { ...compatibility, cost:{total:0,items:[]},shortEur:0 };
     const cost = buildCost(inputState, selections);
     const bank = Number(inputState.bank || 0);
     if (cost.total > bank) return { ok: false, cost, shortEur: cost.total - bank };
@@ -4608,6 +4764,8 @@
   }
   // Buy one part through a used offer from the catalogue (its real price in dollars at the game rate).
   function purchaseUsedOffer(inputState, categoryId, partId, offerId) {
+    if (!selectionCompatibility(inputState,{...inputState.selections,[categoryId]:partId}).ok)
+      return {ok:false,reason:'Dit onderdeel past niet bij de actieve auto.'};
     const offer = rosterPartOffers(categoryId, partId).find(o => o.id === offerId);
     if (!offer) return { ok: false, reason: 'aanbod niet gevonden' };
     const key = ownKey(categoryId, partId);
@@ -4671,7 +4829,7 @@
     if (r.tyres && !r.tyres.includes(s.vehicle.tireCompound)) out.push(`Banden: alleen ${r.tyres.map(t => TIRE_MAP[t]?.name || t).join(', ')}.`);
     // A roster car is judged on what is known of it: every roster engine is a V8 (well over 2.1 litres), and a
     // fuel the research does not name as pump fuel does not count as pump fuel.
-    const rc = s.rosterCar;
+    const rc = s.rosterCar?.engine ? s.rosterCar : null;
     if (r.fuels && (rc ? !rc.pumpFuel : !r.fuels.includes(s.selections.fuel))) out.push(rc ? 'Brandstof: alleen pompbrandstof (voor deze auto niet als pompbrandstof bekend).' : 'Brandstof: alleen pompbrandstof (geen race-brandstof of methanol).');
     if (r.drivetrain && !r.drivetrain.includes(s.vehicle.drivetrain)) out.push(`Aandrijving: alleen ${r.drivetrain.join('/')}.`);
     if (r.maxDisplacementCc && (rc ? true : engineGeometry(s).displacementCc > r.maxDisplacementCc)) out.push(rc ? `Cilinderinhoud max ${r.maxDisplacementCc} cc (deze V8 is groter).` : `Cilinderinhoud max ${r.maxDisplacementCc} cc.`);
@@ -4855,6 +5013,7 @@
     wheelFitment,
     gripFactor,
     buildMassKg,
+    oilCapacity,
     airDensity,
     densityAltitude,
     oilHealth,
@@ -4921,6 +5080,10 @@
     rosterCarPrice,
     garageOf,
     createCareerSelection, confirmStarter, createVehicleQA, workshopAvailable,
+    workshopDefinition,
+    workshopSource,
+    recordWorkshopPass, compatibleParts, categoriesFor, selectionCompatibility,
+    createWorkshopBuild, captureBuild, persistGarageState, restoreGarageState, switchGarageCar,
     buyRosterCar,
     setActiveCar,
     applyOwnedCarRun,

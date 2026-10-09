@@ -1,0 +1,2505 @@
+{
+  "schemaVersion": 1,
+  "note": "Playable builds for the existing carIds. Research records remain unchanged. Unless explicitly vendor/stated, fitment packages, durability, geometry and prices are modeled estimates, not claims about the real vehicle. Prices are in-game EUR at the existing fixed rate; custom fabrication included where named.",
+  "sources": {
+    "prc": {
+      "url": "https://www.texas-speed.com/prc",
+      "checked": "2026-10-10",
+      "note": "PRC 237: 68cc chamber, 2.100/1.600 inch valves, 4.00+ inch bore; flow/cam curves modeled."
+    },
+    "proline": {
+      "url": "https://www.prolineracing.net/products/fresh-plr-564ci-mh7-outlaw-rasied-cam-hemi-engine-1",
+      "checked": "2026-10-10",
+      "note": "564ci Hemi construction example; used/repaired complete engine offered at USD 69,500, not Eagle purchase price."
+    },
+    "sme": {
+      "url": "https://www.stevemorrisengines.com/engines",
+      "checked": "2026-10-10",
+      "note": "BBC engine family and package ranges; not proof of Mullet World Cup internal dimensions."
+    },
+    "tkm": {
+      "url": "https://www.tkmperformance.com/coyote/",
+      "checked": "2026-10-10",
+      "note": "Coyote sleeved shortblocks. Direct access 403; no price extracted."
+    },
+    "holley": {
+      "url": "https://www.holley.com/products/fuel_systems/fuel_injection/dominator_efi/",
+      "checked": "2026-10-10",
+      "note": "Dominator ECU USD 2499.95; LS main harness kit USD 3299.95. Game packages add appropriate wiring/sensors."
+    },
+    "fti": {
+      "url": "https://ftiperformance.com/",
+      "checked": "2026-10-10",
+      "note": "Powerglide racing transmissions; package prices and torque capacities below are modeled."
+    },
+    "vp": {
+      "url": "https://vpracingfuels.com/products/c16-fuel?c=228",
+      "checked": "2026-10-10",
+      "note": "C16: MON 116, RON >120, SG 0.735, AFR 14.70, oxygen 0; modeled LHV and evaporation heat."
+    }
+  },
+  "cars": {
+    "crc12_jackstand_240": {
+      "family": "ls",
+      "variant": "LS 6.0 / PRC 237 / carburateur / Powerglide",
+      "source": "data/roster/cars.json",
+      "assumptions": "Referentievariant uit bestaand roster; ontbrekende interne maten, capaciteiten en onderdelen zijn expliciete werkplaatsschattingen. Dynovermogen wordt opnieuw berekend, niet als nieuwe echte meting gepresenteerd. De werkplaatsstart is een eigen basismap; het oorspronkelijke onderzoeksvermogen blijft referentiedata en is geen belofte voor deze afstelling.",
+      "selections": {
+        "block": "ws_ls_block_base",
+        "crank": "ws_ls_crank_base",
+        "head": "ws_ls_head_base",
+        "valvetrain": "ws_ls_valves_base",
+        "oiling": "ws_ls_oil_base",
+        "manifold": "ws_ls_intake_base",
+        "exhaust": "ws_ls_exhaust_base",
+        "ignition": "ws_ls_spark_base",
+        "sealing": "ws_ls_seal_base",
+        "mounts": "ws_ls_mounts_base",
+        "ecu": "ws_ls_ecu_base",
+        "turbo": "ws_na",
+        "fuelSystem": "ws_ls_carb",
+        "fuel": "ws_c16",
+        "boostControl": "ws_no_boost",
+        "air": "ws_na_air",
+        "crankcase": "vacuum_pump",
+        "sensors": "pro_instrumentation",
+        "spool": "none",
+        "nitrous": "ws_n2o_225",
+        "transmission": "ws_crc12_jackstand_240_trans_base",
+        "turboHp": ""
+      },
+      "tune": {
+        "boostLowBar": 0.0,
+        "boostMidBar": 0,
+        "boostHighBar": 0,
+        "lambda": 0.88,
+        "revLimitRpm": 7500,
+        "launchRpm": 5465,
+        "railTargetBar": 0.45,
+        "intakeCamAdvanceDeg": 0,
+        "vvtEnabled": false,
+        "ignitionTrimDeg": 0,
+        "firstGearBoostPct": 60,
+        "secondGearBoostPct": 85,
+        "nitrousRetardPer50": 1.5,
+        "knockControl": true,
+        "tractionControl": false
+      },
+      "service": {
+        "oilId": "10w60_race",
+        "liters": 6.5,
+        "filterId": "motorsport",
+        "oilAgeKm": 0,
+        "oilRuns": 0
+      },
+      "price": null
+    },
+    "lumberjack": {
+      "family": "ls",
+      "variant": "Turbo LS / Precision 7675 / C16 (inhoud gemodelleerd 6.0)",
+      "source": "data/roster/cars.json",
+      "assumptions": "Referentievariant uit bestaand roster; ontbrekende interne maten, capaciteiten en onderdelen zijn expliciete werkplaatsschattingen. Dynovermogen wordt opnieuw berekend, niet als nieuwe echte meting gepresenteerd. De werkplaatsstart is een eigen basismap; het oorspronkelijke onderzoeksvermogen blijft referentiedata en is geen belofte voor deze afstelling.",
+      "selections": {
+        "block": "ws_ls_block_base",
+        "crank": "ws_ls_crank_base",
+        "head": "ws_ls_head_base",
+        "valvetrain": "ws_ls_valves_base",
+        "oiling": "ws_ls_oil_base",
+        "manifold": "ws_ls_intake_base",
+        "exhaust": "ws_ls_exhaust_base",
+        "ignition": "ws_ls_spark_base",
+        "sealing": "ws_ls_seal_base",
+        "mounts": "ws_ls_mounts_base",
+        "ecu": "ws_ls_ecu_base",
+        "turbo": "pt7675",
+        "fuelSystem": "ws_ls_fuel_base",
+        "fuel": "ws_c16",
+        "boostControl": "dual_44",
+        "air": "promod_ice_system",
+        "crankcase": "vacuum_pump",
+        "sensors": "pro_instrumentation",
+        "spool": "none",
+        "nitrous": "no_n2o",
+        "transmission": "ws_lumberjack_trans_base",
+        "turboHp": ""
+      },
+      "tune": {
+        "boostLowBar": 0.3,
+        "boostMidBar": 0.85,
+        "boostHighBar": 0.9,
+        "lambda": 0.8,
+        "revLimitRpm": 7300,
+        "launchRpm": 5304,
+        "railTargetBar": 4,
+        "intakeCamAdvanceDeg": 0,
+        "vvtEnabled": false,
+        "ignitionTrimDeg": 0,
+        "firstGearBoostPct": 60,
+        "secondGearBoostPct": 85,
+        "nitrousRetardPer50": 1.5,
+        "knockControl": true,
+        "tractionControl": false
+      },
+      "service": {
+        "oilId": "10w60_race",
+        "liters": 6.5,
+        "filterId": "motorsport",
+        "oilAgeKm": 0,
+        "oilRuns": 0
+      },
+      "price": null
+    },
+    "mcflurry": {
+      "family": "coyote",
+      "variant": "Coyote single 76 mm; geen Godzilla-combinatie",
+      "source": "data/roster/cars.json",
+      "assumptions": "Referentievariant uit bestaand roster; ontbrekende interne maten, capaciteiten en onderdelen zijn expliciete werkplaatsschattingen. Dynovermogen wordt opnieuw berekend, niet als nieuwe echte meting gepresenteerd. De werkplaatsstart is een eigen basismap; het oorspronkelijke onderzoeksvermogen blijft referentiedata en is geen belofte voor deze afstelling.",
+      "selections": {
+        "block": "ws_coyote_block_base",
+        "crank": "ws_coyote_crank_base",
+        "head": "ws_coyote_head_base",
+        "valvetrain": "ws_coyote_valves_base",
+        "oiling": "ws_coyote_oil_base",
+        "manifold": "ws_coyote_intake_base",
+        "exhaust": "ws_coyote_exhaust_base",
+        "ignition": "ws_coyote_spark_base",
+        "sealing": "ws_coyote_seal_base",
+        "mounts": "ws_coyote_mounts_base",
+        "ecu": "ws_coyote_ecu_base",
+        "turbo": "pt7675",
+        "fuelSystem": "ws_coyote_fuel_base",
+        "fuel": "e85",
+        "boostControl": "dual_44",
+        "air": "promod_ice_system",
+        "crankcase": "vacuum_pump",
+        "sensors": "pro_instrumentation",
+        "spool": "none",
+        "nitrous": "no_n2o",
+        "transmission": "ws_mcflurry_trans_base",
+        "turboHp": ""
+      },
+      "tune": {
+        "boostLowBar": 1.0687,
+        "boostMidBar": 2.1374,
+        "boostHighBar": 2.1374,
+        "lambda": 0.8,
+        "revLimitRpm": 8300,
+        "launchRpm": 5080,
+        "railTargetBar": 4,
+        "intakeCamAdvanceDeg": 0,
+        "vvtEnabled": true,
+        "ignitionTrimDeg": 0,
+        "firstGearBoostPct": 60,
+        "secondGearBoostPct": 85,
+        "nitrousRetardPer50": 1.5,
+        "knockControl": true,
+        "tractionControl": false
+      },
+      "service": {
+        "oilId": "10w60_race",
+        "liters": 8,
+        "filterId": "motorsport",
+        "oilAgeKm": 0,
+        "oilRuns": 0
+      },
+      "price": {
+        "eur": 95000,
+        "kind": "modeled",
+        "reason": "Spelprijs voor complete raceauto: geschatte motor/aandrijving, chassis, elektronica en bouwarbeid. Geen bekende echte verkoopprijs.",
+        "basis": {
+          "engineAndDriveline": 39900,
+          "chassisBodySafety": 31350,
+          "electronicsFabrication": 23750
+        }
+      }
+    },
+    "mullet": {
+      "family": "bbc",
+      "variant": "World Cup big block; 540ci internals als werkplaatsmodel",
+      "source": "data/roster/cars.json",
+      "assumptions": "Referentievariant uit bestaand roster; ontbrekende interne maten, capaciteiten en onderdelen zijn expliciete werkplaatsschattingen. Dynovermogen wordt opnieuw berekend, niet als nieuwe echte meting gepresenteerd. De werkplaatsstart is een eigen basismap; het oorspronkelijke onderzoeksvermogen blijft referentiedata en is geen belofte voor deze afstelling.",
+      "selections": {
+        "block": "ws_bbc_block_base",
+        "crank": "ws_bbc_crank_base",
+        "head": "ws_bbc_head_base",
+        "valvetrain": "ws_bbc_valves_base",
+        "oiling": "ws_bbc_oil_base",
+        "manifold": "ws_bbc_intake_base",
+        "exhaust": "ws_bbc_exhaust_base",
+        "ignition": "ws_bbc_spark_base",
+        "sealing": "ws_bbc_seal_base",
+        "mounts": "ws_bbc_mounts_base",
+        "ecu": "ws_bbc_ecu_base",
+        "turbo": "twin_pt9803",
+        "fuelSystem": "ws_bbc_fuel_base",
+        "fuel": "methanol",
+        "boostControl": "dual_44",
+        "air": "promod_ice_system",
+        "crankcase": "vacuum_pump",
+        "sensors": "pro_instrumentation",
+        "spool": "none",
+        "nitrous": "no_n2o",
+        "transmission": "ws_mullet_trans_base",
+        "turboHp": ""
+      },
+      "tune": {
+        "boostLowBar": 0.6,
+        "boostMidBar": 1.8,
+        "boostHighBar": 2.2,
+        "lambda": 0.68,
+        "revLimitRpm": 8100,
+        "launchRpm": 3075,
+        "railTargetBar": 8,
+        "intakeCamAdvanceDeg": 0,
+        "vvtEnabled": false,
+        "ignitionTrimDeg": 0,
+        "firstGearBoostPct": 60,
+        "secondGearBoostPct": 85,
+        "nitrousRetardPer50": 1.5,
+        "knockControl": true,
+        "tractionControl": false
+      },
+      "service": {
+        "oilId": "10w60_race",
+        "liters": 10,
+        "filterId": "motorsport",
+        "oilAgeKm": 0,
+        "oilRuns": 0
+      },
+      "price": {
+        "eur": 200000,
+        "kind": "modeled",
+        "reason": "Spelprijs voor complete raceauto: geschatte motor/aandrijving, chassis, elektronica en bouwarbeid. Geen bekende echte verkoopprijs.",
+        "basis": {
+          "engineAndDriveline": 84000,
+          "chassisBodySafety": 66000,
+          "electronicsFabrication": 50000
+        }
+      }
+    },
+    "eagle": {
+      "family": "hemi",
+      "variant": "564ci Proline Hemi / twin 98mm / methanol",
+      "source": "data/roster/cars.json",
+      "assumptions": "Referentievariant uit bestaand roster; ontbrekende interne maten, capaciteiten en onderdelen zijn expliciete werkplaatsschattingen. Dynovermogen wordt opnieuw berekend, niet als nieuwe echte meting gepresenteerd. De werkplaatsstart is een eigen basismap; het oorspronkelijke onderzoeksvermogen blijft referentiedata en is geen belofte voor deze afstelling.",
+      "selections": {
+        "block": "ws_hemi_block_base",
+        "crank": "ws_hemi_crank_base",
+        "head": "ws_hemi_head_base",
+        "valvetrain": "ws_hemi_valves_base",
+        "oiling": "ws_hemi_oil_base",
+        "manifold": "ws_hemi_intake_base",
+        "exhaust": "ws_hemi_exhaust_base",
+        "ignition": "ws_hemi_spark_base",
+        "sealing": "ws_hemi_seal_base",
+        "mounts": "ws_hemi_mounts_base",
+        "ecu": "ws_hemi_ecu_base",
+        "turbo": "twin_pt9803",
+        "fuelSystem": "ws_hemi_fuel_base",
+        "fuel": "methanol",
+        "boostControl": "dual_44",
+        "air": "promod_ice_system",
+        "crankcase": "vacuum_pump",
+        "sensors": "pro_instrumentation",
+        "spool": "none",
+        "nitrous": "no_n2o",
+        "transmission": "ws_eagle_trans_base",
+        "turboHp": ""
+      },
+      "tune": {
+        "boostLowBar": 0.8,
+        "boostMidBar": 2.0,
+        "boostHighBar": 2.6,
+        "lambda": 0.68,
+        "revLimitRpm": 8100,
+        "launchRpm": 2600,
+        "railTargetBar": 8,
+        "intakeCamAdvanceDeg": 0,
+        "vvtEnabled": false,
+        "ignitionTrimDeg": 0,
+        "firstGearBoostPct": 60,
+        "secondGearBoostPct": 85,
+        "nitrousRetardPer50": 1.5,
+        "knockControl": true,
+        "tractionControl": false
+      },
+      "service": {
+        "oilId": "10w60_race",
+        "liters": 12,
+        "filterId": "motorsport",
+        "oilAgeKm": 0,
+        "oilRuns": 0
+      },
+      "price": {
+        "eur": 450000,
+        "kind": "modeled",
+        "reason": "Spelprijs voor complete raceauto: geschatte motor/aandrijving, chassis, elektronica en bouwarbeid. Geen bekende echte verkoopprijs.",
+        "basis": {
+          "engineAndDriveline": 189000,
+          "chassisBodySafety": 148500,
+          "electronicsFabrication": 112500
+        }
+      }
+    }
+  },
+  "parts": {
+    "block": [
+      {
+        "id": "ws_ls_block_base",
+        "name": "GM LS cathedral blok + forged zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 101.6 × 92 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 6200,
+        "boreMm": 101.6,
+        "strokeMm": 92,
+        "rodMm": 154.94,
+        "compressionRatio": 10.5,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 1150,
+        "torqueLimit": 1350,
+        "rpmLimit": 7800,
+        "massDeltaKg": 0,
+        "reliabilityBonus": 8,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_block_race",
+        "name": "GM LS cathedral raceblok + zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 101.6 × 92 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 7750,
+        "boreMm": 101.6,
+        "strokeMm": 92,
+        "rodMm": 154.94,
+        "compressionRatio": 10.2,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 1437.5,
+        "torqueLimit": 1687.5,
+        "rpmLimit": 8000,
+        "massDeltaKg": 3,
+        "reliabilityBonus": 8,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_block_base",
+        "name": "Ford Coyote blok + forged zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 92.2 × 92.7 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 13000,
+        "boreMm": 92.2,
+        "strokeMm": 92.7,
+        "rodMm": 150.7,
+        "compressionRatio": 10,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 1900,
+        "torqueLimit": 1900,
+        "rpmLimit": 9000,
+        "massDeltaKg": 0,
+        "reliabilityBonus": 8,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_block_race",
+        "name": "Ford Coyote raceblok + zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 92.2 × 92.7 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 16250,
+        "boreMm": 92.2,
+        "strokeMm": 92.7,
+        "rodMm": 150.7,
+        "compressionRatio": 9.7,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 2375.0,
+        "torqueLimit": 2375.0,
+        "rpmLimit": 9200,
+        "massDeltaKg": 3,
+        "reliabilityBonus": 8,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_block_base",
+        "name": "BBC 540 blok + forged zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 114.3 × 107.95 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 26000,
+        "boreMm": 114.3,
+        "strokeMm": 107.95,
+        "rodMm": 165.1,
+        "compressionRatio": 9.4,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 3200,
+        "torqueLimit": 3800,
+        "rpmLimit": 8400,
+        "massDeltaKg": 0,
+        "reliabilityBonus": 8,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_block_race",
+        "name": "BBC 540 raceblok + zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 114.3 × 107.95 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 32500,
+        "boreMm": 114.3,
+        "strokeMm": 107.95,
+        "rodMm": 165.1,
+        "compressionRatio": 9.1,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 4000.0,
+        "torqueLimit": 4750.0,
+        "rpmLimit": 8600,
+        "massDeltaKg": 3,
+        "reliabilityBonus": 8,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_block_base",
+        "name": "PLR/AJPE 564 Hemi blok + forged zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 113.18 × 114.3 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 49000,
+        "boreMm": 113.18,
+        "strokeMm": 114.3,
+        "rodMm": 165.1,
+        "compressionRatio": 10,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 4500,
+        "torqueLimit": 5000,
+        "rpmLimit": 8700,
+        "massDeltaKg": 0,
+        "reliabilityBonus": 8,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_block_race",
+        "name": "PLR/AJPE 564 Hemi raceblok + zuigers/drijfstangen (zonder krukas)",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "V8 · 113.18 × 114.3 mm · maten deels gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 61250,
+        "boreMm": 113.18,
+        "strokeMm": 114.3,
+        "rodMm": 165.1,
+        "compressionRatio": 9.7,
+        "cylinders": 8,
+        "architecture": "v8",
+        "swapEngine": true,
+        "hpLimit": 5625.0,
+        "torqueLimit": 6250.0,
+        "rpmLimit": 8900,
+        "massDeltaKg": 3,
+        "reliabilityBonus": 8,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "crank": [
+      {
+        "id": "ws_ls_crank_base",
+        "name": "GM LS cathedral forged krukas + demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2200,
+        "hpLimit": 1150,
+        "torqueLimit": 1350,
+        "rpmLimit": 7800,
+        "harmonicControl": 0.88,
+        "reliabilityBonus": 5,
+        "strokeMm": 92,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_crank_race",
+        "name": "GM LS cathedral billet krukas + race-demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2750,
+        "hpLimit": 1437.5,
+        "torqueLimit": 1687.5,
+        "rpmLimit": 8100,
+        "harmonicControl": 0.98,
+        "reliabilityBonus": 5,
+        "strokeMm": 92,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_crank_base",
+        "name": "Ford Coyote forged krukas + demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 6000,
+        "hpLimit": 1900,
+        "torqueLimit": 1900,
+        "rpmLimit": 9000,
+        "harmonicControl": 0.88,
+        "reliabilityBonus": 5,
+        "strokeMm": 92.7,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_crank_race",
+        "name": "Ford Coyote billet krukas + race-demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 7500,
+        "hpLimit": 2375.0,
+        "torqueLimit": 2375.0,
+        "rpmLimit": 9300,
+        "harmonicControl": 0.98,
+        "reliabilityBonus": 5,
+        "strokeMm": 92.7,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_crank_base",
+        "name": "BBC 540 forged krukas + demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 6000,
+        "hpLimit": 3200,
+        "torqueLimit": 3800,
+        "rpmLimit": 8400,
+        "harmonicControl": 0.88,
+        "reliabilityBonus": 5,
+        "strokeMm": 107.95,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_crank_race",
+        "name": "BBC 540 billet krukas + race-demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 7500,
+        "hpLimit": 4000.0,
+        "torqueLimit": 4750.0,
+        "rpmLimit": 8700,
+        "harmonicControl": 0.98,
+        "reliabilityBonus": 5,
+        "strokeMm": 107.95,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_crank_base",
+        "name": "PLR/AJPE 564 Hemi forged krukas + demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 6000,
+        "hpLimit": 4500,
+        "torqueLimit": 5000,
+        "rpmLimit": 8700,
+        "harmonicControl": 0.88,
+        "reliabilityBonus": 5,
+        "strokeMm": 114.3,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_crank_race",
+        "name": "PLR/AJPE 564 Hemi billet krukas + race-demper",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 7500,
+        "hpLimit": 5625.0,
+        "torqueLimit": 6250.0,
+        "rpmLimit": 9000,
+        "harmonicControl": 0.98,
+        "reliabilityBonus": 5,
+        "strokeMm": 114.3,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "head": [
+      {
+        "id": "ws_ls_head_base",
+        "name": "PRC 237 straat/race",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3100,
+        "hpLimit": 1150,
+        "torqueLimit": 1350,
+        "rpmLimit": 7800,
+        "headFlow": 1.05,
+        "reliabilityBonus": 6,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_head_race",
+        "name": "PRC 237 CNC competitie",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3875,
+        "hpLimit": 1437.5,
+        "torqueLimit": 1687.5,
+        "rpmLimit": 8000,
+        "headFlow": 1.09,
+        "reliabilityBonus": 6,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_head_base",
+        "name": "Coyote CNC DOHC straat/race",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 7500,
+        "hpLimit": 1900,
+        "torqueLimit": 1900,
+        "rpmLimit": 9000,
+        "headFlow": 1.05,
+        "reliabilityBonus": 6,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_head_race",
+        "name": "Coyote CNC DOHC CNC competitie",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 9375,
+        "hpLimit": 2375.0,
+        "torqueLimit": 2375.0,
+        "rpmLimit": 9200,
+        "headFlow": 1.09,
+        "reliabilityBonus": 6,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_head_base",
+        "name": "BBC conventionele racekoppen straat/race",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 7500,
+        "hpLimit": 3200,
+        "torqueLimit": 3800,
+        "rpmLimit": 8400,
+        "headFlow": 1.05,
+        "reliabilityBonus": 6,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_head_race",
+        "name": "BBC conventionele racekoppen CNC competitie",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 9375,
+        "hpLimit": 4000.0,
+        "torqueLimit": 4750.0,
+        "rpmLimit": 8600,
+        "headFlow": 1.09,
+        "reliabilityBonus": 6,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_head_base",
+        "name": "AJPE billet Hemi koppen",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 7500,
+        "hpLimit": 4500,
+        "torqueLimit": 5000,
+        "rpmLimit": 8700,
+        "headFlow": 1.05,
+        "reliabilityBonus": 6,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_head_race",
+        "name": "AJPE billet Hemi competitiekoppen",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 9375,
+        "hpLimit": 5625.0,
+        "torqueLimit": 6250.0,
+        "rpmLimit": 8900,
+        "headFlow": 1.09,
+        "reliabilityBonus": 6,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "valvetrain": [
+      {
+        "id": "ws_ls_valves_base",
+        "name": "GM LS cathedral veren, nokken en tuimelaars",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1700,
+        "rpmLimit": 7800,
+        "hpLimit": 1150,
+        "torqueLimit": 1350,
+        "reliabilityBonus": 5,
+        "camRpmShift": 0,
+        "camVeScale": 1,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_valves_race",
+        "name": "GM LS cathedral race-nokken, veren en titanium retainers",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2125,
+        "rpmLimit": 8300,
+        "hpLimit": 1437.5,
+        "torqueLimit": 1687.5,
+        "reliabilityBonus": 5,
+        "camRpmShift": 400,
+        "camVeScale": 1.025,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_valves_base",
+        "name": "Ford Coyote veren, nokken en tuimelaars",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 4200,
+        "rpmLimit": 9000,
+        "hpLimit": 1900,
+        "torqueLimit": 1900,
+        "reliabilityBonus": 5,
+        "camRpmShift": 0,
+        "camVeScale": 1,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_valves_race",
+        "name": "Ford Coyote race-nokken, veren en titanium retainers",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 5250,
+        "rpmLimit": 9500,
+        "hpLimit": 2375.0,
+        "torqueLimit": 2375.0,
+        "reliabilityBonus": 5,
+        "camRpmShift": 400,
+        "camVeScale": 1.025,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_valves_base",
+        "name": "BBC 540 veren, nokken en tuimelaars",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 4200,
+        "rpmLimit": 8400,
+        "hpLimit": 3200,
+        "torqueLimit": 3800,
+        "reliabilityBonus": 5,
+        "camRpmShift": 0,
+        "camVeScale": 1,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_valves_race",
+        "name": "BBC 540 race-nokken, veren en titanium retainers",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 5250,
+        "rpmLimit": 8900,
+        "hpLimit": 4000.0,
+        "torqueLimit": 4750.0,
+        "reliabilityBonus": 5,
+        "camRpmShift": 400,
+        "camVeScale": 1.025,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_valves_base",
+        "name": "PLR/AJPE 564 Hemi veren, nokken en tuimelaars",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 4200,
+        "rpmLimit": 8700,
+        "hpLimit": 4500,
+        "torqueLimit": 5000,
+        "reliabilityBonus": 5,
+        "camRpmShift": 0,
+        "camVeScale": 1,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_valves_race",
+        "name": "PLR/AJPE 564 Hemi race-nokken, veren en titanium retainers",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 5250,
+        "rpmLimit": 9200,
+        "hpLimit": 5625.0,
+        "torqueLimit": 6250.0,
+        "reliabilityBonus": 5,
+        "camRpmShift": 400,
+        "camVeScale": 1.025,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "oiling": [
+      {
+        "id": "ws_ls_oil_base",
+        "name": "GM LS cathedral race-oliepomp en baffled carter",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1450,
+        "hpLimit": 1150,
+        "torqueLimit": 1350,
+        "rpmLimit": 8300,
+        "oilControl": 0.86,
+        "oilCooling": 0.65,
+        "oilCapacityL": 6.5,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 0,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_oil_race",
+        "name": "GM LS cathedral meertraps dry-sump + grotere tank",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2175.0,
+        "hpLimit": 1437.5,
+        "torqueLimit": 1687.5,
+        "rpmLimit": 8300,
+        "oilControl": 0.99,
+        "oilCooling": 0.95,
+        "oilCapacityL": 8.5,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 7,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_oil_base",
+        "name": "Ford Coyote race-oliepomp en baffled carter",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1450,
+        "hpLimit": 1900,
+        "torqueLimit": 1900,
+        "rpmLimit": 9500,
+        "oilControl": 0.86,
+        "oilCooling": 0.65,
+        "oilCapacityL": 8,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 0,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_oil_race",
+        "name": "Ford Coyote meertraps dry-sump + grotere tank",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2175.0,
+        "hpLimit": 2375.0,
+        "torqueLimit": 2375.0,
+        "rpmLimit": 9500,
+        "oilControl": 0.99,
+        "oilCooling": 0.95,
+        "oilCapacityL": 10,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 7,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_oil_base",
+        "name": "BBC 540 dry-sump oliesysteem",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 6500,
+        "hpLimit": 3200,
+        "torqueLimit": 3800,
+        "rpmLimit": 8900,
+        "oilControl": 0.98,
+        "oilCooling": 0.95,
+        "oilCapacityL": 10,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 0,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_oil_race",
+        "name": "BBC 540 meertraps dry-sump + grotere tank",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 9750.0,
+        "hpLimit": 4000.0,
+        "torqueLimit": 4750.0,
+        "rpmLimit": 8900,
+        "oilControl": 0.98,
+        "oilCooling": 0.95,
+        "oilCapacityL": 12,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 7,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_oil_base",
+        "name": "PLR/AJPE 564 Hemi dry-sump oliesysteem",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 6500,
+        "hpLimit": 4500,
+        "torqueLimit": 5000,
+        "rpmLimit": 9200,
+        "oilControl": 0.98,
+        "oilCooling": 0.95,
+        "oilCapacityL": 12,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 0,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_oil_race",
+        "name": "PLR/AJPE 564 Hemi meertraps dry-sump + grotere tank",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 9750.0,
+        "hpLimit": 5625.0,
+        "torqueLimit": 6250.0,
+        "rpmLimit": 9200,
+        "oilControl": 0.98,
+        "oilCooling": 0.95,
+        "oilCapacityL": 14,
+        "reliabilityBonus": 5,
+        "massDeltaKg": 7,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "manifold": [
+      {
+        "id": "ws_ls_intake_base",
+        "name": "GM LS cathedral single-plane/EFI-inlaat",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 850,
+        "intakeFlow": 1.08,
+        "throttleMm": 102,
+        "plenumL": 7,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_intake_race",
+        "name": "GM LS cathedral single-plane/EFI-inlaat high-flow",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1360.0,
+        "intakeFlow": 1.2000000000000002,
+        "throttleMm": 102,
+        "plenumL": 7,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_intake_base",
+        "name": "Ford Coyote race-inlaatspruitstuk",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2300,
+        "intakeFlow": 1.08,
+        "throttleMm": 102,
+        "plenumL": 7,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_intake_race",
+        "name": "Ford Coyote race-inlaatspruitstuk high-flow",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3680.0,
+        "intakeFlow": 1.2000000000000002,
+        "throttleMm": 102,
+        "plenumL": 7,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_intake_base",
+        "name": "BBC 540 race-inlaatspruitstuk",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2300,
+        "intakeFlow": 1.08,
+        "throttleMm": 120,
+        "plenumL": 12,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_intake_race",
+        "name": "BBC 540 race-inlaatspruitstuk high-flow",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3680.0,
+        "intakeFlow": 1.2000000000000002,
+        "throttleMm": 120,
+        "plenumL": 12,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_intake_base",
+        "name": "PLR/AJPE 564 Hemi race-inlaatspruitstuk",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 2300,
+        "intakeFlow": 1.08,
+        "throttleMm": 120,
+        "plenumL": 12,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_intake_race",
+        "name": "PLR/AJPE 564 Hemi race-inlaatspruitstuk high-flow",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3680.0,
+        "intakeFlow": 1.2000000000000002,
+        "throttleMm": 120,
+        "plenumL": 12,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "exhaust": [
+      {
+        "id": "ws_ls_exhaust_base",
+        "name": "GM LS cathedral headers + turbo-aansluiting",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 1600,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_exhaust_race",
+        "name": "GM LS cathedral race-headers + vrije uitlaat",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 2400.0,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_exhaust_base",
+        "name": "Ford Coyote headers + turbo-aansluiting",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 1600,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_exhaust_race",
+        "name": "Ford Coyote race-headers + vrije uitlaat",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 2400.0,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_exhaust_base",
+        "name": "BBC 540 headers + turbo-aansluiting",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 3400,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_exhaust_race",
+        "name": "BBC 540 race-headers + vrije uitlaat",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 5100.0,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_exhaust_base",
+        "name": "PLR/AJPE 564 Hemi headers + turbo-aansluiting",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 3400,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_exhaust_race",
+        "name": "PLR/AJPE 564 Hemi race-headers + vrije uitlaat",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "open_headers_5",
+        "price": 5100.0,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "ignition": [
+      {
+        "id": "ws_ls_spark_base",
+        "name": "GM LS cathedral 8 smart coils + bougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "cdi",
+        "price": 1200,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_spark_race",
+        "name": "GM LS cathedral 8 high-energy coils/CDI + racebougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "dual_cdi",
+        "price": 2600,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_spark_base",
+        "name": "Ford Coyote 8 smart coils + bougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "cdi",
+        "price": 1200,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_spark_race",
+        "name": "Ford Coyote 8 high-energy coils/CDI + racebougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "dual_cdi",
+        "price": 2600,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_spark_base",
+        "name": "BBC 540 8 smart coils + bougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "cdi",
+        "price": 1200,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_spark_race",
+        "name": "BBC 540 8 high-energy coils/CDI + racebougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "dual_cdi",
+        "price": 2600,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_spark_base",
+        "name": "PLR/AJPE 564 Hemi 8 smart coils + bougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "cdi",
+        "price": 1200,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_spark_race",
+        "name": "PLR/AJPE 564 Hemi 8 high-energy coils/CDI + racebougies",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "dual_cdi",
+        "price": 2600,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "sealing": [
+      {
+        "id": "ws_ls_seal_base",
+        "name": "GM LS cathedral MLS/koper + kopstuds",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 800,
+        "headClampBmep": 55,
+        "reliabilityBonus": 5,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_seal_race",
+        "name": "GM LS cathedral fire rings + race-studs",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1360.0,
+        "headClampBmep": 75,
+        "reliabilityBonus": 5,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_seal_base",
+        "name": "Ford Coyote MLS/koper + kopstuds",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 800,
+        "headClampBmep": 55,
+        "reliabilityBonus": 5,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_seal_race",
+        "name": "Ford Coyote fire rings + race-studs",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1360.0,
+        "headClampBmep": 75,
+        "reliabilityBonus": 5,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_seal_base",
+        "name": "BBC 540 MLS/koper + kopstuds",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1900,
+        "headClampBmep": 55,
+        "reliabilityBonus": 5,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_seal_race",
+        "name": "BBC 540 fire rings + race-studs",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3230.0,
+        "headClampBmep": 75,
+        "reliabilityBonus": 5,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_seal_base",
+        "name": "PLR/AJPE 564 Hemi MLS/koper + kopstuds",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 1900,
+        "headClampBmep": 55,
+        "reliabilityBonus": 5,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_seal_race",
+        "name": "PLR/AJPE 564 Hemi fire rings + race-studs",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3230.0,
+        "headClampBmep": 75,
+        "reliabilityBonus": 5,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "mounts": [
+      {
+        "id": "ws_ls_mounts_base",
+        "name": "GM LS cathedral poly langsgeplaatste motorsteunen",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "poly_mounts",
+        "price": 600,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_mounts_race",
+        "name": "GM LS cathedral motorplaat en baksteun",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "solid_race",
+        "price": 1100,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_mounts_base",
+        "name": "Ford Coyote poly langsgeplaatste motorsteunen",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "poly_mounts",
+        "price": 600,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_mounts_race",
+        "name": "Ford Coyote motorplaat en baksteun",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "solid_race",
+        "price": 1100,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_mounts_base",
+        "name": "BBC 540 poly langsgeplaatste motorsteunen",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "poly_mounts",
+        "price": 600,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_mounts_race",
+        "name": "BBC 540 motorplaat en baksteun",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "solid_race",
+        "price": 1100,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_mounts_base",
+        "name": "PLR/AJPE 564 Hemi poly langsgeplaatste motorsteunen",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "poly_mounts",
+        "price": 600,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_mounts_race",
+        "name": "PLR/AJPE 564 Hemi motorplaat en baksteun",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "base": "solid_race",
+        "price": 1100,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      }
+    ],
+    "fuelSystem": [
+      {
+        "id": "ws_ls_fuel_base",
+        "name": "GM LS cathedral 8×1600 cc/min EFI + pomp",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3400,
+        "fuelSystemHp": 1500,
+        "maxRailBar": 6,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_ls_fuel_race",
+        "name": "GM LS cathedral 16×1600 cc/min EFI + pomp race",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 5100.0,
+        "fuelSystemHp": 1875.0,
+        "maxRailBar": 6,
+        "families": [
+          "ls"
+        ],
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_coyote_fuel_base",
+        "name": "Ford Coyote 8×1600 cc/min EFI + pomp",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 3400,
+        "fuelSystemHp": 1500,
+        "maxRailBar": 6,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_coyote_fuel_race",
+        "name": "Ford Coyote 16×1600 cc/min EFI + pomp race",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 5100.0,
+        "fuelSystemHp": 1875.0,
+        "maxRailBar": 6,
+        "families": [
+          "coyote"
+        ],
+        "sourceId": "tkm"
+      },
+      {
+        "id": "ws_bbc_fuel_base",
+        "name": "BBC 540 16×2400 cc/min methanolinjectie",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 8000,
+        "fuelSystemHp": 6000,
+        "maxRailBar": 10,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_bbc_fuel_race",
+        "name": "BBC 540 32×2400 cc/min methanolinjectie race",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 12000.0,
+        "fuelSystemHp": 7500.0,
+        "maxRailBar": 10,
+        "families": [
+          "bbc"
+        ],
+        "sourceId": "sme"
+      },
+      {
+        "id": "ws_hemi_fuel_base",
+        "name": "PLR/AJPE 564 Hemi 16×2400 cc/min methanolinjectie",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 8000,
+        "fuelSystemHp": 6000,
+        "maxRailBar": 10,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_hemi_fuel_race",
+        "name": "PLR/AJPE 564 Hemi 32×2400 cc/min methanolinjectie race",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Poortinjectie · drukreferentie boven inlaatspruitstuk",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "price": 12000.0,
+        "fuelSystemHp": 7500.0,
+        "maxRailBar": 10,
+        "families": [
+          "hemi"
+        ],
+        "sourceId": "proline"
+      },
+      {
+        "id": "ws_ls_carb",
+        "name": "TRC/950-cfm carburateur + pomp",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Carburateur · 950 cfm · 0,45 bar",
+        "detail": "Carburateur met brandstofpomp/regelaar; sproeiermengsel en totale ontsteking worden via Tune ingesteld. Geen DI of HPFP.",
+        "families": [
+          "ls"
+        ],
+        "price": 1500,
+        "sourceId": "prc",
+        "fuelSystemHp": 1000,
+        "maxRailBar": 0.6
+      }
+    ],
+    "ecu": [
+      {
+        "id": "ws_ls_ecu_base",
+        "name": "Holley Dominator + kabelboom",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 4200,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.91,
+        "tractionControl": false,
+        "sourceId": "holley",
+        "families": [
+          "ls"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      },
+      {
+        "id": "ws_ls_ecu_race",
+        "name": "Holley Dominator + PDM + snelheidsregeling",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 7500,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.99,
+        "tractionControl": true,
+        "sourceId": "holley",
+        "families": [
+          "ls"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      },
+      {
+        "id": "ws_coyote_ecu_base",
+        "name": "Haltech race-ECU + kabelboom",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 4200,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.91,
+        "tractionControl": false,
+        "sourceId": "tkm",
+        "families": [
+          "coyote"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      },
+      {
+        "id": "ws_coyote_ecu_race",
+        "name": "Haltech race-ECU + PDM + snelheidsregeling",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 7500,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.99,
+        "tractionControl": true,
+        "sourceId": "tkm",
+        "families": [
+          "coyote"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      },
+      {
+        "id": "ws_bbc_ecu_base",
+        "name": "FuelTech race-ECU + kabelboom",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 4200,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.91,
+        "tractionControl": false,
+        "sourceId": "sme",
+        "families": [
+          "bbc"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      },
+      {
+        "id": "ws_bbc_ecu_race",
+        "name": "FuelTech race-ECU + PDM + snelheidsregeling",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 7500,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.99,
+        "tractionControl": true,
+        "sourceId": "sme",
+        "families": [
+          "bbc"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      },
+      {
+        "id": "ws_hemi_ecu_base",
+        "name": "FuelTech race-ECU + kabelboom",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 4200,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.91,
+        "tractionControl": false,
+        "sourceId": "proline",
+        "families": [
+          "hemi"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      },
+      {
+        "id": "ws_hemi_ecu_race",
+        "name": "FuelTech race-ECU + PDM + snelheidsregeling",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "ECU, kabelboom en sensoren voor deze motorfamilie. Geen mechanische koppelgrens; toerental, brandstof en beveiligingsfuncties bepalen de regeling. Pakketprijs gemodelleerd.",
+        "base": "promod_ecu",
+        "price": 7500,
+        "rpmLimit": 11000,
+        "safetyQuality": 0.99,
+        "tractionControl": true,
+        "sourceId": "proline",
+        "families": [
+          "hemi"
+        ],
+        "hpLimit": 10000,
+        "torqueLimit": 10000
+      }
+    ],
+    "fuel": [
+      {
+        "id": "ws_c16",
+        "name": "VP C16 racebenzine",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "C16 · MON 116 · RON >120 · 0% zuurstof",
+        "detail": "VP: SG 0,735 en stoichiometrische AFR 14,70. Het cyclusmodel gebruikt RON 120 als ondergrens; verbrandingswarmte/verdampingskoeling zijn geschat.",
+        "price": 0,
+        "families": [
+          "ls",
+          "coyote",
+          "bbc",
+          "hemi"
+        ],
+        "octane": 120,
+        "fuelCooling": 0.05,
+        "fuelFlowFactor": 1,
+        "sourceId": "vp"
+      }
+    ],
+    "turbo": [
+      {
+        "id": "ws_na",
+        "name": "Atmosferisch — vrij inlaat-/uitlaatpad",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "Voertuigspecifiek racepakket",
+        "detail": "Geen compressor, turbine of boost; met carburateur/EFI en optioneel lachgas.",
+        "price": 0,
+        "families": [
+          "ls"
+        ],
+        "compressorMm": 0,
+        "turbineMm": 0,
+        "turboMaxBoost": 0,
+        "turboMaxHp": 10000,
+        "turboSpoolRpm": 0,
+        "sourceId": "prc",
+        "naturallyAspirated": true
+      }
+    ],
+    "nitrous": [
+      {
+        "id": "ws_n2o_100",
+        "name": "V8 wet direct-port 100 hp · 8 nozzles",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "100 hp nominale sproeiermaat · eigen brandstofsolenoids",
+        "detail": "Eigen brandstoftoevoer, progressieve controller en 8 nozzles. Ontstekingsretard, flesvulling en slijtage beperken het werkelijk haalbare resultaat.",
+        "price": 2600,
+        "families": [
+          "ls",
+          "coyote",
+          "bbc",
+          "hemi"
+        ],
+        "shotHp": 100,
+        "n2oType": "wet",
+        "progressiveS": 1,
+        "bottleKg": 4.54,
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_n2o_225",
+        "name": "V8 wet direct-port 225 hp · 8 nozzles",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "225 hp nominale sproeiermaat · eigen brandstofsolenoids",
+        "detail": "Eigen brandstoftoevoer, progressieve controller en 8 nozzles. Ontstekingsretard, flesvulling en slijtage beperken het werkelijk haalbare resultaat.",
+        "price": 3225,
+        "families": [
+          "ls",
+          "coyote",
+          "bbc",
+          "hemi"
+        ],
+        "shotHp": 225,
+        "n2oType": "wet",
+        "progressiveS": 1,
+        "bottleKg": 4.54,
+        "sourceId": "prc"
+      },
+      {
+        "id": "ws_n2o_350",
+        "name": "V8 wet direct-port 350 hp · 8 nozzles",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "350 hp nominale sproeiermaat · eigen brandstofsolenoids",
+        "detail": "Eigen brandstoftoevoer, progressieve controller en 8 nozzles. Ontstekingsretard, flesvulling en slijtage beperken het werkelijk haalbare resultaat.",
+        "price": 3850,
+        "families": [
+          "ls",
+          "coyote",
+          "bbc",
+          "hemi"
+        ],
+        "shotHp": 350,
+        "n2oType": "wet",
+        "progressiveS": 1.5,
+        "bottleKg": 4.54,
+        "sourceId": "prc"
+      }
+    ],
+    "transmission": [
+      {
+        "id": "ws_crc12_jackstand_240_trans_base",
+        "name": "Powerglide converterpakket",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "2 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "crc12_jackstand_240"
+        ],
+        "price": 3500,
+        "gearRatios": [
+          1.76,
+          1
+        ],
+        "finalDrive": 4.128,
+        "transTorque": 1250,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.12,
+        "converterStallRpm": 5465,
+        "converterTorqueNm": 580,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_crc12_jackstand_240_trans_race",
+        "name": "Powerglide billet racebak + converter",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "2 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "crc12_jackstand_240"
+        ],
+        "price": 5250.0,
+        "gearRatios": [
+          1.76,
+          1
+        ],
+        "finalDrive": 4.128,
+        "transTorque": 1750.0,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.08,
+        "converterStallRpm": 5465,
+        "converterTorqueNm": 580,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_lumberjack_trans_base",
+        "name": "TH400 converterpakket",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "lumberjack"
+        ],
+        "price": 3500,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 4.383,
+        "transTorque": 1500,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.12,
+        "converterStallRpm": 5304,
+        "converterTorqueNm": 1000,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_lumberjack_trans_race",
+        "name": "TH400 billet racebak + converter",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "lumberjack"
+        ],
+        "price": 5250.0,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 4.383,
+        "transTorque": 2100.0,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.08,
+        "converterStallRpm": 5304,
+        "converterTorqueNm": 1000,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_mcflurry_trans_base",
+        "name": "Lenco/Bruno converterpakket",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "mcflurry"
+        ],
+        "price": 18000,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 3.575,
+        "transTorque": 2100,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.12,
+        "converterStallRpm": 8080,
+        "converterTorqueNm": 1400,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_mcflurry_trans_race",
+        "name": "Lenco/Bruno billet racebak + converter",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "mcflurry"
+        ],
+        "price": 27000.0,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 3.575,
+        "transTorque": 2940.0,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.08,
+        "converterStallRpm": 8080,
+        "converterTorqueNm": 1400,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_mullet_trans_base",
+        "name": "TH400 converterpakket",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "mullet"
+        ],
+        "price": 18000,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 3.24,
+        "transTorque": 4000,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.12,
+        "converterStallRpm": 5850,
+        "converterTorqueNm": 2600,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_mullet_trans_race",
+        "name": "TH400 billet racebak + converter",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "mullet"
+        ],
+        "price": 27000.0,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 3.24,
+        "transTorque": 5600.0,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.08,
+        "converterStallRpm": 5850,
+        "converterTorqueNm": 2600,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_eagle_trans_base",
+        "name": "TH400 converterpakket",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "eagle"
+        ],
+        "price": 18000,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 2.677,
+        "transTorque": 5500,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.12,
+        "converterStallRpm": 5850,
+        "converterTorqueNm": 3600,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      },
+      {
+        "id": "ws_eagle_trans_race",
+        "name": "TH400 billet racebak + converter",
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "specs": "3 versnellingen · eigen converter · ratios gemodelleerd",
+        "detail": "Passend pakket voor deze motorfamilie; capaciteit en prijs zijn spelmodellen.",
+        "cars": [
+          "eagle"
+        ],
+        "price": 27000.0,
+        "gearRatios": [
+          2.48,
+          1.48,
+          1
+        ],
+        "finalDrive": 2.677,
+        "transTorque": 7699.999999999999,
+        "transEfficiency": 0.93,
+        "shiftSeconds": 0.08,
+        "converterStallRpm": 5850,
+        "converterTorqueNm": 3600,
+        "converterTorqueRatio": 2,
+        "autoShift": true,
+        "sourceId": "fti"
+      }
+    ],
+    "air": [
+      {
+        "families": [
+          "ls"
+        ],
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "sourceId": "prc",
+        "price": 0,
+        "detail": "Atmosferische basis: geen gefingeerde turbohardware. Ombouwpakketten zijn aparte aankopen.",
+        "id": "ws_na_air",
+        "name": "Carburateur-inlaatbak / atmosferisch luchtpad",
+        "cooling": 0,
+        "flow": 1.1,
+        "specs": "Geen intercooler · vrije luchttoevoer"
+      }
+    ],
+    "boostControl": [
+      {
+        "families": [
+          "ls"
+        ],
+        "workshopOnly": true,
+        "priceKind": "modeled",
+        "sourceId": "prc",
+        "price": 0,
+        "detail": "Atmosferische basis: geen gefingeerde turbohardware. Ombouwpakketten zijn aparte aankopen.",
+        "id": "ws_no_boost",
+        "name": "Geen wastegates (atmosferisch)",
+        "boostHardwareMaxBar": 0,
+        "specs": "Geen laaddrukregeling"
+      }
+    ]
+  },
+  "shared": {
+    "turbo": [
+      "pt6466",
+      "pt6870",
+      "pt7675",
+      "pt8085",
+      "pt8685",
+      "pt9103",
+      "pt9803",
+      "twin_pt9803"
+    ],
+    "boostControl": [
+      "single_44",
+      "dual_44",
+      "co2_dome",
+      "dual_60_co2"
+    ],
+    "air": [
+      "fmic",
+      "wmi",
+      "ice_tank",
+      "promod_ice_system"
+    ],
+    "crankcase": [
+      "catch_can",
+      "vented_can",
+      "vacuum_pump"
+    ],
+    "sensors": [
+      "street_sensor_pack",
+      "motorsport_sensors",
+      "pro_instrumentation"
+    ],
+    "spool": [
+      "none",
+      "mild_als",
+      "hard_als",
+      "n2o_50",
+      "n2o_100"
+    ],
+    "fuel": [
+      "ron98",
+      "e85",
+      "flex",
+      "methanol"
+    ],
+    "nitrous": [
+      "no_n2o"
+    ]
+  }
+}

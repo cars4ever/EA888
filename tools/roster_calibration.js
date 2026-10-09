@@ -27,7 +27,7 @@ const BEFORE = [
   ['', 'promod_slick: { mu: 1.32, muPrep: 4.03', 'promod_slick: { mu: 1.32, muPrep: 3.15'],
   ['all slip heat into the tyre skin', 'surfaceShare: clamp(0.35 + 0.325 * (Math.abs(s.kappa) / ty.peakSlip - 1), 0.35, 1), ', ''],
   ['reactive traction control instead of torque management', 'const torqueManaged = !!(state.rosterCar && state.rosterCar.tractionControl)', 'const torqueManaged = false && !!(state.rosterCar && state.rosterCar.tractionControl)'],
-  ['', "const tcCapable = state.rosterCar ? false : !!getPart(state, 'ecu').tractionControl;", "const tcCapable = state.rosterCar ? !!state.rosterCar.tractionControl : !!getPart(state, 'ecu').tractionControl;"],
+  ['', "const tcCapable = state.rosterCar?.engine ? false : !!getPart(state, 'ecu').tractionControl;", "const tcCapable = state.rosterCar ? !!state.rosterCar.tractionControl : !!getPart(state, 'ecu').tractionControl;"],
   ['launch at the converter stall', 'while (launchRpm > 1800 && hitG(launchRpm) > capacityG * R.launch.capacityMargin) launchRpm -= 25;', ''],
   ['full boost from the launch', 'const launchBar = lb ? lb.value * PSI_BAR : Math.max(0, bc.launchTorqueFraction * (1.013 + fullBar) - 1.013);', 'const launchBar = fullBar;']
 ];

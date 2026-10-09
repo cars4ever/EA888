@@ -362,6 +362,18 @@
   function fuelDelivery(sys, q) {
     const rho = q.fuel.densityKgL; // kg/L = g/cc
     const demandCcS = (q.demandKgS * 1000) / rho;
+    if (sys.carburetor) {
+      // Total fuel capacity of the float bowls/jets/pump; pressure is low-pressure
+      // supply, never an imaginary direct-injection rail on the LS carb build.
+      const pressure = clamp(Number(q.railTargetBar) || sys.nominalPressureBar, 0.1, sys.maxRailBar);
+      const cap = sys.carbFuelKgS * Math.sqrt(pressure / sys.nominalPressureBar);
+      const delivered = Math.min(q.demandKgS, cap), duty = q.demandKgS / cap * 100;
+      return { deliveredKgS: delivered, demandKgS: q.demandKgS,
+        shortfallPct: q.demandKgS > 0 ? (1 - delivered / q.demandKgS) * 100 : 0,
+        railBar: null, railTargetBar: null, supplyBar: pressure, diDutyPct: 0,
+        diPulseMs: 0, hpfpDutyPct: 0, mpiDutyPct: 0, diShareCcS: 0, mpiShareCcS: 0,
+        capacityCcS: cap * 1000 / rho, dutyPct: duty, limitedBy: duty > 100 ? 'carburetor' : '' };
+    }
     const rps = q.rpm / 60;
     const pumps = DATA.pumps, inj = DATA.injectors;
     const hp = sys.hpfp ? pumps[sys.hpfp] : null, di = sys.di ? inj[sys.di] : null;
@@ -372,7 +384,10 @@
     const window = (sys.injectionWindowDeg || 0) / 720; // fraction of the cycle a DI injector may inject
     const diCcS = p => (di ? 4 * (di.ccMinAt100Bar / 60) * Math.sqrt(Math.max(0, p - q.mapBarAbs) / 100) * window : 0);
     // Port injection: static flow at its regulated pressure (rising-rate: above manifold pressure), 90 % duty.
-    const mpiCcS = mpi ? (sys.mpiCount || 4) * (mpi.ccMinAt3Bar / 60) * Math.sqrt((sys.mpiPressureBar || 4) / 3) * 0.9 : 0;
+    const mpiPressure = sys.pressureControlled
+      ? clamp(Number(q.railTargetBar) || sys.mpiPressureBar, 0.5, sys.maxRailBar)
+      : (sys.mpiPressureBar || 4);
+    const mpiCcS = mpi ? (sys.mpiCount || 4) * (mpi.ccMinAt3Bar / 60) * Math.sqrt(mpiPressure / 3) * 0.9 : 0;
     const mechCcS = mech ? ((mech.lphPer1000Rpm * (sys.mechanicalScale || 1) * q.rpm) / 1000) * (1000 / 3600) : Infinity;
     // ECU split: direct injection first (up to 85 % of its capacity when port injectors exist), port injection on top.
     let rail = railTarget, diCc = 0, mpiCc = 0, limitedBy = '';

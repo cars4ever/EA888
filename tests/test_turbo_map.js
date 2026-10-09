@@ -13,6 +13,10 @@ const bundlePath = path.join(__dirname, '..', 'src', 'assets', 'turbo-data.js');
 assert.strictEqual(fs.readFileSync(bundlePath, 'utf8'), render(buildTurboData()), 'turbo-data.js is stale: run node tools/build_turbo_data.js');
 const REQUIRED = ['id', 'name', 'compressorInducerMm', 'turbineExducerMm', 'maxShaftRpm', 'mapSource', 'mapType', 'surgeLine', 'speedLines', 'efficiencyIslands', 'chokeLine'];
 for (const part of C.CATEGORY_MAP.turbo.items) {
+  if (part.naturallyAspirated) {
+    assert.strictEqual(part.compressorMm,0);assert(T.getMap(part.id).naturallyAspirated);
+    assert(!T.DATA.turbos[part.id], 'no invented compressor map for an atmospheric engine');continue;
+  }
   const d = T.DATA.turbos[part.id];
   assert(d, `turbo ${part.id} has no map`);
   for (const key of REQUIRED) assert(d[key] !== undefined && d[key] !== null, `${part.id}: ${key} missing`);

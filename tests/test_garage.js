@@ -11,7 +11,7 @@ assert.deepStrictEqual(C.garageOf(fresh), { active: 'scirocco', cars: {} }, 'a n
 // prices: from the research or not at all
 for (const o of C.rosterOpponents()) {
   const car = C.rosterCarData(o.id), price = C.rosterCarPrice(o.id);
-  if (!car.price) { assert.strictEqual(price, null, `${o.id}: no price in the research, not for sale`); continue; }
+  if (!car.price) { if (price) { assert(price.gamePrice && price.value.kind === 'modeled' && price.usd === null, `${o.id}: explicit game price, never a research sale`); } continue; }
   assert(price.usd > 0 && price.eur === Math.round(C.usdToEur(price.usd)), `${o.id}: euros at the game rate`);
   assert(['stated', 'modeled'].includes(price.value.kind), `${o.id}: price kind`);
   if (price.value.kind === 'modeled') {
@@ -21,12 +21,12 @@ for (const o of C.rosterOpponents()) {
   }
 }
 assert.strictEqual(C.rosterCarPrice('crc3_240sx_hatch').usd, 10374, 'the hatch: its budget board');
-assert.strictEqual(C.rosterCarPrice('eagle'), null, 'Eagle: no price, not for sale');
+assert.strictEqual(C.rosterCarPrice('eagle').gamePrice, true, 'Eagle: explicit modeled game price');
 
 // buying
 const id = 'crc12_jackstand_240', price = C.rosterCarPrice(id);
 assert(!C.buyRosterCar({ ...fresh, bank: 10 }, id).ok, 'not without the money');
-assert(!C.buyRosterCar(fresh, 'eagle').ok, 'not a car without a price');
+assert(!C.buyRosterCar(fresh, 'eagle').ok, 'not without enough money for Eagle');
 const bought = C.buyRosterCar(fresh, id);
 assert(bought.ok && bought.bank === fresh.bank - price.eur, 'paid from the budget');
 let save = { ...fresh, bank: bought.bank, garage: bought.garage };

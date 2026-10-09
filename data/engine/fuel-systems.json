@@ -88,6 +88,11 @@
       "lphPer1000Rpm": 190,
       "mapType": "modeled",
       "note": "belt/cam-driven methanol pump, delivery proportional to rpm"
+    },
+    "ws_race_pump": {
+      "lphAt5Bar": 1200,
+      "mapType": "modeled",
+      "note": "Combined brushless EFI pump package, modeled flow at regulated pressure."
     }
   },
   "systems": {
@@ -154,6 +159,102 @@
       "mpi": "meth_2400",
       "mpiCount": 32,
       "mpiPressureBar": 12,
+      "injectionWindowDeg": 0
+    },
+    "ws_ls_fuel_base": {
+      "mpi": "mpi_1600",
+      "mpiCount": 8,
+      "mpiPressureBar": 4,
+      "pressureControlled": true,
+      "maxRailBar": 6,
+      "lpfp": "ws_race_pump",
+      "mechanical": null,
+      "mechanicalScale": 2,
+      "injectionWindowDeg": 0
+    },
+    "ws_ls_fuel_race": {
+      "mpi": "mpi_1600",
+      "mpiCount": 16,
+      "mpiPressureBar": 4,
+      "pressureControlled": true,
+      "maxRailBar": 6,
+      "lpfp": "ws_race_pump",
+      "mechanical": null,
+      "mechanicalScale": 3,
+      "injectionWindowDeg": 0
+    },
+    "ws_coyote_fuel_base": {
+      "mpi": "mpi_1600",
+      "mpiCount": 8,
+      "mpiPressureBar": 4,
+      "pressureControlled": true,
+      "maxRailBar": 6,
+      "lpfp": "ws_race_pump",
+      "mechanical": null,
+      "mechanicalScale": 2,
+      "injectionWindowDeg": 0
+    },
+    "ws_coyote_fuel_race": {
+      "mpi": "mpi_1600",
+      "mpiCount": 16,
+      "mpiPressureBar": 4,
+      "pressureControlled": true,
+      "maxRailBar": 6,
+      "lpfp": "ws_race_pump",
+      "mechanical": null,
+      "mechanicalScale": 3,
+      "injectionWindowDeg": 0
+    },
+    "ws_bbc_fuel_base": {
+      "mpi": "meth_2400",
+      "mpiCount": 16,
+      "mpiPressureBar": 8,
+      "pressureControlled": true,
+      "maxRailBar": 10,
+      "lpfp": null,
+      "mechanical": "mech_meth",
+      "mechanicalScale": 2,
+      "injectionWindowDeg": 0
+    },
+    "ws_bbc_fuel_race": {
+      "mpi": "meth_2400",
+      "mpiCount": 32,
+      "mpiPressureBar": 8,
+      "pressureControlled": true,
+      "maxRailBar": 10,
+      "lpfp": null,
+      "mechanical": "mech_meth",
+      "mechanicalScale": 3,
+      "injectionWindowDeg": 0
+    },
+    "ws_hemi_fuel_base": {
+      "mpi": "meth_2400",
+      "mpiCount": 16,
+      "mpiPressureBar": 8,
+      "pressureControlled": true,
+      "maxRailBar": 10,
+      "lpfp": null,
+      "mechanical": "mech_meth",
+      "mechanicalScale": 2,
+      "injectionWindowDeg": 0
+    },
+    "ws_hemi_fuel_race": {
+      "mpi": "meth_2400",
+      "mpiCount": 32,
+      "mpiPressureBar": 8,
+      "pressureControlled": true,
+      "maxRailBar": 10,
+      "lpfp": null,
+      "mechanical": "mech_meth",
+      "mechanicalScale": 3,
+      "injectionWindowDeg": 0
+    },
+    "ws_ls_carb": {
+      "carburetor": true,
+      "carbFuelKgS": 0.095,
+      "carbCfm": 950,
+      "nominalPressureBar": 0.45,
+      "maxRailBar": 0.6,
       "injectionWindowDeg": 0
     }
   }

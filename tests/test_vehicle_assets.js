@@ -14,7 +14,7 @@ for(const id of cars){
   qa.garage=C.setActiveCar(qa,id);
   const persisted=C.normalizeState(JSON.parse(JSON.stringify(qa)));
   assert.equal(persisted.garage.active,id);
-  assert.equal(C.workshopAvailable(persisted),false);
+  assert.equal(C.workshopAvailable(persisted),true);
   assert.equal(persisted.bank,10000000);
   const file=path.join(__dirname,'../src/assets',v.model);
   const bytes=fs.readFileSync(file);
@@ -33,7 +33,7 @@ for(const id of cars){
 for(const id of V.ids){
   const fresh=C.createCareerSelection(), price=C.rosterCarPrice(id);
   const result=C.confirmStarter(fresh,id);
-  assert.equal(result.ok,id==='scirocco'||!!price);
+  assert.equal(result.ok,id==='scirocco'||!!price&&price.eur<=fresh.bank);
   if(!result.ok)continue;
   assert.equal(result.state.bank,50000-(price?.eur||0));
   assert.equal(result.state.garage.active,id);
