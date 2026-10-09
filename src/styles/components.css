@@ -341,3 +341,9 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .starter-selection .vehicle-showroom-card { margin-top:20px; }
 
 .vehicle-model-error{position:fixed;top:64px;left:10%;right:10%;z-index:1000;background:#572509;color:#ffe1bc;padding:12px;border:1px solid #ffa345;border-radius:8px;text-align:center;}
+
+/* Each V8 workshop shares the existing controls, with its own engine identity. */
+.workshop-engine svg{display:block;width:100%;max-height:260px;margin:8px auto}
+.workshop-engine .button-row{display:flex;flex-wrap:wrap;gap:6px}
+.workshop-active{margin:8px 0;color:var(--text)}
+.part-fit-note{display:block;font-size:12px;max-width:260px;color:#eab676;padding:8px}

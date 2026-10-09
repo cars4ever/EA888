@@ -56,7 +56,9 @@ def main():
     report['pairs'].append(r)
    assert page.evaluate('(k)=>localStorage.getItem(k)',key)==real
    # A converter-equipped V8 must show its own transmission and emit eight-cylinder audio.
-   page.evaluate('__EA888_DEBUG__.qaDrive("crc12_jackstand_240")');page.locator('[data-nav=drag]').click()
+   page.evaluate('__EA888_DEBUG__.qaDrive("crc12_jackstand_240")');page.locator('[data-nav=dyno]').click();page.locator('[data-action=start-dyno]').click()
+   page.wait_for_function('__EA888_DEBUG__.dyno()?.status==="completed" && __EA888_DEBUG__.dyno()?.current',timeout=90000)
+   page.locator('[data-nav=drag]').click()
    page.locator('[data-action=auto-drag-game]').click()
    page.wait_for_function('__EA888_DEBUG__.race().distanceM > 1',timeout=90000)
    page.wait_for_function('__EA888_DEBUG__.audio().ready && __EA888_DEBUG__.audio().synthStats?.fired > 0',timeout=30000)

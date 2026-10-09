@@ -857,6 +857,8 @@ def main() -> None:
         click(page, '[data-drive-car="crc12_jackstand_240"]')
         garage = page.evaluate("() => __EA888_DEBUG__.garage()")
         report['checks']['roster_car_bought'] = 'crc12_jackstand_240' in garage['cars'] and garage['active'] == 'crc12_jackstand_240' and page.evaluate("() => __EA888_DEBUG__.career().bank") < bank_before_car
+        click(page, '[data-nav="dyno"]');click(page, '[data-action="start-dyno"]')
+        page.wait_for_function('__EA888_DEBUG__.dyno()?.status === "completed" && __EA888_DEBUG__.dyno()?.current',timeout=90000)
         click(page, '[data-nav="drag"]')
         click(page, '[data-action="auto-drag-game"]')
         page.wait_for_selector('#race-game-root .v8-run-game', state='visible', timeout=90000)
@@ -867,7 +869,7 @@ def main() -> None:
         garage = page.evaluate("() => __EA888_DEBUG__.garage()")
         report['checks']['roster_car_raced'] = roster_drag.get('rosterId') == 'crc12_jackstand_240' and roster_drag.get('transmissionMode') == 'AUTOMAAT' and 7 < roster_drag.get('quarter', 0) < 20 \
             and garage['cars']['crc12_jackstand_240']['record']['runs'] >= 1
-        report['checks']['scirocco_wear_untouched_by_roster_car'] = page.evaluate("() => __EA888_DEBUG__.stateWear()") == wear_before
+        report['checks']['scirocco_wear_untouched_by_roster_car'] = page.evaluate("() => {const s=__EA888_DEBUG__.garage().scirocco;return {wear:s.wear,damage:s.damage};}") == wear_before
         click(page, '[data-action="finish-to-overview"]')
         page.evaluate("window.__EA888_DEBUG__.holdFinishForTest(false)")
         page.wait_for_selector('#race-game-root .v8-game', state='detached', timeout=30000)

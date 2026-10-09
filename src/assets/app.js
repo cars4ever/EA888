@@ -3,6 +3,7 @@
 
   const C = window.EA888Core;
   const V = window.EA888Vehicles;
+  const SaveCodec = window.EA888SaveCodec || JSON;
   const QA_PROFILE = new URLSearchParams(location.search).get('profile') === 'vehicle-qa';
   const STORAGE_KEY = QA_PROFILE ? 'ea888_vehicle_qa_v1' : 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
@@ -283,26 +284,31 @@
   }
 
   function loadState() {
-    let parsed = null;
+    let parsed = null, loadError = null;
     let sourceKey = STORAGE_KEY;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) parsed = JSON.parse(raw);
+      if (raw) parsed = SaveCodec.parse(raw);
       if (!parsed) {
         for (const key of QA_PROFILE ? [] : LEGACY_KEYS) {
           const legacy = localStorage.getItem(key);
-          if (legacy) { parsed = JSON.parse(legacy); sourceKey = key; break; }
+          if (legacy) { parsed = SaveCodec.parse(legacy); sourceKey = key; break; }
         }
       }
-    } catch (e) { parsed = null; }
+    } catch (e) { parsed = null; loadError = e.message || 'onleesbare save'; }
 
     if (!parsed) {
       const fresh = QA_PROFILE ? C.createVehicleQA() : C.createCareerSelection();
+      if (loadError) {
+        fresh.saveRecoveryError=loadError;
+        fresh.vehicleSelectionNotice='Je bestaande save kon niet worden gelezen en is niet overschreven. Herstel een volledige back-up via Data.';
+        fresh.starterSelection='complete'; return C.restoreGarageState(fresh);
+      }
       fresh.version = 12;
       fresh.settings.sound = true;
       fresh.buildSlots = [null, null, null];
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh)); } catch (e) { /* no-op */ }
-      return fresh;
+      return C.restoreGarageState(fresh);
     }
 
     // Keep the exact pre-migration save recoverable, once, in its own profile namespace.
@@ -310,6 +316,10 @@
       if (!localStorage.getItem(STORAGE_KEY + '_before_vehicles_v1'))
         localStorage.setItem(STORAGE_KEY + '_before_vehicles_v1', JSON.stringify(parsed));
     } catch (e) { /* quota failure must not discard the original */ }
+    if (!parsed.garageSaveVersion) try {
+      if (!localStorage.getItem(STORAGE_KEY + '_before_workshop_v2'))
+        localStorage.setItem(STORAGE_KEY + '_before_workshop_v2', localStorage.getItem(STORAGE_KEY) || JSON.stringify(parsed));
+    } catch (e) { /* preserve the original even if backup quota is exhausted */ }
     const oldVersion = Number(parsed.version || 2);
     let loaded = C.normalizeState(parsed);
     if (parsed.garage?.active && parsed.garage.active !== loaded.garage.active)
@@ -331,13 +341,18 @@
       loaded.settings = { ...loaded.settings, sound: true };
     }
 
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded)); } catch (e) { /* no-op */ }
-    return C.normalizeState(loaded);
+    try { localStorage.setItem(STORAGE_KEY, SaveCodec.stringify(loaded)); } catch (e) { /* no-op */ }
+    return C.restoreGarageState(loaded);
   }
 
   function saveState() {
+    if (state.saveRecoveryError) return; // retain unreadable bytes until explicit restore/reset
     state = C.normalizeState(state);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage may be unavailable */ }
+    const packed = C.persistGarageState(state);
+    state.garage = packed.garage;
+    try { localStorage.setItem(STORAGE_KEY, SaveCodec.stringify(packed)); } catch (e) {
+      showToast('Opslaan is mislukt: exporteer je volledige back-up via Data voordat je afsluit.');
+    }
   }
 
   function pushHistory(entry) {
@@ -376,7 +391,7 @@
 
   function buildSnapshot() {
     return {
-      version: 12, buildName: state.buildName, savedAt: new Date().toISOString(),
+      version: 12, workshopCarId: state.workshopCarId || null, buildName: state.buildName, savedAt: new Date().toISOString(),
       selections: JSON.parse(JSON.stringify(state.selections)),
       tune: JSON.parse(JSON.stringify(state.tune)),
       assembly: JSON.parse(JSON.stringify(state.assembly)),
@@ -397,6 +412,7 @@
   function loadBuildSlot(index) {
     const slot = state.buildSlots?.[index];
     if (!slot) return showToast('Dit buildslot is nog leeg.');
+    if ((slot.workshopCarId || null) !== (state.workshopCarId || null)) return showToast('Dit buildslot hoort bij een andere auto.');
     if (!payForBuild(slot.selections || {}, slot.buildName || `slot ${index + 1}`)) return;
     for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) {
       if (slot[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(slot[key])) };
@@ -431,7 +447,7 @@
   // Full backup: the whole game (budget, history, dyno runs, wear, build slots), for reinstalls and new
   // phones. Written through the system file dialog on Android; a download in a browser.
   async function exportFullBackup() {
-    const payload = JSON.stringify({ app: 'EA888-LAB', kind: 'full-backup', appVersion: APP_VERSION, savedAt: new Date().toISOString(), state }, null, 1);
+    const payload = JSON.stringify({ app: 'EA888-LAB', kind: 'full-backup', appVersion: APP_VERSION, savedAt: new Date().toISOString(), state: C.persistGarageState(state) }, null, 1);
     const day = new Date().toISOString().slice(0, 10);
     const saver = NATIVE ? NATIVE.saveFile.bind(NATIVE) : null;
     if (!saver) return showToast('Back-up naar bestand is niet beschikbaar in deze omgeving.');
@@ -447,8 +463,8 @@
       const payload = JSON.parse(raw);
       if (payload.app !== 'EA888-LAB' || payload.kind !== 'full-backup' || !payload.state) throw new Error('Dit is geen EA888 LAB-back-up.');
       const slots = Array.isArray(payload.state.buildSlots) ? payload.state.buildSlots.slice(0, 3) : [null, null, null];
-      state = C.normalizeState(payload.state);
-      state.buildSlots = slots;
+      state = C.restoreGarageState(payload.state);
+      state.buildSlots = state.buildSlots || slots;
       while (state.buildSlots.length < 3) state.buildSlots.push(null);
       pushHistory({ type: 'backup', label: `Back-up teruggezet (${String(payload.appVersion || '?')}, ${String(payload.savedAt || '').slice(0, 10)})` });
       return 'Volledige back-up teruggezet.';
@@ -1188,12 +1204,19 @@
   // Only a current AND completed pull may be presented as the build's result.
   function currentCompletedDyno() { return currentDyno() && C.isCompletedDyno(state.lastDyno); }
   // The car you race: the Scirocco project, or a roster car from your garage (its own engine curve, gearbox,
-  // converter, weight and tyres, on this strip's weather and prep). Motor, tune and dyno stay the Scirocco's.
+  // converter, weight and tyres, on this strip's weather and prep). Workshop cars use their fitted physical build.
   function activeRosterId() { const g = C.garageOf(state); return g.active !== 'scirocco' ? g.active : null; }
   function rosterName(id) { return C.rosterCarData(id)?.displayName || id; }
+  function selectWorkshopCar(id) {
+    state = C.switchGarageCar(state,id);
+    pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
+    rangeEdit = null; pendingLimit = null; sliderDrag = null;
+    partSearch = ''; openPartRows.clear(); dynoComparePinned = false; dynoCompareIndex = 1;
+    rivalCache.clear(); closeModal();
+  }
   function raceCarState() {
     const id = activeRosterId();
-    if (!id) return state;
+    if (!id || C.workshopDefinition(state)) return state;
     const v = state.vehicle, cond = {};
     for (const k of ['ambientTempC', 'trackTempC', 'altitudeM', 'humidityPct', 'headwindKmh', 'preparedTrack', 'raceMode', 'rivalLevel',
       'burnoutRpm', 'burnoutLimiter', 'steeringAssistPct', 'steeringSensitivityPct']) if (v[k] != null) cond[k] = v[k];
@@ -1205,10 +1228,11 @@
   function careerCarState() { return activeRosterId() ? { ...raceCarState(), bank: state.bank, career: state.career } : state; }
   function raceReady() {
     const id = activeRosterId();
-    if (id) {
+    if (id && !C.workshopDefinition(state)) {
       const car = C.garageOf(state).cars[id];
       return car?.record?.out ? { ok: false, why: `${rosterName(id)} is kapot: eerst reviseren in de garage.` } : { ok: true };
     }
+    if (state.damage.engine >= 100 || state.damage.transmission >= 100 || state.wear.transmission >= 100) return { ok:false, why:'Eerst de actieve auto reviseren bij Service.' };
     return currentCompletedDyno() ? { ok: true } : { ok: false, why: 'Voer eerst een volledige, geldige dynopull uit.' };
   }
   function dynoIsPartial(r) { return !!r && !C.isCompletedDyno(r); }
@@ -1339,7 +1363,7 @@
   function renderStarterSelection() {
     const bank=Number(state.bank),selected=V.get(starterId),price=C.rosterCarPrice(starterId);
     const available=starterId==='scirocco' || !!price && price.eur<=bank;
-    return `<section class="page garage-page starter-selection"><span class="eyebrow">NIEUWE CARRIÈRE</span><h1>Kies je startauto</h1><p>Startbudget ${euro(bank)}. De Scirocco blijft je werkplaatsproject. Een aangekochte startauto wordt één keer betaald.</p>
+    return `<section class="page garage-page starter-selection"><span class="eyebrow">NIEUWE CARRIÈRE</span><h1>Kies je startauto</h1><p>Startbudget ${euro(bank)}. Elke auto heeft een eigen bewerkbare build. Een aangekochte startauto wordt één keer betaald.</p>
       <div class="vehicle-grid">${V.ids.map(id=>{
         const v=V.get(id),p=C.rosterCarPrice(id),ok=id==='scirocco'||!!p&&p.eur<=bank;
         const reason=id==='scirocco'?'Starter · inbegrepen':!p?'Gesloten · geen onderzoeksprijs':p.eur>bank?'Gesloten · budget te laag':`Beschikbaar · ${euro(p.eur)}`;
@@ -1372,7 +1396,7 @@
     $('#vehicle-showroom')?.remove();
     const workshopBlocked = !C.workshopAvailable(state) && ['build','tune','dyno','service'].includes(activeTab);
     const html = state.starterSelection === 'pending' ? renderStarterSelection() : workshopBlocked ? renderRosterWorkshop() : pages[activeTab]();
-    patchHtml($('#content'), html);
+    patchHtml($('#content'), `<div data-workshop-owner="${esc(state.activeBuildId || 'scirocco')}">${C.workshopDefinition(state) && activeTab !== 'bank' ? `<p class="notice workshop-active">Actieve auto: <strong>${esc(rosterName(state.workshopCarId))}</strong> · eigen onderdelen en afstelling</p>` : ''}${html}</div>`);
     afterRenderRaf = requestAnimationFrame(afterRender);
   }
 
@@ -1457,6 +1481,7 @@
   }
 
   function engineViewTabs() {
+    if(C.workshopDefinition(state)) return '<p class="muted">V8-schema · kies een onderdeel om het passende assortiment te openen.</p>';
     return `<div class="engine-view-tabs v5-engine-tabs" aria-label="Motorweergave">
       <button class="${engineView === 'realistic' ? 'active' : ''}" data-engine-view="realistic"><span>3D</span> Render</button>
       <button class="${engineView === 'intake' ? 'active' : ''}" data-engine-view="intake"><span>01</span> Inlaatzijde</button>
@@ -1640,7 +1665,16 @@
     </div>`;
   }
 
+  function v8EngineVisual(options = {}) {
+    const def = C.workshopDefinition(state), geo=C.engineGeometry(state);
+    const cylinders=Array.from({length:8},(_,i)=>{
+      const x=110+(i%4)*77,y=i<4?92:220;
+      return `<g><rect x="${x-27}" y="${y-28}" width="54" height="56" rx="10" fill="#46576b" stroke="#95adc4"/><circle cx="${x}" cy="${y}" r="18" fill="#17212e" stroke="#83c9ea" stroke-width="3"/><text x="${x}" y="${y+5}" fill="#dbeaf4" text-anchor="middle">${i+1}</text></g>`;
+    }).join('');
+    return `<div class="card workshop-engine"><span class="eyebrow">${esc(def.variant)} · SCHEMATISCH</span><svg viewBox="0 0 460 300" role="img" aria-label="V8 met twee cilinderbanken"><rect x="60" y="45" width="340" height="218" rx="28" fill="#202d3c" stroke="#637487"/>${cylinders}<path d="M75 154H395" stroke="#ecad67" stroke-width="12"/><text x="230" y="163" text-anchor="middle" fill="#15202e" font-weight="bold">${(geo.displacementCc/1000).toFixed(1)} L V8</text></svg><p>${esc(C.getPart(state,'head').name)} · ${esc(C.getPart(state,'fuelSystem').name)}</p><div class="button-row">${['block','head','valvetrain','fuelSystem','turbo','transmission'].map(id=>`<button class="btn small" data-open-category="${id}">${esc(C.CATEGORY_MAP[id].short)}</button>`).join('')}</div></div>`;
+  }
   function engineVisual(options = {}) {
+    if (C.workshopDefinition(state)) return v8EngineVisual(options);
     const uid = `eng${++engineVisualId}`;
     const geometry = C.engineGeometry(state);
     const turbo = C.getPart(state, 'turbo');
@@ -1677,7 +1711,7 @@
   }
 
   function renderBank() {
-    if (activeRosterId()) return renderRosterGarage();
+    if (activeRosterId() && !C.workshopDefinition(state)) return renderRosterGarage();
     const earned = syncAchievements();
     const r = state.lastDyno;
     const clean = currentDyno();
@@ -1699,7 +1733,7 @@
 
     return `<section class="page garage-page v5-garage-page">
       <div class="v5-garage-heading">
-        <div><span class="eyebrow">BOUW · MEET · OVERLEEF · RACE</span><h1>EA888 Lab</h1><p>Een complete virtuele CAWB-workshop. Monteer onderdelen, controleer de motor, meet op de dyno en zet daarna pas een geldige quarter-mile neer.</p></div>
+        <div><span class="eyebrow">BOUW · MEET · OVERLEEF · RACE</span><h1>EA888 Lab</h1><p>${C.workshopDefinition(state) ? esc(rosterName(state.workshopCarId)) + ' · eigen V8-werkplaats.' : 'Een complete virtuele CAWB-workshop.'} Monteer onderdelen, controleer de motor, meet op de dyno en zet daarna pas een geldige quarter-mile neer.</p></div>
         <div class="v5-wallet"><span>WORKSHOP</span><b>${euro(state.bank)}</b></div>
       </div>
       ${vehicleShowroomCard()}
@@ -1707,8 +1741,8 @@
 
       <div class="v5-engine-dashboard">
         <div class="v5-engine-dashboard-head">
-          <div><span>EA888 GEN 1 · RANDY CAWB</span><b>${Math.round(geometry.displacementCc)} cc · ${geometry.boreMm.toFixed(2)} × ${geometry.strokeMm.toFixed(1)}</b></div>
-          <button class="v5-turbo-summary" data-open-category="turbo"><span>◉</span><div><b>${esc(turbo.name)}</b><small>${turbo.compressorMm || 'OEM'} mm · ${completed ? `${Math.round(r.peakHp)} pk gemeten` : clean ? 'pull onvolledig' : 'resultaat verborgen'}</small></div>${icon('chevron')}</button>
+          <div><span>${esc(C.workshopDefinition(state)?.variant || 'EA888 GEN 1 · RANDY CAWB')}</span><b>${Math.round(geometry.displacementCc)} cc · ${geometry.boreMm.toFixed(2)} × ${geometry.strokeMm.toFixed(1)}</b></div>
+          <button class="v5-turbo-summary" data-open-category="turbo"><span>◉</span><div><b>${esc(turbo.name)}</b><small>${turbo.naturallyAspirated ? 'Zonder turbo' : `${turbo.compressorMm || 'OEM'} mm`} · ${completed ? `${Math.round(r.peakHp)} pk gemeten` : clean ? 'pull onvolledig' : 'resultaat verborgen'}</small></div>${icon('chevron')}</button>
         </div>
         ${engineVisual({ mode: 'garage', view: engineView })}
       </div>
@@ -1742,10 +1776,10 @@
       <div class="v5-car-card">
         <div class="v5-car-card-bg"></div>
         <div class="v5-car-copy">
-          <span>JOUW AUTO</span><h2>Randy's Scirocco CAWB</h2><b>${measuredHp} · ${measuredNm}</b><p>${esc(state.vehicle.drivetrain)} · ${trans.name} · ${tire.name}</p>
+          <span>JOUW AUTO</span><h2>${esc(activeRosterId() ? rosterName(activeRosterId()) : "Randy's Scirocco CAWB")}</h2><b>${measuredHp} · ${measuredNm}</b><p>${esc(state.vehicle.drivetrain)} · ${trans.name} · ${tire.name}</p>
           <button class="btn secondary" data-go="drag">Naar de dragstrip ${icon('chevron')}</button>
         </div>
-        <img src="images/randy-scirocco-cutout.png" alt="Randy's blauwe Scirocco">
+        <img src="${V.get(activeRosterId() || 'scirocco').image}" alt="${esc(V.get(activeRosterId() || 'scirocco').name)}">
         <div class="v5-tree-mini" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="green"></i><i class="green"></i></div>
         <div class="v5-car-times"><span><small>0–100</small><b>${lastPass?.zeroTo100 ? `${lastPass.zeroTo100.toFixed(2)} s` : '—'}</b></span><span><small>1/4 MIJL</small><b>${lastPass ? `${lastPass.quarter.toFixed(3)} s` : best ? `${best.quarter.toFixed(3)} s` : '—'}</b></span></div>
       </div>
@@ -1761,14 +1795,14 @@
       </div>
 
       ${garageCarsCard()}
-      <div class="section-head"><div><span class="eyebrow">Build slots</span><h2>Drie projecten naast elkaar</h2></div></div>
+      <div class="section-head"><div><span class="eyebrow">Build slots</span><h2>Drie builds voor deze auto</h2></div></div>
       <div class="build-slots">${[0,1,2].map(i => buildSlotCard(i, state.buildSlots?.[i])).join('')}</div>
 
       <div class="section-head"><div><span class="eyebrow">Challenges</span><h2>${unlocked}/${C.CHALLENGES.length} ontgrendeld</h2></div></div>
       <div class="challenge-grid">${C.CHALLENGES.slice(0, showAllChallenges ? 6 : 3).map(ch => challengeCard(ch, earned[ch.id])).join('')}</div>
       <button class="btn ghost small show-more" data-action="toggle-challenges">${showAllChallenges ? 'Minder tonen' : `Alle ${Math.min(6, C.CHALLENGES.length)} challenges`}</button>
 
-      <div class="section-head presets-head"><div><span class="eyebrow">Referentiebuilds</span><h2>Van OEM tot Unlimited</h2></div></div>
+      <div class="section-head presets-head"><div><span class="eyebrow">Referentiebuilds</span><h2>${C.workshopDefinition(state) ? 'Basisconfiguratie van deze auto' : 'Van OEM tot Unlimited'}</h2></div></div>
       <div class="preset-strip v4-preset-strip">
         ${presetStrip()}
       </div>
@@ -1799,18 +1833,18 @@
       if (mine) {
         const rec = mine.record || {};
         const best = mine.best ? `jouw beste ${mine.best.quarter.toFixed(3)} s @ ${Math.round(mine.best.trapKmh)} km/u` : 'nog geen pass';
-        const actions = rec.out
+        const actions = rec.out && !C.workshopDefinition({workshopCarId:o.id})
           ? `<button class="btn small" data-rebuild-car="${o.id}" ${bank >= C.REBUILD_BASE_EUR ? '' : 'disabled'}>Reviseren · ${euro(C.REBUILD_BASE_EUR)}</button>`
           : active === o.id ? '<span class="part-row-mounted">Rijdt</span>' : `<button class="btn small" data-drive-car="${o.id}">Rijden met deze auto</button>`;
         return `<div class="run-row garage-car ${active === o.id ? 'active' : ''}"><span>IN BEZIT</span><div><b>${esc(o.displayName)}</b><small>${best} · ${real} · ${rec.runs || 0} runs · slijtage motor ${Math.round(rec.wear?.engine || 0)}% / bak ${Math.round(rec.wear?.transmission || 0)}%${rec.out ? ' · <b>kapot</b>' : ''}</small></div>${actions}</div>`;
       }
       if (!price) return `<div class="run-row garage-car muted"><span>NIET TE KOOP</span><div><b>${esc(o.displayName)}</b><small>${real} · niet te koop: het onderzoek noemt geen prijs</small></div></div>`;
       const items = price.items.length ? `<details><summary>${price.items.length} uitgaven bovenop de aankoop van $${Math.round(price.value.derivedFrom?.purchaseUsd || 0)}</summary>${price.items.map(i => `<small>$${Math.round(i.priceUsd)} · ${esc(i.item)}</small>`).join('<br>')}</details>` : '';
-      return `<div class="run-row garage-car"><span>TE KOOP</span><div><b>${esc(o.displayName)}</b><small>${real} · $${Math.round(price.usd)} ${kind(price.value)} (≈ ${euro(price.eur)})${price.value.kind === 'modeled' ? ' · som van de genoemde uitgaven' : ' · budgetbord van het team'}</small>${items}</div><button class="btn small" data-buy-car="${o.id}" ${bank >= price.eur ? '' : 'disabled'}>Kopen · ${euro(price.eur)}</button></div>`;
+      return `<div class="run-row garage-car"><span>TE KOOP</span><div><b>${esc(o.displayName)}</b><small>${real} · ${price.gamePrice ? `${euro(price.eur)} · geschatte spelprijs, geen echte verkoopprijs` : `$${Math.round(price.usd)} ${kind(price.value)} (≈ ${euro(price.eur)})`}${price.gamePrice ? '' : price.value.kind === 'modeled' ? ' · som van de genoemde uitgaven' : ' · budgetbord van het team'}</small>${items}</div><button class="btn small" data-buy-car="${o.id}" ${bank >= price.eur ? '' : 'disabled'}>Kopen · ${euro(price.eur)}</button></div>`;
     }).join('');
     return `<div class="card garage-cars-card"><div class="section-head small"><div><span class="eyebrow">Garage · racewagen: ${esc(active === 'scirocco' ? state.buildName : rosterName(active))}</span><h2>Je auto's</h2><p class="muted">Je actieve auto bepaalt model, motorcurve, bak, gewicht en banden. Werkplaatsfuncties tonen de ondersteuning voor die auto.</p></div></div>
       <div class="run-table">
-        <div class="run-row garage-car ${active === 'scirocco' ? 'active' : ''}"><span>PROJECT</span><div><b>${esc(state.buildName)}</b><small>EA888-build · motor, tune en dyno in de app</small></div>${active === 'scirocco' ? '<span class="part-row-mounted">Rijdt</span>' : '<button class="btn small" data-drive-car="scirocco">Rijden met deze auto</button>'}</div>
+        <div class="run-row garage-car ${active === 'scirocco' ? 'active' : ''}"><span>PROJECT</span><div><b>${esc(g.scirocco?.buildName || state.buildName)}</b><small>EA888-build · motor, tune en dyno in de app</small></div>${active === 'scirocco' ? '<span class="part-row-mounted">Rijdt</span>' : '<button class="btn small" data-drive-car="scirocco">Rijden met deze auto</button>'}</div>
         ${rows}
       </div></div>`;
   }
@@ -1845,6 +1879,8 @@
     unlimited: ['PT10603 Unlimited', 'Extreme workbench', 'Full Promod support · 2k+']
   };
   function presetStrip() {
+    const def = C.workshopDefinition(state);
+    if (def) return `<article class="preset-card"><h3>${esc(def.variant)}</h3><p>${esc(def.assumptions)}</p><button class="btn small" data-action="workshop-baseline">Basis-hardware en afstelling laden</button><small>Ontbrekende onderdelen worden gekocht; slijtage en flesinhoud blijven behouden.</small></article>`;
     const ids = Object.keys(C.PRESETS);
     return ids.map(id => {
       const copy = PRESET_COPY[id];
@@ -1881,7 +1917,8 @@
   }
 
   function renderBuild() {
-    const cat = C.CATEGORY_MAP[activeCategory] || C.CATEGORIES[0];
+    const cats = C.categoriesFor(state);
+    const cat = cats.find(c => c.id === activeCategory) || cats[0];
     const geometry = C.engineGeometry(state);
     const assembly = C.assemblyHealth(state);
     const bench = C.benchConfidence(state);
@@ -1926,7 +1963,7 @@
       <div class="build-toolbar">
         <label class="search-box"><span>⌕</span><input id="part-search" value="${esc(partSearch)}" placeholder="Zoek in ${esc(cat.label.toLowerCase())}" autocomplete="off"></label>
         <div class="category-chips">
-          ${C.CATEGORIES.map(c => `<button class="category-chip ${c.id === cat.id ? 'active' : ''}" data-cat="${c.id}"><span>${esc(c.short)}</span>${state.selections[c.id] ? '<i></i>' : ''}</button>`).join('')}
+          ${C.categoriesFor(state).map(c => `<button class="category-chip ${c.id === cat.id ? 'active' : ''}" data-cat="${c.id}"><span>${esc(c.short)}</span>${state.selections[c.id] ? '<i></i>' : ''}</button>`).join('')}
         </div>
       </div>
       <div class="category-heading">
@@ -1934,7 +1971,7 @@
         <div class="selection-chip">Gemonteerd: <b>${esc(C.getPart(state, cat.id).name)}</b></div>
       </div>
       <div class="notice"><strong>Geen vermogenspreview.</strong> Alleen fysieke specificaties zijn zichtbaar. De interactie tussen onderdelen wordt pas gemeten op de dyno.</div>
-      ${cat.id === 'turbo' ? compoundPanel() : ''}
+      ${cat.id === 'turbo' && !C.workshopDefinition(state) ? compoundPanel() : ''}
       <div class="parts-grid">${items.length ? items.map(p => partCard(cat, p, selected === p.id)).join('') : '<div class="empty-card">Geen onderdelen gevonden. Wis de zoekopdracht.</div>'}</div>
     </div>`;
   }
@@ -2063,16 +2100,18 @@
         <summary>
           <span class="part-row-state" aria-hidden="true">${selected ? icon('check') : ''}</span>
           <span class="part-row-main"><b>${esc(part.name)}${randy ? ' <em class="randy-badge">RANDY SPEC</em>' : ''}</b><small>${esc(part.specs)}</small></span>
-          <span class="part-row-price">${part.price ? euro(part.price) : 'OEM'}</span>
+          <span class="part-row-price">${part.price ? euro(part.price) : part.workshopOnly ? 'Inbegrepen' : 'OEM'}</span>
         </summary>
-        <div class="part-row-body"><p>${esc(part.detail)}</p>${rpmMeta}${tqMeta}${turboMeta}${hopMeta}${offerMeta}</div>
+        <div class="part-row-body"><p>${esc(part.detail)}</p>${part.workshopOnly ? `<p class="muted small-copy">Passend: ${esc((part.families || part.cars || []).join(', '))} · pakketprijs en limieten gemodelleerd${C.workshopSource(part.sourceId) ? ` · <a href="${esc(C.workshopSource(part.sourceId).url)}" target="_blank" rel="noopener">Fabrikant / onderbouwing</a>` : ''}</p>` : ''}${rpmMeta}${tqMeta}${turboMeta}${hopMeta}${offerMeta}</div>
       </details>
       ${selected ? '<span class="part-row-mounted">Gemonteerd</span>' : mountButton(cat, part)}
-      ${cat.id === 'turbo' ? compoundButton(part, selected) : ''}
+      ${cat.id === 'turbo' && !C.workshopDefinition(state) ? compoundButton(part, selected) : ''}
     </article>`;
   }
   // Mount (owned or 'Vrij bouwen') or buy-and-mount at the new price; a part the budget cannot pay is disabled.
   function mountButton(cat, part) {
+    const fit = C.selectionCompatibility(state,{...state.selections,[cat.id]:part.id});
+    if (!fit.ok) return `<span class="part-fit-note">${esc(fit.reason)}</span>`;
     const cost = C.buildCost(state, { ...state.selections, [cat.id]: part.id }).total;
     if (cost <= 0) return `<button class="btn small" data-part-cat="${cat.id}" data-part-id="${part.id}">Monteren</button>`;
     const enough = Number(state.bank || 0) >= cost;
@@ -2525,7 +2564,10 @@
         </div>
       </div>`;
     }
-    if (tunePanel === 'boost') {
+    if (tunePanel === 'boost' && turbo.naturallyAspirated) {
+      content=`<div class="card"><h2>Atmosferisch · geen laaddrukregeling</h2><p>Deze motor ademt zonder turbo. Vermogen reageert op nokken, koppen, inlaat, brandstof en ontsteking. Lachgas bedien je tijdens de race.</p>${slider('converterStallRpm','Converter flash stall',2500,Math.min(8500,t.revLimitRpm),100,t.converterStallRpm || C.getPart(state,'transmission').converterStallRpm,' rpm',0,'Flash stall bij het referentiekoppel van de converter.')}
+${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launchRpm,' rpm',0,'Stem de launch af op converter en tractie.')}<button class="btn" data-open-category="turbo">Turbo-ombouw kiezen</button><p>Voor een turbo is passende EFI nodig; de carburateurcombinatie wordt geweigerd.</p></div>`;
+    } else if (tunePanel === 'boost') {
       content = `<div class="tune-layout">
         <div class="card tune-card">
           <div class="card-title"><span>${icon('bolt')}</span><div><span class="eyebrow">Boostcurve</span><h2>${esc(turbo.name)}</h2></div></div>
@@ -2538,6 +2580,7 @@
         </div>
         <div class="card tune-card">
           <div class="card-title"><span>${icon('race')}</span><div><span class="eyebrow">Launch & tractie</span><h2>Boost-by-gear</h2></div></div>
+          ${C.workshopDefinition(state) ? slider('converterStallRpm','Converter flash stall',2500,Math.min(8500,t.revLimitRpm),100,t.converterStallRpm || C.getPart(state,'transmission').converterStallRpm,' rpm',0,'Gemodelleerde converterkeuze; stall hangt ook af van het beschikbare motorkoppel.') : ''}
           ${slider('launchRpm', 'Launch rpm', 2200, 8200, 100, t.launchRpm, ' rpm', 0, 'Moet passen bij turbo, koppelomvormer/koppeling, banden en aandrijving.')}
           ${slider('firstGearBoostPct', 'Boost eerste versnelling', 20, 100, 1, t.firstGearBoostPct, '%', 0, 'Beperkt de eerste tractie- en aslastpiek.')}
           ${slider('secondGearBoostPct', 'Boost tweede versnelling', 30, 100, 1, t.secondGearBoostPct, '%', 0, 'Bepaalt hoeveel van de gemeten curve in twee beschikbaar is.')}
@@ -2552,8 +2595,8 @@
       const capMid = cap(3500), capTop = cap(6500);
       // pk the delivered fuel can feed at a typical full-load brake efficiency of 31 %.
       const pkFor = kgS => kgS * fp.lhvMJkg * 1000 * 0.31 * 1.3596;
-      const parts = [hw.fuelSys.hpfp && `HPFP ${E.DATA.pumps[hw.fuelSys.hpfp].ccPerRev.toFixed(2)} cc/omw`, hw.fuelSys.di && `DI ${E.DATA.injectors[hw.fuelSys.di].ccMinAt100Bar} cc/min @100 bar`, hw.fuelSys.mpi && `${hw.fuelSys.mpiCount}× MPI ${E.DATA.injectors[hw.fuelSys.mpi].ccMinAt3Bar} cc/min`, hw.fuelSys.mechanical && 'mechanische pomp', hw.fuelSys.lpfp && `LPFP ${E.DATA.pumps[hw.fuelSys.lpfp].lphAt5Bar} L/u`].filter(Boolean);
-      const limitText = { hpfp: 'hogedrukpomp', 'di-window': 'injectievenster', mpi: 'poortinjectoren', lpfp: 'lagedrukpomp', 'mech-pump': 'mechanische pomp' };
+      const parts = [hw.fuelSys.carburetor && `${hw.fuelSys.carbCfm} cfm carburateur met sproeierafstelling`, hw.fuelSys.hpfp && `HPFP ${E.DATA.pumps[hw.fuelSys.hpfp].ccPerRev.toFixed(2)} cc/omw`, hw.fuelSys.di && `DI ${E.DATA.injectors[hw.fuelSys.di].ccMinAt100Bar} cc/min @100 bar`, hw.fuelSys.mpi && `${hw.fuelSys.mpiCount}× MPI ${E.DATA.injectors[hw.fuelSys.mpi].ccMinAt3Bar} cc/min`, hw.fuelSys.mechanical && 'mechanische pomp', hw.fuelSys.lpfp && `LPFP ${E.DATA.pumps[hw.fuelSys.lpfp].lphAt5Bar} L/u`].filter(Boolean);
+      const limitText = { carburetor:'carburateur/pomp', hpfp: 'hogedrukpomp', 'di-window': 'injectievenster', mpi: 'poortinjectoren', lpfp: 'lagedrukpomp', 'mech-pump': 'mechanische pomp' };
       content = `<div class="tune-layout">
         <div class="card tune-card">
           <div class="card-title"><span>${icon('engine')}</span><div><span class="eyebrow">Verbranding</span><h2>Lambda & ontsteking</h2></div></div>
@@ -2571,16 +2614,18 @@
             <div><span>Verbrandingswaarde</span><b>${num(fp.lhvMJkg, 1)} MJ/kg</b></div>
             <div><span>Verdampingswarmte</span><b>${Math.round(fp.hfgKJkg)} kJ/kg</b></div>
           </div>
-          ${slider('railTargetBar', 'Raildruktarget', 110, 230, 1, t.railTargetBar, ' bar', 0, 'Hogere druk: meer flow per injector (√Δp), maar de pomp levert minder per slag.')}
+          ${slider('railTargetBar', hw.fuelSys.carburetor ? 'Brandstofaanvoer carburateur' : hw.fuelSys.pressureControlled ? 'Regeldruk boven spruitstukdruk' : 'Raildruktarget', hw.fuelSys.carburetor ? .3 : hw.fuelSys.pressureControlled ? 2 : 110, hw.fuelSys.maxRailBar || 230, hw.fuelSys.carburetor ? .05 : hw.fuelSys.pressureControlled ? .5 : 1, t.railTargetBar, ' bar', hw.fuelSys.hpfp ? 0 : 2, hw.fuelSys.hpfp ? 'Hogere druk geeft meer injectorflow, maar minder pompcapaciteit.' : 'Druk en capaciteit van de gemonteerde pomp/regelaar; geen directe injectie.')}
           <div class="capacity-panel">
             <div><span>Levering @ 3500 rpm</span><b>${Math.round(capMid.deliveredKgS * 3600)} kg/u · ~${Math.round(pkFor(capMid.deliveredKgS))} pk</b></div>
             <div><span>Levering @ 6500 rpm</span><b>${Math.round(capTop.deliveredKgS * 3600)} kg/u · ~${Math.round(pkFor(capTop.deliveredKgS))} pk</b></div>
             <div><span>Begrenzer midden / top</span><b>${esc(limitText[capMid.limitedBy] || '—')} / ${esc(limitText[capTop.limitedBy] || '—')}</b></div>
             <div><span>Hardware</span><b>${esc(parts.join(' · '))}</b></div>
           </div>
-          <div class="notice"><strong>Hardwarecapaciteit, geen vermogensbelofte.</strong> Een nokgedreven HPFP levert per omwenteling een vaste slag: bij lage toeren en veel koppel raakt hij het eerst vol. Direct injection heeft per cyclus maar een beperkt injectievenster: bovenin raken de injectoren vol. De dynolog toont raildruk en duty.</div>
+          <div class="notice"><strong>Hardwarecapaciteit, geen vermogensbelofte.</strong> ${hw.fuelSys.hpfp ? 'Een nokgedreven HPFP levert per omwenteling een vaste slag: bij lage toeren en veel koppel raakt hij het eerst vol. Direct injection heeft per cyclus maar een beperkt injectievenster: bovenin raken de injectoren vol. De dynolog toont raildruk en duty.' : 'Poortinjectoren worden per motor geteld. Een carburateur gebruikt zijn eigen brandstofcapaciteit; lambda stelt het sproeiermengsel voor. De dynolog toont de gebruikte aanvoerdruk en totale belasting.'}</div>
         </div>
       </div>`;
+    } else if (tunePanel === 'cams' && C.workshopDefinition(state)) {
+      content = `<div class="card"><h2>${esc(C.getPart(state,'valvetrain').name)}</h2><p>Nokprofiel, veren en tuimelaars horen bij deze motorfamilie. Vervang het pakket onder Motor; flow en toerentalbereik worden opnieuw berekend.</p><button class="btn" data-open-category="valvetrain">Nokken en kleppentrein</button>${C.workshopDefinition(state).family === 'coyote' ? slider('intakeCamAdvanceDeg','Inlaatfasering',-5,30,1,t.intakeCamAdvanceDeg,'°',0,'Vereenvoudigde fasering van de Coyote-kop.') : '<p>Vaste nokkenas: geen ECU-VVT op deze uitvoering.</p>'}</div>`;
     } else if (tunePanel === 'cams') {
       content = `<div class="tune-layout">
         <div class="card tune-card cam-card ${camPct < 85 ? 'warning' : 'matched'}">
@@ -2598,7 +2643,7 @@
         </div>
       </div>`;
     } else if (tunePanel === 'als') {
-      content = renderAntiLagPanel();
+      content = turbo.naturallyAspirated ? '<div class="card"><h2>Atmosferische motor</h2><p>Geen turbo: anti-lag is niet van toepassing. Launchregeling en lachgas blijven beschikbaar.</p></div>' : renderAntiLagPanel();
     } else if (tunePanel === 'tables') {
       content = `<div class="tune-layout ecu-layout">${renderEcuTable()}</div>`;
     } else {
@@ -2631,11 +2676,11 @@
     }
 
     return `<section class="page tune-page">
-      <div class="page-title-row"><div><span class="eyebrow">Syvecs-calibratie</span><h1>Map de hardware</h1><p>Stel targets en beveiligingen in zonder vooraf te zien hoeveel vermogen ze opleveren. Alleen de instrumented dynopull onthult de nieuwe curve.</p></div></div>
+      <div class="page-title-row"><div><span class="eyebrow">${C.workshopDefinition(state) ? esc(C.getPart(state,'ecu').name) : 'Syvecs-calibratie'}</span><h1>Map de hardware</h1><p>Stel targets en beveiligingen in zonder vooraf te zien hoeveel vermogen ze opleveren. Alleen de instrumented dynopull onthult de nieuwe curve.</p></div></div>
       ${turbo.compressorMm >= 94 ? `<div class="notice danger"><strong>${turbo.compressorMm}-mm turbo op circa 2,0 liter.</strong> Zonder passende kop, turbine, wastegates, toerental en spool assistance is de bruikbare vermogensband extreem laat en smal.</div>` : ''}
       ${tuneTabs()}
       ${content}
-      <div class="sticky-action-card"><div><span>Na elke wijziging</span><b>Benchcheck optioneel, dynometing verplicht.</b></div><button class="btn ghost" data-action="reset-tune">OEM-map</button><button class="btn" data-go="dyno">Naar dyno</button></div>
+      <div class="sticky-action-card"><div><span>Na elke wijziging</span><b>Benchcheck optioneel, dynometing verplicht.</b></div><button class="btn ghost" data-action="reset-tune">${C.workshopDefinition(state) ? 'Basismap' : 'OEM-map'}</button><button class="btn" data-go="dyno">Naar dyno</button></div>
     </section>`;
   }
 
@@ -3704,7 +3749,7 @@
   }
 
   function renderDrag() {
-    if (activeRosterId()) return renderRosterDrag();
+    if (activeRosterId() && !C.workshopDefinition(state)) return renderRosterDrag();
     const ready = raceReady().ok;
     const v = state.vehicle;
     const fit = C.wheelFitment(v);
@@ -3736,9 +3781,9 @@
         <div class="vehicle-grid v4-vehicle-grid">
           <div class="card">
             <span class="eyebrow">Aandrijflijn</span><h3>Platform & massa</h3>
-            <label class="field-label">Aandrijving<select data-vehicle-select="drivetrain">${Object.keys(C.DRIVETRAINS).map(k => `<option value="${k}" ${v.drivetrain === k ? 'selected' : ''}>${esc(C.DRIVETRAINS[k].name)}</option>`).join('')}</select></label>
+            <label class="field-label">Aandrijving<select data-vehicle-select="drivetrain">${(C.workshopDefinition(state) ? ['RWD'] : Object.keys(C.DRIVETRAINS)).map(k => `<option value="${k}" ${v.drivetrain === k ? 'selected' : ''}>${esc(C.DRIVETRAINS[k].name)}</option>`).join('')}</select></label>
             <label class="field-label">Bandcompound<select data-vehicle-select="tireCompound">${C.TIRE_COMPOUNDS.map(t => `<option value="${t.id}" ${v.tireCompound === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
-            ${vehicleRange('massKg', 'Rijklaar gewicht', 900, 1900, 10, v.massKg, ' kg', 0, 'Basisauto met OEM-onderdelen, incl. bestuurder en vloeistoffen. Gekozen onderdelen tellen hun gewichtsverschil hierbij op.')}
+            ${vehicleRange('massKg', 'Rijklaar gewicht', 900, 1900, 10, v.massKg, ' kg', 0, C.workshopDefinition(state) ? 'Referentiegewicht inclusief bestuurder en basis-hardware. Alleen het verschil van nieuwe onderdelen wordt erbij geteld.' : 'Basisauto met OEM-onderdelen, incl. bestuurder en vloeistoffen. Gekozen onderdelen tellen hun gewichtsverschil hierbij op.')}
             ${vehicleRange('pressureBar', 'Bandenspanning', .65, 3.2, .05, v.pressureBar, ' bar', 2, `Compoundoptimum rond ${num(tire.optimumBar,2)} bar.`)}
             ${switchRow('preparedTrack', 'Geprepareerde baan', 'Meer bruikbare grip, vooral met drag radial, slick of pro radial.', 'vehicle')}
           </div>
@@ -4203,8 +4248,8 @@
 
   function v7GameHeader(label, step, hint = '') {
     const rc = raceGame?.carState?.rosterCar;
-    const spec = rc ? C.rosterSpec(rc.id) : null;
-    const dyno = !rc && currentCompletedDyno() ? state.lastDyno : null;
+    const spec = rc?.engine ? C.rosterSpec(rc.id) : null;
+    const dyno = !rc?.engine && currentCompletedDyno() ? state.lastDyno : null;
     // a roster car shows its quoted power (crank) and the curve's peak torque, not the Scirocco's dyno
     const hp = spec ? Math.round(spec.values.enginePowerHp.value) : dyno ? Math.round(dyno.peakHp) : '?';
     const nm = spec ? Math.round(spec.engine.peakTorqueNm) : dyno ? Math.round(dyno.peakTorqueNm) : '?';
@@ -4423,7 +4468,7 @@
   function makeRaceTurbo() {
     try {
       const rs = raceGame?.carState || raceCarState();
-      return rs.rosterCar ? C.rosterTurboRuntime(rs.rosterCar.engine) : C.createTurboRuntime(state);
+      return rs.rosterCar?.engine ? C.rosterTurboRuntime(rs.rosterCar.engine) : C.createTurboRuntime(state);
     } catch (e) { return null; }
   }
   // Continuous ALS pops at the simulated pop rate while ALS fires.
@@ -4921,10 +4966,10 @@
     const opponent = buildRivalSimulation();
     // One vehicle model for the whole race (sim.js): engine map from the combustion model, the staging turbo
     // runtime (shaft speed built on the two-step carries over), clutch, tyres and load transfer.
-    const engineMap = rs.rosterCar ? C.curveEngineMap(rs.rosterCar.engine) : C.buildEngineMap(state);
+    const engineMap = rs.rosterCar?.engine ? C.curveEngineMap(rs.rosterCar.engine) : C.buildEngineMap(state);
     const launchFromRpm = Number(raceGame.stage?.launchFromRpm || rs.tune.launchRpm || 4200);
     const eventTrack = raceGame?.careerRound ? { ...rs, vehicle: { ...rs.vehicle, preparedTrack: !!C.CAREER_EVENT_MAP[raceGame.careerRound.eventId]?.prep } } : rs;
-    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, bottleKg: rs.rosterCar ? undefined : nitrousBottleKg(), launchRpm: launchFromRpm, tractionControl: rs.tune.tractionControl !== false });
+    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, bottleKg: rs.rosterCar?.engine ? undefined : nitrousBottleKg(), launchRpm: launchFromRpm, tractionControl: rs.tune.tractionControl !== false });
     vehicleRt.state.we = launchFromRpm * Math.PI / 30;
     vehicleRt.launch();
     const run = {
@@ -5771,7 +5816,7 @@
   }
 
   function commitV7DragResult(result){
-    if (result.rosterId) return commitRosterCarResult(result);
+    if (result.rosterId && !C.workshopDefinition(state)) return commitRosterCarResult(result);
     applyRaceTurboWear();
     // a roster opponent ran this pass too: its own record, same wear rule and service schedule as the player
     const opp = raceGame?.run?.opponent;
@@ -5808,6 +5853,7 @@
     state.wear.engine=clamp(state.wear.engine+passWear.wear.engine,0,100);
     state.wear.transmission=clamp(state.wear.transmission+passWear.wear.transmission,0,100);
     state.service.oilAgeKm+=35;
+    if (result.rosterId) state.garage = C.recordWorkshopPass(state, result);
     if (result.reward > 0) {
       state.bank += result.reward;
       pushHistory({type:'reward',label:`Heads-up winst tegen ${result.opponentName}: +${euro(result.reward)}`});
@@ -5921,7 +5967,7 @@
     const filter = C.FILTER_MAP[state.service.filterId];
     const health = C.oilHealth(state);
     const healthPct = Math.round(health * 100);
-    const changeCost = pendingOil.price + C.FILTER_MAP[pendingFilterId].price;
+    const changeCost = oilChangeCost();
     return `<section class="page service-page">
       <div class="page-title-row"><div><span class="eyebrow">Werkplaats</span><h1>Olie, slijtage & herstel</h1><p>Vulniveau, warme viscositeit, clearances, temperatuur, aeratie en ouderdom beïnvloeden oliedruk en filmsterkte.</p></div></div>
 
@@ -5939,7 +5985,8 @@
       <div class="service-grid">
         <div class="card">
           <span class="eyebrow">Vulling & filter</span><h2>Oliebeurt voorbereiden</h2>
-          ${serviceRange('liters', 'Vulvolume', 3.5, 5.4, .1, state.service.liters, ' L', 1)}
+          <p>Nominale vulling: ${num(C.oilCapacity(state),1)} L voor het gemonteerde oliesysteem${C.workshopDefinition(state) ? ' (modelwaarde)' : ''}.</p>
+          ${serviceRange('liters', 'Vulvolume', C.workshopDefinition(state) ? Math.round(C.oilCapacity(state)*.75*10)/10 : 3.5, C.workshopDefinition(state) ? Math.round(C.oilCapacity(state)*1.2*10)/10 : 5.4, .1, state.service.liters, ' L', 1)}
           <label class="field-label">Oliefilter<select data-service-select="filter">${C.FILTERS.map(f => `<option value="${f.id}" ${pendingFilterId === f.id ? 'selected' : ''}>${esc(f.name)} · ${euro(f.price)}</option>`).join('')}</select></label>
           <div class="service-order"><span>Nieuwe vulling</span><b>${esc(pendingOil.name)} + ${esc(C.FILTER_MAP[pendingFilterId].name)}</b><strong>${euro(changeCost)}</strong></div>
           <button class="btn" data-action="oil-change">OLIE + FILTER VERVANGEN</button>
@@ -5965,7 +6012,7 @@
         ${switchRow('sound', 'Motorgeluid', 'Synthesiseert toerental- en loadfeedback tijdens dyno en drag.', 'settings')}
         ${switchRow('haptics', 'Trillingsfeedback', 'Trilling bij schakelen, tree-lampen, fouten en dynostart.', 'settings')}
         ${switchRow('reducedMotion', 'Minder animatie', 'Versnelt dyno- en raceanimaties en beperkt beweging.', 'settings')}
-        ${switchRow('graphics3d', '3D-racebeeld', window.EA888Race3D?.supported?.() ? 'Realtime 3D-baan met je Scirocco, rook en vlammen. Uit = de lichtere 2D-weergave.' : 'Niet beschikbaar: dit toestel ondersteunt geen WebGL.', 'settings')}
+        ${switchRow('graphics3d', '3D-racebeeld', window.EA888Race3D?.supported?.() ? 'Realtime 3D-baan met je gekozen auto, rook en vlammen. Uit = de lichtere 2D-weergave.' : 'Niet beschikbaar: dit toestel ondersteunt geen WebGL.', 'settings')}
         ${state.settings.graphics3d === false ? '' : `
         <div class="segment-control graphics-quality" role="group" aria-label="Beeldkwaliteit 3D">
           ${['auto', 'high', 'medium', 'low'].map(q => `<button class="${(state.settings.graphicsQuality || 'auto') === q ? 'active' : ''}" data-graphics-quality="${q}">${{ auto: 'Automatisch', high: 'Hoog', medium: 'Gemiddeld', low: 'Laag' }[q]}</button>`).join('')}
@@ -6075,6 +6122,8 @@
   function confirmImport() {
     try {
       const snap = decodeBuildCode(importBuffer || $('#build-code-input')?.value || '');
+      if ((snap.workshopCarId || null) !== (state.workshopCarId || null)) throw new Error('Deze buildcode hoort bij een andere auto.');
+      if (!payForBuild({ ...state.selections, ...snap.selections }, 'geïmporteerde build')) return;
       for (const key of ['selections','tune','assembly','service','vehicle','dynoConfig']) {
         if (snap[key]) state[key] = { ...state[key], ...JSON.parse(JSON.stringify(snap[key])) };
       }
@@ -6137,24 +6186,27 @@
   }
 
   function showModal(title, body, actions = '') {
-    $('#modal-root').innerHTML = `<div class="modal-backdrop" data-modal-backdrop><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-handle"></div><span class="eyebrow">EA888 Lab v${APP_VERSION}</span><h2 id="modal-title">${esc(title)}</h2>${body}<div class="modal-actions">${actions || '<button class="btn" data-action="close-modal">Sluiten</button>'}</div></div></div>`;
+    $('#modal-root').innerHTML = `<div class="modal-backdrop" data-modal-backdrop><div class="modal" data-workshop-owner="${esc(state.activeBuildId || 'scirocco')}" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-handle"></div><span class="eyebrow">EA888 Lab v${APP_VERSION}</span><h2 id="modal-title">${esc(title)}</h2>${body}<div class="modal-actions">${actions || '<button class="btn" data-action="close-modal">Sluiten</button>'}</div></div></div>`;
   }
   function closeModal() { $('#modal-root').innerHTML = ''; }
 
+  function oilChangeCost() { return Math.round(C.OIL_MAP[pendingOilId].price * (C.workshopDefinition(state) ? state.service.liters / 4.6 : 1)) + C.FILTER_MAP[pendingFilterId].price; }
   function doOilChange() {
+    const cost = oilChangeCost();
+    if (state.bank < cost) return showToast('Onvoldoende budget voor deze oliebeurt.');
     state.service.oilId = pendingOilId;
     state.service.filterId = pendingFilterId;
     state.service.oilAgeKm = 0;
     state.service.oilRuns = 0;
     state.service.lastChangeLabel = new Date().toLocaleDateString('nl-NL');
-    state.bank -= (C.OIL_MAP[pendingOilId].price + C.FILTER_MAP[pendingFilterId].price);
+    state.bank -= cost;
     pushHistory({ type: 'service', label: `Olie gewisseld: ${C.OIL_MAP[pendingOilId].name}` });
     saveState(); haptic([18,30,18]);
     showToast('Olie en filter vervangen. Een nieuwe dynometing is vereist.');
     render();
   }
 
-  function rebuildCost() { return 6500 + Number(C.getPart(state, 'sealing').rebuildExtra || 0); }
+  function rebuildCost() { return (C.workshopDefinition(state) ? Math.round(C.getPart(state,'block').price * .25 + C.getPart(state,'head').price * .15 + 1200) : 6500) + Number(C.getPart(state, 'sealing').rebuildExtra || 0); }
   // Nitrous bottle: kept per build in state (kg left); a new or other kit starts full.
   const N2O_EUR_PER_KG = 18;
   function nitrousBottleKg() {
@@ -6173,6 +6225,7 @@
     saveState(); render(); showToast(`Fles gevuld (${need.toFixed(1)} kg, ${euro(cost)}).`);
   }
   function doRebuild() {
+    if (state.bank < rebuildCost()) return showToast('Onvoldoende budget voor revisie.');
     // A rebuild renews the engine incl. exhaust valves; the manifold is inspected and resurfaced.
     state.wear = { engine: 0, turbo: Math.max(0, state.wear.turbo - 10), transmission: Math.max(0, state.wear.transmission - 5), valves: 0, manifold: Math.max(0, state.wear.manifold - 25) };
     state.damage = { engine: 0, turbo: 0, transmission: 0 };
@@ -6184,7 +6237,7 @@
   }
 
   function doReset() {
-    state = QA_PROFILE ? C.createVehicleQA() : C.createCareerSelection();
+    state = C.restoreGarageState(QA_PROFILE ? C.createVehicleQA() : C.createCareerSelection());
     activeTab = 'bank'; starterId = 'scirocco';
     state.version = 12;
     pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId;
@@ -6253,7 +6306,8 @@
     markOnboarding('built');
     saveState();
     const label = rangeLabel(el);
-    const undo = () => { writePath(edit.path, edit.before); saveState(); render(); showToast(`${label} teruggezet naar ${rangeText(el, from)}.`); };
+    const owner = state.activeBuildId;
+    const undo = () => { if (owner !== state.activeBuildId) return; writePath(edit.path, edit.before); saveState(); render(); showToast(`${label} teruggezet naar ${rangeText(el, from)}.`); };
     const lim = el.dataset.als ? alsLimit(el.dataset.als, Number(to)) : safeLimit(edit.path);
     const crossed = lim && (el.dataset.als ? true : Number(to) > lim.value && Number(from) <= lim.value);
     if (crossed && (!el.dataset.als || !alsLimit(el.dataset.als, Number(from)))) {
@@ -6352,6 +6406,7 @@
   // shown) when the budget cannot pay; parts already owned and 'Vrij bouwen' cost nothing.
   function payForBuild(selections, what) {
     const res = C.purchaseBuild(state, selections);
+    if (!res.ok && res.reason) { showToast(res.reason); return false; }
     if (!res.ok) { showToast(`Budget te laag voor ${what}: ${euro(res.cost.total)} nodig, ${euro(res.shortEur)} tekort.`); haptic([30, 40, 30]); return false; }
     if (res.cost.total > 0) {
       state.bank = res.bank; state.owned = res.owned;
@@ -6360,8 +6415,9 @@
     return true;
   }
   function offerUndo(paths, label) {
+    const owner = state.activeBuildId;
     const before = paths.map(p => [p, readPath(p)]);
-    return () => showToast(label, { label: 'Ongedaan', run: () => { before.forEach(([p, v]) => writePath(p, v)); pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId; saveState(); render(); showToast('Ongedaan gemaakt.'); } });
+    return () => showToast(label, { label: 'Ongedaan', run: () => { if (state.activeBuildId !== owner) return; before.forEach(([p, v]) => writePath(p, v)); pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId; saveState(); render(); showToast('Ongedaan gemaakt.'); } });
   }
 
   // Scroll-safe sliders. Native range inputs grab a vertical swipe and change their value while the user only
@@ -6441,6 +6497,8 @@
     }
     const btn = event.target.closest?.('[data-action="burnout-hold"]');
     if (!btn || btn.disabled) return;
+    const owner = btn.closest('[data-workshop-owner]')?.dataset.workshopOwner;
+    if (owner && owner !== (state.activeBuildId || 'scirocco')) return;
     event.preventDefault();
     try { btn.setPointerCapture(event.pointerId); } catch (e) {}
     startBurnout(event.pointerId);
@@ -6511,7 +6569,12 @@
     if (btn.dataset.action === 'confirm-starter') {
       const result = C.confirmStarter(state, starterId);
       if (!result.ok) return showToast(result.reason);
-      state=result.state; saveState(); render(); return showToast(`Startauto bevestigd: ${V.get(starterId).name}`);
+      state=C.restoreGarageState(C.persistGarageState(result.state)); saveState(); render(); return showToast(`Startauto bevestigd: ${V.get(starterId).name}`);
+    }
+    if (btn.dataset.action === 'workshop-baseline') {
+      const def=C.workshopDefinition(state); if(!def || !payForBuild(def.selections, 'basisconfiguratie')) return;
+      state.selections={...def.selections}; state.tune={...state.tune,...def.tune,ecu:null}; state.bench={results:{}};
+      saveState();render();return showToast('Basis-hardware en afstelling geladen. Controleer olievolume en meet op de dyno.');
     }
     if (btn.dataset.action === 'qa-profile') { location.search='?profile=vehicle-qa'; return; }
     if (btn.dataset.action === 'career-profile') { location.search=''; return; }
@@ -6579,6 +6642,7 @@
       saveState(); haptic(10); return render();
     }
     if (btn.dataset.preset) {
+      if (C.workshopDefinition(state)) return showToast('Kies de basisconfiguratie van deze auto of een eigen buildslot.');
       if (!payForBuild(C.PRESETS[btn.dataset.preset]?.selections || {}, C.PRESETS[btn.dataset.preset]?.name || 'deze build')) return;
       const announce = offerUndo(['selections', 'tune', 'assembly', 'service', 'vehicle', 'dynoConfig', 'buildName'].map(k => ['__root', k]), 'Build geladen. Het resultaat blijft verborgen tot de dyno.');
       state = C.applyPreset(state, btn.dataset.preset);
@@ -6610,9 +6674,9 @@
     }
     if (btn.dataset.driveCar) {
       closeModal();
-      if (raceGame?.open || dynoRunning) return showToast('Sluit de actieve run voordat je van auto wisselt.');
+      if (raceGame?.open || dynoRunning || mapJob || adviceJob || gripJob) return showToast('Rond de actieve run of afstelling af voordat je van auto wisselt.');
       stopEngineAudio({hard:true});
-      state.garage = C.setActiveCar(state, btn.dataset.driveCar);
+      selectWorkshopCar(btn.dataset.driveCar);
       rivalCache.clear();
       saveState(); haptic(12); render();
       return showToast(`Racewagen: ${btn.dataset.driveCar === 'scirocco' ? state.buildName : rosterName(btn.dataset.driveCar)}.`);
@@ -6646,6 +6710,11 @@
       if (!payForBuild({ ...state.selections, [btn.dataset.partCat]: btn.dataset.partId }, newName)) return;
       const announce = offerUndo([['selections', btn.dataset.partCat]], `${cat?.short || 'Onderdeel'}: ${oldName} → ${newName}`);
       state.selections[btn.dataset.partCat] = btn.dataset.partId;
+      if (['turbo','fuelSystem','fuel','head','block','valvetrain'].includes(btn.dataset.partCat)) state.tune.ecu=null;
+      if (btn.dataset.partCat === 'transmission') { state.tune.gearRatios=null; state.tune.finalDrive=null; state.tune.converterStallRpm=null; }
+      if (btn.dataset.partCat === 'fuelSystem' && C.workshopDefinition(state)) {
+        const fs=C.engineHardware(state).fuelSys; state.tune.railTargetBar=fs.nominalPressureBar || fs.mpiPressureBar || state.tune.railTargetBar;
+      }
       markOnboarding('built');
       saveState(); haptic(16);
       render();
@@ -6688,10 +6757,10 @@
       case 'abort-dyno': abortDyno(); break;
       case 'toggle-compare': state.settings.dynoCompare = state.settings.dynoCompare === false; saveState(); render(); break;
       case 'reset-tune': {
-        const stock = C.applyPreset(C.blankState(), 'stock');
+        const stock = C.workshopDefinition(state) ? C.createWorkshopBuild(state.workshopCarId) : C.applyPreset(C.blankState(), 'stock');
         // OEM quick setup, with a fresh base spark map for the hardware that is actually fitted.
         state.tune = { ...state.tune, ...stock.tune, ecu: undefined, exhaustTdcLiftMm: state.tune.exhaustTdcLiftMm, intakeTdcLiftMm: state.tune.intakeTdcLiftMm, vvtEnabled: state.tune.vvtEnabled };
-        saveState(); haptic(12); showToast('OEM-achtige map geladen; mechanische nokmetingen behouden.'); render(); break;
+        saveState(); haptic(12); showToast(C.workshopDefinition(state) ? 'Basismap van deze auto geladen.' : 'OEM-achtige map geladen; mechanische nokmetingen behouden.'); render(); break;
       }
       case 'run-all-bench': runAllBench(); break;
       case 'export-dyno-log': exportLog('dyno'); break;
@@ -6749,8 +6818,16 @@
     }
   });
 
+  function isStaleWorkshopControl(el) {
+    const d=el.dataset || {};
+    const relevant=['tune','tuneRange','tuneRangeNum','gearRatio','als','assembly','vehicle','service','vehicleSelect','serviceSelect'];
+    if (!relevant.some(k=>d[k]!==undefined)) return false;
+    const owner=el.closest('[data-workshop-owner]')?.dataset.workshopOwner;
+    return owner !== (state.activeBuildId || 'scirocco');
+  }
   document.addEventListener('input', event => {
     const el = event.target;
+    if (!el.isConnected || isStaleWorkshopControl(el)) return;
     if (el.dataset && el.dataset.tuneRangeNum) {
       state.tune[el.dataset.tuneRangeNum] = Number(el.value);
       const out = el.closest('.field-label')?.querySelector('b');
@@ -6855,6 +6932,7 @@
 
   document.addEventListener('change', event => {
     const el = event.target;
+    if (!el.isConnected || isStaleWorkshopControl(el)) return;
     if (el.dataset.vehicleSelect) {
       state.vehicle[el.dataset.vehicleSelect] = el.value;
       burnoutRuntime = null; racePhase = 'burnout';
@@ -6911,7 +6989,7 @@
       showroom:showroom?.car.status || null, race:raceGame?.r3d?.vehicles?.(), replay:raceGame?.replay3d?.vehicles?.(),rig:raceGame?.r3d?.rig?.(),sound:engineAudio?.model}),
     showroomView: a => { showroom?.view(a); return showroom?.car.status; },
     showroomClay: on => { showroom?.clay(on); return true; },
-    qaDrive: id => { if(!QA_PROFILE || raceGame?.open)return false; state.garage=C.setActiveCar(state,id); saveState(); activeTab='bank';render();return state.garage.active===id; },
+    qaDrive: id => { if(!QA_PROFILE || raceGame?.open || dynoRunning || mapJob || adviceJob || gripJob)return false; selectWorkshopCar(id); saveState(); activeTab='bank';render();return state.garage.active===id; },
     qaCloseRace: () => { if(!QA_PROFILE)return false;closeDragGame();render();return true; },
     qaStartRun: () => { if(!QA_PROFILE)return false; startDragGame(); if(!raceGame?.open)return false; startV7Run(.12,true); return true; },
     holdFinishForTest: on => { holdFinishForTest = !!on; return holdFinishForTest; },

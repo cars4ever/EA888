@@ -33,11 +33,11 @@ def main():
    if a.preview_only:continue
    before=page.evaluate('JSON.parse(localStorage.getItem("ea888_vehicle_qa_v1"))')
    for tab in ['build','tune','dyno','service']:
-    page.locator(f'[data-nav="{tab}"]').click();page.wait_for_selector('.roster-workshop')
-    assert page.locator('[data-tune]').count()==0
-   after=page.evaluate('JSON.parse(localStorage.getItem("ea888_vehicle_qa_v1"))')
-   for field in ['selections','tune','wear','damage','service']:assert before[field]==after[field],field
-   r['workshopProtected']=True
+    page.locator(f'[data-nav="{tab}"]').click()
+    assert page.locator('.roster-workshop').count()==0
+   page.locator('[data-nav="dyno"]').click();page.locator('[data-action="start-dyno"]').click()
+   page.wait_for_function('__EA888_DEBUG__.dyno()?.status === "completed" && __EA888_DEBUG__.dyno()?.current',timeout=90000)
+   r['workshopDyno']=page.evaluate('__EA888_DEBUG__.dyno()')
    page.reload();page.wait_for_function('__EA888_DEBUG__.vehicle().showroom?.state === "ready"',timeout=60000);assert page.evaluate('__EA888_DEBUG__.vehicle().active')==car
    r['restartSelection']=True
    page.evaluate('__EA888_DEBUG__.holdFinishForTest(true)')
