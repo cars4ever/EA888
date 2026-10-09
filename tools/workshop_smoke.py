@@ -57,7 +57,9 @@ def main():
    pressure=p.locator('[data-tune=railTargetBar]');assert float(pressure.get_attribute('max'))<=10
    target=.80 if car=='crc12_jackstand_240' else .72 if car in ['eagle','mullet'] else .78
    edit('[data-tune=lambda]',target);p.screenshot(path=str(OUT/(car+'-tune.png')))
-   p.locator('[data-nav=dyno]').click();p.locator('[data-action=start-dyno]').click()
+   p.locator('[data-nav=dyno]').click()
+   assert p.evaluate('(id)=>EA888Core.rosterCarData(id).displayName',car).lower() in p.locator('.dyno-watermark').inner_text().lower()
+   p.locator('[data-action=start-dyno]').click()
    p.wait_for_function('__EA888_DEBUG__.dyno()?.current && __EA888_DEBUG__.dyno()?.status === "completed"',timeout=90000)
    r['dyno']=p.evaluate('__EA888_DEBUG__.dyno()');p.screenshot(path=str(OUT/(car+'-dyno.png')))
    p.locator('[data-nav=service]').click();before=save()['bank'];p.locator('[data-action=oil-change]').click();assert save()['bank']<before

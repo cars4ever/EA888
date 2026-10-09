@@ -2735,7 +2735,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       <div class="dyno-console ${active ? 'running' : ''}">
         <div class="dyno-engine-panel">
           ${engineVisual({ compact: true, mode: 'dyno', labels: false, running: active, view: engineView })}
-          <div class="dyno-watermark">MOTORENTESTBANK · CAWB · ${esc(engineView.toUpperCase())}</div>
+          <div class="dyno-watermark">MOTORENTESTBANK · ${esc(C.workshopDefinition(state) ? rosterName(state.workshopCarId) : 'CAWB')} · ${C.workshopDefinition(state) ? 'V8-SCHEMA' : esc(engineView.toUpperCase())}</div>
         </div>
         <div class="live-gauges v4-live-gauges">
           <div><span>RPM</span><b id="live-rpm">${point ? Math.round(point.rpm) : 1500}</b></div>
