@@ -1,3 +1,12 @@
+# Actuele stand: tweede audit 1.32.0 (420)
+
+Baseline `bfbb29e`, branch `claude-dev`. Lees eerst de bovenste sectie van [VEHICLE_AUDIT.md](VEHICLE_AUDIT.md).
+Gear-dispatch/dynogear hersteld; converter/ratio-pakketten met Worker, betaalde hardware en benoemde setups; automatische shifts onderscheiden pompflare en turbine/contact. De waterbox is nu fysieke aanrijroute en rolling burnout met dezelfde runtime tot launch. Canvas blijft behouden; modellen moeten geladen zijn. Bron-DC en dyno-ramp/audiosynchronisatie gerepareerd. Eagle heeft aparte herbouwde parachutepakken. Geen nieuwe budgetgrant/opslagmigratie.
+
+Bewijs: `reports/audit2/`; reproduceertools `tools/audit2_*`. APK `dist/EA888-Lab-1.32.0.apk`, dezelfde releasekey/package. Geen toestel-/luistertest; volledige nieuwe gebruikersopname ontbreekt. Onderstaande versies zijn historie.
+
+---
+
 # EA888 LAB — actuele herstelstand 1.31.0 (410)
 
 Op 10 oktober 2026 is het aangeleverde v1.30-auditpakket uitgevoerd op baseline `ccf4d067`.

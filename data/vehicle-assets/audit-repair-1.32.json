@@ -1,0 +1,44 @@
+{
+  "baselineCommit": "bfbb29e14191ddf8095fea8c8fdf80fa75dcba76",
+  "implementationCommit": "fa0e0a5af15c5d9ebd0c13b402c87ca0a6b39364",
+  "version": {
+    "versionName": "1.32.0",
+    "versionCode": 420
+  },
+  "recordedAtUtc": "2026-10-10T17:58:46.781826+00:00",
+  "platforms": {
+    "desktopBrowser": "Chromium + SwiftShader",
+    "portraitCssWidths": [
+      360,
+      390,
+      412,
+      430
+    ],
+    "androidBuild": true,
+    "physicalDevice": false,
+    "androidEmulator": false,
+    "listeningTest": false
+  },
+  "fullNewUserVideoPresent": false,
+  "baselineSimulation": "pass",
+  "fullSimulationAfter": "pass",
+  "targetedRegressionTests": "pass",
+  "evidence": {
+    "gameplay": "reports/audit2/gameplay-summary.json",
+    "tuner": "reports/audit2/tuner/race-route.json",
+    "dyno": "reports/audit2/dyno/report.json",
+    "rawAudio": "reports/audit2/audio/capture.json",
+    "audioSources": "reports/audit2/audio/source-taps.json",
+    "audioLifetime": "reports/audit2/audio/lifetime.json",
+    "inputs": "reports/audit2/inputs-result.json",
+    "saveRestarts": "reports/audit2/saves/report.json",
+    "apk": "reports/audit2/apk-verification.json"
+  },
+  "limits": [
+    "Exact recording build unknown: startup fixture is explicitly estimated.",
+    "No physical-device install/save or listening acceptance.",
+    "Eagle retains soft Hunyuan body details despite rebuilt rear hardware.",
+    "Bracket objective uses heat/slip proxy, not repeated-pass statistics.",
+    "No EA888 web listener was running; other project ports untouched."
+  ]
+}

@@ -1,3 +1,67 @@
+# Tweede audit — EA888 LAB 1.32.0 (420), 10 oktober 2026
+
+Uitgangspunt: schone `claude-dev` op `bfbb29e14191ddf8095fea8c8fdf80fa75dcba76`. Het tweede auditpakket is gelezen (LEES_EERST, uitvoeropdracht, bevindingen, acceptatiecriteria, bewijsbeelden, audio/meetrapporten); alle 52 opgegeven SHA-256 hashes kloppen. Import en bronback-up: `../work/audit-1.31/`. Originele auditmedia zijn niet gewijzigd. Geen GPU-generatie, nieuwe auto, engine, opslaglaag of signing identity.
+
+**Bewijsgrens:** de genoemde volledige nieuwe opname `Screen_Recording_20261010_181735_EA888 LAB.mp4` staat niet in ZIP, uploadmap of project. Wel aanwezig: korte videofragmenten, screenshots, acht FLAC-fragmenten en meetgegevens. De oudere losse MP4 is niet als de nieuwe opname behandeld. De exacte hardwareconfiguratie uit de opname is deels onbekend: de startup-reproductie hieronder is een expliciete fixture, geen claim van exact dezelfde save.
+
+## Reparaties per bevinding
+
+| Audit-ID | Implementatie en aangetoond gedrag | Begrenzing |
+| --- | --- | --- |
+| A01, A03, A12 | Echte aanrijroute vanaf −30 m, waterzone −23..−17 m, individueel as-/bandcontact en natheid. Dezelfde voertuigfysica rijdt naar staging; rollende slip bouwt voortgang op, stilstand niet. Hulp bedient gas/rem op carrosserie- en bandsnelheid; wijst geen vaste snelheid toe. Uitrollen, remmen, sturen en creep. Temperatuur, natheid en converter blijven behouden. | Trackafstanden, 1 s rolling-drempel en rembias zijn spelinstellingen. Geen gehomologeerde baan-/remregelaar. |
+| A02 | Dezelfde renderer en canvas blijven tussen burnout, staging en race behouden. Geen tijdelijk oranje laadmodel. Voorbereiding wacht op speler én rivaal; een laadfout heeft een blijvende zichtbare melding en stopt de klok. | Noodfallback blijft bewust zichtbaar als fout. |
+| A04, A05 | Automatisch opschakelen controleert turbineherstel en bandcontact, naast pomptoerental. Handmatige short-shift blijft mogelijk. Log bevat pomp/turbine/output/wieltoerental, ratio, aslast, slip, verlieswarmte en reden/tijd van shifts. | Een hoge RPM-plateau kan bij converter/slip fysiek blijven bestaan; geen kunstmatige RPM-zaagtand of vermogensverhoging. Bestaande converter-overdracht blijft gemodelleerd. |
+| A06 | Dynogear genormaliseerd naar werkelijk aantal versnellingen met bericht over oude keuze; TH400 3, Powerglide 2, Scirocco 6. ECU boost-per-gear toont alleen aanwezige versnellingen. | Oude opgeslagen extra tabelrijen blijven voor compatibiliteit bewaard. |
+| A07 | Bevestigde fout in if/else-dispatch hersteld: Gear werd later overschreven door Failsafes. Gear toont eigen ratios, eindoverbrenging, snelheidsdiagram en tuner. | Snelheidsdiagram is expliciet zonder converterslip. |
+| A08, A18 | Converter-/ratio-tuner in bestaande Gear-paneel: doelen, maximaal drie compatibele kandidaten, berekening in Web Worker, voortgang/cancel, één pakkettransactie, Undo en benoemde setups. Vrije stall-ECU-slider verwijderd: converter is hardware. | Generieke game-onderdelen en prijzen, expliciet schattingen; familiecompatibiliteit is geen geverifieerde spline-/boutpassing. Ratio-advies gebruikt bestaande bakverhoudingen en finale overbrenging; geen nieuwe fabrikantcatalogus. |
+| A09 | Gemeten laatste pass, virtuele baseline en kandidaatvoorspelling afzonderlijk gelabeld. Dezelfde motorcurve, bandstarttemperatuur, baan en virtuele bestuurder. Geen mutatie aan echt saldo, slijtage of bottle tijdens zoeken. | Bracket-score is warmte/slip/limiter-proxy, geen bewezen statistische repeatability. |
+| A10 | Converter/final drive/shift-setup behouden motorcurve; historische wielmeting draagt drivelineconfiguratie en wordt als oud benoemd. Motorwijziging die hermeting vraagt wordt vooraf aangekondigd. | Engine-/boostwijzigingen blijven terecht dynovalidatie vereisen. |
+| A11 | Hoogste versnelling + limiter adviseert eindoverbrenging/banddiameter; geen niet-bestaande volgende gear. Slipadvies benoemt piekslip, niet zonder bewijs de duur van doorslippen. | Geen bandenslip als converterslip gelabeld. |
+| A13 | DC-blokkering per synthbron na niet-lineaire bewerking, plus 12 Hz masterveiligheidsfilter. Ruwe PCM-taps vóór encoding tonen oorzaak en herstel. | Browser/WebAudio en offline bronmetingen; geen nieuwe Android-microfoonmeting. |
+| A14 | Dynovisualisatie volgt sampletijd/ramp rate en wacht op audiogereedheid. Werkelijke WOT-load naar synth, ook bij NA. Eindstatus wordt geschilderd vóór zwaardere opslag/render. | Exacte Android-stiltevorm uit ontbrekende volledige opname niet op toestel gereproduceerd. |
+| A15 | Bandgeluid volgt werkelijke slip, natheid en het door hulp toegepaste gas. TH400/Powerglide gebruiken doorlopende belasting/RPM, geen kunstmatige DSG-cut of blow-off; NA krijgt geen blow-offsample. Shiftlogs noemen de audiopolicy en kloktijd. DC verbruikt geen masterheadroom meer; motorarchitectuur blijft bestaande V8/EA888-synth. | Geen subjectieve luistergoedkeuring: clips zijn niet beluisterd. Geen echte voertuigspecifieke opnames. |
+| A16 | Eagle: gegenereerde parachutebrokken verwijderd; afzonderlijke afgeronde stoffen pakketten, banden/bevestigingen en achterpaneel. Normals herberekend, uitlaatanker buiten carrosserie. Bestaande master + runtime/low-LOD. | Carrosserie behoudt zachte Hunyuan-details; geen claim van fotorealistische volledige resculpt. |
+| A17 | Minder donkere sluier/glow, compactere burnout-HUD, grotere zichtbare wereld, aparte gas/rem/stuurbediening. Ongekapte fysieke slip wordt genormaliseerd naar rookintensiteit met temperatuur/natheid: geen witte chasecamera door opacity >1. Dubbele centrale 2D-vlam verborgen bij 3D; fysieke uitlaatankers blijven. | Software-GL-browserbeelden zijn geen telefoon-FPS-benchmark. |
+
+## Savegames en economie
+
+De bestaande 1.31-opslag en migratie blijven intact. Geen nieuwe kredietmigratie of automatische aanvulling. Nieuwe converter/gearset-eigendom en setups reizen mee in de bestaande complete snapshots. De oude bakbundel blijft zonder nieuwe betaling bruikbaar. Aankoop valideert build-hash, bak, budget en transactiedata; herhaald toepassen van een oud voorstel wordt geweigerd. Undo restitueert alleen die transactie en bewaart latere geldmutaties, andere onderdelen en benoemde setups. Een teruggedraaide aankoop kan niet via een benoemde setup gratis worden teruggezet. Wisselen van bak wist de oude converter-/shiftselectie.
+
+Browserfixture van een bestaande werkplaats: na aankoop €8.132.237, drie herstarts hetzelfde saldo, Eagle-onderdelen, 17% enginewear, 0,73 kg bottle en benoemde setup behouden. Dit is een geïsoleerde fixture; de echte telefoonsave is niet op deze server aanwezig en is niet geopend/reset. De APK blijft over de bestaande installatie te installeren.
+
+## Werkelijk bewijs en reproduceerbaarheid
+
+Alle resultaten staan onder `reports/audit2/` (grote media niet blind in Git):
+
+- `baseline-sim.log`, `baseline-regressions.log`: uitgangsmeting; Gear/TH400/Powerglide-tests faalden vóór reparatie.
+- `regressions-final.log`, `preparation-core-final.log`, `test_*.log`, `full-sim-after.log`: kern-, audio-, save-, voertuig- en werkplaatsregressies.
+- `startup-hot-before.json` / `startup-hot-after.json`: vastgelegde Eagle/TH400 fixture met lange boost-hold. Voorheen shifts op circa 0,510 en 0,710 s; nieuwe automaat accepteert geen pompflare als versnelling. De korte boost-holdfixture reproduceerde het probleem niet.
+- `converter-scenarios.json`: straat, spool en griparm, met input/voorspelling en ongewijzigde bronstate. `tuner/`: echte Worker/UI, betaling, benoemde save/herstart/Undo en twee geldige races na tunerwijziging.
+- `preparation/<car>/`: echte browsergame-screenshots, video en volledige fysieke telemetrie. QA-overlay is alleen door de test geïnjecteerd, niet in de releasegame. Rook-/audio-aanscherpingen veranderen geen racefysica; enkele overige voertuigclips zijn eerder in dezelfde herstelronde opgenomen. Rijden van waterbox tot beam en race, geen camera-truc. Scirocco-regressie bevat ook nul-tijd eerste-framecontrole.
+- `visual/`: Eagle beauty/clay en Gear op portrait 360/390/412/430, plus vergrote tekst. `ui/`: TH400/Powerglide/Scirocco en dynogear.
+- `loading/report.json`: ontbrekende Eagle, klok 0, afstand −30 m, assetsReady false. Bestaande modeltests: resource-isolatie, snel wisselen, wielsetup en expliciete fallback.
+- `dyno/report.json`: 250 rpm/s: 26,382 s versus 26,4 s; 1000 rpm/s: 6,574 s versus 6,6 s; operator-abort bewaart partieel resultaat. Eigen daadwerkelijke browservideo's en screenshots.
+- `audio/source-taps.json`: vaste 5 s bronmetingen na settelen. `audio/capture.json`: ruwe WebAudio-taps vóór/na compressor, vóór Opus-encoding. Zware racefase vóór: masterbusmean circa +0,48, na compressor +0,330; na compressor +0,000076. Alle gemeten stabiele na-taps abs(mean)<0,001.
+- `audio/before.wav` en `after.wav`: identieke synthetische RPM/loadfixture door de daadwerkelijke appmixer. `before-matched.wav` / `after-matched.wav`: constante gain naar −20 LUFS, geen extra dynamiekcompressie. `loudness-truepeak.json`: na true peak −2,83 dBTP, geen digitale clipping. Opus kan DC maskeren; daarom zijn ruwe taps doorslaggevend.
+- `audio/lifetime.json`: tien echte AudioContext start/menu-sluitcycli; alle contexts gesloten, geen achterblijvende engineAudio. Geen claim van tien volledige races.
+- `inputs-result.json`: lane-DNF zonder ongehaalde ET/trap, roodlicht, groen-loslaten, pointercancel zonder launch, pauze en herstart.
+- `saves/report.json`: werkplaatsbehoud na drie herstarts. Bestaande volledige save-/codec-/fouttests ook uitgevoerd.
+- `android-build-final.log`: bestaande releasebuild, APK/AAB, package en certificaat.
+
+Tools: `tools/audit2_*.py`, `tools/audit2_trace.js`, `tools/audit2_audio_sources.js`, `tests/test_audit2.js`, `tests/test_preparation.js`, `tests/test_driveline_setups.js`. Eagle-reparatie reproduceerbaar met `blender -b -t 4 -P tools/car3d/refine_eagle.py`, daarna bestaande glTF Transform meshopt/WebP-optimalisatie (1024/512). Hoogwaardige master onder `../work/cleetus/eagle/`; originele master/runtime onder `../work/audit-1.31/eagle-backup/`.
+
+Convertermodel blijft capacity-factor/torque-ratio-gebaseerd. Algemene technische controle: [MathWorks Torque Converter](https://www.mathworks.com/help/sdl/ref/torqueconverter.html), [ATI FAQ over stall](https://www.atiracing.com/links/faqs.htm). Nieuwe generieke onderdelen zijn geen overgenomen fabrikantspecificaties.
+
+## Build en grenzen
+
+Implementatiecommits: `60f5ff8` (fysica/tuner), `ad29e4a` (gameplay/audio), `f23770f` (Eagle/scene), `fa0e0a5` (converteraudio/rook). Acceptatierecord: `data/vehicle-assets/audit-repair-1.32.json`. APK-hash en exacte assetvergelijking: `reports/audit2/apk-verification.json` (72 bestanden bytegelijk).
+
+Web: `build/web/`. Release: `dist/EA888-Lab-1.32.0.apk` en `.aab` via `ANDROID_HOME=/home/scirockoe/android-sdk python3 tools/build_android.py --local-signing`. Package `nl.randy.ea888lab.stabl`, versionCode 420. Certificaat SHA-256 `74a2076d8d964584dadcb233eb5cd832de144a92173a1c74e4092fa0b3f1affb` blijft gelijk. Geen openbare publicatie. Bestaande assetversie verhoogd; alle game-assets blijven offline in APK.
+
+Platform: Chromium desktop met portrait/mobile CSS en SwiftShader, plus Android-build/verificatie. `adb devices` toont geen verbonden toestel. **Geen fysieke S24 Ultra-test, Android-emulatortest of luistertest uitgevoerd.** Volledige nieuwe gebruikersvideo ontbreekt. De GPU-/Music Factory-services en poorten zijn niet gewijzigd; er draaide geen EA888-webserver die kon worden herstart. De bestaande APK-start-/buildroute blijft leidend.
+
+---
+
 # Herstel na Android-audit — 1.31.0 (410), 10 oktober 2026
 
 Actuele uitgangscommit: `ccf4d067658bba7c4e90949483c57553098aa2b4`, schone `claude-dev`. Audit-ZIP veilig uitgepakt onder `../work/audit-1.30/input/`; originele bestanden en gameplayvideo ongewijzigd. Eerst BEVINDINGEN.md, daarna Astra_reparatieopdracht.txt gelezen. Hashes staan in `../work/audit-1.30/input-manifest.json`. Herstelpunt met uitgangscommit, patch, configuratie en later de oorspronkelijke Jackstand-master/runtime: `../work/audit-1.30/baseline/`. Geen reset, nieuwe auto, enginewissel, checkpointdownload of GPU-generatie. Gebruikersjobs zijn niet gestopt.

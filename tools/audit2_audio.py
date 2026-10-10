@@ -50,3 +50,5 @@ for tag in report:
  m=json.loads(re.findall(r'\{[^{}]*"input_i"[^{}]*\}',r.stderr)[-1]);gain=-20-float(m['input_i']);m['matchedConstantGainDb']=gain;metrics[tag]=m
  subprocess.run(['ffmpeg','-v','error','-y','-i',str(OUT/(tag+'.wav')),'-af',f'volume={gain}dB',str(OUT/(tag+'-matched.wav'))],check=True)
 (OUT/'loudness-truepeak.json').write_text(json.dumps(metrics,indent=2))
+assert all(abs(v['mean'])<.001 for v in report['after']['taps'].values()), 'DC returned in actual app bus'
+assert all(v['peak']<1 for k,v in report['after']['taps'].items() if k.startswith('postCompressor:')), 'Digital master clipping'

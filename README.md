@@ -4,13 +4,25 @@ Android tuning/drag-racing game/simulator built around a virtual VW EA888 Gen 1 
 
 ## Current baseline
 
-The canonical baseline is **EA888 Lab v1.2.0**.
+The current release is **EA888 Lab v1.32.0**. The original simulation baseline is v1.2.0.
 
 Core loop:
 
 **build engine → assemble → bench-test → tune → dyno → diagnose → drag race → service/rebuild → improve build**
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
+
+## v1.32.0 — rolling waterbox, gearbox and audio audit
+
+Gear renders its actual controls and dyno gear is checked against the fitted transmission.
+A physical drive-through waterbox feeds rolling burnout, staging and racing with one vehicle runtime.
+The Gear tuner compares paid converter/final-drive packages in a Worker, preserves engine curves
+where appropriate, and saves named setups. Existing workshop cash and full saves are retained.
+Audio DC, dyno timing, model transitions and Eagle rear hardware have targeted repairs.
+
+Install [the signed 1.32.0 APK](dist/EA888-Lab-1.32.0.apk) over the existing app.
+See [the Dutch audit report](docs/VEHICLE_AUDIT.md) for gameplay, telemetry, audio A/B and test limits.
+No physical-device or listening approval is claimed.
 
 ## v1.31.0 — Android audit repairs
 
