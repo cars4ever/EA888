@@ -1,3 +1,70 @@
+# Herstel na Android-audit — 1.31.0 (410), 10 oktober 2026
+
+Actuele uitgangscommit: `ccf4d067658bba7c4e90949483c57553098aa2b4`, schone `claude-dev`. Audit-ZIP veilig uitgepakt onder `../work/audit-1.30/input/`; originele bestanden en gameplayvideo ongewijzigd. Eerst BEVINDINGEN.md, daarna Astra_reparatieopdracht.txt gelezen. Hashes staan in `../work/audit-1.30/input-manifest.json`. Herstelpunt met uitgangscommit, patch, configuratie en later de oorspronkelijke Jackstand-master/runtime: `../work/audit-1.30/baseline/`. Geen reset, nieuwe auto, enginewissel, checkpointdownload of GPU-generatie. Gebruikersjobs zijn niet gestopt.
+
+## Budget en volledige saves
+
+De **echte bestaande werkplaats** krijgt bij de eerste migratie minimaal €10.000.000, een hoger saldo blijft staan. `workshopBudgetVersion=1` voorkomt opnieuw aanvullen na uitgaven/herstart. Auto’s, onderdelen, montage, bench, tune, service, slijtage, schade, lachgas, dyno’s, records en voortgang blijven behouden. De telefoon-save is niet op de server beschikbaar: de APK voert deze migratie op het toestel uit bij openen. Er is dus geen claim dat het saldo op de telefoon al gewijzigd is.
+
+v1.30 had één root-key zonder betrouwbare werkplaats/carrière-modus. Daarom blijft de oorspronkelijke localStorage-string ongewijzigd, komt er een volledige herstelkopie, én wordt een apart **onverhoogd carrièreprofiel** bewaard. Een nieuwe werkplaats begint met €10 miljoen; een nieuwe carrière met het bestaande €50.000. Autokosten worden eenmaal betaald. QA is een eigen profiel. Vrij bouwen wordt expliciet bij het profiel vermeld. Via Spelbeheer kan de gebruiker het werkplaatsbudget na bevestiging weer aanvullen; carrière/QA krijgen die knop niet. Geldmutaties verschijnen met voor/na-saldo in het logboek.
+
+**Spelbeheer** staat boven garage, shop, tune en service: opslaan, dupliceren/opslaan als, nieuw profiel zonder wissen, profiel laden/verwijderen, vijf benoemde volledige slots, drie roterende autosaves, laatst bekende goede save en migratiekopie. Overwrite/delete vragen bevestiging. Het laatst gekozen profiel en de actieve auto keren terug bij herstart. Laden beëindigt oude race/audio/input/jobs. Buildpresets blijven apart.
+
+Nieuwe opslag: `ea888-full-saves-v1` in IndexedDB. Snapshot en verwijzingen worden atomair gepubliceerd; SHA-256 controleert de payload, ongeldige/future imports worden geweigerd. Een mislukte schrijfactie vervangt de vorige geldige save niet. Ook een beschadigde huidige save blijft via het zichtbare herstelmenu herstelbaar. De bestaande `persistGarageState`/`restoreGarageState` en verliesloze codec blijven de serialisatiegrens; geen WebGL/audio/pointerstate. Native JSON-import/export kapt niet meer stilzwijgend af op vijf miljoen tekens; expliciete limiet 60 miljoen en zichtbare leesfouten.
+
+## Auditbevindingen en reparaties
+
+| Bevinding | Bewijs / status | Reparatie / grens |
+| --- | --- | --- |
+| Echt saldo laag ondanks eerder QA-budget | Aangetoond in video; opgelost in migratie en echte browser-root-save | Eenmalige werkplaatsaanvulling, geen reset of verborgen carrièreverruiming |
+| Geen volledige profielen en herstelbare slots | Opgelost | Volledige snapshots en UI; tests met quota-/schrijffout, beschadiging, herstart en import |
+| 245–255 °C oppervlak met “perfect grip” | Verwarrende tekst aangetoond; thermische reset niet aangetoond | Oppervlak, kern, griptemperatuur en **raming na 20 s koelen** apart benoemd. Geen clamp/reset. Continue thermische logs |
+| Wisselende startaanwijzing | Gereproduceerd in code; opgelost | Eén bediening: volledig stagen, launch vasthouden, loslaten op groen. Cancel reset staging; vroeg loslaten blijft rood |
+| RT −1,997 s | Niet op zichzelf een fout bewezen | Vroeg loslaten is reproduceerbaar als negatieve RT. Werkelijk getoond groenmoment en release gebruiken dezelfde monotone klok. ET start na beam-exit; rollout en ruwe duur afzonderlijk |
+| DNF toont afgebroken tijd als kwartmijl-ET | Codefout bevestigd; opgelost | Alleen gepasseerde splits, geen ongehaalde ET/trap/totaal/delta; DNF toont afstand en duur. Geen record |
+| Plotselinge vertraging buiten de lijn | Herhaalde onzichtbare snelheidsvermenigvuldiging bevestigd | Verwijderd. Lane-DNF eindigt bij ongeldigverklaring, zonder nep-botsing of extra remimpuls |
+| Automaat toont “perfecte” handmatige shifts | Opgelost | Werkelijke automatische schakelingen benoemd |
+| HUD, gas/N2O/rivaal overlappen; tabs afgekapt | Verbeterd en visueel gecontroleerd | Compacte hoofdmeters, techniek optioneel, gescheiden knoppen, volledige horizontaal scrollbare tabnamen, wielwaarden met spatie/eenheid |
+| Verkeerde auto in race-overzicht / statische finishplaat | Opgelost | Geselecteerde live 3D-preview; finish gebruikt het laatste echte renderbeeld. Uitslag blijft staan tot de speler verdergaat |
+| Jackstand platte lichtvlakken / felle achterruit | Gericht verbeterd | Afgeronde geprojecteerde lensbehuizingen, lensdikte/facetten, donkerdere gedrukte achterruit. Zachte bumpers/bodydetails blijven een beperking van de bestaande AI-mesh |
+| Wielmaat verandert niet mee | Opgelost voor vijf V8-modellen | Achterbandbreedte/radius, centra, carrosseriehouding en wielomwentelingen volgen setup; calipers blijven stationair. Geen simdimensies aangepast |
+| Scènemix: stationair te hard, abrupte finish | Verbeterd en gemeten | Zelfde bestaande mixer, lastafhankelijk niveau, gas volgt pedaal; 650 ms afbouw/opruimen, directe stop bij verlaten/pauze. Hardware bepaalt turbo-audio |
+| ECU-tabellen openen geeft null/spark-fout | Extra echte fout gevonden in werkplaatstest | Ontbrekende tabellen lui opgebouwd met dezelfde corefunctie als de simulatie; handmatige maps blijven behouden. Geen turbo/VVT/elektronische brandstoftabel aangeboden zonder passende hardware |
+
+Thermische controle bij 1,35 bar: drag radial na 6 s burnout circa 241 °C oppervlak / 51 °C kern, voorspelde griptemperatuur na 20 s circa 57 °C. Na 30 s circa 370 / 184 °C en voorspeld 171 °C: oververhit. Ook Pro Mod slick, korte/medium/lange burnouts en exacte overdracht naar de runtime gecontroleerd. Dit zijn bestaande modeluitkomsten, geen gemeten echte bandentemperaturen. `reports/audit-repair/thermal.json` bevat de waarden; de race bewaart fase, tijd, surface/core, voorspelling, druk, compound, slipenergie en gripfactor.
+
+## Auto’s en bewijs uit de game
+
+| Auto | Status | Geldige volledige QA-run in mobiele browser |
+| --- | --- | ---: |
+| Jackstand 240SX coupé | Bestaande eigen Hunyuan-mesh gericht afgewerkt; garage/race/replay/wielsetup getest | 9,885 s |
+| Eagle Camaro | Bestaande eigen mesh behouden; garage/race/replay/wielsetup getest | 8,635 s |
+| Mullet El Camino | Bestaande eigen mesh behouden; garage/race/replay/wielsetup getest | 10,350 s |
+| McFlurry Foxbody coupé | Bestaande eigen mesh behouden; garage/race/replay/wielsetup getest | 10,479 s |
+| Lumberjack El Camino | Bestaande eigen mesh/patina behouden; garage/race/replay/wielsetup getest | 10,695 s |
+| Scirocco | Bestaande inhoud behouden; volledige regressierun/replay | 12,762 s |
+
+Dit zijn specifieke QA-builds met koude starts in de directe runtimetest, geen nieuwe historische kalibratieclaims. De volledige burnout→stage→run-keten is daarnaast met Jackstand uitgevoerd (9,838 s). `sim.js` en de technische onderzoeksdata zijn niet gewijzigd. De bestaande ruisvrije werkplaats-/Scirocco-/tegenstanderfixture blijft binnen haar tolerantie.
+
+Bewijsmap: `reports/audit-repair/`. `before/` bevat frames uit de aangeleverde video. `saves/` toont echte migratie, spelbeheer en herstel. `race/` bevat rear/overview/run/finish/replay voor alle zes, DNF, rood licht, hold/release en de laatste HUD. `race/jackstand-run.mp4` is een korte uitsnede uit de echte browseropname (geen mee-opgenomen audio). `jackstand-preview/jackstand-360.mp4` is het aangepaste runtime-model in de echte showroom. `models/` toont modelafwerking, ontbrekend-modelmelding, hardwarebeperkingen en tabnamen. De eerste screenshotcontrole leidde tot een correctie van lensvlakken die in de carrosserie vielen; alleen de gecorrigeerde modellen worden verpakt.
+
+`audio/before.wav` en `audio/after.wav` komen uit de echte WebAudio-keten met identieke mixerinstellingen en gecontroleerde RPM/last-fasen. Stationair ging van circa −13,9 naar −24,7 dBFS RMS; belast stripgeluid bleef circa −16,1 dBFS. Dynocel en strip verschillen door de bestaande akoestiek; de originele telefoonvideo heeft andere bedrijfscondities en is geen directe numerieke A/B. Losse gelijk-volume-fragmenten staan in `audio/level-matched/` (−20 LUFS). RMS/LUFS bewijzen geen overtuigende echte V8-klank: dit blijft synthese, geen voertuigopname; beoordeling op de telefoonspeaker is nog een toestelcontrole.
+
+## Testen en oplevering
+
+Direct bewijs: [werkplaatsmigratie](../reports/audit-repair/saves/actual-legacy-workshop-migration.png), [spelbeheer](../reports/audit-repair/saves/game-manager.png), [DNF](../reports/audit-repair/race/dnf.png), [laatste HUD](../reports/audit-repair/layout/hud.png), [racevideo](../reports/audit-repair/race/jackstand-run.mp4), [360° showroom](../reports/audit-repair/jackstand-preview/jackstand-360.mp4), [audio vóór](../reports/audit-repair/audio/before.wav), [audio na](../reports/audit-repair/audio/after.wav).
+
+De volledige `node tests/test_sim.js` is met exit 0 afgerond. De gerichte regressiereeks (save manager/codec, assets, garage, timing, dynoresultaten, audio, voertuig, burnout en fysica-audit) is ook groen. Aanvullend: 19 werkplaatschecks inclusief fysica-neutrale lazy ECU-initialisatie; daadwerkelijke koop/bouw/tune/bench/dyno/service/herstart voor alle vijf; volledige historie-stresstest (zes auto's × 20 dyno's × 30 races, 27.501.444 JSON-tekens); corrupte legacydata wordt niet gemigreerd naar een lege vervanging. De geïsoleerde UI-test constateerde eerst vijf null/spark-fouten; na reparatie is de volledige werkplaatstest opnieuw zonder page errors geslaagd.
+
+
+Reproduceerbare nieuwe tests: `tools/audit_save_smoke.py`, `tools/audit_storage_stress.py`, `tools/audit_race_smoke.py`, `tools/audit_model_smoke.py`, `tools/audit_audio.py`, `tests/test_save_manager.js`, `tests/test_audit_thermal.js`. Werkplaatstest `tools/workshop_smoke.py` gebruikt nu de werkelijke profielopslag. Logs en compacte eindacceptatie staan onder `reports/audit-repair/` en `data/vehicle-assets/audit-repair-1.31.json`.
+
+Getest op desktop Chromium/SwiftShader en mobiele emulatie 412×892. **Geen emulator, aangesloten Android-toestel of S24 Ultra-test.** Niet alle details van een handmatige telefoonrun zijn identiek gereproduceerd. Android compile/sign/package wordt wel gecontroleerd; alle verpakte webbestanden moeten bytegelijk zijn aan de geteste webbuild.
+
+Build: `ANDROID_HOME=/home/scirockoe/android-sdk python3 tools/build_android.py --local-signing`. APK `dist/EA888-Lab-1.31.0.apk`; AAB gelijknamig; web `build/web/`. Installeer als update over de bestaande app, niet verwijderen. Package `nl.randy.ea888lab.stabl`, code 410, bestaande cert-SHA256 `74a2076d8d964584dadcb233eb5cd832de144a92173a1c74e4092fa0b3f1affb`. Geen signing identity vervangen. Bestaande versie-stamping en modelassetversie verversen de cache; geen service worker aanwezig. Er draaide geen game-HTTP-server die omgezet moest worden, geen alternatieve poort of publieke publicatie aangemaakt. SDK XML-versiewaarschuwing is niet blokkerend; SDK/dependencies niet blind bijgewerkt.
+
+---
+
 # Voertuigen en werkplaats 1.30.0 — audit
 
 Uitgangscommit `ca84a3373f346fb68af5c1b3ef0d10929d681579`, schone werkboom op `claude-dev`. Herstelpunt buiten Git: `../work/workshop/backups/20261009T224617Z/` (status, lokale patch, configuratiearchief). Geen bereikbare gebruikerssaves op server/toestel; browsermigratie bewaart daarom een eigen kopie. Bestaande keystore, package-id, modellen en onderzoeksrecords zijn behouden. Onderstaande 1.29-sectie is de historische assetaudit; haar werkplaatsbeperking is in 1.30 opgeheven.

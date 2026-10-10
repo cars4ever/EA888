@@ -12,6 +12,21 @@ Core loop:
 
 Current systems include engine parts/tuning, dyno simulation, wear/damage, service, realtime drag racing, burnout/staging/tree, manual/DSG transmission behavior, telemetry, and Scirocco-specific visuals.
 
+## v1.31.0 — Android audit repairs
+
+The existing workshop receives a **one-time floor of €10 million without resetting progress**.
+New careers retain €50,000 and the original uncredited save is preserved separately. **Spelbeheer**
+now provides full profiles, five named saves, three autosaves, recovery and JSON import/export.
+Burnout feedback labels the 20-second prediction; starts consistently use hold/release;
+DNF reports actual distance/duration instead of a fabricated quarter-mile time. The portrait HUD,
+Jackstand rear lights, wheel sizing, ECU table handling and engine mix have been repaired.
+
+Install **[dist/EA888-Lab-1.31.0.apk](dist/EA888-Lab-1.31.0.apk)** as an update over the existing app.
+The package/signing identity is unchanged. Build with
+`ANDROID_HOME=/home/scirockoe/android-sdk python3 tools/build_android.py --local-signing`.
+Read [the Dutch repair report](docs/VEHICLE_AUDIT.md) for actual game screenshots, tests and limits.
+Tests cover desktop/mobile browser emulation and Android packaging; no physical-device test is claimed.
+
 ## v1.30.0 — five complete vehicle workshops
 
 Eagle, Mullet, McFlurry, Lumberjack and Jackstand can all be bought and built alongside
@@ -333,7 +348,7 @@ No key is generated and no password is printed. Invalid keystore paths fail befo
 
 - App label: `EA888 LAB`
 - Package: `nl.randy.ea888lab.stabl`
-- Version: from `version.json` (now `1.4.0`, code `140`); debug builds are `nl.randy.ea888lab.stabl.dev`
+- Version: from `version.json` (now `1.31.0`, code `410`); debug builds are `nl.randy.ea888lab.stabl.dev`
 
 ## Accuracy boundary
 

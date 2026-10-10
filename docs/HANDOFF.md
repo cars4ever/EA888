@@ -1,3 +1,20 @@
+# EA888 LAB — actuele herstelstand 1.31.0 (410)
+
+Op 10 oktober 2026 is het aangeleverde v1.30-auditpakket uitgevoerd op baseline `ccf4d067`.
+Lees eerst de nieuwe bovenste sectie van [VEHICLE_AUDIT.md](VEHICLE_AUDIT.md); onderstaande
+1.30-handoff is historie. Branch blijft `claude-dev`, repo `/home/scirockoe/projects/ea888/EA888`.
+
+- Werkplaats: eenmaal minimaal €10 miljoen, bestaande voortgang behouden. Van de onduidelijke oude root-save is ook een onverhoogde carrièrekopie bewaard. Nieuwe carrière blijft €50.000. QA is apart.
+- Volledige saves/profielen in IndexedDB `ea888-full-saves-v1`; oude localStorage-saves **niet verwijderen**. Vijf slots, drie autosaves, SHA-256, atomair schrijven, herstel via Spelbeheer. Native JSON-limiet 60 miljoen tekens, geen stille truncatie.
+- Startbediening uitsluitend hold/release. DNF heeft null voor ongehaalde meetpunten en toont afstand/duur. Uitslag blijft staan. Geen onzichtbare wandrem. Null-meetpunten in nieuwe UI altijd met `measured()` tonen.
+- Compacte race-HUD, echte geselecteerde 3D-preview en finishframe; Jackstand-lenzen verfijnd; achterwielen volgen setup. Master/back-up buiten Git onder `../work/cleetus/` en `../work/audit-1.30/baseline/`.
+- ECU-tabellen kunnen in saves lui/null zijn. `renderEcuTable` initialiseert met `C.buildEcu`, precies als de simulatie. Geen reset van handmatig bewerkte maps; ontbrekende hardware-tabellen zijn disabled met uitleg.
+- Geen `sim.js`-/kalibratiewijzigingen. Alle vijf koop/bouw/tune/bench/dyno/service/herstart-tests, zes volledige races/replays, save/stress/recovery, modelresources en volledige `tests/test_sim.js` zijn gecontroleerd. Eindresultaten: `data/vehicle-assets/audit-repair-1.31.json`.
+- APK: `dist/EA888-Lab-1.31.0.apk`; `--local-signing` gebruikt dezelfde bestaande sleutel. Package `nl.randy.ea888lab.stabl`. Installeer als update, geen uninstall. Geen toestel aangesloten: geen Android-/S24-speeltest claimen.
+- Bestaande oudere browsertests die rechtstreeks localStorage herschrijven moeten naar het profiel-API worden aangepast; localStorage is nu bewust een onveranderde migratiebron. Nieuwe audittools oefenen de werkelijk gebruikte opslag uit.
+
+---
+
 # EA888 LAB — handoff (stand na v1.30.0)
 
 **Werkplaatsupdate:** alle vijf GLB-auto's zijn koopbaar en hebben eigen onderdelen, montage, benchtests, tune, dyno, race, onderhoud en buildslots. Zie [VEHICLE_AUDIT.md](VEHICLE_AUDIT.md) voor bewijs en aannames; [VEHICLE_ASSET_BRIEFS.md](VEHICLE_ASSET_BRIEFS.md) voor de ongewijzigde modellen. Werkmap is `EA888/` binnen `/home/scirockoe/projects/ea888`. Baseline: `ca84a337`. Spelerauto's gebruiken nu bewerkbare motorfysica; Scirocco en historische tegenstanderconfiguraties behouden hun resultaten. QA heeft €10.000.000 en alle vijf auto's; carrière blijft apart.

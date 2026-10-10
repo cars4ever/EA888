@@ -1,0 +1,165 @@
+{
+  "baselineCommit": "ccf4d067658bba7c4e90949483c57553098aa2b4",
+  "build": {
+    "sourceCommit": "3284342eb945108abe800b09ef69bc2316d9f6c5",
+    "version": "1.31.0",
+    "code": 410,
+    "apk": "dist/EA888-Lab-1.31.0.apk",
+    "apkSha256": "e01d74bc65a73cd21b8580cbadeece70cf94b6ddb6aa729873f184103d1c8604",
+    "bytes": 9181757,
+    "verifiedPackagedWebFiles": 71,
+    "package": "nl.randy.ea888lab.stabl",
+    "certificateSha256": "74a2076d8d964584dadcb233eb5cd832de144a92173a1c74e4092fa0b3f1affb"
+  },
+  "tests": {
+    "saves": {
+      "ok": true,
+      "report": "reports/audit-repair/saves/report.json"
+    },
+    "storage-stress": {
+      "ok": true,
+      "report": "reports/audit-repair/storage-stress/report.json"
+    },
+    "race": {
+      "ok": true,
+      "report": "reports/audit-repair/race/report.json"
+    },
+    "models": {
+      "ok": true,
+      "report": "reports/audit-repair/models/report.json"
+    },
+    "layout": {
+      "ok": true,
+      "report": "reports/audit-repair/layout/report.json"
+    },
+    "workshop-ui": {
+      "ok": true,
+      "report": "reports/workshop-ui/report.json"
+    }
+  },
+  "regression": [
+    {
+      "test": "test_save_manager",
+      "exit": 0,
+      "seconds": 1.52
+    },
+    {
+      "test": "test_save_codec",
+      "exit": 0,
+      "seconds": 19.38
+    },
+    {
+      "test": "test_vehicle_assets",
+      "exit": 0,
+      "seconds": 3.17
+    },
+    {
+      "test": "test_garage",
+      "exit": 0,
+      "seconds": 0.61
+    },
+    {
+      "test": "test_timing",
+      "exit": 0,
+      "seconds": 1.12
+    },
+    {
+      "test": "test_dyno_result",
+      "exit": 0,
+      "seconds": 198.09
+    },
+    {
+      "test": "test_audio",
+      "exit": 0,
+      "seconds": 1.17
+    },
+    {
+      "test": "test_vehicle",
+      "exit": 0,
+      "seconds": 10.6
+    },
+    {
+      "test": "test_phase9",
+      "exit": 0,
+      "seconds": 9.28
+    },
+    {
+      "test": "test_physics_audit",
+      "exit": 0,
+      "seconds": 5.34
+    }
+  ],
+  "fullSim": {
+    "exit": 0,
+    "log": "reports/audit-repair/full-sim.log"
+  },
+  "runs": {
+    "crc12_jackstand_240": {
+      "quarter": 9.885049409400002,
+      "model": {
+        "carId": "crc12_jackstand_240",
+        "state": "ready",
+        "model": "models/crc12_jackstand_240-low.glb",
+        "error": null
+      }
+    },
+    "eagle": {
+      "quarter": 8.634528388690361,
+      "model": {
+        "carId": "eagle",
+        "state": "ready",
+        "model": "models/eagle-low.glb",
+        "error": null
+      }
+    },
+    "mullet": {
+      "quarter": 10.35023290344867,
+      "model": {
+        "carId": "mullet",
+        "state": "ready",
+        "model": "models/mullet-low.glb",
+        "error": null
+      }
+    },
+    "mcflurry": {
+      "quarter": 10.47920738738137,
+      "model": {
+        "carId": "mcflurry",
+        "state": "ready",
+        "model": "models/mcflurry-low.glb",
+        "error": null
+      }
+    },
+    "lumberjack": {
+      "quarter": 10.694748898281517,
+      "model": {
+        "carId": "lumberjack",
+        "state": "ready",
+        "model": "models/lumberjack-low.glb",
+        "error": null
+      }
+    },
+    "scirocco": {
+      "quarter": 12.762272582667167,
+      "model": {
+        "carId": "scirocco",
+        "state": "ready",
+        "kind": "existing Scirocco"
+      }
+    }
+  },
+  "evidence": {
+    "hud": "reports/audit-repair/layout/hud.png",
+    "saves": "reports/audit-repair/saves/",
+    "dnf": "reports/audit-repair/race/dnf.png",
+    "raceVideo": "reports/audit-repair/race/jackstand-run.mp4",
+    "showroom360": "reports/audit-repair/jackstand-preview/jackstand-360.mp4",
+    "audio": "reports/audit-repair/audio/"
+  },
+  "limits": [
+    "Desktop Chromium and mobile emulation only; no connected Android device or S24 Ultra test.",
+    "Existing phone save migrates on first open of updated APK; phone data was not available on server.",
+    "Synthetic audio measured, no subjective speaker listening acceptance claimed.",
+    "Existing AI body mesh retains soft bumper details; no new generation claimed."
+  ]
+}
