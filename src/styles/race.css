@@ -1070,3 +1070,5 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 body.race-game-open #toast {top:calc(75px + var(--safe-top));bottom:auto;pointer-events:none;max-width:85vw;font-size:12px;}
 .v8-run-game .v10-drive-controls > * {height:62px;min-height:0;padding:6px;box-sizing:border-box;}
 .v8-run-game .v10-steer-button span {font-size:22px;}
+.naturally-aspirated .v8-round-gauge:not(.v15-throttle-gauge) {display:none;}
+.naturally-aspirated .v13-turbo-hud span:has(#v13-stage-shaft),.naturally-aspirated .v13-turbo-hud span:has(#v13-stage-als),.naturally-aspirated .v13-turbo-hud span:has(#v13-stage-wear) {display:none;}

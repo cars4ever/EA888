@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Buy/build/tune/bench/dyno/service/save acceptance on an isolated browser origin.
-The 10M normal-career fixture is test-only; real storage and QA remain separate.
+The normal workshop has its explicit 10M budget; all tests use isolated browser storage.
 """
 import json,time
 from pathlib import Path
@@ -18,17 +18,15 @@ def main():
   ctx=b.new_context(viewport={'width':1100,'height':900},device_scale_factor=1);serve_assets(ctx,Path('build/web').resolve())
   p=ctx.new_page();p.on('pageerror',lambda e:report['errors'].append(str(e)))
   p.goto(APP_ORIGIN+'/assets/index.html');p.wait_for_function('!!window.__EA888_DEBUG__')
-  # An isolated test fixture authorizes no change to the game's normal 50K career rule.
-  p.evaluate('''k=>{const s=EA888Core.createCareerSelection();s.bank=10000000;s.settings.reducedMotion=true;localStorage.setItem(k,JSON.stringify(s));}''',KEY)
-  p.reload();p.wait_for_selector('[data-starter-car]')
+  # Exercise the actual 1.31 workshop budget; do not inject money into career.
   p.locator('[data-starter-car=crc12_jackstand_240]').click();p.locator('[data-action=confirm-starter]').click()
   assert p.evaluate('__EA888_DEBUG__.career().bank')==9987769
-  p.reload();p.wait_for_function('!!window.__EA888_DEBUG__');assert p.evaluate('__EA888_DEBUG__.career().bank')==9987769
+  p.evaluate('__EA888_DEBUG__.flushSave()');p.reload();p.wait_for_function('!!window.__EA888_DEBUG__');assert p.evaluate('__EA888_DEBUG__.career().bank')==9987769
   for car in CARS[1:]:p.locator(f'[data-buy-car="{car}"]').click()
   assert p.evaluate('__EA888_DEBUG__.career().bank')==9236167
   report['fivePurchasedOnce']=True
-  base=p.evaluate('k=>JSON.parse(localStorage.getItem(k))',KEY);sci=base['garage']['scirocco']
-  def save():return p.evaluate('k=>JSON.parse(localStorage.getItem(k))',KEY)
+  base=p.evaluate('__EA888_DEBUG__.saveSnapshot()');sci=base['garage']['scirocco']
+  def save():return p.evaluate('__EA888_DEBUG__.saveSnapshot()')
   def edit(sel,value):
    p.locator(sel).evaluate('(e,v)=>{e.value=v;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));}',str(value))
   for car in CARS:
@@ -60,13 +58,14 @@ def main():
    p.locator('[data-nav=dyno]').click()
    assert p.evaluate('(id)=>EA888Core.rosterCarData(id).displayName',car).lower() in p.locator('.dyno-watermark').inner_text().lower()
    p.locator('[data-action=start-dyno]').click()
+   p.wait_for_selector('[data-action=abort-dyno]',state='detached',timeout=90000)
    p.wait_for_function('__EA888_DEBUG__.dyno()?.current && __EA888_DEBUG__.dyno()?.status === "completed"',timeout=90000)
    r['dyno']=p.evaluate('__EA888_DEBUG__.dyno()');p.screenshot(path=str(OUT/(car+'-dyno.png')))
    p.locator('[data-nav=service]').click();before=save()['bank'];p.locator('[data-action=oil-change]').click();assert save()['bank']<before
    assert save()['garage']['cars'][car]['build']['service']['oilAgeKm']==0
    before=save()['bank'];p.locator('[data-action=open-rebuild]').click();p.locator('[data-action=confirm-rebuild]').click();assert save()['bank']<before
    assert save()['garage']['cars'][car]['build']['wear']['engine']==0;r['service']=True
-   p.reload();p.wait_for_function('!!window.__EA888_DEBUG__');snap=save()
+   p.evaluate('__EA888_DEBUG__.flushSave()');p.reload();p.wait_for_function('!!window.__EA888_DEBUG__');snap=save()
    assert snap['garage']['active']==car and snap['garage']['cars'][car]['build']['selections']['head']==new
    assert snap['garage']['cars'][car]['build']['tune']['lambda']==target
    assert snap['garage']['scirocco']==sci,'V8 work changed Scirocco'

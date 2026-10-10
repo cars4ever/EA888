@@ -60,6 +60,14 @@ for(const id of ids){
   const sig=C.engineSignature(s);s.tune.converterStallRpm=4500;assert.equal(C.engineSignature(s),sig,'converter is race setup, not engine dyno');
  });
 }
+test('lazy ECU tables materialize without changing the selected build signature',()=>{
+ for(const id of ['eagle','mullet','mcflurry','lumberjack','crc12_jackstand_240']){
+  const s=C.switchGarageCar(C.createVehicleQA(),id),before=C.engineSignature(s);
+  s.tune.ecu=C.buildEcu(s,{previous:s.tune.ecu});assert(C.validEcu(s.tune.ecu));
+  assert.equal(C.engineSignature(s),before,id+' opening tables must not change calibration');
+ }
+});
+
 test('switching, records and wear never mutate another build or duplicate money',()=>{
  const bank=account.bank;
  for(let n=0;n<3;n++)for(const id of ids){account=C.switchGarageCar(account,id);assert.equal(account.workshopCarId,id);assert.equal(account.wear.engine,12+ids.indexOf(id));}

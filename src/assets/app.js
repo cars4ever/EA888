@@ -2402,7 +2402,17 @@
     const s = ecuView.sel;
     return !!s && r >= Math.min(s.r0, s.r1) && r <= Math.max(s.r0, s.r1) && c >= Math.min(s.c0, s.c1) && c <= Math.max(s.c0, s.c1);
   }
+  function ecuTableUnavailable(name){
+    if(name==='boost'&&C.getPart(state,'turbo').naturallyAspirated)return 'Geen turbo: geen boosttabel.';
+    if(name==='cam'&&C.workshopDefinition(state)&&C.workshopDefinition(state).family!=='coyote')return 'Vaste nokkenas: geen ECU-VVT.';
+    if(name==='lambda'&&C.engineHardware(state).fuelSys.carburetor)return 'Carburateur: stel het sproeiermengsel in onder Brandstof.';
+    return '';
+  }
   function renderEcuTable() {
+    // Workshop saves may keep lazily generated maps as null. Materialize exactly the same
+    // map the simulation resolves, without resetting manually edited calibrations.
+    if(!C.validEcu(state.tune.ecu)){state.tune.ecu=C.buildEcu(state,{previous:state.tune.ecu});saveState('ECU-tabellen geopend');}
+    if(ecuTableUnavailable(ecuView.table))ecuView={...ecuView,table:'spark',sel:null,anchor:null};
     const e = state.tune.ecu, name = ecuView.table, info = ecuTableInfo(name), table = e[name];
     const rows = ecuRows(name), trace = ecuTrace(name);
     const flat = table.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
@@ -2420,8 +2430,8 @@
     const knockCells = name === 'spark' ? [...trace.values()].filter(t => t.knock > 0.4).length : 0;
     return `<div class="card tune-card ecu-card">
       <div class="card-title"><span>${icon('tune')}</span><div><span class="eyebrow">ECU-tabel${edited ? ' · handmatig aangepast' : ''}</span><h2>${esc(info.title)}</h2></div></div>
-      <div class="segment-control ecu-table-tabs">${Object.entries(ECU_TABLES).map(([k, t]) => `<button class="${k === name ? 'active' : ''}" data-ecu-table="${k}">${esc(t.label)}</button>`).join('')}</div>
-      <p class="ecu-hint">${esc(info.hint)}</p>
+      <div class="segment-control ecu-table-tabs">${Object.entries(ECU_TABLES).map(([k, t]) => `<button class="${k === name ? 'active' : ''}" data-ecu-table="${k}" ${ecuTableUnavailable(k)?`disabled title="${esc(ecuTableUnavailable(k))}"`:""}>${esc(t.label)}</button>`).join('')}</div>
+      <p class="ecu-hint">${esc(info.hint)}</p>${Object.keys(ECU_TABLES).filter(k=>ecuTableUnavailable(k)).map(k=>`<p class="muted">${esc(ecuTableUnavailable(k))}</p>`).join('')}
       ${name === 'spark' ? `<div class="notice ${fuelChanged ? 'danger' : ''}"><strong>${fuelChanged ? 'Hardware of brandstof gewijzigd sinds de basismap.' : `Basismap voor ${esc(base?.label || hw.fuelLabel)}.`}</strong> ${fuelChanged ? 'De knockregeling moet nu terugnemen of er is ontsteking over; maak een nieuwe basismap of pas de cellen aan.' : 'Veilige start: 2° onder de knockgrens bij een koele inlaat. Wat daartussen zit vind je op de dyno.'}</div>` : ''}
       ${name === 'spark' && knockCells ? `<div class="notice danger"><strong>Knockretard in ${knockCells} cel${knockCells === 1 ? '' : 'len'} tijdens de laatste pull.</strong> Rood omrande cellen: daar nam de knockregeling ontsteking terug.</div>` : ''}
       <div class="ecu-grid-wrap" data-scroll-x><table class="ecu-grid ${name}"><thead><tr><th data-ecu-all title="Alles selecteren">${info.rows === 'gear' ? 'versn.' : 'MAP'}</th>${e.rpmAxis.map((v, c) => `<th data-ecu-col="${c}">${v >= 10000 ? `${v / 1000}k` : v}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div>
@@ -2444,6 +2454,8 @@
   }
   // Edits: every change records the whole ECU before it, so "Ongedaan" restores exactly that edit.
   function ecuEdit(label, mutate) {
+    const unavailable=ecuTableUnavailable(ecuView.table);if(unavailable)return showToast(unavailable);
+    if(!C.validEcu(state.tune.ecu))return showToast('Open eerst de ECU-tabellen.');
     const before = cloneJson(state.tune.ecu);
     const name = ecuView.table, info = ecuTableInfo(name);
     const t = state.tune.ecu[name].map(r => r.slice());
@@ -2604,7 +2616,7 @@
       haptic(6); render(); return;
     }
     const tab = ev.target.closest?.('[data-ecu-table]');
-    if (tab) { ecuView = { table: tab.dataset.ecuTable, sel: null, anchor: null, range: false }; haptic(6); render(); }
+    if (tab) { if(tab.disabled||ecuTableUnavailable(tab.dataset.ecuTable))return;ecuView = { table: tab.dataset.ecuTable, sel: null, anchor: null, range: false }; haptic(6); render(); }
   });
 
   function renderTune() {
@@ -4362,7 +4374,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const b = raceGame.burn;
     const targetLeft = clamp((p.targetC - 8) / (p.cautionC + 18) * 100, 0, 100);
     const targetWidth = clamp(18 / (p.cautionC + 18) * 100, 8, 24);
-    return `<div class="v8-game v8-burnout-game drive-${String(state.vehicle.drivetrain).toLowerCase()}">
+    return `<div class="v8-game v8-burnout-game ${C.getPart(raceGame?.carState||state,'turbo').naturallyAspirated?'naturally-aspirated':''} drive-${String(state.vehicle.drivetrain).toLowerCase()}">
       <div class="v8-scene-plate v8-burnout-plate"></div><canvas id="race3d-canvas" class="race3d-canvas" aria-hidden="true"></canvas><div class="v8-cinematic-shade"></div>
       ${v7GameHeader('BURNOUT', 1, 'Warm de aangedreven banden op zonder ze te oververhitten')}
       <main class="v8-burnout-scene">
@@ -4387,7 +4399,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const rival = raceGame?.rivalProfile;
     const ready = s.staged && !s.deep;
     const launchLabel = s.green ? 'LAAT LOS!' : s.treeStarted ? 'HOUD VAST' : ready ? 'HOUD VOOR LAUNCH' : 'LAUNCH VERGRENDELD';
-    return `<div class="v8-game v8-stage-game ${ready ? 'is-staged' : ''} ${rival?'has-rival':''}">
+    return `<div class="v8-game v8-stage-game ${C.getPart(raceGame?.carState||state,'turbo').naturallyAspirated?'naturally-aspirated':''} ${ready ? 'is-staged' : ''} ${rival?'has-rival':''}">
       <div class="v8-scene-plate v8-stage-plate"></div><canvas id="race3d-canvas" class="race3d-canvas" aria-hidden="true"></canvas><div class="v8-cinematic-shade"></div>
       ${v7GameHeader('STAGE & TREE', 2, treeMode === 'pro' ? 'Pro tree · release op groen' : 'Sportsman tree · release op groen')}
       <main class="v8-stage-scene">
@@ -4406,7 +4418,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
           <button class="v8-stage-button creep" data-v7-control="creep"><span>↕</span><b>CREEP / STAGE</b><small>HOUD KORT VAST</small></button>
         ${(() => {
           const als = raceGame?.alsInfo;
-          const why = !als ? '' : als.capability.ecuLevel === 'none' ? `${als.capability.ecuName}: geen anti-lag` : als.mode === 'off' ? 'Anti-lag staat uit (Tune → Anti-lag)' : '';
+          const why = C.getPart(raceGame?.carState||state,'turbo').naturallyAspirated ? 'Geen turbo: anti-lag niet van toepassing.' : !als ? '' : als.capability.ecuLevel === 'none' ? `${als.capability.ecuName}: geen anti-lag` : als.mode === 'off' ? 'Anti-lag staat uit (Tune → Anti-lag)' : '';
           return `<button class="v8-stage-button v13-als-button ${als?.enabled ? '' : 'off'}" id="v13-als-button" data-v7-control="antilag" ${als?.enabled ? '' : 'disabled'}><span>ALS</span><b>HOLD ANTILAG</b><small>${als?.enabled ? `${esc(ALS_MODE_LABELS[als.mode][0])} · doel ${als.params.targetBoostBar.toFixed(1)} bar · max EGT ${Math.round(als.params.maxEgtC)} °C` : esc(why)}</small></button>`;
         })()}
 
@@ -4428,7 +4440,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       : `<button class="v8-shift-button v9-shift-button v10-shift-button" id="v7-shift-button" data-action="v7-shift"><small>TIK OM TE SCHAKELEN</small><span>SHIFT</span><b id="v7-shift-cue">WACHT</b></button>`;
     const opponent = r?.opponent;
     const raceSubtitle = opponent ? `Heads-up tegen ${opponent.profile.name} · stuur en schakel onder druk` : (dsg ? `${activeRosterId()?'De automaat':'DSG'} schakelt zelf · stuur tussen de lijnen` : 'Schakel zelf · stuur tussen de lijnen');
-    return `<div class="v8-game v8-run-game v9-realtime-race v10-realtime-race v12-heads-up-race ${V.get(activeRosterId()||'scirocco').sound.turbo?'':'naturally-aspirated'} ${opponent?'has-rival':'solo-run'}" data-transmission-mode="${dsg ? 'dsg-auto' : 'manual'}">
+    return `<div class="v8-game v8-run-game v9-realtime-race v10-realtime-race v12-heads-up-race ${C.getPart(raceGame?.carState||state,'turbo').naturallyAspirated?'naturally-aspirated':''} ${opponent?'has-rival':'solo-run'}" data-transmission-mode="${dsg ? 'dsg-auto' : 'manual'}">
       <div class="v10-track-stage" id="v10-track-stage" aria-label="Realtime dragstrip">
         <div class="v10-track-horizon"></div>
         <canvas id="v10-track-canvas" class="v10-track-canvas"></canvas>
@@ -7117,7 +7129,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     qaStartRun: () => { if(!QA_PROFILE)return false; startDragGame(); if(!raceGame?.open)return false; startV7Run(.12,true); return true; },
     holdFinishForTest: on => { holdFinishForTest = !!on; return holdFinishForTest; },
     setGraphics3dForTest: on => { state.settings.graphics3d = !!on; saveState(); return state.settings.graphics3d; },
-    ecu: () => cloneJson({ edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor }),
+    ecu: () => cloneJson(state.tune.ecu ? { edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor } : null),
     career: () => ({ bank: state.bank, active: state.career?.active ? cloneJson(state.career.active) : null, rep: state.career?.rep || 0, historyCount: state.career?.history?.length || 0, inRound: !!raceGame?.careerRound }),
     replay: () => ({ open: !!raceGame?.replayOpen, active: !!raceGame?.replay3d, progress: raceGame?.replayProgress || 0, done: !!raceGame?.replayDone, frames: raceGame?.run?.replayFrames?.length || 0, lastDistanceM: raceGame?.run?.replayFrames?.at?.(-1)?.d || 0, flames: raceGame?.run?.replayFlames?.length || 0, info: raceGame?.replay3d?.info?.() || null }),
     errors: () => appErrors.slice(),

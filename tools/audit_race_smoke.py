@@ -34,7 +34,7 @@ with sync_playwright() as pw:
  p.dispatch_event('[data-v7-control=steerRight]','pointerdown',{'pointerId':71,'pointerType':'touch','isPrimary':True,'button':0})
  p.wait_for_function('__EA888_DEBUG__.race().finished',timeout=90000);r=p.evaluate('__EA888_DEBUG__.lastDrag()');assert r['laneDnf'] and not r['valid'] and r['quarter'] is None and r['trapKmh'] is None,r
  assert p.evaluate('JSON.stringify(__EA888_DEBUG__.garage().cars.crc12_jackstand_240.best)')==record
- assert 'DNF' in p.locator('.v8-finish-card').inner_text();p.screenshot(path=str(OUT/'dnf.png'));report['dnf']=r;(OUT/'report.json').write_text(json.dumps(report,indent=2))
+ assert 'DNF' in p.locator('.v8-finish-card').inner_text();p.screenshot(path=str(OUT/'dnf.png'));report['dnf']=r;p.wait_for_timeout(800);report['audioAfterFinish']=p.evaluate('__EA888_DEBUG__.audio()');assert not report['audioAfterFinish']['exists'];(OUT/'report.json').write_text(json.dumps(report,indent=2))
  p.evaluate('__EA888_DEBUG__.qaCloseRace()');dyno();p.evaluate('__EA888_DEBUG__.setPreRace3dForTest(false)');click('[data-action=open-drag-game]');p.evaluate('__EA888_DEBUG__.enterStageForTest()')
  p.dispatch_event('[data-v7-control=creep]','pointerdown',{'pointerId':72,'pointerType':'touch','isPrimary':True,'button':0});p.wait_for_function('__EA888_DEBUG__.stageState().progress>=60',timeout=30000);p.dispatch_event('[data-v7-control=creep]','pointerup',{'pointerId':72,'pointerType':'touch'})
  p.wait_for_timeout(650);assert not p.evaluate('__EA888_DEBUG__.stageState().treeStarted')

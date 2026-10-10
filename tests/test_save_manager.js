@@ -8,6 +8,7 @@ next.bank-=650;assert.equal(S.migrateWorkshop(next).bank,9999350);
 assert.equal(S.migrateWorkshop({...old,bank:12000000}).bank,12000000);
 assert.equal(S.migrateWorkshop({...old,gameMode:'career'}).bank,3139);assert.equal(S.migrateWorkshop({...old,gameMode:'qa'}).bank,3139);
 assert.throws(()=>S.topUp({...old,gameMode:'career'}));assert.equal(S.topUp(next).bank,10000000);
+assert.throws(()=>S.validate({...old,version:'bad'}));assert.throws(()=>S.validate({...old,tune:[]}));
 assert.throws(()=>S.decodeImport('{}',Codec));assert.throws(()=>S.decodeImport('{broken',Codec));assert.throws(()=>S.validate({...old,bank:NaN}));assert.throws(()=>S.validate({...old,version:99}));
 const packed=C.persistGarageState(C.restoreGarageState(next));const decoded=S.decodeImport(JSON.stringify({app:'EA888-LAB',kind:'full-backup',state:packed}),Codec);assert.deepEqual(decoded,packed);
 console.log('PASS safe workshop grant, mode separation, idempotence and full import validation');
