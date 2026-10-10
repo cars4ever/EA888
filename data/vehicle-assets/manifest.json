@@ -219,23 +219,50 @@
       },
       "runtime": {
         "status": "complete",
-        "signature": "8b7d0c410b167d21269e57b1248ec1c2942eafea8a3e64da677e637b2e5bce01",
+        "method": "targeted existing-master refinement",
+        "signature": "bf6973ccbafecc5f451d941a30e0cda4ea1fbe3a9588cf53bef97c7e1b74f253",
         "outputs": [
           {
             "file": "src/assets/models/eagle.glb",
-            "bytes": 480544,
-            "sha256": "adcac57d44f690021f9b779cd0e0fa82d494abd1bbb1ec37c29b149b11b6d561"
+            "bytes": 480008,
+            "sha256": "59e4de99b4a6bc0a6831aa2759a01d665a88daa4061d27cf343cb6097b290231"
           },
           {
             "file": "src/assets/models/eagle-low.glb",
-            "bytes": 253424,
-            "sha256": "d7bc0c5e5a94abf477123c42f1e900a072ed913267b9c4c9bcc2b07d69bb4f34"
+            "bytes": 256848,
+            "sha256": "83e32efff5917d08daacd709b9b6a047ccc0b524e6ddfc8a240bacde302bace7"
           }
-        ],
-        "seconds": 4.606037139892578
+        ]
       },
       "master": "../work/cleetus/eagle/master.blend",
-      "raw": "../work/cleetus/eagle/raw.glb"
+      "raw": "../work/cleetus/eagle/raw.glb",
+      "refinement132": {
+        "method": "tools/car3d/refine_eagle.py; Blender CPU, meshopt + WebP 1024/512",
+        "originalRuntime": {
+          "status": "complete",
+          "signature": "8b7d0c410b167d21269e57b1248ec1c2942eafea8a3e64da677e637b2e5bce01",
+          "outputs": [
+            {
+              "file": "src/assets/models/eagle.glb",
+              "bytes": 480544,
+              "sha256": "adcac57d44f690021f9b779cd0e0fa82d494abd1bbb1ec37c29b149b11b6d561"
+            },
+            {
+              "file": "src/assets/models/eagle-low.glb",
+              "bytes": 253424,
+              "sha256": "d7bc0c5e5a94abf477123c42f1e900a072ed913267b9c4c9bcc2b07d69bb4f34"
+            }
+          ],
+          "seconds": 4.606037139892578
+        },
+        "repairs": [
+          "Removed generated rear parachute blob faces before replacement",
+          "Built separate rounded fabric packs, webbing, supports and rear panel",
+          "Recalculated body normals"
+        ],
+        "visualDimensions": "estimated rear hardware only; simulation and wheelbase unchanged",
+        "masterSha256": "c8faf87d29cabf726a679b99d4a3e892607f49eb262883a633c20afde13fba9e"
+      }
     },
     "mullet": {
       "shape": {
