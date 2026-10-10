@@ -9,7 +9,8 @@
     if(!s || typeof s!=='object' || Array.isArray(s))throw new Error('Geen volledige spel-save.');
     if(!Number.isFinite(s.bank) || s.bank<0)throw new Error('Ongeldig saldo.');
     if(Number(s.version)>12)throw new Error('Deze save gebruikt een nieuwere spelindeling.');
-    for(const k of ['selections','tune','vehicle','service'])if(!s[k] || typeof s[k]!=='object')throw new Error('Save mist '+k+'.');
+    if(s.version!=null&&(!Number.isInteger(s.version)||s.version<1))throw new Error('Ongeldige saveversie.');
+    for(const k of ['selections','tune','vehicle','service'])if(!s[k] || typeof s[k]!=='object'||Array.isArray(s[k]))throw new Error('Save mist '+k+'.');
     if(s.gameMode && !MODES.includes(s.gameMode))throw new Error('Onbekende spelmodus.');
     return s;
   }

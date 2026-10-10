@@ -1030,3 +1030,43 @@ body.race-game-open #app-shell { filter:brightness(.18) blur(4px); pointer-event
 .n2o-setup small { display: block; color: var(--text-dim, #9aa4b2); font-size: 12px; }
 .v14-n2o-dock { position: absolute; z-index: 30; right: 12px; bottom: calc(150px + var(--safe-bottom, 12px)); }
 .has-3d .v14-n2o-dock { bottom: calc(150px + var(--safe-bottom, 12px)); }
+/* Audit repair: readable portrait controls, with technical data on demand. */
+.v7-overview-scene { background:#171e27 !important; }
+.v7-overview-scene:before,.v7-overview-scene:after { display:none !important; }
+.v7-overview-scene #vehicle-showroom { width:100%;height:100%;min-height:280px;position:absolute;inset:0; }
+.preview-caption { position:absolute;left:12px;top:12px;font-size:12px;background:#111b;padding:6px;pointer-events:none; }
+.v8-finish-backdrop {position:absolute;inset:0;background:#101722;}
+.v8-finish-backdrop img {width:100%;height:100%;object-fit:cover;opacity:.4;}
+.v8-run-game .v10-run-hud {top:calc(70px + var(--safe-top));left:12px;right:12px;width:auto;display:flex;align-items:center;gap:10px;transform:none!important;}
+.v8-run-game .v7-tach {width:100px;height:100px;min-width:100px;}
+.v8-run-game .v10-speed,.v8-run-game .v10-timer {position:static;min-width:66px;padding:8px;}
+.v8-run-game .v10-speed b {font-size:30px;}
+.v8-run-game .v15-throttle-gauge,.v8-run-game .v10-boost {display:none;}
+.v8-run-game .v10-split-board,.v8-run-game .v10-run-telemetry,.v8-run-game .v12-driveline-hud {display:none;}
+.v8-run-game.show-tech .v10-split-board {display:flex;top:calc(175px + var(--safe-top));right:12px;left:12px;transform:none;width:auto;}
+.v8-run-game.show-tech .v10-run-telemetry {display:flex;bottom:calc(190px + var(--safe-bottom));left:12px;right:12px;}
+.v8-run-game .v10-run-progress {top:calc(190px + var(--safe-top));}
+.v8-run-game .v10-lane-status {top:calc(220px + var(--safe-top));width:160px;left:12px;transform:none;}
+.v8-run-game .v10-shift-feedback {top:calc(267px + var(--safe-top));font-size:11px;}
+.v8-run-game.show-tech .v10-run-progress {top:calc(219px + var(--safe-top));}
+.v8-run-game.show-tech .v10-lane-status {top:calc(249px + var(--safe-top));}
+.v8-run-game.show-tech .v10-shift-feedback {top:calc(296px + var(--safe-top));}
+.v8-run-game .v12-rival-hud {top:calc(220px + var(--safe-top));bottom:auto;left:auto;right:12px;transform:none;max-width:44%;min-width:0;}
+.v8-run-game .v15-throttle-dock {left:12px;right:104px;bottom:calc(84px + var(--safe-bottom));}
+.v8-run-game .v14-n2o-dock,.has-3d.v8-run-game .v14-n2o-dock {right:12px;bottom:calc(84px + var(--safe-bottom));}
+.v8-run-game .v14-n2o-button {width:82px;min-height:70px;padding:6px;}
+.v8-run-game .v10-drive-controls {left:12px;right:12px;bottom:calc(12px + var(--safe-bottom));height:62px;grid-template-columns:1fr 1.2fr 1fr;}
+.v8-run-game .v10-dsg-control {padding:6px;min-height:0;}
+.v8-run-game .v10-dsg-control span {font-size:14px;}
+.v8-run-game .v10-dsg-control small {display:none;}
+.race-tech-toggle {position:absolute;right:12px;bottom:calc(167px + var(--safe-bottom));z-index:55;min-height:32px;padding:4px 10px;border:1px solid #78889a;border-radius:8px;background:#15202ee8;color:#fff;}
+.v8-temp-card small {font-size:11px;line-height:1.45;white-space:normal;}
+.v8-burnout-status span {font-size:12px;line-height:1.35;}
+.v8-run-game .v7-tach-readout {left:0;right:0;top:20px;transform:none;}
+.v8-run-game .v7-tach-readout b {font-size:24px;line-height:1;letter-spacing:-1px;}
+.v8-run-game .v7-tach-readout strong {width:28px;height:28px;font-size:18px;margin:4px auto 0;}
+.v8-run-game .v15-throttle-dock {right:120px;}
+.v8-run-game .v14-n2o-button {box-sizing:border-box;min-width:96px;width:96px;}
+body.race-game-open #toast {top:calc(75px + var(--safe-top));bottom:auto;pointer-events:none;max-width:85vw;font-size:12px;}
+.v8-run-game .v10-drive-controls > * {height:62px;min-height:0;padding:6px;box-sizing:border-box;}
+.v8-run-game .v10-steer-button span {font-size:22px;}
