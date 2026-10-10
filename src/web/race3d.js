@@ -18,7 +18,7 @@ const WHEELBASE = 2.578, TRACK_W = 1.57;
 // Staging: the stage beam sits where the front tyre's leading edge is when the car root is at z = 0 (the
 // run starts there); the pre-stage beam is 7 in (178 mm) behind it. Burnout box behind the water box.
 const STAGE_Z = -(WHEELBASE / 2 + WHEEL_R), PRESTAGE_M = 0.178;
-const BURNOUT_Z = 13.5, WATER_Z = 19;
+const BURNOUT_Z = 13.5, WATER_Z = 20;
 const TREE_ROWS = [['pre', 2.4], ['stage', 2.25], ['a1', 2.05], ['a2', 1.9], ['a3', 1.75], ['g', 1.55], ['r', 1.4]];
 const BULB_ON = { pre: [3.2, 2.9, 2.2], stage: [3.2, 2.9, 2.2], a1: [4, 1.9, .25], a2: [4, 1.9, .25], a3: [4, 1.9, .25], g: [.5, 4, .9], r: [4, .35, .3] };
 const BULB_OFF = { pre: 0x2a2a22, stage: 0x2a2a22, a1: 0x2e2210, a2: 0x2e2210, a3: 0x2e2210, g: 0x0f2a14, r: 0x2e1010 };
@@ -287,10 +287,12 @@ function buildTrack(scene, maps) {
   // Water box. Two versions of the same patch: a dark low-roughness material that only mirrors the
   // environment map (cheap, always there), and a real planar reflection that shows the car, the walls and
   // the floodlights standing in the water. The quality tier picks one; see waterReflector() below.
-  const waterSize = [LANE * 2 - 0.4, 5.5];
+  const waterSize = [LANE * 2 - 0.4, 6];
   const water = new THREE.Mesh(new THREE.PlaneGeometry(...waterSize), new THREE.MeshStandardMaterial({ color: 0x0d1217, roughness: .08, metalness: .6, transparent: true, opacity: .92 }));
-  water.rotation.x = -Math.PI / 2; water.position.set(cx, 0.006, WATER_Z); group.add(water);
+  water.rotation.x = -Math.PI / 2; water.position.set(cx, 0.014, WATER_Z); group.add(water);
   group.userData.water = { mesh: water, size: waterSize, x: cx, z: WATER_Z };
+  line(WATER_Z-3,.10);line(WATER_Z+3,.10);
+  const waterSign=new THREE.Mesh(new THREE.PlaneGeometry(2.6,.8),new THREE.MeshBasicMaterial({map:boardTexture('WATERBOX')}));waterSign.position.set(-LANE/2-1,.9,WATER_Z);waterSign.rotation.y=.5;group.add(waterSign);
   const rubber = new THREE.Mesh(new THREE.PlaneGeometry(LANE * 2, 9), new THREE.MeshBasicMaterial({ map: softDot(128, 'rgba(0,0,0,.55)', 'rgba(0,0,0,0)'), transparent: true, depthWrite: false }));
   rubber.rotation.x = -Math.PI / 2; rubber.position.set(cx, 0.007, BURNOUT_Z - 2); group.add(rubber);
   for (const [d] of MARKS) line(-d, 0.08);
@@ -356,7 +358,7 @@ function buildTrack(scene, maps) {
       p.position.set(x, 6.5, z); group.add(p);
       const h = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.4), headMat);
       h.position.set(x + dir * 0.6, 13, z); group.add(h);
-      const s = new THREE.Sprite(glow); s.scale.set(5, 5, 1); s.position.set(x + dir * 0.6, 13, z); group.add(s);
+      const s = new THREE.Sprite(glow); s.scale.set(1.6, 1.6, 1); s.position.set(x + dir * 0.6, 13, z); group.add(s);
       const lp = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), pool);
       lp.rotation.x = -Math.PI / 2; lp.position.set(x + dir * 5.5, 0.02, z); group.add(lp);
     }
@@ -407,7 +409,8 @@ function makeSmoke(scene) {
       p.vx = (Math.random() - .5) * 2.2 + (o?.wind || 0); p.vy = .5 + Math.random() * .8; p.vz = (o?.vz ?? 1) + Math.random() * 2;
       p.grow = (o?.grow || 1.2) + strength * 1.6;
       p.base = .26 + strength * .4;
-      p.s.scale.setScalar(.6);
+      p.spray=!!o?.spray;
+      p.s.scale.setScalar(p.spray?.08:.6);
     },
     // lit: null on the low tier, else { pos, tail 0..1, flame 0..1, flameColor }
     update(dt, lit = null) {
@@ -418,7 +421,8 @@ function makeSmoke(scene) {
         if (k >= 1) { p.s.visible = false; continue; }
         p.s.position.x += p.vx * dt; p.s.position.y += p.vy * dt; p.s.position.z += p.vz * dt;
         p.vx *= .97; p.vz *= .97;
-        p.s.scale.setScalar(.5 + p.grow * k);
+        p.s.scale.setScalar(p.spray?.06+.18*k:.5 + p.grow * k);
+        if(p.spray){p.vy-=dt*5;p.s.material.color.set(0x99b9ce);p.s.material.opacity=.45*(1-k);continue;}
         p.s.material.opacity = p.base * (1 - k) * Math.min(1, k * 6);
         if (!lit) { p.s.material.color.set(0xcfd4da); continue; }
         shade.copy(SMOKE_SHADE).lerp(SMOKE_LIT, Math.min(1, p.s.position.y / 2.4));
@@ -674,13 +678,14 @@ export function create(canvas, opts = {}) {
   // Burnout and staging. frame: { scene, rpm, wheelSpeedKmh (driven tyre surface), smoke 0..1, tyreTempC,
   // stageProgress, lights[] }
   function updatePreRace(frame, dt, mode) {
+    player.steering?.slice(0,2).forEach(p=>{p.rotation.y=-Number(frame.steer||0)*.25;});
     setLights(frame.lights || []);
     if (pre.mode !== mode) { pre.mode = mode; pre.z = null; }
-    const target = mode === 'burnout' ? BURNOUT_Z : stageRootZ(Number(frame.stageProgress) || 0);
+    const target = Number.isFinite(frame.worldM) ? -frame.worldM+axleOffset(player) : mode === 'burnout' ? BURNOUT_Z : stageRootZ(Number(frame.stageProgress) || 0);
     pre.lastZ = pre.z ?? target;
-    pre.z = pre.z == null ? target : pre.z + (target - pre.z) * Math.min(1, dt * 5);
+    pre.z = Number.isFinite(frame.worldM) ? target : pre.z == null ? target : pre.z + (target - pre.z) * Math.min(1, dt * 5);
     const vCar = (pre.lastZ - pre.z) / Math.max(dt, 1e-3);
-    player.root.position.set(0, 0, pre.z);
+    player.root.position.set(Number(frame.lateralM)||0, 0, pre.z);
     player.root.rotation.y = 0;
     const vSurf = Math.max(vCar, (Number(frame.wheelSpeedKmh) || 0) / 3.6);
     player.wheels.forEach((w, i) => { w.rotation.x -= (driven.includes(i) ? vSurf : vCar) * dt / (player.radii?.[i] || WHEEL_R); });
@@ -704,6 +709,9 @@ export function create(canvas, opts = {}) {
         tmp.y = .2; tmp.x += (tmp.x > 0 ? .25 : -.25); tmp.z += WHEEL_R * .8;
         smoke.spawn(tmp, smokeK, { life: 2.4, grow: 2.6, vz: 2.2 + vSurf * .12, wind: .5 });
       }
+    }
+    if(mode==='burnout'&&Math.abs(vCar)>.2&&frame.wetness){
+      player.wheels.forEach((w,i)=>{if(Math.random()<Math.min(1,dt*12*frame.wetness[i]*Math.abs(vCar))){w.getWorldPosition(tmp);tmp.y=.08;smoke.spawn(tmp,.2,{spray:true,life:.25,grow:.1,vz:Math.abs(vCar)*.3});}});
     }
     const fl = flames.update(dt, time);
     smoke.update(dt, quality.litSmoke ? { pos: player.root.position, tail: TAIL_LIT, flame: fl.alpha, flameColor: fl.color } : null);
@@ -749,7 +757,7 @@ export function create(canvas, opts = {}) {
     const d = Number(frame.distanceM) || 0, v = (Number(frame.speedKmh) || 0) / 3.6;
     const accG = Number(frame.accelerationG) || 0;
     // Player car.
-    const z = -d;
+    const z = -(Number.isFinite(frame.worldM)?frame.worldM:d);
     player.root.position.set(Number(frame.lateralM) || 0, 0, z + axleOffset(player));
     player.root.rotation.y = -Math.atan2(Number(frame.lateralVelocity) || 0, Math.max(3, v)) * .9;
     // Squat under acceleration (nose up), roll with lateral velocity.

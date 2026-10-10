@@ -50,11 +50,12 @@ export function buildVehicle({ carId = 'scirocco', onStatus, ...opts } = {}) {
   // Visible, deliberately schematic missing-model indicator. Never another car's body.
   const fallback = new THREE.Mesh(new THREE.BoxGeometry(1.7,.85,d.length),
     new THREE.MeshStandardMaterial({ color:0xff8b22,wireframe:true,roughness:1 }));
-  fallback.position.y=.75; body.add(fallback);
+  fallback.position.y=.75; fallback.visible=false; body.add(fallback);
   let disposed = false;
   const car = { carId, root, body, wheels, steering, tips, radii, dimensions:d, tailMat, tailPieces: [], status: null,
     dispose() { disposed=true; releaseTree(root); tailMat.dispose(); root.clear(); } };
   const report = (state, error) => {
+    fallback.visible=state==='fallback';
     car.status = { carId, state, model:model || null, error:error || null };
     root.userData.vehicle = car.status; if (!disposed) onStatus?.(car.status);
     return car.status;

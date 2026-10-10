@@ -19,7 +19,8 @@
     sound: { id: sound, cylinders: reference ? 8 : 4, turbo: sound !== 'v8-nitrous', exhaust: reference ? 'side_35' : null },
     workshop: id === 'scirocco'
   }]));
-  const api = { version: 20261010, vehicles, ids: rows.map(r => r[0]), get: id => vehicles[id] || null };
+  vehicles.eagle.anchors.exhaust=[[-1.04,.34,-.75]]; // visual estimate from supplied side/rear reference
+  const api = { version: 2026101002, vehicles, ids: rows.map(r => r[0]), get: id => vehicles[id] || null };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.EA888Vehicles = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
