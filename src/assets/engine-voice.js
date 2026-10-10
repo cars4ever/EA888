@@ -107,6 +107,12 @@
       process(x) { const y = this.g * x + this.a1 * this.y1 + this.a2 * this.y2; this.y2 = this.y1; this.y1 = y; return y; }
     }
 
+    // Acoustic pressure oscillates around ambient pressure. The combustion pulse and intake
+    // envelopes have nonzero means: remove their steady flow component before bus mixing.
+    class DCBlock {
+      constructor(sr) { this.a = Math.exp(-TAU * 18 / sr); this.x = 0; this.y = 0; }
+      process(x) { const y = x - this.x + this.a * this.y; this.x = x; this.y = y; return y; }
+    }
     class EngineVoice {
       constructor(sampleRate, seed = 12345) {
         this.sr = sampleRate;
@@ -143,6 +149,7 @@
         this.knockExc = 0; this.tickExc = 0; this.valveExc = 0; this.combExc = 0;
         this.pops = []; // pending/active pops: {delay, amp, age, tau, crackle}
         this.stats = { cycles: 0, fired: 0, late: 0, sparkCut: 0, fuelCut: 0, pops: 0, knocks: 0, peak: 0 };
+        this.dc = [new DCBlock(this.sr), new DCBlock(this.sr), new DCBlock(this.sr)];
         this.setExhaust('oem_exhaust');
       }
 
@@ -371,7 +378,7 @@
           b *= 0.17;
           // pops: soft-limited, they are 20+ dB over the engine in reality
           const pp = pop * 2.2;
-          outExh[i] = e; outBay[i] = b; outPop[i] = pp / (1 + Math.abs(pp) * 0.35);
+          outExh[i] = this.dc[0].process(e); outBay[i] = this.dc[1].process(b); outPop[i] = this.dc[2].process(pp / (1 + Math.abs(pp) * 0.35));
           const m = Math.abs(e) + Math.abs(outPop[i]);
           if (m > peak) peak = m;
           this.t += dt;

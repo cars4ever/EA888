@@ -1,0 +1,6 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const before=require('../../work/audit-1.31/engine-voice-before.js'),after=require('../src/assets/engine-voice');
+const stats=x=>{let sum=0,power=0,peak=0;for(const v of x){sum+=v;power+=v*v;peak=Math.max(peak,Math.abs(v));}return{mean:sum/x.length,rms:Math.sqrt(power/x.length),peak};};
+const report={};
+for(const [tag,V]of [['before',before],['after',after]]){report[tag]={};for(const rpm of [900,4500,8000]){const v=new V.EngineVoice(32000,5);v.set({rpm,load:rpm===900?.12:1,cylinders:8,boostBar:rpm===900?0:3.2,egtC:1000,exhaust:'side_35'});const settle=new Float32Array(64000);v.render(settle,new Float32Array(64000),new Float32Array(64000),64000);const e=new Float32Array(160000),b=new Float32Array(160000),p=new Float32Array(160000);v.render(e,b,p,e.length);report[tag][rpm]={exhaust:stats(e),bay:stats(b),afterfire:stats(p)};if(tag==='after')for(const channel of Object.values(report[tag][rpm]))assert(Math.abs(channel.mean)<.001,JSON.stringify(channel));}}
+fs.mkdirSync('reports/audit2/audio',{recursive:true});fs.writeFileSync('reports/audit2/audio/source-taps.json',JSON.stringify(report,null,2));console.log('PASS DC < .001 on each stabilized source at idle/load/limiter RPM');

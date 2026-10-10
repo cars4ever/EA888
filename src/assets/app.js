@@ -87,7 +87,7 @@
   let raceGame = null;
   let raceGameRaf = null;
   let raceGameTimers = [];
-  let raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false, nitrous:false };
+  let raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, brake:false, antilag:false, nitrous:false };
   const raceGamePointerMap = new Map();
   let raceGameLastFrame = 0;
   let raceGameAuto = false;
@@ -917,10 +917,12 @@
       }
     } else audio.nextAlsBangMs = 0;
     if (audio.tyreSource) {
-      audio.tyreSource.playbackRate.setTargetAtTime(.72 + slip * .86 + boundedRpm / 26000, t, .025);
+      const wet=clamp(Number(extras?.wetness)||0,0,1);
+      const contactSlip=Math.abs(Number(extras?.slipMs)||0);
+      audio.tyreSource.playbackRate.setTargetAtTime(.72 + (contactSlip ? clamp(contactSlip/35,0,1.4) : slip*.86) * (1-.22*wet), t, .025);
       // a hopping tyre chatters: its noise comes in bursts at the hop frequency
       const chatter = 1 + 1.4 * Math.abs(Number(extras?.hopOsc) || 0);
-      audio.tyreGain.gain.setTargetAtTime(activeGain * Math.pow(slip, .72) * (.12 + boundedLoad * .19) * chatter + .0001, t, .012);
+      audio.tyreGain.gain.setTargetAtTime(activeGain * Math.pow(slip, .72) * (.12 + boundedLoad * .19) * (1-.55*wet) * chatter + .0001, t, .012);
     }
 
     // Samples: loudness follows load by gain; the synthesized voice is loud or quiet by its own physics.
@@ -963,7 +965,9 @@
 
       const master = ctx.createGain();
       master.gain.value = .0001;
-      master.connect(compressor);
+      const dcGuard = ctx.createBiquadFilter();
+      dcGuard.type = 'highpass'; dcGuard.frequency.value = 12; dcGuard.Q.value = .707;
+      master.connect(dcGuard).connect(compressor);
       // Room: everything the car makes goes dry plus through the scene's impulse response.
       const sceneIn = ctx.createGain(); sceneIn.gain.value = 1;
       const dry = ctx.createGain(); dry.gain.value = 1;
@@ -2244,7 +2248,7 @@
     body.innerHTML = g.gears.map((ratio, i) => {
       const top = (revLimit / (ratio * g.finalDrive)) * tyre.circumferenceM * 60 / 1000;
       return `<tr><td>${i + 1}</td>
-        <td><input type="number" step="0.01" min="0.3" max="6.5" value="${ratio.toFixed(2)}" data-gear-ratio="${i}"></td>
+        <td><input type="number" step="0.01" min="0.3" max="6.5" value="${ratio.toFixed(2)}" data-gear-ratio="${i}" readonly></td>
         <td class="muted">${g.base[i].toFixed(2)}</td>
         <td>${Math.round(top)} km/u</td></tr>`;
     }).join('');
@@ -2417,7 +2421,7 @@
     const rows = ecuRows(name), trace = ecuTrace(name);
     const flat = table.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
     const dynoCurrent = C.isDynoCurrent(state);
-    const cells = table.map((row, r) => `<tr><th scope="row" data-ecu-row="${r}">${esc(rows[r])}</th>${row.map((v, c) => {
+    const cells = (info.rows === 'gear' ? table.slice(0,C.effectiveGearing(state).gears.length) : table).map((row, r) => `<tr><th scope="row" data-ecu-row="${r}">${esc(rows[r])}</th>${row.map((v, c) => {
       const h = hi > lo ? (v - lo) / (hi - lo) : 0.5, t = trace.get(`${r},${c}`);
       const cls = [ecuInSel(r, c) ? 'sel' : '', t ? 'hit' : '', t && name === 'spark' && t.knock > 0.4 ? 'knock' : ''].filter(Boolean).join(' ');
       return `<td class="${cls}" style="--h:${h.toFixed(3)}" data-ecu-cell="${r},${c}" ${t && name === 'spark' && t.knock > 0.4 ? `title="knockretard ${num(t.knock, 1)}°"` : ''}>${Number(v).toFixed(info.decimals)}</td>`;
@@ -2619,6 +2623,39 @@
     if (tab) { if(tab.disabled||ecuTableUnavailable(tab.dataset.ecuTable))return;ecuView = { table: tab.dataset.ecuTable, sel: null, anchor: null, range: false }; haptic(6); render(); }
   });
 
+  let drivelineJob=null,drivelineReport=null,drivelineGoal='quarter';
+  function drivelineTunerCard(){
+    const goals=Object.entries(C.DRIVELINE_GOALS).filter(([id])=>(id!=='spool'||!C.getPart(state,'turbo').naturallyAspirated)&&(id!=='nitrous'||C.getPart(state,'nitrous').shotHp>0));
+    const report=drivelineReport?.sourceHash===C.drivelineFingerprint(state)?drivelineReport:null;
+    const metric=r=>`Flash (eerste 0,6 s) ${r.flashRpm} rpm · 60 ft ${num(r.sixtyFt,3)} s · 1/8 ${num(r.eighth,3)} s · 1/4 ${num(r.quarter,3)} s · ${num(r.trapKmh,1)} km/u · finish ${Math.round(r.finishRpm)} rpm · limiter ${num(r.limiterS,2)} s · piek bandenslip ${num(r.peakTyreSlipPct,1)}%${r.converter?` · converter ${num(r.converter.slipPct,1)}% slip / ${num(r.converter.fluidC,0)}°C (max ${num(r.converter.maxFluidC,0)}°C)`:''}`;
+    return `<div class="card driveline-tuner"><h3>Converter & ratio-setups</h3><p>Compatibele hardware, prijzen en karakteristieken zijn spel-schattingen. De converter uit je gekochte bakbundel blijft inbegrepen. Geen lock-up waar hardware ontbreekt.</p><label>Doel <select id="driveline-goal">${goals.map(([id,n])=>`<option value="${id}" ${id===drivelineGoal?'selected':''}>${n}</option>`).join('')}</select></label><button class="btn" data-driveline-search ${drivelineJob?'disabled':''}>Vergelijk maximaal 3 setups</button>${drivelineJob?'<button class="btn ghost" data-driveline-cancel>Annuleren</button><p id="driveline-progress">Virtuele proeven in achtergrond…</p>':''}
+    <p>Gemeten laatste pass: ${measured(state.lastDrag?.quarter)} s. Bevestigingsrun volgt na toepassing.</p>
+    ${report?`<p><b>Virtuele baseline</b> ${metric(report.baseline)}</p><small>${esc(report.baseline.assumptions)}</small>${report.candidates.map((c,i)=>`<article><h4>${esc(c.name)}</h4><p>${esc(c.reason)}</p><p>${metric(c.prediction)}</p><small>${c.converter?`Referentiestall ${c.converter.stallRpm} rpm @ ${c.converter.referenceTorqueNm} Nm · geen lock-up · `:''}Ratio's ${c.tune.gearRatios.join(' / ')} · final drive ${c.tune.finalDrive} · hersteltoerental ${c.tune.gearRatios.slice(1).map((r,j)=>Math.round(c.tune.shiftRpms[j]*r/c.tune.gearRatios[j])).join(' / ')} rpm</small><p>${euro(c.cost)} · enginecurve behouden; wielcurve/projectie gewijzigd</p><button class="btn" data-driveline-apply="${i}" ${state.bank<c.cost?'disabled':''}>Koop en pas toe</button></article>`).join('')}`:''}
+    <button class="btn ghost" data-driveline-save>Huidige setup benoemen</button>${state.tune.drivelineUndo?'<button class="btn ghost" data-driveline-undo>Laatste pakket terugdraaien</button>':''}
+    ${(state.tune.gearSetups||[]).map((x,i)=>`<p>${esc(x.name)} · ${esc(x.transmissionId)} · FD ${x.tune.finalDrive} <button data-driveline-load="${i}">Laden</button></p>`).join('')}</div>`;
+  }
+  function searchDriveline(){
+    if(drivelineJob)return;
+    drivelineGoal=$('#driveline-goal')?.value||drivelineGoal;
+    const snapshot=cloneJson(state),worker=new Worker('driveline-worker.js');drivelineJob=worker;render();
+    worker.onmessage=e=>{if(drivelineJob!==worker)return;const m=e.data;if(m.error||m.done){worker.terminate();drivelineJob=null;if(m.error)showToast(m.error);else drivelineReport=m;render();}else{const p=$('#driveline-progress');if(p)p.textContent=`${m.progress}/${m.total} kandidaten doorgerekend; geen geld, slijtage of N2O verbruikt.`;}};
+    worker.onerror=e=>{worker.terminate();drivelineJob=null;showToast('Tuner mislukt: '+e.message);render();};worker.postMessage({state:snapshot,goal:drivelineGoal});
+  }
+  document.addEventListener('click',event=>{
+    const e=event.target.closest('button');if(!e)return;
+    if(e.dataset.gearReset!==undefined){state.tune.gearRatios=null;state.tune.finalDrive=null;state.tune.gearSpreadPct=100;saveState();render();return;}
+    if(e.hasAttribute('data-driveline-search'))return searchDriveline();
+    if(e.hasAttribute('data-driveline-cancel')){drivelineJob?.terminate();drivelineJob=null;render();return;}
+    if(e.dataset.drivelineApply!==undefined){const c=drivelineReport?.candidates[Number(e.dataset.drivelineApply)];if(!c)return;
+      if(!window.confirm(`${c.name}\nEenmalig ${euro(c.cost)}. Motorcurve blijft; oude chassis-wielmeting is historisch. Toepassen?`))return;
+      const r=C.applyDrivelineCandidate(state,c);if(!r.ok)return showToast(r.why);state=r.state;drivelineReport=null;saveState('Converter / ratio-set gekocht');render();return;}
+    if(e.hasAttribute('data-driveline-undo')){const u=state.tune.drivelineUndo;if(!u)return;
+      // Refund only this transaction: preserve later spending and race rewards.
+      const refund=Number(u.cost||0);state.bank+=refund;for(const k of u.keys||[]){if(u.owned?.[k])state.owned[k]=u.owned[k];else delete state.owned[k];}const slots=state.tune.gearSetups;state.tune=u.tune;state.tune.gearSetups=slots;saveState('Drivelinepakket teruggedraaid');render();return;}
+    if(e.hasAttribute('data-driveline-save')){const name=window.prompt('Naam voor deze auto-setup');if(!name)return;const tune={};for(const k of ['converterId','converterStallRpm','gearRatios','gearSpreadPct','finalDrive','shiftRpms'])tune[k]=cloneJson(state.tune[k]??null);state.tune.gearSetups=[...(state.tune.gearSetups||[]),{name:name.slice(0,60),carId:state.workshopCarId||'scirocco',transmissionId:C.transmissionFor(state).id,tune,context:cloneJson(state.vehicle),hash:C.drivelineFingerprint(state)}].slice(-12);saveState();render();return;}
+    if(e.dataset.drivelineLoad!==undefined){const x=state.tune.gearSetups?.[Number(e.dataset.drivelineLoad)];if(!x||x.transmissionId!==C.transmissionFor(state).id)return showToast('Deze setup hoort bij een andere bak.');const cv=C.converterOptions(state).find(c=>c.id===x.tune.converterId);const key=`gearset:${x.transmissionId}:${x.tune.gearRatios?.join(',')}:${x.tune.finalDrive}`;const base=C.transmissionFor(state);if((cv&&cv.price&&!state.owned[cv.key])||(x.tune.finalDrive&&x.tune.finalDrive!==base.finalDrive&&!state.owned[key]))return showToast('Setup bevat hardware die niet meer in bezit is. Vergelijk en koop opnieuw.');Object.assign(state.tune,cloneJson(x.tune));saveState();render();}
+  });
+
   function renderTune() {
     const t = state.tune;
     const turbo = C.getPart(state, 'turbo');
@@ -2645,30 +2682,29 @@
         const base = g.base[i];
         const top = kmhAt(ratio, revLimit);
         return `<tr><td>${i + 1}</td>
-          <td><input type="number" step="0.01" min="0.3" max="6.5" value="${ratio.toFixed(2)}" data-gear-ratio="${i}"></td>
+          <td><input type="number" step="0.01" min="0.3" max="6.5" value="${ratio.toFixed(2)}" data-gear-ratio="${i}" readonly></td>
           <td class="muted">${base.toFixed(2)}</td>
           <td>${Math.round(top)} km/u</td></tr>`;
       }).join('');
-      content = `<div class="tune-panel gearing-panel">
+      content = `<div class="tune-panel gearing-panel" data-tune-content="gearing">
         <div class="card">
           <div class="section-head"><div><span class="eyebrow">Tandwielen & eindoverbrenging</span><h2>Gearing</h2>
             <p>De bak levert de set; wat je hier zet is wat de auto rijdt. De snelheid is wielsnelheid bij je begrenzer van ${revLimit} rpm op ${tyre.diameterMm.toFixed(0)} mm band — op de baan ligt hij iets lager door slip en luchtweerstand.</p></div>
             ${g.stock ? '' : '<button class="btn small ghost" data-gear-reset="1">Terug naar de bak</button>'}</div>
           <label class="field-label">Eindoverbrenging <b>${g.finalDrive.toFixed(2)}</b>
-            <input type="range" min="2.4" max="6.5" step="0.05" value="${g.finalDrive.toFixed(2)}" data-tune-range-num="finalDrive">
+            <input type="range" min="2.4" max="6.5" step="0.05" value="${g.finalDrive.toFixed(2)}" data-tune-range-num="finalDrive" disabled>
             <small>Standaard op deze bak ${g.baseFinalDrive.toFixed(2)}. Korter (hoger getal) trekt harder maar is eerder door de bak heen.</small>
           </label>
           <label class="field-label">Tandwielspreiding <b>${Math.round(g.spread * 100)}%</b>
-            <input type="range" min="75" max="130" step="1" value="${Math.round(g.spread * 100)}" data-tune-range="gearSpreadPct">
-            <small>Één knop voor wat je als close- of wide-ratio set zou kopen. Draait om de 1e versnelling: die kies je op grip, niet op spreiding.</small>
+            <input type="range" min="75" max="130" step="1" value="${Math.round(g.spread * 100)}" data-tune-range="gearSpreadPct" disabled>
+            <small>Bestaande maatwerkset behouden. Wijzig fysieke overbrengingen via een gekochte ratio-setup hierboven.</small>
           </label>
-          <table class="gear-table"><thead><tr><th>Bak</th><th>Verhouding</th><th>Standaard</th><th>Top bij begrenzer</th></tr></thead><tbody>${rows}</tbody></table>
-          <small class="advice-note">${esc(trans.name)} · ${g.gears.length} versnellingen. De gripafstemming na een pass stelt de eindoverbrenging en de spreiding zelf af op de grip die je hebt.</small>
-        </div>
+          <svg class="gear-speed-chart" viewBox="0 0 360 150" role="img" aria-label="No-slip snelheid per versnelling tegen motortoerental"><path d="M35 10V125H345" fill="none" stroke="#8293a5"/>${g.gears.map((ratio,i)=>`<path d="M35 125L330 ${125-110*kmhAt(ratio,revLimit)/kmhAt(g.gears.at(-1),revLimit)}" stroke="${['#ffb515','#52b8ed','#79d099','#ce88fc','#ec7171','#ddd'][i]}" fill="none"/><text x="300" y="${120-110*kmhAt(ratio,revLimit)/kmhAt(g.gears.at(-1),revLimit)}" fill="white" font-size="11">${i+1}e</text>`).join('')}<text x="35" y="144" fill="white" font-size="11">0 → ${revLimit} rpm · SR=1 · geen bandenslip</text></svg><table class="gear-table"><thead><tr><th>Bak</th><th>Verhouding</th><th>Standaard</th><th>Top bij begrenzer</th></tr></thead><tbody>${rows}</tbody></table>
+          <small class="advice-note">${esc(trans.name)} · ${g.gears.length} versnellingen. No-slip referentie (SR=1); converter en bandenslip verlagen de werkelijke snelheid.</small>
+        </div>${drivelineTunerCard()}
       </div>`;
-    }
-    if (tunePanel === 'boost' && turbo.naturallyAspirated) {
-      content=`<div class="card"><h2>Atmosferisch · geen laaddrukregeling</h2><p>Deze motor ademt zonder turbo. Vermogen reageert op nokken, koppen, inlaat, brandstof en ontsteking. Lachgas bedien je tijdens de race.</p>${slider('converterStallRpm','Converter flash stall',2500,Math.min(8500,t.revLimitRpm),100,t.converterStallRpm || C.getPart(state,'transmission').converterStallRpm,' rpm',0,'Flash stall bij het referentiekoppel van de converter.')}
+    } else if (tunePanel === 'boost' && turbo.naturallyAspirated) {
+      content=`<div class="card"><h2>Atmosferisch · geen laaddrukregeling</h2><p>Deze motor ademt zonder turbo. Vermogen reageert op nokken, koppen, inlaat, brandstof en ontsteking. Lachgas bedien je tijdens de race.</p><p>Converterkeuze en referentiestall staan onder <b>Gear → Converter / ratio-tuner</b>. Flash stall hangt af van het beschikbare motorkoppel.</p>
 ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launchRpm,' rpm',0,'Stem de launch af op converter en tractie.')}<button class="btn" data-open-category="turbo">Turbo-ombouw kiezen</button><p>Voor een turbo is passende EFI nodig; de carburateurcombinatie wordt geweigerd.</p></div>`;
     } else if (tunePanel === 'boost') {
       content = `<div class="tune-layout">
@@ -2683,7 +2719,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
         </div>
         <div class="card tune-card">
           <div class="card-title"><span>${icon('race')}</span><div><span class="eyebrow">Launch & tractie</span><h2>Boost-by-gear</h2></div></div>
-          ${C.workshopDefinition(state) ? slider('converterStallRpm','Converter flash stall',2500,Math.min(8500,t.revLimitRpm),100,t.converterStallRpm || C.getPart(state,'transmission').converterStallRpm,' rpm',0,'Gemodelleerde converterkeuze; stall hangt ook af van het beschikbare motorkoppel.') : ''}
+          ${C.workshopDefinition(state) ? '<p>Converterhardware kies je onder <b>Gear → Converter / ratio-tuner</b>; stall is geen vrij instelbare ECU-waarde.</p>' : ''}
           ${slider('launchRpm', 'Launch rpm', 2200, 8200, 100, t.launchRpm, ' rpm', 0, 'Moet passen bij turbo, koppelomvormer/koppeling, banden en aandrijving.')}
           ${slider('firstGearBoostPct', 'Boost eerste versnelling', 20, 100, 1, t.firstGearBoostPct, '%', 0, 'Beperkt de eerste tractie- en aslastpiek.')}
           ${slider('secondGearBoostPct', 'Boost tweede versnelling', 30, 100, 1, t.secondGearBoostPct, '%', 0, 'Bepaalt hoeveel van de gemeten curve in twee beschikbaar is.')}
@@ -2807,9 +2843,12 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       : r.samples[r.samples.length - 1];
     const bench = C.benchConfidence(state);
     const previous = state.dynoRuns?.[1] || null;
+    const normalizedGear = C.normalizeState(state, {noEcu:true});
+    state.dynoConfig.gear = normalizedGear.dynoConfig.gear;
+    if (normalizedGear.gearboxNotice) state.gearboxNotice = normalizedGear.gearboxNotice;
     const cfg = state.dynoConfig;
 
-    return `<section class="page dyno-page">
+    return `<section class="page dyno-page">${state.gearboxNotice ? `<p class="notice">${esc(state.gearboxNotice)}</p>` : ''}
       <div class="page-title-row"><div><span class="eyebrow">Instrumented engine dyno</span><h1>Meet, log en diagnoseer</h1><p>Ramp rate, luchtcondities en koeling beïnvloeden de meting. De nieuwe curve wordt pas zichtbaar wanneer de pull werkelijk loopt.</p></div></div>
       ${!clean ? staleNotice()
         : C.isCompletedDyno(r) ? '<div class="notice success"><strong>Curve is geldig.</strong> Hardware, montage, tune, olie en dynocondities komen overeen met deze meting.</div>'
@@ -2829,7 +2868,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
           ${dynoConfigRange('ambientTempC','Omgevingstemperatuur',0,45,1,cfg.ambientTempC,'°C',0,'Werkelijke inlaatlucht start bij deze conditie.')}
           ${dynoConfigRange('baroKpa','Barometrische druk',82,104,.1,cfg.baroKpa,' kPa',1,'Luchtdichtheid en compressorbelasting reageren op hoogte en weer.')}
           ${dynoConfigRange('humidityPct','Luchtvochtigheid',0,100,1,cfg.humidityPct ?? 50,'%',0,'Waterdamp verdringt zuurstof: alleen droge lucht verbrandt brandstof.')}
-          ${dynoConfigRange('gear','Dynoversnelling',1,6,1,cfg.gear ?? 4,'e',0,'Chassisdyno in deze versnelling; de boosttabel van deze versnelling geldt.')}
+          ${dynoConfigRange('gear','Dynoversnelling',1,C.effectiveGearing(state).gears.length,1,cfg.gear ?? 1,'e',0,'Chassisdyno in deze versnelling; de boosttabel van deze versnelling geldt.')}
         </div>
         <div class="dyno-correction"><span>Correctienorm</span><div class="segment-control">${Object.entries(C.DYNO_CORRECTIONS).map(([k, c]) => `<button class="${(cfg.correction || 'din70020') === k ? 'active' : ''}" data-dyno-correction="${k}">${esc(c.short)}</button>`).join('')}</div>
           <small>${esc(C.DYNO_CORRECTIONS[cfg.correction || 'din70020'].label)} · factor ${num(C.correctionFactor(cfg.correction || 'din70020', cfg.ambientTempC, cfg.baroKpa, cfg.humidityPct ?? 50), 3)} bij deze condities${C.dynoSoakAt(state) > 0.5 ? ` · heat soak +${num(C.dynoSoakAt(state), 1)} °C inlaat (laat de fan draaien)` : ''}</small></div>
@@ -2859,7 +2898,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
         ${active ? '<button class="btn danger" data-action="abort-dyno">PULL AFBREKEN</button>' : previous ? `<button class="btn ghost" data-action="toggle-compare">Vergelijking: ${state.settings?.dynoCompare === false ? 'uit' : 'aan'}</button>` : ''}
       </div>
 
-      ${renderDynoCompare()}
+      ${r?.drivelineSignature && r.drivelineSignature!==JSON.stringify({transmission:state.selections.transmission,gearing:C.effectiveGearing(state),converter:state.tune.converterId||null}) ? '<p class="notice">Motorcurve behouden; de gemeten wielcurve hoort bij de vorige aandrijflijn. Een nieuwe dyno meet de nieuwe wielcurve.</p>':''}${renderDynoCompare()}
       ${r ? renderDynoResult(r, clean) : '<div class="card empty-card">Nog geen dynometing opgeslagen.</div>'}
       ${renderDynoHistory()}
     </section>`;
@@ -2888,7 +2927,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       <div class="result-metrics v4-result-metrics">
         <div><span>${peakLabel} vermogen</span><b>${dynoMetricText(r, 'peakHp', ' pk')}</b><small>${at(r.peakHpRpm)}</small></div>
         <div><span>${peakLabel} koppel</span><b>${dynoMetricText(r, 'peakTorqueNm', ' Nm')}</b><small>${at(r.peakTorqueRpm)}</small></div>
-        <div><span>Wielvermogen</span><b>${Number.isFinite(r.peakWheelHp) ? `${Math.round(r.peakWheelHp)} pk` : '—'}</b><small>${r.correction ? `${esc(r.correction.label)} · CF ${num(r.correction.factor, 3)}` : 'ongecorrigeerd'}</small></div>
+        <div><span>Wielvermogen · gemeten bakconfiguratie</span><b>${Number.isFinite(r.peakWheelHp) ? `${Math.round(r.peakWheelHp)} pk` : '—'}</b><small>${r.correction ? `${esc(r.correction.label)} · CF ${num(r.correction.factor, 3)}` : 'ongecorrigeerd'}</small></div>
         <div><span>Airflow</span><b>${r.samples?.length ? num(Math.max(...r.samples.map(p => p.airflowLbMin || 0)), 1) : '—'} lb/min</b><small>${num(r.airDensityKgM3,3)} kg/m³${r.soakK > 0.5 ? ` · soak +${num(r.soakK, 1)} °C` : ''}</small></div>
         <div><span>Turbo-as</span><b>${Number.isFinite(r.maxTurboShaftRpm) ? `${Math.round(r.maxTurboShaftRpm/1000)}k` : '—'} rpm</b><small>${mnum(r.maxEmpBar,2)} bar max EMP</small></div>
         <div><span>Fuel duty</span><b>${mnum(r.maxFuelDuty,0)}%</b><small>${mnum(r.maxIatC,0)}°C max IAT</small></div>
@@ -3054,7 +3093,9 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const done = (state.gripTunes || {})[gripId()];
     if (!done || done.applied) return;
     const paths = Object.keys(done.patch.tune).map(k => ['tune', k]);
-    const announce = offerUndo(paths, 'Gripmap toegepast. Rijd een nieuwe pass om hem te bevestigen.');
+    const candidate=C.applyAdvicePatch(state,done.patch), needsDyno=C.engineSignature(candidate)!==C.engineSignature(state);
+    if(needsDyno&&!window.confirm('Deze gripmap wijzigt ook de motorcurve. Eerst opnieuw op de dyno meten, daarna een bevestigingsrun. Toepassen?'))return;
+    const announce = offerUndo(paths, needsDyno?'Gripmap toegepast. Meet eerst opnieuw op de dyno.':'Gripmap toegepast. Rijd een bevestigingsrun.');
     state = C.applyAdvicePatch(state, done.patch);
     done.applied = true;
     saveState(); render(); announce();
@@ -3085,11 +3126,11 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const body = busy
       ? `<div class="map-tune"><div><b>Gripmap bezig…</b><small>${gripJob.opt.evals} van ${gripJob.opt.total} virtuele runs. De motor draait hier niet: dit kost geen slijtage.</small></div></div>`
       : done
-        ? `<div class="map-tune done ${done.applied ? 'applied' : ''}"><div><b>Gripmap: ${Number(done.before.quarter).toFixed(3)} → ${Number(done.after.quarter).toFixed(3)} s${done.applied ? ' · ✔ toegepast' : ''}</b>
+        ? `<div class="map-tune done ${done.applied ? 'applied' : ''}"><div><b>Virtuele baseline → voorspelde kandidaat: ${Number(done.before.quarter).toFixed(3)} → ${Number(done.after.quarter).toFixed(3)} s${done.applied ? ' · ✔ toegepast' : ''}</b>
             <small>60 ft ${Number(done.before.sixtyFt).toFixed(3)} → ${Number(done.after.sixtyFt).toFixed(3)} s · wielspin ${Math.round(done.before.wheelspinPct)}% → ${Math.round(done.after.wheelspinPct)}%. ${done.changes.length ? done.changes.map(mapChangeText).map(esc).join(' · ') : 'Je afstelling was al de beste voor deze grip.'}</small></div>
             ${done.applied || !done.changes.length ? '' : '<button class="btn small" data-grip-apply="1">Toepassen</button>'}</div>`
         : `<div class="map-tune"><div><b>Stem af op de grip die je nu hebt</b><small>De tuner rijdt virtuele runs op ${cond} en zoekt de snelste combinatie van launch-toerental en laaddruk per versnelling. Gratis en zonder slijtage.</small></div><button class="btn small" data-grip-run="1" ${mapJob || adviceJob ? 'disabled' : ''}>Afstemmen</button></div>`;
-    return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · gripafstemming</span><h3>Map op de baan afstemmen</h3>${body}<small class="advice-note">Gebaseerd op je laatste pass. Rijd opnieuw en stem opnieuw af: elke ronde vertrekt van wat er gemeten is.</small></div>`;
+    return `<div class="card map-tune-card"><span class="eyebrow">Tunerhulp · gripafstemming</span><h3>Map op de baan afstemmen</h3><p>Gemeten laatste run: ${measured(state.lastDrag.quarter)} s. Virtuele proeven: automatische bestuurder, gelijke baan en standaard thermische start. Geen garantie voor je volgende pass.</p>${body}<small class="advice-note">Motorwijzigingen vereisen eerst een nieuwe dyno; alleen gearing/launch wijzigen behoudt de motorcurve. De volgende echte pass is de bevestiging.</small></div>`;
   }
   function buyMapTune(goal) {
     const g = C.MAP_TUNES[goal];
@@ -3490,28 +3531,41 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
   // The pull is simulated up front but revealed sample by sample at the
   // configured ramp rate; an aborted pull stops being revealed at its abort
   // sample, so the display never runs ahead of what the engine reached.
-  function startDyno() {
+  async function startDyno() {
     if (dynoRunning) return;
     activeTab = 'dyno';
     haptic([18, 40, 18]);
     const result = C.simulateEngine(state, { soakK: C.dynoSoakAt(state), pullIndex: state.dynoRuns?.length || 0 });
     const planned = Math.max(2, result.plannedSampleCount || result.samples.length);
-    const fullDuration = state.settings?.reducedMotion ? 1450 : 5600;
+    const fullDuration = Math.max(1,((result.samples[1]?.tS-result.samples[0]?.tS)||100/Number(state.dynoConfig.rampRpmPerSec||550))*1000)*(planned-1);
     dynoRunning = { result, start: performance.now(), msPerSample: fullDuration / (planned - 1), shown: 0 };
     if (!result.samples.length) { finishDyno(result); return; }
     render();
-    startEngineAudio();
+    startEngineAudio('dyno');
+    const pendingPull=dynoRunning;
+    await Promise.race([engineAudio?.readyPromise||Promise.resolve(),new Promise(resolve=>setTimeout(resolve,3000))]);
+    if(dynoRunning!==pendingPull)return;
+    dynoRunning.start=performance.now();
     requestAnimationFrame(() => {
       // The pull is driven by elapsed time; nothing drawn or heard may stop it. A failing frame is logged
       // and the next one runs, so the pull always reaches its end and gets saved.
       const tick = now => {
-        if (!dynoRunning) return;
+        if (!dynoRunning || dynoRunning.finishing) return;
         const samples = dynoRunning.result.samples;
         const idx = Math.min(samples.length - 1, Math.floor((now - dynoRunning.start) / dynoRunning.msPerSample));
         dynoRunning.shown = idx;
         dynoRunning.lastTickAt = now;
         if (idx >= samples.length - 1) {
-          try { finishDyno(dynoRunning.result); }
+          try {
+            dynoFrame(samples,idx);
+            const result=dynoRunning.result;dynoRunning.finishing=true;
+            clearInterval(dynoRunning.watchdog);
+            const button=$('[data-action="start-dyno"]');if(button)button.textContent='PULL AFGEROND · RESULTAAT OPSLAAN';
+            $('.dyno-console')?.classList.remove('running');
+            const abort=$('[data-action="abort-dyno"]');if(abort)abort.disabled=true;
+            // Paint the final reached sample and end-state before expensive result/achievement work.
+            requestAnimationFrame(()=>requestAnimationFrame(()=>finishDyno(result)));
+          }
           catch (e) { logAppError('dyno finish', e); dynoRunning = null; stopEngineAudio({ hard: true }); render(); }
           return;
         }
@@ -3535,7 +3589,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const point = samples[idx];
     drawDynoChart($('#dyno-chart'), dynoRunning.result, samples.length > 1 ? idx / (samples.length - 1) : 1, false, dynoChannel, null);
     // the measured sample drives the voice: MAP, EGT, lambda, wastegate, retard from MBT and knock
-    updateEngineAudio(point.rpm, point.turboLoadPct / 100, 0, { mapBar: point.mapBarAbs, boostBar: point.boostBar, egtC: point.egtC, lambda: point.lambda,
+    updateEngineAudio(point.rpm, 1, 0, { mapBar: point.mapBarAbs, boostBar: point.boostBar, egtC: point.egtC, lambda: point.lambda,
       wastegatePct: point.wastegatePct, retardDeg: Math.max(0, Number(point.mbtDeg) - Number(point.sparkDeg)) || 0, knock: audibleKnock(point.knockIndex), shaftPct: point.shaftSpeedPct });
     const set = (id, value) => { const n = $(id); if (n) n.innerHTML = value; };
     set('#live-rpm', Math.round(point.rpm));
@@ -4376,7 +4430,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const targetWidth = clamp(18 / (p.cautionC + 18) * 100, 8, 24);
     return `<div class="v8-game v8-burnout-game ${C.getPart(raceGame?.carState||state,'turbo').naturallyAspirated?'naturally-aspirated':''} drive-${String(state.vehicle.drivetrain).toLowerCase()}">
       <div class="v8-scene-plate v8-burnout-plate"></div><canvas id="race3d-canvas" class="race3d-canvas" aria-hidden="true"></canvas><div class="v8-cinematic-shade"></div>
-      ${v7GameHeader('BURNOUT', 1, 'Warm de aangedreven banden op zonder ze te oververhitten')}
+      ${v7GameHeader('WATERBOX → ROLLING BURNOUT', 1, 'Rijd door de natte zone; gas los = uitrollen')}
       <main class="v8-burnout-scene">
         <section class="v8-burnout-hud">
           ${v7TachMarkup('v7-burn', b.rpm, 1)}
@@ -4388,8 +4442,9 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
         ${rival ? `<div class="v12-event-opponent"><img src="${V?.get((raceGame?.rivalProfile || selectedRival()).rosterId)?.image || 'images/rival-scirocco.svg'}" alt="Rivaal"><span>VOLGENDE: ${rival.tag}</span><b>${esc(rival.name)}</b></div>` : ''}
         <div class="v8-burnout-status" id="v7-burn-instruction"><b>HOUD VAST VOOR BURNOUT</b><span>Vasthouden = vol gas, loslaten = gas eraf. Mik op de groene temperatuurband.</span></div>
         <div class="v8-burn-score"><b id="v7-burn-label">KOUD</b><span id="v7-burn-score">Raming na 20 s koelen</span></div>
-        <button class="v8-burnout-button" id="v7-burn-throttle" data-v7-control="burnout"><span>VOL GAS · HOUD VAST</span><small>LAAT LOS OM TE STOPPEN</small></button>
+        <button class="v8-burnout-button" id="v7-burn-throttle" data-v7-control="burnout"><span>GAS · HOUD VAST</span><small>RIJD DOOR DE WATERBOX · SNELHEIDSHULP ACTIEF</small></button>
       </main>
+      <div class="prep-controls"><button data-v7-control="steerLeft">◀</button><button data-v7-control="brake">REM</button><button data-v7-control="steerRight">▶</button></div>
       ${v7GameProgress(0)}
     </div>`;
   }
@@ -4531,10 +4586,13 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     if (!root) return;
     if (!raceGame?.open) { root.innerHTML = ''; document.body.classList.remove('race-game-open'); return; }
     document.body.classList.add('race-game-open');
+    const retainedCanvas = raceGame.r3d ? $('#race3d-canvas',root) : null;
+    if(retainedCanvas)retainedCanvas.remove();
     if (raceGame.phase === 'burnout' || raceGame.phase === 'burnout-result') root.innerHTML = renderV7BurnoutScene();
     else if (raceGame.phase === 'stage') root.innerHTML = renderV7StageScene();
     else if (raceGame.phase === 'run') root.innerHTML = renderV7RunScene();
     else if (raceGame.phase === 'finish') root.innerHTML = renderV7FinishScene();
+    if(retainedCanvas)$('#race3d-canvas',root)?.replaceWith(retainedCanvas);
     requestAnimationFrame(() => {
       if (!raceGame?.open) return;
       if (raceGame.phase.startsWith('burnout')) { startPreRace3D(); updateV7BurnoutDom(); }
@@ -4632,7 +4690,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const startingTemp = clamp(profile.trackC + 2, profile.trackC, profile.targetC - 8);
     burnoutRuntime = { key:`${profile.id}:${profile.trackC}:${state.vehicle.drivetrain}`, tempC:startingTemp, rpm:900, active:false, smoke:0, wheelSlip:0, startedAt:0, lastAt:0, elapsed:0 };
     raceGameAuto = !!auto;
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false, nitrous:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, brake:false, antilag:false, nitrous:false };
     raceGame = {
       open:true,
       phase:'burnout',
@@ -4657,7 +4715,8 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     raceGame.alsInfo = C.resolveAntiLag(raceGame.carState);
     // Burnout on the vehicle model; the tyres start at the track temperature (the car rolled in cold).
     try {
-      raceGame.burnRt = C.createBurnoutRuntime(raceGame.carState, { turbo: raceGame.turbo, targetRpm: Number(state.vehicle.burnoutRpm || 5000), startC: profile.trackC });
+      raceGame.prep = C.createPreparationRuntime(raceGame.carState, { turbo: raceGame.turbo, tyreTempC:profile.trackC });
+      raceGame.burnRt = raceGame.prep;
       raceGame.tyreThermal = { ...raceGame.burnRt.tyreThermal };
       Object.assign(raceGame.burn, { surfaceC: profile.trackC, bulkC: profile.trackC, tempC: predictedLaunchTyreC(raceGame.burnRt.tyreThermal) });
     } catch (e) { logAppError('burnout', e); }
@@ -4676,7 +4735,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     disposeRace3D();
     disposeReplay();
     clearRaceGameTimers();
-    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, antilag:false, nitrous:false };
+    raceGamePointer = { burnout:false, creep:false, throttle:false, steerLeft:false, steerRight:false, brake:false, antilag:false, nitrous:false };
     raceGamePointerMap.clear();
     stopEngineAudio({ hard: true });
     raceGame = null;
@@ -4716,28 +4775,20 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
   }
 
   function updateV7BurnoutGame(dt, now) {
-    const b = raceGame.burn;
-    const profile = burnoutProfile();
-    const rt = raceGame.burnRt;
-    let throttle = !!raceGamePointer.burnout;
-    // auto driver: until the tyre is on course for the optimum at the launch
-    if (raceGameAuto) throttle = !b.done && predictedLaunchTyreC(rt.tyreThermal) < profile.targetC - 1;
-    if (throttle && !b.started) { b.started = true; b.startAt = now; raceGameTone(520,.06,.025); }
-    // Physical burnout (sim.js createBurnoutRuntime): engine, clutch, spinning tyres, slip power, tyre heat.
-    const p = rt.step(dt, { throttle });
-    b.rpm = p.rpm; b.surfaceC = p.tyreSurfaceC; b.bulkC = p.tyreBulkC; b.smoke = p.smoke;
-    b.slipKmh = p.tyreSurfaceKmh; b.slipKw = p.slipPowerKw; b.boostBar = p.boostBar; b.clutchSlipping = !!p.clutchSlipping;
-    // what counts is the grip temperature expected at the launch after rolling to the line and staging
-    b.tempC = predictedLaunchTyreC(rt.tyreThermal);
-    logRaceThermal('burnout',dt,rt.tyreThermal,p.slipPowerKw);
-    if (b.started) b.timeLeft = Math.max(0, b.timeLeft - dt);
-    b.elapsed += dt;
-    const slip = clamp(p.tyreSurfaceKmh / 45, 0, 1);
-    burnoutRuntime.rpm = b.rpm; burnoutRuntime.tempC = b.tempC; burnoutRuntime.smoke = b.smoke; burnoutRuntime.active = throttle; burnoutRuntime.wheelSlip = slip;
-    updateEngineAudio(b.rpm, throttle ? Math.max(.2, p.pedal) : .12, slip, { boostBar: p.boostBar, mapBar: p.mapBarAbs, egtC: p.egtC, lambda: p.lambda, cutFraction: p.limiter ? 1 : 0, cutKind: limiterCutKind() });
-    updateV7BurnoutDom();
-    updatePreRace3D('burnout', dt);
-    if (b.started && b.timeLeft <= 0 && !b.done) finishV7Burnout();
+    if(raceGame.r3d && !raceGame.assetsReady)return;
+    const b=raceGame.burn,prep=raceGame.prep;
+    if(!prep)return;
+    const throttle=!!raceGamePointer.burnout||raceGameAuto;
+    const p=prep.step(dt,{pedal:throttle?1:0,brake:raceGamePointer.brake?1:0,steer:(raceGamePointer.steerRight?1:0)-(raceGamePointer.steerLeft?1:0),rollout:prep.rt.state.x>-6});
+    raceGame.prepPoint=p;
+    Object.assign(b,{rpm:p.rpm,gear:p.gear,surfaceC:p.tyreSurfaceC,bulkC:p.tyreBulkC,tempC:p.tyreTempC,elapsed:p.t,started:true,
+      smoke:clamp(p.slipMs/15,0,1)*clamp((p.tyreSurfaceC-45)/100,0,1),slipKmh:p.slipMs*3.6,slipKw:Math.abs(prep.rt.state.fx*p.slipMs)/1000,boostBar:p.boostBar,timeLeft:Math.max(0,-p.worldM/Math.max(.5,p.v))});
+    raceGame.tyreThermal=prep.tyreThermal;
+    Object.assign(burnoutRuntime,{active:throttle,rpm:b.rpm,tempC:b.tempC,smoke:b.smoke});
+    updateEngineAudio(p.rpm,p.pedal??0,clamp(p.slipMs/25,0,1),{boostBar:p.boostBar,mapBar:1+p.boostBar,egtC:p.egtC,cutFraction:p.limiter?1:0,cutKind:limiterCutKind(),wetness:Math.max(...p.wetness),slipMs:p.slipMs});
+    logRaceThermal(p.phase,dt,prep.tyreThermal,b.slipKw);
+    updateV7BurnoutDom();updatePreRace3D('burnout',dt);
+    if(p.worldM>-.8){b.done=true;enterV7Stage();}
   }
 
   function logRaceThermal(phase,dt,thermal,slipKw=0){
@@ -4760,7 +4811,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     b.score = combined;
     b.label = assessment.label;
 
-    updateV7Tach('v7-burn', b.rpm, 1);
+    updateV7Tach('v7-burn', b.rpm, b.gear||1);
     const time = $('#v7-burn-time');
     if (time) time.textContent = `${b.clutchSlipping ? 'koppeling slipt · ' : ''}${Math.round(b.slipKw || 0)} kW slip · ${b.timeLeft.toFixed(1)} s`;
     const temp = $('#v7-burn-temp');
@@ -4795,31 +4846,19 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     }
     const button = $('#v7-burn-throttle');
     if (button) button.classList.toggle('active', !!raceGamePointer.burnout || (raceGameAuto && !b.done));
-    const instruction = $('#v7-burn-instruction');
-    if (instruction && b.started) {
-      const title = assessment.score > 82 ? 'RAMING NA 20 S OPTIMAAL' : b.tempC > profile.cautionC ? 'TE HEET · LAAT LOS' : b.tempC > profile.targetC ? 'WARM · BIJNA TE HEET' : 'BLIJF SPINNEN';
-      const line = assessment.score > 82 ? 'Laat los. Raming bij 20 s afkoelen; werkelijke launch hangt af van de wachttijd.' : b.tempC > profile.targetC ? 'Het oppervlak koelt af tijdens het stagen, de kern niet: stop op tijd.' : 'De band warmt op door de slip; het oppervlak koelt snel af, de kern houdt de warmte vast.';
-      instruction.innerHTML = `<b>${title}</b><span>${line}</span>`;
-      instruction.classList.toggle('good', assessment.score > 82);
-      instruction.classList.toggle('warn', b.tempC > profile.cautionC);
+    const instruction=$('#v7-burn-instruction'),p=raceGame.prepPoint;
+    if(p){
+      const action=p.phase==='approach'?'RIJD DOOR DE WATERBOX':p.phase==='waterbox'?'WATERCONTACT · BLIJF RIJDEN':p.v<.4?'BLIJF ROLLEN · STILSTAAN TELT NIET':p.tyreTempC>95?'TE HEET · GAS LOS':p.phase==='rollout'?'UITROLLEN NAAR PRE-STAGE':'ROLLING BURNOUT';
+      if(instruction)instruction.innerHTML=`<b>${action}</b><span>${p.speedKmh.toFixed(1)} km/u · nog ${Math.max(0,-p.worldM).toFixed(1)} m tot stage · nat ${Math.round(Math.max(...p.wetness)*100)}%</span>`;
+      if(tempSub)tempSub.textContent=`Kern ${Math.round(p.tyreBulkC)}°C · grip nu ${Math.round(p.tyreTempC)}°C`;
+      if(label)label.textContent=p.rollingValid?'ROLLEND GEREINIGD':'ROLLEND OPWARMEN';
+      if(score)score.textContent=`${p.rollingS.toFixed(1)} s rollende slip (min. ${C.PREPARATION.requiredRollingS} s bij ≥${C.PREPARATION.minRollingMs*3.6} km/u)`;
+      if(time)time.textContent=`${Math.round(b.slipKw)} kW contactslip · ${p.gear}e versnelling`;
     }
   }
 
   function finishV7Burnout() {
-    const b = raceGame.burn;
-    b.done = true; raceGame.phase = 'burnout-result';
-    raceGamePointer.burnout = false;
-    // the tyres leave the burnout with this state; staging cools them further (updateV7StageGame)
-    if (raceGame.burnRt) raceGame.tyreThermal = { ...raceGame.burnRt.tyreThermal };
-    syncBurnoutLevel(b.tempC);
-    const assessment = burnoutAssessment(b.tempC);
-    const instruction=$('#v7-burn-instruction');
-    if(instruction){instruction.classList.add(assessment.score>=78?'good':'warn');instruction.innerHTML=`<b>${assessment.score>=84?'LAUNCHRAMING OPTIMAAL':assessment.score>=60?'LAUNCHRAMING BRUIKBAAR':'SLECHTE BURNOUT'}</b><span>na 20 s koelen ≈ ${Math.round(b.tempC)}°C · voorspeld venster ${assessment.score}/100 · door naar staging</span>`;}
-    const pedal=$('#v7-burn-throttle'); if(pedal){pedal.disabled=true;pedal.innerHTML='<span>NAAR STAGE</span><small>camera wisselt naar achteraanzicht</small>'; pedal.classList.add('complete');}
-    haptic(assessment.score>=80?[18,18,35]:[45,25,20]);
-    engineShiftPop(.65);
-    const delay = state.settings?.reducedMotion ? 80 : 1050;
-    raceGameTimers.push(setTimeout(enterV7Stage, delay));
+    if(raceGame?.prep)raceGame.prep.state.rollout=true;
   }
 
   function enterV7Stage() {
@@ -4827,7 +4866,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     clearRaceGameTimers();
     raceGame.phase='stage';
     raceGame.stage={progress:0,rpm:900,staged:false,deep:false,treeStarted:false,plannedGreen:0,green:false,launched:false,stagedSince:0,launchArmed:false};
-    raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false,antilag:false,nitrous:false};
+    raceGamePointer={burnout:false,creep:false,throttle:false,steerLeft:false,steerRight:false,brake:false,antilag:false,nitrous:false};
     renderRaceGame();
     updateEngineAudio(900,.12,0);
     haptic(18);
@@ -4841,17 +4880,12 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       creep = !s.treeStarted && s.progress < 67;
       throttle = s.progress > 52 && !s.launched;
     }
-    if (creep && !s.treeStarted && !s.deep) {
-      s.progress += dt * (state.settings?.reducedMotion ? 125 : 34);
-      if (s.progress > 92) {
-        s.progress = 94;
-        s.deep = true;
-        s.staged = false;
-        raceGamePointer.creep = false;
-        haptic([45,25,45]);
-      }
-    }
-    s.staged = s.progress >= 56 && s.progress <= 82 && !s.deep;
+    if(raceGame.prep && !s.treeStarted && !s.staged){
+      const p=raceGame.prep.step(dt,{pedal:creep?.2:0,creep,brake:creep?0:1,rollout:true});
+      raceGame.prepPoint=p;s.progress=p.ready?65:p.worldM>=-.178?35:Math.max(0,25+(p.worldM+.178)*20);
+      s.deep=p.worldM>.1;s.staged=p.ready;
+      if(s.staged){raceGame.prep.rt.state.launched=false;raceGame.prep.rt.state.gear=0;}
+    } else if(!raceGame.prep)s.staged = s.progress >= 56 && s.progress <= 82 && !s.deep;
     if(!s.treeStarted)s.controlState=s.deep?'deep':s.staged?'stage':s.progress>=25?'pre-stage':'approach';
     const target = Number((raceGame?.carState || state).tune.launchRpm || 4200);
     // Launch ALS: with anti-lag armed (Tune -> Anti-lag not off) the two-step itself fires the ALS, as on a
@@ -4876,10 +4910,12 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     // Holding the launch button is full throttle against the two-step: that is what builds the boost you
     // leave on. It used to pass throttle: 0, so the turbo saw a closed throttle however long you held it.
     const stagePedal = racePedal();
-    const snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: stagePedal, twoStep: throttle && s.staged, alsRequest: alsHeld }) : null;
+    let snap;
+    if(raceGame.prep && s.staged){const rt=raceGame.prep.rt;const p=rt.step(dt,{pedal:throttle?stagePedal:.08,launchAls:alsHeld});s.rpm=p.rpm;snap=rt.state.turboSnap;}
+    else snap = raceGame.turbo ? raceGame.turbo.step(dt, { rpm: s.rpm, throttle: creep?.12:0, twoStep:false, alsRequest:false }) : null;
     raceGame.turboSnap = snap;
     // the tyres cool while rolling to the line and waiting on the tree
-    if (raceGame.tyreThermal) { const pr = burnoutProfile(); C.tyreThermalStep(raceGame.tyreThermal, dt, { speedMs: creep ? 1.2 : 0, ambientC: pr.ambientC, trackC: pr.trackC }); }
+    if (raceGame.tyreThermal && (!raceGame.prep || s.staged)) { const pr = burnoutProfile(); C.tyreThermalStep(raceGame.tyreThermal, dt, { speedMs: creep ? 1.2 : 0, ambientC: pr.ambientC, trackC: pr.trackC }); }
     logRaceThermal(s.treeStarted?'tree':'stage',dt,raceGame.tyreThermal);
     tickAlsFlames(snap, dt, $('#ea-stage-flames'));
     // Two-step without ALS: spark-cut launch limiter (tuned ECUs) pops small flames when hot enough.
@@ -4910,6 +4946,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     let status = 'KRUIP NAAR PRE-STAGE';
     if (s.progress >= 25) status = 'PRE-STAGE · NOG IETS VOORUIT';
     if (s.staged && !s.treeStarted) status = raceGamePointer.throttle ? (raceGame.alsInfo?.enabled ? 'GESTAGED · TWO-STEP + ANTILAG · TREE START VANZELF' : 'GESTAGED · TWO-STEP · TREE START VANZELF') : 'GESTAGED · HOUD LAUNCH VAST';
+    if(raceGame.prep&&raceGame.prep.rt.state.wetness>.2&&!s.treeStarted)status+=' · BAND NOG NAT';
     if (s.deep) status = 'TE DIEP · BEAM GEMIST';
     if (s.treeStarted) status = s.green ? 'GROEN · LAAT LOS!' : 'TREE LOOPT · HOUD VAST';
     const st = $('#v7-stage-status');
@@ -5085,8 +5122,10 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const engineMap = rs.rosterCar?.engine ? C.curveEngineMap(rs.rosterCar.engine) : C.buildEngineMap(state);
     const launchFromRpm = Number(raceGame.stage?.launchFromRpm || rs.tune.launchRpm || 4200);
     const eventTrack = raceGame?.careerRound ? { ...rs, vehicle: { ...rs.vehicle, preparedTrack: !!C.CAREER_EVENT_MAP[raceGame.careerRound.eventId]?.prep } } : rs;
-    const vehicleRt = C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, bottleKg: rs.rosterCar?.engine ? undefined : nitrousBottleKg(), launchRpm: launchFromRpm, tractionControl: rs.tune.tractionControl !== false });
-    vehicleRt.state.we = launchFromRpm * Math.PI / 30;
+    const vehicleRt = raceGame.prep?.rt || C.createRaceRuntime(eventTrack, { engineMap, turbo: raceGame?.turbo || makeRaceTurbo(), tyreTempC: raceGame.burn.tempC, tyreThermal: raceGame.tyreThermal, bottleKg: rs.rosterCar?.engine ? undefined : nitrousBottleKg(), launchRpm: launchFromRpm, tractionControl: rs.tune.tractionControl !== false });
+    raceGame.launchWorldM=vehicleRt.state.x;
+    vehicleRt.state.t=0;vehicleRt.state.x=0;vehicleRt.state.limiterS=0;vehicleRt.state.shiftLog=[];
+    if(!raceGame.prep)vehicleRt.state.we = launchFromRpm * Math.PI / 30;
     vehicleRt.launch();
     const run = {
       reactionTime: Number(reactionTime || 0), redLight: Number(reactionTime || 0) < 0,
@@ -5127,7 +5166,11 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
   }
 
   function realtimePoint(run, boostBar = 0, turboLoad = 0) {
+    const physics=run.rt.point();
     return {
+      pumpRpm:physics.pumpRpm,turbineRpm:physics.turbineRpm,outputRpm:physics.outputRpm,wheelRpm:physics.wheelRpm,gearRatio:physics.gearRatio,finalDrive:physics.finalDrive,
+      converter:physics.converter,converterLossW:physics.converterLossW,slipRatio:physics.slipRatio,clutchSlipRpm:physics.converter?0:physics.clutchSlipRpm,
+      tyreSurfaceC:physics.tyreSurfaceC,tyreBulkC:physics.tyreBulkC,wetness:physics.wetness,pedal:racePedal(),shifting:physics.shifting,limiter:physics.limiter,
       time: run.t,
       distanceM: run.x,
       speedKmh: run.v * 3.6,
@@ -5188,7 +5231,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     run.gearboxTempC += grade === 'late' ? 2.2 : grade === 'early' ? 1.6 : .8;
     run.drivelineStress += grade === 'late' ? 1.8 : grade === 'early' ? 1.2 : .4;
     // The vehicle runtime performs the shift (clutch, synchro / DSG handover / dog engagement) and its duration.
-    if (run.rt && !run.rt.requestShift()) return false;
+    if (run.rt && !run.rt.requestShift(source)) return false;
     const rtShift = run.rt?.state.shift;
     run.shifting = { from: run.gearIndex, to: run.gearIndex + 1, remaining: rtShift?.dur ?? duration, duration: rtShift?.dur ?? duration, grade, source, rpm: run.rpm, target };
     // Shift flame: DSG ignition-cut burp or flat-shift spark cut sends unburnt fuel into the
@@ -5227,7 +5270,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       const p = run.rt.step(h, { pedal: racePedal(), flatShift: !!run.flatShift, rollingAls: !!run.alsRolling, nitrous: n2oOn });
       run.t = p.t;
       run.x = p.distanceM; run.v = p.v; run.a = p.a; run.rpm = p.rpm; run.gearIndex = p.gearIndex;
-      run.wheelspin = clamp(p.slipRatio, 0, .95);
+      run.wheelspin = Math.max(0, p.slipRatio);
       run.peakWheelspin = Math.max(run.peakWheelspin, run.wheelspin);
       // a converter car has no clutch: its slip heat is in the converter fluid
       run.clutchTempC = p.converter ? p.converter.fluidC : p.clutchTempC;
@@ -5239,8 +5282,8 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
 
       const targetShift = Number(run.shiftTargets[run.gearIndex] || Number(state.tune.revLimitRpm || 8000) - 90);
       if (!run.shifting && run.gearIndex < run.transInfo.gears.length - 1) {
-        if (run.autoShift && run.rpm >= targetShift) requestRealtimeShift('dsg');
-        else if (run.driverAssist && run.rpm >= targetShift) requestRealtimeShift('ai');
+        if (run.autoShift && run.rt.shouldAutoShift(targetShift)) requestRealtimeShift('dsg');
+        else if (run.driverAssist && run.rt.shouldAutoShift(targetShift)) requestRealtimeShift('ai');
       }
       if (p.limiter) {
         run.limiterTime = p.limiterS;
@@ -5329,6 +5372,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     };
   }
   function startRace3D() {
+    if(raceGame?.r3d){$('.v8-run-game')?.classList.add('has-3d');return;}
     disposeRace3D();
     const run = raceGame?.run;
     const canvas = $('#race3d-canvas');
@@ -5358,7 +5402,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const dt = (now - (raceGame.r3dLast || now)) / 1000;
     raceGame.r3dLast = now;
     try {
-      r3d.update({ ...point, t: run.t, lateralVelocity: run.lateralVelocity }, dt);
+      r3d.update({ ...point, worldM:(raceGame.launchWorldM||0)+point.distanceM, t: run.t, lateralVelocity: run.lateralVelocity }, dt);
     } catch (e) {
       console.error('race3d', e);
       disposeRace3D();
@@ -5370,6 +5414,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
   let preRace3DOff = false; // test hook: timing-based smoke checks run the burnout/staging in 2D
   // Burnout and staging in 3D: the same renderer as the run, drawing the burnout and staging state.
   function startPreRace3D() {
+    if(raceGame?.r3d){$('#race-game-root .v8-game')?.classList.add('has-3d');return;}
     disposeRace3D();
     const canvas = $('#race3d-canvas');
     if (!raceGame?.open || !canvas || !race3DEnabled() || preRace3DOff) return;
@@ -5387,6 +5432,8 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       console.error('race3d', e);
       raceGame.r3d = null;
     }
+    raceGame.assetsReady=false;
+    const session=raceGame;Promise.resolve(raceGame.r3d?.ready).then(()=>{if(raceGame===session){const v=session.r3d?.vehicles();session.assetsReady=!!v&&v.player?.state==='ready'&&(!v.rival||v.rival.state==='ready');if(!session.assetsReady){showToast('MODEL ONTBREEKT — voorbereiding gepauzeerd.');$('#race-game-root')?.insertAdjacentHTML('beforeend','<div class="v132-asset-error" role="alert">MODEL ONTBREEKT · voorbereiding gepauzeerd. Sluit en heropen de race na herstel.</div>');}}});
     raceGame.r3dLast = performance.now();
     raceGame.burnWheelKmh = 0;
     $('#race-game-root .v8-game')?.classList.toggle('has-3d', !!raceGame.r3d);
@@ -5409,10 +5456,10 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       const b = raceGame.burn;
       const target = burnoutRuntime?.active ? firstGearTyreKmh(b.rpm) : 0;
       raceGame.burnWheelKmh += (target - raceGame.burnWheelKmh) * Math.min(1, (dt || frameDt) * 5);
-      frame = { scene: 'burnout', rpm: b.rpm, wheelSpeedKmh: raceGame.burnWheelKmh, smoke: b.smoke, tyreTempC: b.tempC, lights: [] };
+      frame = { scene: 'burnout', worldM:raceGame.prepPoint?.worldM ?? C.PREPARATION.startM, lateralM:raceGame.prepPoint?.lateralM||0, wetness:raceGame.prepPoint?.wetness, steer:(raceGamePointer.steerRight?1:0)-(raceGamePointer.steerLeft?1:0), rpm: b.rpm, wheelSpeedKmh:raceGame.prep ? raceGame.prep.rt.state.ww*raceGame.prep.rt.radiusM*3.6 : raceGame.burnWheelKmh, smoke: b.smoke, tyreTempC: b.tempC, lights: [] };
     } else {
       const s = raceGame.stage;
-      frame = { scene: 'stage', rpm: s.rpm, stageProgress: s.progress, lights: $$('[data-v7-bulb].on', $('#race-game-root')).map(n => n.dataset.v7Bulb) };
+      frame = { scene: 'stage', worldM:raceGame.prep?.rt.state.x, rpm: s.rpm, stageProgress: s.progress, lights: $$('[data-v7-bulb].on', $('#race-game-root')).map(n => n.dataset.v7Bulb) };
     }
     try { r3d.update(frame, frameDt); }
     catch (e) {
@@ -5428,9 +5475,9 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
   }
   // Ghost: the trace of the fastest valid run per drivetrain, sampled at 20 Hz ([t, distance, lateral]).
   function recordGhostSample(run, force = false) {
-    run.trace = run.trace || [];
-    const lastT = run.trace.length ? run.trace[run.trace.length - 1][0] : -1;
-    if (run.t - lastT >= .05) run.trace.push([+run.t.toFixed(3), +run.x.toFixed(2), +run.lateralM.toFixed(3)]);
+    run.ghostTrace = run.ghostTrace || [];
+    const lastT = run.ghostTrace.length ? run.ghostTrace[run.ghostTrace.length - 1][0] : -1;
+    if (run.t - lastT >= .05) run.ghostTrace.push([+run.t.toFixed(3), +run.x.toFixed(2), +run.lateralM.toFixed(3)]);
     // Replay: the full simulated state at ~30 Hz; the replay only plays back these samples.
     run.replayFrames = run.replayFrames || [];
     const lastR = run.replayFrames.length ? run.replayFrames[run.replayFrames.length - 1].t : -1;
@@ -5537,7 +5584,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const cutFraction = pt.limiter ? 1 : shiftCut ? 1 : 0;
     const cutKind = pt.limiter ? limiterCutKind() : 'spark';
     const knock = Number(pt.knockNow || 0);
-    updateEngineAudio(run.rpm, load, run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind, knock, hopOsc: pt.hopOsc || 0 } : { cutFraction, cutKind, knock, hopOsc: pt.hopOsc || 0 });
+    updateEngineAudio(run.rpm, load, run.wheelspin, snap ? { shaftPct: snap.shaftPct, boostBar: snap.boostBar, mapBar: snap.mapBarAbs, egtC: snap.egtC, lambda: snap.lambda, alsActive: snap.alsActive, alsIntensity: snap.alsIntensity, flameIntensity: snap.flame?.intensity || 0, flameSustain: snap.flameSustain || 0, popRateHz: snap.popRateHz, cutFraction, cutKind, knock, wetness:pt.wetness,slipMs:Math.abs((pt.wheelRpm||0)*Math.PI/30*run.rt.radiusM-run.v),hopOsc: pt.hopOsc || 0 } : { cutFraction, cutKind, knock, wetness:pt.wetness,slipMs:Math.abs((pt.wheelRpm||0)*Math.PI/30*run.rt.radiusM-run.v),hopOsc: pt.hopOsc || 0 });
     try { updateRivalAudio(run); } catch (e) { audioFault(e); }
     if (run.x >= 402.336 || run.t >= 35 || run.laneDnf) finishV7Run();
   }
@@ -5888,7 +5935,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       earlyShifts: run.early,
       lateShifts: run.late,
       shiftScore: run.autoShift ? 100 : Math.round(clamp(100 + run.perfect * 3 - run.early * 12 - run.late * 14 - run.missed * 18, 0, 100)),
-      shiftHistory: run.shiftHistory.slice(),
+      shiftEvents:run.rt.state.shiftLog.slice(), shiftHistory: run.shiftHistory.slice(),
       shifts: run.shiftHistory.length,
       // the car that ran: the Scirocco or a roster car from the garage
       rosterId: (raceGame?.carState || state).rosterCar?.id || null,
@@ -5966,7 +6013,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     const key=state.vehicle.drivetrain;
     if(result.valid&&(!state.records?.[key]||result.quarter<state.records[key].quarter)){
       state.records=state.records||{FWD:null,RWD:null,AWD:null};state.records[key]={...result,at:result.measuredAt};
-      const trace=raceGame?.run?.trace;
+      const trace=raceGame?.run?.ghostTrace;
       if(Array.isArray(trace)&&trace.length>20)state.ghost={drivetrain:key,quarter:result.quarter,at:result.measuredAt,trace:trace.slice(0,900)};
       pushHistory({type:'record',label:`Nieuw ${key}-record: ${measured(result.quarter,3)} s`,et:result.quarter,trap:result.trapKmh});
     }
@@ -6842,7 +6889,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       const announce = offerUndo([['selections', btn.dataset.partCat]], `${cat?.short || 'Onderdeel'}: ${oldName} → ${newName}`);
       state.selections[btn.dataset.partCat] = btn.dataset.partId;
       if (['turbo','fuelSystem','fuel','head','block','valvetrain'].includes(btn.dataset.partCat)) state.tune.ecu=null;
-      if (btn.dataset.partCat === 'transmission') { state.tune.gearRatios=null; state.tune.finalDrive=null; state.tune.converterStallRpm=null; }
+      if (btn.dataset.partCat === 'transmission') { state.tune.gearRatios=null; state.tune.finalDrive=null; state.tune.converterStallRpm=null; state.tune.converterId=null; state.tune.shiftRpms=null; }
       if (btn.dataset.partCat === 'fuelSystem' && C.workshopDefinition(state)) {
         const fs=C.engineHardware(state).fuelSys; state.tune.railTargetBar=fs.nominalPressureBar || fs.mpiPressureBar || state.tune.railTargetBar;
       }
@@ -7126,7 +7173,9 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     showroomClay: on => { showroom?.clay(on); return true; },
     qaDrive: id => { if(!QA_PROFILE || raceGame?.open || dynoRunning || mapJob || adviceJob || gripJob)return false; selectWorkshopCar(id); saveState(); activeTab='bank';render();return state.garage.active===id; },
     qaCloseRace: () => { if(!QA_PROFILE)return false;closeDragGame();render();return true; },
-    qaStartRun: () => { if(!QA_PROFILE)return false; startDragGame(); if(!raceGame?.open)return false; startV7Run(.12,true); return true; },
+    qaStartPreparation:()=>{if(!QA_PROFILE)return false;startDragGame();return !!raceGame?.open;},
+    preparation:()=>raceGame?.prep?cloneJson({point:raceGame.prepPoint,state:raceGame.prep.state,physical:raceGame.prep.rt.point(),assetsReady:raceGame.assetsReady}):null,
+    qaStartRun: () => { if(!QA_PROFILE)return false; startDragGame(); if(!raceGame?.open)return false; delete raceGame.prep; startV7Run(.12,true); return true; },
     holdFinishForTest: on => { holdFinishForTest = !!on; return holdFinishForTest; },
     setGraphics3dForTest: on => { state.settings.graphics3d = !!on; saveState(); return state.settings.graphics3d; },
     ecu: () => cloneJson(state.tune.ecu ? { edited: state.tune.ecu.edited, spark: state.tune.ecu.spark, boost: state.tune.ecu.boost, baseMapFor: state.tune.ecu.baseMapFor } : null),
@@ -7145,7 +7194,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     owned: () => cloneJson(state.owned || {}),
     garage: () => cloneJson(C.garageOf(state)),
     rosterRival: id => { const p = RIVALS[`roster:${id}`]; if (!p) return null; const e = rivalPass(p); return { quarter: e.quarter, trapKmh: e.trapKmh, sixtyFt: e.sixtyFt, peakHp: e.peakHp, record: C.rosterRecord(state, id) }; },
-    enterStageForTest: () => { if (!raceGame?.open) return false; enterV7Stage(); return true; },
+    enterStageForTest: () => { if (!raceGame?.open) return false; raceGame.prep=C.createPreparationRuntime(raceGame.carState||raceCarState());raceGame.prep.rt.state.x=-.115;raceGame.prep.rt.state.v=0;enterV7Stage(); return true; },
     thermalLog: () => raceGame?.thermalLog || [],
     stageState: () => raceGame?.stage ? { controlState:raceGame.stage.controlState,timing:raceGame.stage.timing,progress: raceGame.stage.progress, staged: raceGame.stage.staged, rpm: raceGame.stage.rpm, treeStarted: raceGame.stage.treeStarted, green: !!raceGame.stage.green, launchArmed: !!raceGame.stage.launchArmed, launched: !!raceGame.stage.launched, launchFromRpm: raceGame.stage.launchFromRpm || 0 } : null,
     raceReaction: () => raceGame?.run ? { reactionTime: raceGame.run.reactionTime, redLight: raceGame.run.redLight, startRpm: raceGame.run.startRpm, launchTargetRpm: Number(state.tune.launchRpm || 4200) } : null,
