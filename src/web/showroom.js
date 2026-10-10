@@ -3,12 +3,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildVehicle, releaseTree } from './vehicles.js';
 import Vehicles from '../assets/vehicle-assets.js';
 
-export function createShowroom(canvas,{carId,onStatus,envFactory}={}) {
+export function createShowroom(canvas,{carId,onStatus,envFactory,wheelSetup}={}) {
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)); renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   const scene=new THREE.Scene(); scene.background=new THREE.Color(0x171e27);
-  const envMap=envFactory(renderer), car=buildVehicle({carId,envMap,onStatus,model:true}); scene.add(car.root);
+  const envMap=envFactory(renderer), car=buildVehicle({carId,envMap,onStatus,wheelSetup,model:true}); scene.add(car.root);
   scene.add(new THREE.HemisphereLight(0xe4ecff,0x54505a,2));
   for (const [x,y,z,k] of [[-5,8,-4,3],[5,5,3,2]]) {
     const light=new THREE.DirectionalLight(0xffffff,k); light.position.set(x,y,z); scene.add(light);

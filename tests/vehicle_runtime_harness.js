@@ -25,3 +25,12 @@ window.checkVehicleResources=async()=>{
   const missing=buildVehicle({carId:'missing-model'});await missing.ready;check(missing.status.state==='fallback','missing model explicit');missing.dispose();
   renderer.dispose();renderer.forceContextLoss();return report;
 };
+window.checkWheelSetup=async()=>{
+ const report=[];
+ for(const id of ['crc12_jackstand_240','eagle','mullet','mcflurry','lumberjack']){
+  const car=buildVehicle({carId:id,wheelSetup:{radius:.43,width:.43}});await car.ready;car.root.updateMatrixWorld(true);
+  for(const i of [2,3]){const bounds=new THREE.Box3().setFromObject(car.wheels[i]);check(Math.abs(bounds.min.y)<.004,id+' tyre meets ground');check(Math.abs(bounds.max.y-.86)<.004,id+' actual diameter');}
+  check(car.radii[2]===.43,id+' rotation radius');report.push({id,radius:car.radii[2],widthScale:car.wheels[2].scale.x});car.dispose();
+ }
+ return report;
+};

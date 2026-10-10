@@ -35,7 +35,10 @@ export function buildVehicle({ carId = 'scirocco', onStatus, ...opts } = {}) {
   const tailMat = new THREE.MeshStandardMaterial({ color: 0x701515, emissive: 0x550000 });
   const wheels = [], steering = [], tips = [];
   const d = spec?.dimensions || { wheelbase: 2.6, track: 1.55, length: 4.6 };
-  const radii = spec?.wheels.radii || [.32,.32,.36,.36];
+  const radii = [...(spec?.wheels.radii || [.32,.32,.36,.36])];
+  const originalRadii=radii.slice();
+  const setup=opts.wheelSetup;
+  if(setup && Number.isFinite(setup.radius))for(const i of [2,3])radii[i]=THREE.MathUtils.clamp(setup.radius,.25,.5);
   for (let i=0; i<4; i++) {
     const pivot = new THREE.Group(), spin = new THREE.Group();
     pivot.position.set((i%2 ? 1 : -1)*d.track/2,radii[i],(i<2 ? -1:1)*d.wheelbase/2);
@@ -72,10 +75,13 @@ export function buildVehicle({ carId = 'scirocco', onStatus, ...opts } = {}) {
         }
         o.castShadow=false; o.receiveShadow=false;
       });
-      nodes.forEach((node,i) => { node.removeFromParent(); node.position.set(0,0,0); wheels[i].add(node); });
+      nodes.forEach((node,i) => { node.removeFromParent(); node.position.set(0,0,0); wheels[i].add(node);
+        if(setup&&i>=2){const ratio=radii[i]/originalRadii[i];wheels[i].scale.set(THREE.MathUtils.clamp(setup.width,.15,.5)/.315,ratio,ratio);}
+      });
+      if(setup){const rearDelta=radii[2]-originalRadii[2];body.position.y=rearDelta/2;body.rotation.x=-rearDelta/d.wheelbase;}
       spec.wheels.names.forEach((name,i) => {
         const caliper=gltf.scene.getObjectByName(`caliper_${name}`);
-        if(caliper){caliper.removeFromParent();caliper.position.sub(steering[i].position);steering[i].add(caliper);}
+        if(caliper){caliper.removeFromParent();caliper.position.y+=radii[i]-originalRadii[i];caliper.position.sub(steering[i].position);steering[i].add(caliper);}
       });
       body.remove(fallback); releaseTree(fallback); body.add(gltf.scene);
       return report('ready');
