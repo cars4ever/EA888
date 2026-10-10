@@ -39,4 +39,20 @@ with sync_playwright() as pw:
  assert p.evaluate('__EA888_DEBUG__.saveSnapshot().bank')==10000000
  p.locator('[data-action=confirm-starter]').click();p.evaluate('__EA888_DEBUG__.flushSave()');p.reload();p.wait_for_function('!!window.__EA888_DEBUG__');assert p.evaluate('__EA888_DEBUG__.profile().name')=='Mijn echte werkplaats'
  p.screenshot(path=str(OUT/'workshop-budget.png'));result['uiProfileSurvivesRestart']=True;result['errors']=errors;assert not errors
+ # Real application migration from the old root key, not only the Store API.
+ legacy=p.evaluate("()=>{const C=EA888Core;let s=C.switchGarageCar(C.createVehicleQA(),'crc12_jackstand_240');s.bank=3139;s.wear.engine=17;s.service.oilAgeKm=314;return C.persistGarageState(s);}")
+ c2=b.new_context(viewport={'width':412,'height':892});serve_assets(c2,Path('build/web').resolve())
+ c2.add_init_script("if(!localStorage.getItem('audit-seeded')){localStorage.setItem('ea888_lab_v120_state',"+json.dumps(json.dumps(legacy))+");localStorage.setItem('audit-seeded','1');}")
+ q=c2.new_page();q.goto(APP_ORIGIN+'/assets/index.html');q.wait_for_function('!!window.__EA888_DEBUG__')
+ migrated=q.evaluate('EA888Core.restoreGarageState(__EA888_DEBUG__.saveSnapshot())');assert migrated['bank']==10000000 and migrated['wear']['engine']==17 and migrated['service']['oilAgeKm']==314
+ assert q.evaluate("JSON.parse(localStorage.getItem('ea888_lab_v120_state')).bank")==3139
+ q.screenshot(path=str(OUT/'actual-legacy-workshop-migration.png'));result['actualLegacyWorkshop']=True
+ # Create a distinct latest snapshot, corrupt it, restart, and recover through visible controls.
+ q.evaluate("async()=>{const d=__EA888_DEBUG__,s=d.saveSnapshot();s.bank-=650;await d.saveStore().commit(d.profile().id,s,'Onderhoud');}")
+ q.reload();q.wait_for_function('!!window.__EA888_DEBUG__');assert q.evaluate('__EA888_DEBUG__.saveSnapshot().bank')==9999350
+ q.evaluate("async()=>{const d=__EA888_DEBUG__,store=d.saveStore(),id=d.profile().current;await store.transaction('readwrite',x=>{const r=x.snapshots.get(id);r.onsuccess=()=>{const s=r.result;s.payload+='broken';x.snapshots.put(s);};});}")
+ q.reload();q.wait_for_function('!!window.__EA888_DEBUG__');assert q.evaluate('!!__EA888_DEBUG__.saveSnapshot().saveRecoveryError')
+ q.locator('[data-action=game-manager]').first.click();q.wait_for_selector('[data-load-ref]');q.screenshot(path=str(OUT/'corrupt-save-recovery.png'))
+ good=q.evaluate('__EA888_DEBUG__.profile().lastGood');q.locator('[data-load-ref="'+good+'"]').first.click();q.locator('[data-confirm-load]').click();q.wait_for_function('!__EA888_DEBUG__.saveSnapshot().saveRecoveryError');assert q.evaluate('__EA888_DEBUG__.saveSnapshot().bank')==10000000
+ result['recoveryThroughUI']=True;c2.close()
  (OUT/'report.json').write_text(json.dumps(result,indent=2));print(result);b.close()

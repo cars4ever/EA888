@@ -53,7 +53,8 @@
     ledgerBank=state.bank;saveStatus='Opgeslagen';
   } catch(e) {
     state.saveRecoveryError=e.message;state.vehicleSelectionNotice='Opslag niet beschikbaar: '+e.message+' Je oude save is behouden. Open Spelbeheer voor herstel.';
-    saveStatus='Opslagfout';
+    saveStatus='Opslagfout: '+e.message;
+    try{profileInfo=await saveStore?.activeMetadata(QA_PROFILE);}catch(_){}
   }
   let activeTab = 'bank';
   let starterId = 'scirocco', showroom = null, afterRenderRaf = 0;
@@ -392,10 +393,11 @@
     burnoutRuntime=null;rivalCache.clear();closeModal();
   }
   async function loadProfile(id,ref='current') {
-    if(!state.saveRecoveryError)await flushSave('Voor profielwissel');
     const loaded=await saveStore.read(id,ref);
+    endProfileSession();
+    if(!state.saveRecoveryError)await flushSave('Voor profielwissel');
     if(ref!=='current')loaded.profile=await saveStore.commit(id,loaded.state,'Herstelkopie geladen');
-    endProfileSession();await saveStore.activate(id);
+    await saveStore.activate(id);
     const url=new URL(location.href);url.searchParams.delete('profile');history.replaceState(null,'',url);
     state=C.restoreGarageState(loaded.state);delete state.saveRecoveryError;
     profileInfo=loaded.profile;QA_PROFILE=state.gameMode==='qa';ledgerBank=state.bank;saveDirty=false;saveStatus='Geladen';
@@ -406,7 +408,7 @@
     if(!saveStore?.db)return showToast('Profielopslag niet beschikbaar. Exporteer eerst je bestaande save.');
     try {
       const profiles=await saveStore.list(),p=profiles.find(x=>x.id===profileInfo?.id);
-      const summary=x=>`${esc({workshop:'Werkplaats',career:'Carrière',qa:'QA'}[x.summary?.mode||x.mode]||'Werkplaats')} · ${esc(V.get(x.summary?.carId||'scirocco').name)} · ${euro(x.summary?.bank||0)}<br>${esc(new Date(x.at||x.updatedAt).toLocaleString('nl-NL'))} · v${esc(x.version||APP_VERSION)}`;
+      const summary=x=>`${esc({workshop:'Werkplaats',career:'Carrière',qa:'QA'}[x.summary?.mode||x.mode]||'Werkplaats')} · ${esc((V.get(x.summary?.carId||'scirocco')?.name||x.summary?.carId||'Onbekende auto'))} · ${euro(x.summary?.bank||0)}<br>${esc(new Date(x.at||x.updatedAt).toLocaleString('nl-NL'))} · v${esc(x.version||APP_VERSION)}`;
       showModal('Spel opslaan / laden',`<p role="status">${esc(saveStatus)}</p><div class="button-row"><button class="btn" data-action="game-save">Opslaan</button><button class="btn secondary" data-action="game-duplicate">Opslaan als / dupliceren</button><button class="btn secondary" data-action="game-new">Nieuw spel</button></div>
         <h3>Profielen · doorgaan met laatst gebruikte</h3>${profiles.map(x=>`<div class="save-row"><div><b>${esc(x.name)}${x.id===p?.id?' · actief':''}</b><small>${summary(x)}</small></div><button class="btn small" data-load-profile="${esc(x.id)}">${x.id===p?.id?'Doorgaan':'Laden'}</button>${x.id!==p?.id?`<button class="btn danger small" data-delete-profile="${esc(x.id)}">Verwijderen</button>`:''}</div>`).join('')}
         ${p?`<h3>Vijf handmatige saves · ${esc(p.name)}</h3>${p.slots.map((x,i)=>`<div class="save-row"><div><b>${esc(x?.name||'Leeg slot '+(i+1))}</b>${x?`<small>${summary(x)}</small>`:''}</div><button class="btn small" data-save-slot="${i}">${x?'Overschrijven':'Opslaan als'}</button>${x?`<button class="btn secondary small" data-load-profile="${p.id}" data-load-ref="${x.ref}">Laden</button><button class="btn danger small" data-delete-slot="${i}">Verwijderen</button>`:''}</div>`).join('')}

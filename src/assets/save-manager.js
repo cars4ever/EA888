@@ -66,6 +66,7 @@
       return validate(this.codec.parse(snap.payload));
     }
     list(){return this.transaction('readonly',s=>request(s.profiles.getAll()));}
+    activeMetadata(qa=false){return this.transaction('readonly',async s=>{const meta=await request(s.meta.get('lastActive'));return request(s.profiles.get(qa?'vehicle-qa':meta?.value||'legacy-workshop'));});}
     async read(id,ref='current'){
       const pair=await this.transaction('readonly',async s=>{const p=await request(s.profiles.get(id));if(!p)throw new Error('Profiel niet gevonden.');
         const allowed=[p.current,p.lastGood,p.migrationBackup,...(p.autos||[]).map(x=>x.ref),...(p.slots||[]).filter(Boolean).map(x=>x.ref)];
@@ -114,6 +115,7 @@
     async bootstrap(legacy,qa){
       let profiles=await this.list();
       if(!qa && !profiles.some(p=>p.mode!=='qa')){
+        if(legacy.saveRecoveryError)throw new Error(legacy.saveRecoveryError);
         // v1.30 used one root key for workshop and career, without a mode bit.
         // Preserve a separately loadable, uncredited career copy as well as the
         // exact immutable localStorage original before granting workshop money.
