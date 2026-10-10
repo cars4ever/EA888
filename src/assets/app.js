@@ -1122,7 +1122,7 @@
 
   function engineShiftPop(intensity = .6, shiftType = 'auto') {
     try {
-      if (!state.settings?.sound) return;
+      if (!state.settings?.sound || shiftType === 'converter') return;
       const audio = ensureEngineAudio('race');
       if (!audio) return;
       const dsg = shiftType === 'dsg' || (shiftType === 'auto' && isDsgTransmission());
@@ -1134,12 +1134,12 @@
           // "burp" is that unburnt charge going off in the exhaust). Manual shifts are the throttle lift and
           // cut the race runtime reports; only the blow-off valve is a sample.
           if (dsg) audio.synth.node.port.postMessage({ type: 'cut', kind: 'spark', fraction: .5, durationS: .085 });
-          playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
+          if(!C.getPart(raceGame?.carState||state,'turbo').naturallyAspirated)playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
           return;
         }
         const name = dsg ? 'shift_dsg' : 'shift_manual';
         playSampleOneShot(audio, name, (dsg ? .48 : .40) * clamp(intensity, .2, 1.3), dsg ? .98 : 1.02);
-        playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
+        if(!C.getPart(raceGame?.carState||state,'turbo').naturallyAspirated)playSampleOneShot(audio, 'blowoff', .16 * clamp(intensity, .3, 1.2), .9 + audio.lastLoad * .16, dsg ? .035 : .018);
         audio.engineBusGain.gain.cancelScheduledValues(t);
         audio.engineBusGain.gain.setValueAtTime(Math.max(.28, audio.engineBusGain.gain.value), t);
         audio.engineBusGain.gain.setTargetAtTime(dsg ? .18 : .08, t + .006, .012);
@@ -5203,7 +5203,8 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     run.gearboxTempC += run.autoShift ? 1.4 : 2.2;
     run.drivelineStress += shift.grade === 'perfect' ? .8 : shift.grade === 'good' ? 1.3 : 2.4;
     run.shifting = null;
-    const type = run.autoShift ? 'dsg' : 'manual';
+    const type = run.converter ? 'converter' : run.autoShift ? 'dsg' : 'manual';
+    const event=run.rt?.state.shiftLog?.at(-1);if(event)event.audio={at:run.t,contextTime:engineAudio?.ctx?.currentTime??null,policy:type==='converter'?'continuous under-load RPM':type,enabled:!!state.settings?.sound};
     engineShiftPop(shift.grade === 'perfect' ? 1 : shift.grade === 'late' ? .82 : .68, type);
     const car = $('#v7-run-car');
     if (car) { car.classList.remove('shift-pop'); void car.offsetWidth; car.classList.add('shift-pop'); setTimeout(() => car.classList.remove('shift-pop'), 150); }
@@ -5225,7 +5226,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     else if (delta < -145) { label = 'VROEGE SHIFT'; grade = 'good'; run.good++; }
     else if (delta > 420) { label = 'TE LAAT · BEGRENZER'; grade = 'late'; run.late++; }
     else { label = 'GOEDE SHIFT'; grade = 'good'; run.good++; }
-    if (source === 'dsg') { label = activeRosterId() ? 'AUTOMAAT SHIFT' : 'DSG SHIFT'; grade = 'perfect'; run.perfect++; }
+    if (source === 'dsg' || source === 'automatic') { label = activeRosterId() ? 'AUTOMAAT SHIFT' : 'DSG SHIFT'; grade = 'perfect'; run.perfect++; }
     if (source === 'ai' && grade !== 'perfect') { label = 'AI SHIFT'; grade = 'good'; run.good++; }
     const duration = run.transInfo.shiftSeconds * (grade === 'late' ? 1.05 : grade === 'early' ? 1.08 : 1);
     run.gearboxTempC += grade === 'late' ? 2.2 : grade === 'early' ? 1.6 : .8;
@@ -5238,7 +5239,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     // exhaust; a late shift near the limiter carries more fuel and heat. A throttle lift on an
     // ECU without flat-shift cuts fuel instead, so there is little to ignite.
     const snap = run.turboSnap;
-    if (snap) {
+    if (snap && !run.converter) {
       const cutS = (run.autoShift ? .035 : run.flatShift ? .08 : .02) * (grade === 'late' ? 1.8 : 1);
       const unburnt = run.flatShift || run.autoShift ? (grade === 'late' ? .75 : .5) : .12;
       run.pendingFlames.push(C.exhaustFlameEvent({ kind: grade === 'late' ? 'shift-late' : 'shift', egtC: snap.egtC, fuelGps: snap.fuelGps, cutS, unburntFraction: unburnt, severity: grade === 'late' ? .85 : grade === 'early' ? .3 : .2 }));
@@ -5282,7 +5283,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
 
       const targetShift = Number(run.shiftTargets[run.gearIndex] || Number(state.tune.revLimitRpm || 8000) - 90);
       if (!run.shifting && run.gearIndex < run.transInfo.gears.length - 1) {
-        if (run.autoShift && run.rt.shouldAutoShift(targetShift)) requestRealtimeShift('dsg');
+        if (run.autoShift && run.rt.shouldAutoShift(targetShift)) requestRealtimeShift(run.converter?'automatic':'dsg');
         else if (run.driverAssist && run.rt.shouldAutoShift(targetShift)) requestRealtimeShift('ai');
       }
       if (p.limiter) {
@@ -5577,7 +5578,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     tickAlsFlames(snap, scaledDt, carHost);
     const egtNode = $('#v13-run-egt'); if (egtNode && snap) egtNode.textContent = `${Math.round(snap.egtC)}°C`;
     const shaftNode = $('#v13-run-shaft'); if (shaftNode && snap) shaftNode.textContent = `${Math.round(snap.shaftPct)}%${snap.alsActive ? ' ALS' : ''}`;
-    const load = run.shifting ? .15 : racePedal();
+    const load = run.shifting && !run.converter ? .15 : racePedal();
     // Cuts come from the vehicle runtime: the rev limiter, and the ignition cut of a flat/dog shift.
     const pt = run.point || {};
     const shiftCut = pt.shifting && !run.autoShift && (run.flatShift || selectedTransmissionId() === 'sequential');

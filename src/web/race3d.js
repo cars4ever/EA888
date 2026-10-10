@@ -403,6 +403,7 @@ function makeSmoke(scene) {
   return {
     // o: { life, grow, vz, wind } for the burnout (big, slow, long-lived clouds thrown back by the tyre)
     spawn(pos, strength, o = null) {
+      strength=THREE.MathUtils.clamp(Number(strength)||0,0,1);
       const p = pool[next]; next = (next + 1) % pool.length;
       p.s.position.copy(pos); p.s.visible = true;
       p.life = 0; p.max = (o?.life || 1.4) + Math.random() * (o?.life || 1.4);
@@ -792,14 +793,16 @@ export function create(canvas, opts = {}) {
       if (g) { ghost.root.position.set(g[2], 0.002, -g[1]); ghost.root.visible = Math.abs(g[1] - d) > 0.8; }
     }
     // Tyre smoke from the driven wheels: rate and density follow the simulated wheelspin.
-    if (spin > .06) {
-      smokeAcc += dt * (10 + spin * 60);
+    // Telemetry may exceed 100% tyre slip. Particle opacity is a separate normalized signal.
+    const smokeK=THREE.MathUtils.clamp(Math.abs(v*spin)/20,0,1)*THREE.MathUtils.clamp(((frame.tyreSurfaceC??100)-55)/100,0,1)*(1-THREE.MathUtils.clamp(frame.wetness||0,0,1));
+    if (smokeK > .04) {
+      smokeAcc += dt * smokeK * 45;
       while (smokeAcc >= 1) {
         smokeAcc -= 1;
         const w = player.wheels[driven[(Math.random() * driven.length) | 0]];
         w.getWorldPosition(tmp);
         tmp.y = .18; tmp.x += (tmp.x > player.root.position.x ? .2 : -.2);
-        smoke.spawn(tmp, spin);
+        smoke.spawn(tmp, smokeK);
       }
     }
     const fl = flames.update(dt, time);
