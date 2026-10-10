@@ -1072,3 +1072,6 @@ body.race-game-open #toast {top:calc(75px + var(--safe-top));bottom:auto;pointer
 .v8-run-game .v10-steer-button span {font-size:22px;}
 .naturally-aspirated .v8-round-gauge:not(.v15-throttle-gauge) {display:none;}
 .naturally-aspirated .v13-turbo-hud span:has(#v13-stage-shaft),.naturally-aspirated .v13-turbo-hud span:has(#v13-stage-als),.naturally-aspirated .v13-turbo-hud span:has(#v13-stage-wear) {display:none;}
+
+/* The compact digital RPM readout replaces the overlapping dial numerals. */
+.v8-run-game .v7-tach-numbers {display:none;}
