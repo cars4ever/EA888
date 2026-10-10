@@ -26,7 +26,7 @@ public class NativeBridge {
     /** Opens the system "save as" dialog; the result arrives in window.__ea888OnFileSaved(ok). */
     @JavascriptInterface
     public void saveFile(String suggestedName, String content) {
-        if (content == null || content.length() > 5_000_000) return;
+        if (content == null || content.length() > 60_000_000) { activity.deliver("__ea888OnFileSaved", "false"); return; }
         String name = suggestedName == null ? "ea888-lab-backup.json" : suggestedName.replaceAll("[^A-Za-z0-9._-]", "_");
         synchronized (this) { pendingSave = content; }
         final boolean csv = name.toLowerCase(java.util.Locale.ROOT).endsWith(".csv");

@@ -1,10 +1,10 @@
-(function () {
+(async function () {
   'use strict';
 
   const C = window.EA888Core;
   const V = window.EA888Vehicles;
   const SaveCodec = window.EA888SaveCodec || JSON;
-  const QA_PROFILE = new URLSearchParams(location.search).get('profile') === 'vehicle-qa';
+  let QA_PROFILE = new URLSearchParams(location.search).get('profile') === 'vehicle-qa';
   const STORAGE_KEY = QA_PROFILE ? 'ea888_vehicle_qa_v1' : 'ea888_lab_v120_state';
   const LEGACY_KEYS = ['ea888_lab_v110_state', 'ea888_lab_v100_state', 'ea888_lab_v090_state', 'ea888_lab_v080_state', 'ea888_lab_v070_state', 'ea888_lab_v060_state', 'ea888_lab_v050_state', 'ea888_lab_v040_state', 'ea888_lab_v030_state', 'ea888_lab_v020_state'];
   const APP_VERSION = '1.3.3';
@@ -43,6 +43,18 @@
   };
 
   let state = loadState();
+  const Saves = window.EA888Saves;
+  let saveStore=null, profileInfo=null, saveTimer=null, savePending=Promise.resolve(), saveStatus='Nog niet opgeslagen', saveDirty=false;
+  let ledgerBank=state.bank;
+  try {
+    saveStore=await new Saves.Store(C,SaveCodec,APP_VERSION).open();
+    const loaded=await saveStore.bootstrap(C.persistGarageState(state),QA_PROFILE);
+    state=C.restoreGarageState(loaded.state);profileInfo=loaded.profile;QA_PROFILE=state.gameMode==='qa';
+    ledgerBank=state.bank;saveStatus='Opgeslagen';
+  } catch(e) {
+    state.saveRecoveryError=e.message;state.vehicleSelectionNotice='Opslag niet beschikbaar: '+e.message+' Je oude save is behouden. Open Spelbeheer voor herstel.';
+    saveStatus='Opslagfout';
+  }
   let activeTab = 'bank';
   let starterId = 'scirocco', showroom = null, afterRenderRaf = 0;
   let activeCategory = 'turbo';
@@ -307,7 +319,7 @@
       fresh.version = 12;
       fresh.settings.sound = true;
       fresh.buildSlots = [null, null, null];
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh)); } catch (e) { /* no-op */ }
+
       return C.restoreGarageState(fresh);
     }
 
@@ -341,19 +353,97 @@
       loaded.settings = { ...loaded.settings, sound: true };
     }
 
-    try { localStorage.setItem(STORAGE_KEY, SaveCodec.stringify(loaded)); } catch (e) { /* no-op */ }
+
     return C.restoreGarageState(loaded);
   }
 
-  function saveState() {
-    if (state.saveRecoveryError) return; // retain unreadable bytes until explicit restore/reset
-    state = C.normalizeState(state);
-    const packed = C.persistGarageState(state);
-    state.garage = packed.garage;
-    try { localStorage.setItem(STORAGE_KEY, SaveCodec.stringify(packed)); } catch (e) {
-      showToast('Opslaan is mislukt: exporteer je volledige back-up via Data voordat je afsluit.');
+  function saveState(reason) {
+    if (state.saveRecoveryError || !profileInfo) return;
+    if (state.bank!==ledgerBank) {
+      const before=ledgerBank;ledgerBank=state.bank;
+      state.moneyLedger=[{at:new Date().toISOString(),reason:reason||state.history?.[0]?.label||'Spelactie',before,after:state.bank,delta:state.bank-before},...(state.moneyLedger||[])].slice(0,200);
     }
+    saveDirty=true;saveStatus='Wijzigingen nog niet opgeslagen';
+    clearTimeout(saveTimer);saveTimer=setTimeout(()=>flushSave(reason).catch(()=>{}),400);
   }
+  async function flushSave(reason='Voortgang',slot=null,name='') {
+    clearTimeout(saveTimer);saveTimer=null;
+    if(state.saveRecoveryError || !profileInfo)throw new Error(state.saveRecoveryError||'Geen profiel geopend.');
+    if(!saveDirty && slot===null)return savePending;
+    const id=profileInfo.id,packed=C.persistGarageState(state);
+    state.garage=packed.garage;saveDirty=false;saveStatus='Bezig met opslaan…';
+    const job=savePending.catch(()=>{}).then(()=>saveStore.commit(id,packed,reason,slot,name));
+    savePending=job;
+    try {
+      const p=await job;if(profileInfo?.id===id){profileInfo=p;saveStatus=saveDirty?'Wijzigingen nog niet opgeslagen':'Opgeslagen '+new Date().toLocaleTimeString('nl-NL');}
+      return p;
+    } catch(e) {saveDirty=true;saveStatus='Opslaan mislukt: '+e.message;showToast(saveStatus+' De vorige geldige save blijft behouden.');throw e;}
+  }
+  function profileLabel(){return {workshop:'Werkplaats',career:'Carrière',qa:'QA'}[state.gameMode]||'Werkplaats';}
+  function profileBanner(){return `<div class="profile-banner"><button class="btn ghost small" data-action="game-manager">Spelbeheer</button><span><b>${esc(profileInfo?.name||'Herstel nodig')}</b> · ${profileLabel()}${state.settings.freeBuild?' · Vrij bouwen: onderdelen gratis':''}</span><strong>${euro(state.bank)}</strong></div>`;}
+
+  function endProfileSession() {
+    if(dynoRunning)abortDyno();
+    if(raceGame?.open)closeDragGame();
+    stopBurnout({silent:true});clearTreeTimers();treeSession=null;
+    stopEngineAudio({hard:true});
+    raceGamePointerMap.clear();for(const k of Object.keys(raceGamePointer))raceGamePointer[k]=false;
+    rangeEdit=null;pendingLimit=null;sliderDrag=null;mapJob=null;adviceJob=null;gripJob=null;
+    burnoutRuntime=null;rivalCache.clear();closeModal();
+  }
+  async function loadProfile(id,ref='current') {
+    if(!state.saveRecoveryError)await flushSave('Voor profielwissel');
+    const loaded=await saveStore.read(id,ref);
+    if(ref!=='current')loaded.profile=await saveStore.commit(id,loaded.state,'Herstelkopie geladen');
+    endProfileSession();await saveStore.activate(id);
+    const url=new URL(location.href);url.searchParams.delete('profile');history.replaceState(null,'',url);
+    state=C.restoreGarageState(loaded.state);delete state.saveRecoveryError;
+    profileInfo=loaded.profile;QA_PROFILE=state.gameMode==='qa';ledgerBank=state.bank;saveDirty=false;saveStatus='Geladen';
+    pendingOilId=state.service.oilId;pendingFilterId=state.service.filterId;activeTab='bank';starterId='scirocco';
+    render();return loaded;
+  }
+  async function showGameManager() {
+    if(!saveStore?.db)return showToast('Profielopslag niet beschikbaar. Exporteer eerst je bestaande save.');
+    try {
+      const profiles=await saveStore.list(),p=profiles.find(x=>x.id===profileInfo?.id);
+      const summary=x=>`${esc({workshop:'Werkplaats',career:'Carrière',qa:'QA'}[x.summary?.mode||x.mode]||'Werkplaats')} · ${esc(V.get(x.summary?.carId||'scirocco').name)} · ${euro(x.summary?.bank||0)}<br>${esc(new Date(x.at||x.updatedAt).toLocaleString('nl-NL'))} · v${esc(x.version||APP_VERSION)}`;
+      showModal('Spel opslaan / laden',`<p role="status">${esc(saveStatus)}</p><div class="button-row"><button class="btn" data-action="game-save">Opslaan</button><button class="btn secondary" data-action="game-duplicate">Opslaan als / dupliceren</button><button class="btn secondary" data-action="game-new">Nieuw spel</button></div>
+        <h3>Profielen · doorgaan met laatst gebruikte</h3>${profiles.map(x=>`<div class="save-row"><div><b>${esc(x.name)}${x.id===p?.id?' · actief':''}</b><small>${summary(x)}</small></div><button class="btn small" data-load-profile="${esc(x.id)}">${x.id===p?.id?'Doorgaan':'Laden'}</button>${x.id!==p?.id?`<button class="btn danger small" data-delete-profile="${esc(x.id)}">Verwijderen</button>`:''}</div>`).join('')}
+        ${p?`<h3>Vijf handmatige saves · ${esc(p.name)}</h3>${p.slots.map((x,i)=>`<div class="save-row"><div><b>${esc(x?.name||'Leeg slot '+(i+1))}</b>${x?`<small>${summary(x)}</small>`:''}</div><button class="btn small" data-save-slot="${i}">${x?'Overschrijven':'Opslaan als'}</button>${x?`<button class="btn secondary small" data-load-profile="${p.id}" data-load-ref="${x.ref}">Laden</button><button class="btn danger small" data-delete-slot="${i}">Verwijderen</button>`:''}</div>`).join('')}
+        <h3>Herstellen</h3>${[...(p.autos||[]),{name:'Laatst bekende goede save',ref:p.lastGood},...(p.migrationBackup?[{name:'Origineel vóór budget-/profielmigratie',ref:p.migrationBackup}]:[])].map(x=>`<div class="save-row"><div><b>${esc(x.name)}</b>${x.summary?`<small>${summary(x)}</small>`:''}</div><button class="btn secondary small" data-load-profile="${p.id}" data-load-ref="${x.ref}">Herstellen</button></div>`).join('')}`:''}
+        <div class="button-row"><button class="btn" data-action="backup-save">Volledige save exporteren</button><button class="btn secondary" data-action="backup-open">Importeren als apart profiel</button>${state.gameMode==='workshop'?'<button class="btn secondary" data-action="budget-confirm">Budget aanvullen tot 10 miljoen</button>':''}</div>
+        <details><summary>Geldlogboek</summary>${(state.moneyLedger||[]).map(x=>`<p><b>${esc(x.reason)}</b><br>${euro(x.before)} → ${euro(x.after)} (${x.delta>=0?'+':''}${euro(x.delta)}) · ${esc(new Date(x.at).toLocaleString('nl-NL'))}</p>`).join('')||'Nog geen geldmutaties.'}</details>`);
+    }catch(e){showToast('Spelbeheer: '+e.message);}
+  }
+  function showNewProfile(duplicate=false) {
+    showModal(duplicate?'Volledige save dupliceren':'Nieuw spel zonder voortgang te wissen',`<label class="field-label">Profielnaam<input id="profile-name" maxlength="60" value="${esc(duplicate?(profileInfo?.name||'Mijn spel')+' kopie':'Mijn werkplaats')}"></label>${duplicate?'<p>Alle auto’s, onderdelen, afstellingen, slijtage, metingen en records gaan mee. De modus blijft gelijk.</p>':'<label class="field-label">Modus<select id="profile-mode"><option value="workshop">Werkplaats · €10.000.000</option><option value="career">Carrière · bestaand startbudget €50.000</option><option value="qa">Voertuig-QA · apart testprofiel</option></select></label><p>Het huidige profiel blijft bewaard en kan later worden geladen.</p>'}`,
+      `<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-action="${duplicate?'game-copy-confirm':'game-create-confirm'}">${duplicate?'Dupliceren':'Nieuw profiel maken'}</button>`);
+  }
+  async function createProfileFromUI(duplicate) {
+    const name=$('#profile-name')?.value||'Mijn spel',mode=duplicate?state.gameMode:$('#profile-mode')?.value||'workshop';
+    if(!state.saveRecoveryError)await flushSave('Voor nieuw profiel');
+    const base=duplicate?C.persistGarageState(state):C.persistGarageState(C.restoreGarageState(mode==='qa'?C.createVehicleQA():C.createCareerSelection()));
+    if(!duplicate){base.bank=mode==='workshop'?10000000:base.bank;delete base.workshopBudgetVersion;}
+    const p=await saveStore.create(name,mode,base);await loadProfile(p.id);showToast('Apart profiel aangemaakt.');
+  }
+  document.addEventListener('click',async event=>{
+    const b=event.target.closest('button');if(!b)return;
+    try {
+      if(b.dataset.action==='game-manager')return await showGameManager();
+      if(b.dataset.action==='game-new')return showNewProfile();
+      if(b.dataset.action==='game-duplicate')return showNewProfile(true);
+      if(['game-copy-confirm','game-create-confirm'].includes(b.dataset.action))return await createProfileFromUI(b.dataset.action==='game-copy-confirm');
+      if(b.dataset.action==='game-save'){saveState('Handmatig opgeslagen');await flushSave('Handmatig opgeslagen');showToast('Volledige save opgeslagen.');return await showGameManager();}
+      if(b.dataset.saveSlot!==undefined){const i=Number(b.dataset.saveSlot),slot=profileInfo.slots[i];return showModal(slot?'Save overschrijven?':'Save benoemen',`<label class="field-label">Naam<input id="save-slot-name" maxlength="60" value="${esc(slot?.name||'Save '+(i+1))}"></label><p>${slot?'Dit vervangt dit handmatige slot. Andere slots en herstelkopieën blijven bestaan.':'De complete garage en voortgang worden opgeslagen.'}</p>`,`<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-confirm-slot="${i}">Opslaan</button>`);}
+      if(b.dataset.confirmSlot!==undefined){await flushSave('Handmatig slot',Number(b.dataset.confirmSlot),$('#save-slot-name')?.value);showToast('Volledige save opgeslagen.');return await showGameManager();}
+      if(b.dataset.loadProfile){const id=b.dataset.loadProfile,ref=b.dataset.loadRef||'current';if(ref==='current')return await loadProfile(id);return showModal('Deze save laden?', '<p>Je huidige voortgang wordt eerst opgeslagen. Daarna wordt de gekozen volledige save geladen.</p>',`<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-confirm-load="${esc(id)}" data-ref="${esc(ref)}">Laden</button>`);}
+      if(b.dataset.confirmLoad)return await loadProfile(b.dataset.confirmLoad,b.dataset.ref);
+      if(b.dataset.deleteProfile || b.dataset.deleteSlot!==undefined)return showModal('Definitief verwijderen?', '<p>Deze verwijdering wordt pas uitgevoerd na bevestiging. Andere profielen en slots blijven behouden.</p>',`<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-confirm-delete="${esc(b.dataset.deleteProfile||profileInfo.id)}" data-slot="${b.dataset.deleteSlot??''}">Verwijderen</button>`);
+      if(b.dataset.confirmDelete){await saveStore.remove(b.dataset.confirmDelete,b.dataset.slot===''?null:Number(b.dataset.slot));return await showGameManager();}
+      if(b.dataset.action==='budget-confirm' && state.gameMode==='workshop')return showModal('Werkplaatsbudget aanvullen?',`<p>Saldo ${euro(state.bank)} wordt aangevuld tot minimaal €10.000.000. Auto's en voortgang blijven gelijk. Dit is een expliciete werkplaatsactie.</p>`,'<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn" data-action="budget-apply">Aanvullen</button>');
+      if(b.dataset.action==='budget-apply'){state=Saves.topUp(state);saveState('Handmatig werkplaatsbudget aangevuld');await flushSave('Budgetaanvulling');closeModal();render();}
+    }catch(e){showToast('Niet uitgevoerd: '+e.message);}
+  });
 
   function pushHistory(entry) {
     state.history = Array.isArray(state.history) ? state.history : [];
@@ -447,6 +537,7 @@
   // Full backup: the whole game (budget, history, dyno runs, wear, build slots), for reinstalls and new
   // phones. Written through the system file dialog on Android; a download in a browser.
   async function exportFullBackup() {
+    if(!state.saveRecoveryError)await flushSave('Voor export');
     const payload = JSON.stringify({ app: 'EA888-LAB', kind: 'full-backup', appVersion: APP_VERSION, savedAt: new Date().toISOString(), state: C.persistGarageState(state) }, null, 1);
     const day = new Date().toISOString().slice(0, 10);
     const saver = NATIVE ? NATIVE.saveFile.bind(NATIVE) : null;
@@ -456,18 +547,14 @@
     showToast(ok ? 'Back-up opgeslagen.' : 'Back-up niet opgeslagen.');
   }
 
-  function restoreFromText(text) {
+  async function restoreFromText(text) {
     const raw = String(text || '').trim();
     if (!raw) throw new Error('Het bestand is leeg.');
     if (raw.startsWith('{')) {
-      const payload = JSON.parse(raw);
-      if (payload.app !== 'EA888-LAB' || payload.kind !== 'full-backup' || !payload.state) throw new Error('Dit is geen EA888 LAB-back-up.');
-      const slots = Array.isArray(payload.state.buildSlots) ? payload.state.buildSlots.slice(0, 3) : [null, null, null];
-      state = C.restoreGarageState(payload.state);
-      state.buildSlots = state.buildSlots || slots;
-      while (state.buildSlots.length < 3) state.buildSlots.push(null);
-      pushHistory({ type: 'backup', label: `Back-up teruggezet (${String(payload.appVersion || '?')}, ${String(payload.savedAt || '').slice(0, 10)})` });
-      return 'Volledige back-up teruggezet.';
+      const imported=Saves.decodeImport(raw,SaveCodec);
+      if(!state.saveRecoveryError)await flushSave('Voor import');
+      const p=await saveStore.create('Geïmporteerd '+new Date().toLocaleString('nl-NL'),imported.gameMode||'workshop',imported);
+      await loadProfile(p.id);return 'Volledige save als apart profiel geïmporteerd.';
     }
     importBuffer = raw;
     confirmImport();
@@ -476,10 +563,10 @@
 
   async function importFullBackup() {
     if (!NATIVE) return showToast('Back-up openen is niet beschikbaar in deze omgeving.');
-    const text = await NATIVE.openFile();
-    if (text == null) return;
     try {
-      const message = restoreFromText(text);
+      const text = await NATIVE.openFile();
+      if (text == null) return;
+      const message = await restoreFromText(text);
       if (message) { saveState(); pendingOilId = state.service.oilId; pendingFilterId = state.service.filterId; showToast(message); render(); }
     } catch (e) {
       showToast(`Terugzetten mislukt: ${e.message}`);
@@ -1363,7 +1450,7 @@
   function renderStarterSelection() {
     const bank=Number(state.bank),selected=V.get(starterId),price=C.rosterCarPrice(starterId);
     const available=starterId==='scirocco' || !!price && price.eur<=bank;
-    return `<section class="page garage-page starter-selection"><span class="eyebrow">NIEUWE CARRIÈRE</span><h1>Kies je startauto</h1><p>Startbudget ${euro(bank)}. Elke auto heeft een eigen bewerkbare build. Een aangekochte startauto wordt één keer betaald.</p>
+    return `<section class="page garage-page starter-selection"><span class="eyebrow">NIEUWE ${profileLabel().toUpperCase()}</span><h1>Kies je startauto</h1><p>Startbudget ${euro(bank)}. Elke auto heeft een eigen bewerkbare build. Een aangekochte startauto wordt één keer betaald.</p>
       <div class="vehicle-grid">${V.ids.map(id=>{
         const v=V.get(id),p=C.rosterCarPrice(id),ok=id==='scirocco'||!!p&&p.eur<=bank;
         const reason=id==='scirocco'?'Starter · inbegrepen':!p?'Gesloten · geen onderzoeksprijs':p.eur>bank?'Gesloten · budget te laag':`Beschikbaar · ${euro(p.eur)}`;
@@ -1396,7 +1483,7 @@
     $('#vehicle-showroom')?.remove();
     const workshopBlocked = !C.workshopAvailable(state) && ['build','tune','dyno','service'].includes(activeTab);
     const html = state.starterSelection === 'pending' ? renderStarterSelection() : workshopBlocked ? renderRosterWorkshop() : pages[activeTab]();
-    patchHtml($('#content'), `<div data-workshop-owner="${esc(state.activeBuildId || 'scirocco')}">${C.workshopDefinition(state) && activeTab !== 'bank' ? `<p class="notice workshop-active">Actieve auto: <strong>${esc(rosterName(state.workshopCarId))}</strong> · eigen onderdelen en afstelling</p>` : ''}${html}</div>`);
+    patchHtml($('#content'), `<div data-workshop-owner="${esc(state.activeBuildId || 'scirocco')}">${C.workshopDefinition(state) && activeTab !== 'bank' ? `<p class="notice workshop-active">Actieve auto: <strong>${esc(rosterName(state.workshopCarId))}</strong> · eigen onderdelen en afstelling</p>` : ''}${profileBanner()}${html}</div>`);
     afterRenderRaf = requestAnimationFrame(afterRender);
   }
 
@@ -1734,7 +1821,7 @@
     return `<section class="page garage-page v5-garage-page">
       <div class="v5-garage-heading">
         <div><span class="eyebrow">BOUW · MEET · OVERLEEF · RACE</span><h1>EA888 Lab</h1><p>${C.workshopDefinition(state) ? esc(rosterName(state.workshopCarId)) + ' · eigen V8-werkplaats.' : 'Een complete virtuele CAWB-workshop.'} Monteer onderdelen, controleer de motor, meet op de dyno en zet daarna pas een geldige quarter-mile neer.</p></div>
-        <div class="v5-wallet"><span>WORKSHOP</span><b>${euro(state.bank)}</b></div>
+        <div class="v5-wallet"><span>${profileLabel()}</span><b>${euro(state.bank)}</b></div>
       </div>
       ${vehicleShowroomCard()}
       ${onboardingCard()}
@@ -6008,7 +6095,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
 
       <div class="card settings-card">
         <span class="eyebrow">Spelervaring</span><h2>Interface & feedback</h2>
-        ${switchRow('freeBuild', 'Vrij bouwen', 'Sandbox: onderdelen, builds en presets zonder kosten. Uit = carrière: wat je monteert en niet hebt, koop je van je budget.', 'settings')}
+        ${switchRow('freeBuild', 'Vrij bouwen', 'Onderdelen, builds en presets zonder kosten. Uit: nieuwe onderdelen worden van het saldo van dit profiel betaald.', 'settings')}
         ${switchRow('sound', 'Motorgeluid', 'Synthesiseert toerental- en loadfeedback tijdens dyno en drag.', 'settings')}
         ${switchRow('haptics', 'Trillingsfeedback', 'Trilling bij schakelen, tree-lampen, fouten en dynostart.', 'settings')}
         ${switchRow('reducedMotion', 'Minder animatie', 'Versnelt dyno- en raceanimaties en beperkt beweging.', 'settings')}
@@ -6092,7 +6179,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       <details class="card build-table-card fold-card"><summary><span><span class="eyebrow">Gemonteerde hardware</span><b>${C.CATEGORIES.length} onderdelen · ${euro(C.totalPartsPrice(state))}</b></span><i aria-hidden="true">${icon('chevron')}</i></summary><h2>${esc(state.buildName)}</h2><table class="build-table">${buildRows}<tr class="total"><td>Totaal onderdelen</td><td>${euro(C.totalPartsPrice(state))}</td></tr></table></details>
       <div class="card"><span class="eyebrow">Logboek</span><h2>Laatste gebeurtenissen</h2><div class="log-list">${history || '<p class="muted">Nog geen logboekitems.</p>'}</div></div>
       <div class="card model-card"><span class="eyebrow">Modelgrenzen</span><h2>Engineering-game, geen ECU-map</h2><p>Het model combineert airflow, spool, wastegatecontrole, EMP, brandstofcapaciteit, BMEP, knock, EGT, turbospeed, zuigersnelheid, oliedruk, aeratie, oliefilm, clearances en componentgrenzen. De dragintegratie gebruikt vervolgens de gemeten curve, gearing, wielradius, roterende massa, tractie, luchtweerstand en gewichtsverplaatsing.</p><p>Een veilige score in het spel is nooit een bouwgarantie. Een echte motor moet worden gevalideerd met raildruk, lambda, knock, EGT, turbospeed, cilinderdruk, carterdruk en oliedruk.</p></div>
-      <div class="button-row"><button class="btn secondary" data-action="${QA_PROFILE?'career-profile':'qa-profile'}">${QA_PROFILE?'Terug naar carrière':'Geïsoleerd voertuig-QA'}</button><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Alles resetten</button></div>
+      <div class="button-row"><button class="btn secondary" data-action="${QA_PROFILE?'career-profile':'qa-profile'}">${QA_PROFILE?'Profielen / werkplaats':'Geïsoleerd voertuig-QA'}</button><button class="btn secondary" data-action="self-test">Interne zelftest</button><button class="btn danger" data-action="open-reset">Nieuw spel (apart profiel)</button></div>
     </section>`;
   }
 
@@ -6577,7 +6664,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
       saveState();render();return showToast('Basis-hardware en afstelling geladen. Controleer olievolume en meet op de dyno.');
     }
     if (btn.dataset.action === 'qa-profile') { location.search='?profile=vehicle-qa'; return; }
-    if (btn.dataset.action === 'career-profile') { location.search=''; return; }
+    if (btn.dataset.action === 'career-profile') { showGameManager(); return; }
     if (btn.dataset.viewAngle) { showroom?.view(Number(btn.dataset.viewAngle)); return; }
     if (state.starterSelection === 'pending') return;
     if (!C.workshopAvailable(state) && (btn.closest('.workshop-controls') ||
@@ -6812,7 +6899,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
         showModal(test.ok ? 'Zelftest geslaagd' : 'Zelftest heeft een fout', `<div class="test-list">${test.checks.map(x => `<div class="test-row ${x.ok ? 'pass' : 'fail'}"><span>${x.ok ? icon('check') : '!'}</span><div><b>${esc(x.name)}</b><small>${esc(x.value)}</small></div></div>`).join('')}</div>${errs}`);
         break;
       }
-      case 'open-reset': showModal('Alle speldata resetten?', '<p class="modal-copy">Dit verwijdert je build, tune, montage, onderhoud, dynohistorie, dragruns, buildslots en challenges uit deze installatie.</p>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-reset">Alles resetten</button>'); break;
+      case 'open-reset': return showNewProfile(); /* showModal('Alle speldata resetten?', '<p class="modal-copy">Dit verwijdert je build, tune, montage, onderhoud, dynohistorie, dragruns, buildslots en challenges uit deze installatie.</p>', '<button class="btn ghost" data-action="close-modal">Annuleren</button><button class="btn danger" data-action="confirm-reset">Alles resetten</button>'); break; */
       case 'confirm-reset': doReset(); break;
       case 'close-modal': closeModal(); break;
     }
@@ -6959,7 +7046,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) resumePersistentAudio();
-    else if (engineAudio) stopEngineAudio();
+    else { if (engineAudio) stopEngineAudio(); flushSave('App gepauzeerd').catch(()=>{}); }
   });
 
   // Android back button (MainActivity asks before leaving the app): close the top layer first.
@@ -6970,7 +7057,7 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
     if (activeTab !== 'bank') { go('bank'); return true; }
     return false;
   };
-  window.__ea888OnNativePause = () => { if (engineAudio) stopEngineAudio(); };
+  window.__ea888OnNativePause = () => { if (engineAudio) stopEngineAudio(); flushSave('App gepauzeerd').catch(()=>{}); };
 
   // Keep the screen on while a pull or a race is running (the phone must not dim mid-run).
   let screenKeptOn = false;
@@ -6984,6 +7071,10 @@ ${slider('launchRpm','Launch rpm',2200,Math.min(8200,t.revLimitRpm),100,t.launch
   window.addEventListener('pageshow', resumePersistentAudio);
 
   window.__EA888_DEBUG__ = {
+    saveSnapshot: () => C.persistGarageState(state),
+    flushSave: () => flushSave('Test/expliciet opslaan'),
+    profile: () => ({...profileInfo,saveStatus,dirty:saveDirty}),
+    saveStore: () => saveStore,
     rerender: () => { render(); return true; },
     vehicle: () => ({active:C.garageOf(state).active,simId:raceCarState().rosterCar?.id || 'scirocco',qa:QA_PROFILE,
       showroom:showroom?.car.status || null, race:raceGame?.r3d?.vehicles?.(), replay:raceGame?.replay3d?.vehicles?.(),rig:raceGame?.r3d?.rig?.(),sound:engineAudio?.model}),

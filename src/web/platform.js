@@ -40,9 +40,11 @@ export function patchHtml(target, html) {
 const bridge = typeof window !== 'undefined' ? window.EA888Native : null;
 let pendingSave = null;
 let pendingOpen = null;
+let pendingOpenError = null;
+window.__ea888OnFileOpenError = message => { const reject=pendingOpenError;pendingOpen=null;pendingOpenError=null;reject?.(new Error(message)); };
 
 window.__ea888OnFileSaved = ok => { const r = pendingSave; pendingSave = null; r?.(!!ok); };
-window.__ea888OnFileOpened = text => { const r = pendingOpen; pendingOpen = null; r?.(typeof text === 'string' ? text : null); };
+window.__ea888OnFileOpened = text => { const r = pendingOpen; pendingOpen = null; pendingOpenError=null; r?.(typeof text === 'string' ? text : null); };
 
 export const native = {
   available: !!bridge,
@@ -59,6 +61,7 @@ export const native = {
   /** Save text through the system "save as" dialog (Android) or a download (browser). Resolves true when written. */
   saveFile(name, text) {
     if (bridge) {
+      if (pendingSave) return Promise.reject(new Error("Er wordt al een bestand opgeslagen."));
       return new Promise(resolve => { pendingSave = resolve; bridge.saveFile(name, text); });
     }
     try {
@@ -74,7 +77,8 @@ export const native = {
   /** Pick a file and resolve its text, or null when cancelled. */
   openFile() {
     if (bridge) {
-      return new Promise(resolve => { pendingOpen = resolve; bridge.openFile(); });
+      if (pendingOpen) return Promise.reject(new Error("Er wordt al een bestand geopend."));
+      return new Promise((resolve,reject) => { pendingOpenError=reject; pendingOpen = resolve; bridge.openFile(); });
     }
     return new Promise(resolve => {
       const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json,application/json,text/plain' });

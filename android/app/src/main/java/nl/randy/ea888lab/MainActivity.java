@@ -155,15 +155,18 @@ public class MainActivity extends ComponentActivity {
                     BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
                     char[] buf = new char[8192];
                     int n;
-                    while ((n = r.read(buf)) > 0 && sb.length() < 5_000_000) sb.append(buf, 0, n);
+                    while ((n = r.read(buf)) > 0) {
+                        if (sb.length() + n > 60_000_000) throw new java.io.IOException("Bestand groter dan 60 miljoen tekens");
+                        sb.append(buf, 0, n);
+                    }
                     text = sb.toString();
                 }
-            } catch (Exception ignored) { }
+            } catch (Exception error) { deliver("__ea888OnFileOpenError", JSONObject.quote("Bestand kon niet volledig worden gelezen: " + error.getMessage())); return; }
         }
         deliver("__ea888OnFileOpened", text == null ? "null" : JSONObject.quote(text));
     }
 
-    private void deliver(String fn, String jsonArg) {
+    void deliver(String fn, String jsonArg) {
         web.post(() -> web.evaluateJavascript("window." + fn + " && window." + fn + "(" + jsonArg + ")", null));
     }
 

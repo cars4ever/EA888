@@ -347,3 +347,6 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .workshop-engine .button-row{display:flex;flex-wrap:wrap;gap:6px}
 .workshop-active{margin:8px 0;color:var(--text)}
 .part-fit-note{display:block;font-size:12px;max-width:260px;color:#eab676;padding:8px}
+
+/* Full-game profiles: large touch targets, wrapping metadata. */
+.profile-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;margin:0 0 12px;border:1px solid #344354;border-radius:12px;background:#121b25;font-size:12px}.profile-banner span{flex:1;min-width:130px}.profile-banner strong{font-size:16px;color:#ffb522}.save-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid #33404f}.save-row>div{flex:1;min-width:190px}.save-row small{display:block;color:#afbecd;line-height:1.6}.modal input,.modal select{max-width:100%;box-sizing:border-box}.modal .button-row{flex-wrap:wrap}.modal .field-label input{display:block;width:100%;padding:12px;color:#fff;background:#17212b;border:1px solid #526273;border-radius:8px}.modal{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto}.profile-banner .btn{min-height:42px}
