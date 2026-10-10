@@ -372,12 +372,56 @@
   }
   function drivelineFor(state, trans = transmissionFor(state)) {
     const rc = state && state.rosterCar && state.rosterCar.transmission;
+    const cv=state.tune.converterId&&converterOptions(state).find(x=>x.id===state.tune.converterId);
     if (trans.converterStallRpm) return { type: 'converter', converter: converterSpec({
-      stallRpm: Number(state.tune.converterStallRpm || trans.converterStallRpm),
+      stallRpm: Number(cv?.stallRpm || state.tune.converterStallRpm || trans.converterStallRpm),
+      couplingSr:cv?.knee||.85,
       torqueNm: trans.converterTorqueNm, torqueRatio: trans.converterTorqueRatio || 2
     }) };
     return (rc && rc.driveline) || DRIVELINE[trans.id] || DRIVELINE.oem_6mt;
   }
+  const DRIVELINE_GOALS=Object.freeze({street:'Straat / koel',strip:'Straat / strip',eighth:'1/8 mijl',quarter:'1/4 mijl',lowgrip:'Griparm',spool:'Turbo-spool',nitrous:'Nitrous',bracket:'Bracket'});
+  function converterOptions(state){
+    const t=transmissionFor(state);if(!t.converterStallRpm)return [];
+    const base=Number(t.converterStallRpm),family=t.gearRatios.length===2?'Powerglide':/Lenco/.test(t.name)?'Lenco/Bruno':'TH400';
+    return [{id:'bundle',name:'Gemonteerde bakbundel',price:0,factor:1,knee:.85},
+      {id:'coupled',name:'Straat / strakke koppeling',price:1800,factor:.78,knee:.8},
+      {id:'balanced',name:'Straat-strip',price:2400,factor:.92,knee:.84},
+      {id:'spool',name:'Spool / race',price:3200,factor:1.06,knee:.87}].map(p=>({...p,family,transmissionId:t.id,stallRpm:Math.round(base*p.factor),referenceTorqueNm:t.converterTorqueNm,torqueCapacityNm:t.transTorque,lockup:false,priceKind:'modeled',provenance:'Game-schatting; compatibiliteit op game-bakfamilie, geen geverifieerde spline-/boutpassing.',key:`driveline:${t.id}:${p.id}`}));
+  }
+  function drivelineFingerprint(s){return JSON.stringify({car:s.workshopCarId||'scirocco',engine:engineSignature(s),trans:s.selections.transmission,gearing:effectiveGearing(s),converter:s.tune.converterId||'bundle',shift:s.tune.shiftRpms,vehicle:s.vehicle});}
+  function drivelineCandidates(input,goal='quarter'){
+    const s=normalizeState(input),t=transmissionFor(s),g=effectiveGearing(s),opts=converterOptions(s);
+    if(goal==='spool'&&getPart(s,'turbo').naturallyAspirated)return [];
+    if(goal==='nitrous'&&!getPart(s,'nitrous').shotHp)return [];
+    const factors={street:.86,strip:1,eighth:1.14,quarter:.96,lowgrip:.86,spool:1,nitrous:.9,bracket:.95};
+    const ids=goal==='street'||goal==='lowgrip'||goal==='nitrous'?['coupled','balanced','bundle']:goal==='spool'?['spool','balanced','bundle']:['balanced','coupled','bundle'];
+    return (opts?ids:[]).slice(0,3).map((id,i)=>{
+      const cv=opts.find(x=>x.id===(i===2?(s.tune.converterId||'bundle'):id)),fd=i===2?g.finalDrive:round(clamp(g.finalDrive*(factors[goal]||1)*(1+(i-1)*.035),1.6,7),3),ratios=i===2?g.gears.slice():g.base.slice();
+      const gearKey=`gearset:${t.id}:${ratios.join(',')}:${fd}`;
+      const gearChanged=fd!==g.finalDrive||JSON.stringify(ratios)!==JSON.stringify(g.gears);
+      const cost=i===2?0:(cv&&!s.owned?.[cv.key]?cv.price:0)+(gearChanged&&!s.owned?.[gearKey]?950:0);
+      return {id:`${goal}-${i}`,name:`${i===2?'Huidige hardware':DRIVELINE_GOALS[goal]} · ${cv?.name||'directe koppeling'} (${fd})`,goal,converter:cv||null,gearKey,cost,priceKind:'modeled',transmissionId:t.id,sourceHash:drivelineFingerprint(s),
+        tune:{converterId:i===2?s.tune.converterId||null:cv?.id||null,converterStallRpm:i===2?s.tune.converterStallRpm||null:cv?.stallRpm||null,gearRatios:ratios,gearSpreadPct:100,finalDrive:fd,shiftRpms:ratios.slice(0,-1).map(()=>effectiveRevLimit(s)-(goal==='street'?500:goal==='bracket'?350:150))},
+        reason:goal==='lowgrip'?'Langere totale overbrenging en strakkere converter beperken aslast; controleer 60 ft en slip.':goal==='spool'?'Vergelijk spool met verlieswarmte: hogere referentiestall is niet automatisch sneller.':'Vergelijk finish-RPM, recovery, slip en warmte bij dezelfde motorcurve.'};
+    });
+  }
+  function applyDrivelineCandidate(input,candidate){
+    if(!candidate||candidate.transmissionId!==transmissionFor(input).id||candidate.sourceHash!==drivelineFingerprint(input))return {ok:false,why:'Build veranderd: vergelijk opnieuw.'};
+    const valid=drivelineCandidates(input,candidate.goal).find(x=>x.id===candidate.id);if(!valid)return {ok:false,why:'Niet compatibel.'};
+    if(input.bank<valid.cost)return {ok:false,why:'Onvoldoende budget.'};
+    const s=normalizeState(deepClone(input));s.tune.drivelineUndo={tune:deepClone({...input.tune,drivelineUndo:undefined}),owned:deepClone(input.owned),keys:[valid.gearKey,valid.converter?.key].filter(Boolean),bank:input.bank,cost:valid.cost};
+    Object.assign(s.tune,valid.tune);s.owned={...s.owned};if(!s.owned[valid.gearKey])s.owned[valid.gearKey]={paidEur:valid.cost?950:0,how:'new'};
+    if(valid.converter&&!s.owned[valid.converter.key])s.owned[valid.converter.key]={paidEur:valid.converter.price,how:'new'};
+    s.bank-=valid.cost;return {ok:true,state:s,cost:valid.cost};
+  }
+  function evaluateDriveline(input,candidate){
+    const s=normalizeState(deepClone(input));if(candidate)Object.assign(s.tune,candidate.tune);
+    const r=simulateRaceRun(s,{tyreTempC:55,driverSkill:.85,nitrous:candidate?.goal==='nitrous'}),last=r.trace.at(-1);
+    return {quarter:r.quarter,eighth:r.eighth,sixtyFt:r.sixtyFt,trapKmh:r.trapKmh,finishRpm:last.rpm,limiterS:r.limiterTimeS,peakTyreSlipPct:r.wheelspinPct,converter:r.converter,flashRpm:Math.round(Math.max(...r.trace.filter(p=>p.time<.6).map(p=>p.rpm))),shifts:r.shiftEvents,
+      assumptions:'Zelfde motorcurve, band 55°C, dezelfde baan/weer, virtuele bestuurder 0.85. ET vanaf beam-exit; geen gemeten pass.'};
+  }
+
   function workshopSource(id) { return WORKSHOP.sources?.[id] || null; }
   function workshopDefinition(state) { return WORKSHOP.cars[state?.workshopCarId] || null; }
   function compatibleParts(state, categoryId) {
@@ -470,6 +514,10 @@
     // Whatever was stored, the fitted compound decides what sizes exist.
     clampWheelToCompound(s.vehicle);
     if (!DRIVETRAINS[s.vehicle.drivetrain]) s.vehicle.drivetrain = base.vehicle.drivetrain;
+    const gearCount = effectiveGearing(s).gears.length;
+    const oldDynoGear = Number(s.dynoConfig.gear || 4);
+    s.dynoConfig.gear = clamp(Math.round(oldDynoGear), 1, gearCount);
+    if (oldDynoGear !== s.dynoConfig.gear) s.gearboxNotice = `Dynoversnelling ${oldDynoGear} aangepast naar ${s.dynoConfig.gear}: de gemonteerde bak heeft ${gearCount} versnellingen.`;
     return opts.noEcu ? s : withEcu(s);
   }
   // The ECU calibration tables are part of the canonical state; builds without them (older saves,
@@ -504,7 +552,7 @@
   // fourth by default), but the ECU calibration is built from all the gear rows and the trims still move
   // the measured figure - by about a horsepower, but measurably. Excluding them would make the signature
   // claim something the model does not do.
-  const RACE_ONLY_TUNE = Object.freeze({ converterStallRpm: undefined,
+  const RACE_ONLY_TUNE = Object.freeze({ converterStallRpm: undefined, converterId:undefined, shiftRpms:undefined, drivelineUndo:undefined, gearSetups:undefined,
     als: undefined, tractionControl: undefined, tcSlipPct: undefined, tcAggressionPct: undefined,
     gearRatios: undefined, finalDrive: undefined, gearSpreadPct: undefined, launchRpm: undefined
   });
@@ -1479,7 +1527,7 @@
       dryFraction = Engine.dryAirBar(baroBar, ambient, humidity) / baroBar,
       ambientK = ambient + 273.15,
       dtSample = DYNO_STEP_RPM / ramp,
-      dynoGear = clamp(Math.round(Number(state.dynoConfig.gear || 4)), 1, 6) - 1,
+      dynoGear = clamp(Math.round(Number(state.dynoConfig.gear || 4)), 1, effectiveGearing(state).gears.length) - 1,
       // Heat soak from previous pulls: the intercooler core and intake still hold heat (from the app's thermal state).
       soakK = clamp(Number(options.soakK) || 0, 0, 60),
       correction = DYNO_CORRECTIONS[state.dynoConfig.correction] ? state.dynoConfig.correction : 'din70020',
@@ -2151,10 +2199,10 @@
         : result.status === DYNO_STATUS.FAILED_TO_START
           ? 'Start mislukt'
           : `Afgebroken @ ${result.abortRpm} rpm`);
-    state.lastDyno = result;
+    state.lastDyno = {...result,drivelineSignature:JSON.stringify({transmission:state.selections.transmission,gearing:effectiveGearing(state),converter:state.tune.converterId||null})};
     state.lastDynoSignature = engineSignature(state);
     if (result.sampleCount > 0) state.dynoThermal = advanceDynoThermal(state, result, options.nowMs ?? Date.now());
-    state.dynoRuns = [{ ...result, label }, ...(state.dynoRuns || [])].slice(0, 20);
+    state.dynoRuns = [{ ...state.lastDyno, label }, ...(state.dynoRuns || [])].slice(0, 20);
     const w = result.wear || {},
       d = result.damage || {};
     state.wear.engine = clamp(state.wear.engine + (w.engine || 0), 0, 100);
@@ -2909,13 +2957,19 @@
     }
     // Start the launch (tree green + reaction): the driver dumps the clutch / releases the launch control.
     function launch() { if (!s.launched) { s.launched = true; s.launchT = s.t; } }
-    function requestShift() {
+    function shouldAutoShift(targetRpm) {
+      if (s.shift || !s.launched || s.gear >= gears.length - 1 || rpm() < targetRpm) return false;
+      // A pump flare is not vehicle acceleration. Normal auto strategy requires turbine
+      // recovery and tyre contact; an explicit short-shift still uses requestShift directly.
+      return !conv || (s.ww * ratio() * 30 / Math.PI >= targetRpm * .82 && s.kappa < .5);
+    }
+    function requestShift(reason = 'driver') {
       if (s.shift || s.gear >= gears.length - 1 || !s.launched) return false;
       const typ = dl.type;
       const dur = typ === 'manual' ? Math.max(0.12, trans.shiftSeconds) : typ === 'dsg' ? Math.max(0.08, trans.shiftSeconds)
         : typ === 'converter' ? Math.max(0.05, trans.shiftSeconds) : Math.max(0.03, trans.shiftSeconds);
       s.shift = { from: s.gear, to: s.gear + 1, t: 0, dur, type: typ, fromRpm: rpm() };
-      s.shiftLog.push({ at: s.t, from: s.gear + 1, to: s.gear + 2, rpm: rpm() });
+      s.shiftLog.push({ at: s.t, from: s.gear + 1, to: s.gear + 2, rpm: rpm(), turbineRpm:s.ww*ratio()*30/Math.PI, slipRatio:s.kappa, durationS:dur, cause:reason, completedAt:null });
       return true;
     }
     function substep(h, input) {
@@ -2931,6 +2985,9 @@
         const since = s.t - s.launchT;
         clutchCmd = conv ? 1 : typ === 'dsg' ? clamp(since / dl.launchDumpS, 0, 1) : clamp(since / (input.clutchDumpS ?? dl.launchDumpS), 0, 1);
       }
+      // Low-speed clutch assistance opens the clutch before the engine stalls; it
+      // changes transmitted torque, never assigns a wheel speed or advances position.
+      if(input.preparation && !conv && s.v<1)clutchCmd=Math.min(clutchCmd,clamp((rpm()-900)/700,0,1));
       if (s.shift) {
         const sh = s.shift;
         sh.t += h;
@@ -2962,7 +3019,7 @@
             void iTot;
           }
         }
-        if (sh.t >= sh.dur) s.shift = null;
+        if (sh.t >= sh.dur) {const event=s.shiftLog[s.shiftLog.length-1];if(event){event.completedAt=s.t;event.afterRpm=rpm();}s.shift = null;}
       }
       // rev limiter (fuel cut) with 150 rpm hysteresis
       if (rpm() >= revLimit) s.cut = true; else if (rpm() < revLimit - 150) s.cut = false;
@@ -2974,7 +3031,7 @@
       let pedal = clamp(input.pedal ?? 1, 0, 1);
       // While the clutch slips off the line the driver (or launch control) holds the engine near launch rpm.
       if (!conv && s.launched && !s.lockedOnce && s.gear === 0) pedal = Math.min(pedal, clamp(1 - (rpm() - launchRpm - 250) / 900, 0.25, 1));
-      if (tcTarget && s.launched && s.v > 0.5) {
+      if (tcTarget && !input.preparation && s.launched && s.v > 0.5) {
         const over = s.kappa - tcTarget;
         s.tc = clamp((s.tc ?? 1) - (over > 0 ? over * tcGain * h : -2.5 * h), 0.2, 1);
         pedal = Math.min(pedal, s.tc);
@@ -3053,7 +3110,10 @@
       // tractionUse: what the coupling actually puts through the contact patches. A street four-wheel-drive
       // loses part of it in the centre viscous unit; a dog-engaged drag case does not. It sat in the
       // drivetrain table unread until now, which made a purpose-built drag AWD no better than a street one.
-      const mu = tyreMu(ty, s.tyreC, fz / fzStatic) * (Number(drive.tractionUse) || 1);
+      if(Number.isFinite(input.wetness))s.wetness=clamp(input.wetness,0,1);else s.wetness=Math.max(0,(s.wetness||0)-h*(.025+Math.abs(slipV)*.016+Math.max(0,th.surfaceC-60)*.005));
+      const mu = tyreMu(ty, s.tyreC, fz / fzStatic) * (Number(drive.tractionUse) || 1) * (1-.65*s.wetness);
+      const brakeForce=clamp(Number(input.brake||0),0,1)*mass*g*.9;
+      const drivenBrakeShare=input.preparation&&state.vehicle.drivetrain!=='AWD'?.1:staticDriven;
       let fx = mu * fz * magicFormula(s.kappa, ty.peakSlip);
       s.gripN = mu * fz; // the tyres' force at their peak slip now (torque management reads it next step)
       if (s.launched) {
@@ -3075,7 +3135,7 @@
         // Torque converter: pump on the engine, turbine on the gearbox input. On the transbrake (not launched)
         // the turbine is held and the engine loads up against the pump to its stall speed.
         const wt = R * s.ww, cv = converterTorques(conv, s.we, wt);
-        const wheelLoad = fx * r + ty.rolling * fz * r;
+        const wheelLoad = fx * r + ty.rolling * fz * r + brakeForce*drivenBrakeShare*r;
         // Near coupling the converter is a stiff link (a short first gear makes it stiffer still at the
         // wheels), so engine and wheel speed are advanced together implicitly: backward Euler on the
         // converter torques linearised around this step.
@@ -3102,14 +3162,14 @@
       // Launch: the driver (or launch control) slips the clutch to hold the engine near launch rpm until the
       // wheels catch up; after the first lock-up the clutch is simply engaged.
       if (s.launched && !s.lockedOnce && s.gear === 0) {
-        const wTarget = (launchRpm * Math.PI) / 30;
+        const wTarget = ((input.preparation?1500:launchRpm) * Math.PI) / 30;
         // never more clutch torque than the tyres can put down at their peak slip (plus the wheels' spin-up)
         const overSlip = Math.max(0, s.kappa - ty.peakSlip) / ty.peakSlip;
         const traction = ((mu * fz * r) / (R * eta)) * (input.launchClutchFactor ?? launchMetering) * clamp(1 - 0.8 * overSlip, 0.5, 1);
         cap = Math.min(cap, Math.max(0, tEng + (engineI * (s.we - wTarget)) / 0.04), traction);
         if (Math.abs(slip) < 3 && s.v > 0.5 && s.kappa < ty.peakSlip * 1.5) s.lockedOnce = true;
       }
-      const wheelLoadTorque = fx * r + ty.rolling * fz * r;
+      const wheelLoadTorque = fx * r + ty.rolling * fz * r + brakeForce*drivenBrakeShare*r;
       const lockedAccel = (tEng * R * eta - wheelLoadTorque) / (drivenI + engineI * R * R);
       const lockedClutch = tEng - engineI * R * lockedAccel;
       if (Math.abs(slip) < 2 && Math.abs(lockedClutch) <= cap) {
@@ -3164,6 +3224,7 @@
       if (conv) {
         // converter: the slip heat goes into the transmission fluid (~8 kg ATF, ~2 kJ/kg K), cooled slowly
         s.fluidC += (s.convLossW * h) / 16000 - (s.fluidC - 80) * 0.002 * h;
+        s.maxFluidC=Math.max(s.maxFluidC||80,s.fluidC);
       } else {
         // clutch temperature: slip energy into the pressure/friction plates, slow cooling
         const heatCap = dl.clutchKg * 460;
@@ -3175,13 +3236,13 @@
       // --- body
       const air = Math.max(0, s.v + headwind);
       const aero = 0.5 * rho * cdA * air * air, roll = ty.rolling * mass * g * (1 + s.v * 0.006);
-      const acc = s.launched ? (fx - aero - roll) / (mass + freeI / (r * r)) : 0;
+      const acc = s.launched ? (fx - aero - roll - brakeForce*(1-drivenBrakeShare)) / (mass + freeI / (r * r)) : 0;
       s.a = clamp(acc, -2 * g, 3 * g);
       s.v = Math.max(0, s.v + s.a * h);
       s.x += s.v * h;
       // wheelspin = tyre slip ratio (0.1 = 10 %), from the relaxation model so it is defined from standstill
       s.wheelspin = s.launched ? clamp(s.kappa, 0, 5) : 0;
-      s.maxWheelspin = Math.max(s.maxWheelspin, Math.min(1, s.wheelspin));
+      s.maxWheelspin = Math.max(s.maxWheelspin, s.wheelspin);
     }
     // One frame: the turbo runtime at its own rate, the mechanics in 1 ms steps.
     function step(dt, input = {}) {
@@ -3212,16 +3273,62 @@
       const snap = s.turboSnap || {};
       return {
         t: s.t, distanceM: s.x, speedKmh: s.v * 3.6, v: s.v, a: s.a, accelerationG: s.a / g, rpm: rpm(), gear: s.gear + 1, gearIndex: s.gear,
-        wheelspinPct: Math.min(1, s.wheelspin) * 100, slipRatio: s.kappa, boostBar: Number(snap.boostBar || 0), shaftPct: Number(snap.shaftPct || 0),
+        wetness:s.wetness||0, wheelspinPct: Math.max(0,s.wheelspin) * 100, slipRatio: s.kappa, boostBar: Number(snap.boostBar || 0), shaftPct: Number(snap.shaftPct || 0),
         egtC: Number(snap.egtC || 0), torqueNm: s.torqueNm, clutchNm: s.clutchNm, clutchSlipRpm: s.slipRpm, clutchTempC: s.clutchC, tyreTempC: s.tyreC, tyreSurfaceC: th.surfaceC, tyreBulkC: th.bulkC,
         n2oHp: s.n2oRamp * kit.shotHp * clamp(s.bottleKg / Math.max(0.1, kit.bottleKg * 0.12), 0, 1), bottleKg: s.bottleKg, n2oArmed: kit.shotHp > 0,
         hop: s.hopI, hopOsc: clamp(s.hopPhase, -1.2, 1.2), hopHz: hopW / (2 * Math.PI), hopZeta: s.hopZeta, hopS: s.hopS,
         knockNow: s.knockNow, knockEvents: s.knockEvents, kcRetardDeg: s.kcRetardDeg, knockDamagePct: s.knockDamage,
         engage: s.engage, shifting: !!s.shift, limiter: s.cut, limiterS: s.limiterS, knockIndexMax: s.knockMax, fuelG: s.fuelG, launched: s.launched,
-        converter: conv ? { speedRatio: s.convSr, fluidC: s.fluidC, heatKJ: s.convJ / 1000 } : null
+        pumpRpm:rpm(), turbineRpm:s.ww*ratio()*30/Math.PI, outputRpm:s.ww*fd*30/Math.PI, wheelRpm:s.ww*30/Math.PI, gearRatio:ratio()/fd, finalDrive:fd, converterLossW:s.convLossW, axleTorqueNm:s.axleNm,
+        converter: conv ? { slipPct:100*(1-s.convSr), speedRatio: s.convSr, fluidC: s.fluidC, maxFluidC:s.maxFluidC||s.fluidC, heatKJ: s.convJ / 1000 } : null
       };
     }
-    return { state: s, step, launch, requestShift, point, turbo, engineMap: em, driveline: dl, tyre: ty, tyreThermal: th, massKg: mass, launchRpm, revLimit, gears, finalDrive: fd, radiusM: r };
+    return { state: s, step, launch, requestShift, shouldAutoShift, point, turbo, engineMap: em, driveline: dl, tyre: ty, tyreThermal: th, massKg: mass, launchRpm, revLimit, gears, finalDrive: fd, radiusM: r };
+  }
+
+  // One physical vehicle from the approach to launch. Layout/dwell thresholds are game
+  // settings, not claims about real track procedures. x=0 is the existing stage position.
+  const PREPARATION = Object.freeze({startM:-30,waterStartM:-23,waterEndM:-17,minRollingMs:.4,requiredRollingS:1.0});
+  function createPreparationRuntime(inputState, opts={}) {
+    const state=normalizeState(inputState),rt=createRaceRuntime(state,opts),s=rt.state;
+    s.x=PREPARATION.startM;s.we=(rt.driveline.type==='converter'?900:1800)*Math.PI/30;rt.launch();
+    const wetness=[0,0,0,0],contact=[false,false,false,false];
+    const drive=state.vehicle.drivetrain, driven=drive==='FWD'?[0,1]:drive==='AWD'?[0,1,2,3]:[2,3];
+    const wb=Number(state.vehicle.wheelbaseM||2.58);
+    const p={phase:'approach',rollingS:0,wetness,contact,visitedWater:false,ready:false,rollout:false,lateralM:0,trace:[]};
+    function step(dt,input={}){
+      let left=clamp(Number(dt)||0,0,.1),point=rt.point();
+      while(left>1e-8){const h=Math.min(.005,left);left-=h;
+        for(let i=0;i<4;i++){
+          const x=s.x+(i<2?0:-wb);
+          contact[i]=x>=PREPARATION.waterStartM&&x<=PREPARATION.waterEndM&&Math.abs(p.lateralM)<2.4;
+          if(contact[i]){wetness[i]=1;p.visitedWater=true;}else wetness[i]=Math.max(0,wetness[i]-h*(.025+Math.abs(s.ww*rt.radiusM-s.v)*.016+Math.max(0,rt.tyreThermal.surfaceC-60)*.005));
+        }
+        let pedal=clamp(Number(input.pedal||0),0,1),brake=clamp(Number(input.brake||0),0,1);
+        p.lateralM=clamp(p.lateralM+Number(input.steer||0)*s.v*h*.16,-2.5,2.5);
+        if(input.rollout || (p.rollingS>=PREPARATION.requiredRollingS && tyreGripTempC(rt.tyreThermal)>65))p.rollout=true;
+        // Speed assistance modulates real pedal/brakes, never assigns a velocity.
+        const target=p.rollout?Math.min(2,Math.sqrt(Math.max(0,-s.x)*1.8)):s.x<-23?2.5:2;
+        if(input.assist!==false){
+          if(pedal>0)pedal=Math.min(pedal,clamp((target-s.v)*.4+.12,0,1));
+          if(s.v>target)brake=Math.max(brake,clamp((s.v-target)*.35,0,.65));
+          // A deliberate rolling tyre clean uses extra torque against balanced braking.
+          if(!p.rollout&&s.x>=-23&&s.x<-5&&input.pedal>.6){pedal=clamp(.45+(20-s.ww*rt.radiusM)*.045-Math.max(0,s.v-3)*.4,.02,.95);brake=Math.max(brake,clamp((s.v-1)*.5,0,1));}
+        }
+        if(s.x>-.8){pedal=input.creep&&s.x<-.10?(rt.driveline.type==='converter'?.16:.4):0;brake=Math.max(brake,input.creep&&s.x<-.10?clamp(s.v*3,0,.9):1);}
+        p.pedal=pedal;p.brake=brake;point=rt.step(h,{pedal,brake,wetness:driven.reduce((a,i)=>a+wetness[i],0)/driven.length,preparation:true});
+        const slipMs=Math.abs(s.ww*rt.radiusM-s.v);
+        if(p.visitedWater&&s.v>=PREPARATION.minRollingMs&&slipMs>2&&!contact.some(Boolean)&&s.x<-.8)p.rollingS+=h;
+        p.ready=s.x>=-.12&&s.x<=.06&&s.v<.12;
+        p.phase=p.ready?'staged':s.x>-.8?'pre-stage':contact.some(Boolean)?'waterbox':!p.visitedWater?'approach':p.rollout?'rollout':'rolling-burnout';
+        if(!s.shift&&s.gear<Math.min(1,rt.gears.length-1)&&s.x<-5&&point.rpm>4500)rt.requestShift('burnout wheel-speed');
+        if(s.v<.12&&s.x>-.8&&!s.shift){s.gear=0;}
+      }
+      const result={...point,...p,trace:undefined,worldM:s.x,slipMs:Math.abs(s.ww*rt.radiusM-s.v),rollingValid:p.rollingS>=PREPARATION.requiredRollingS};
+      if(!p.trace.length||s.t-p.trace[p.trace.length-1].t>=.1)p.trace.push({...result,wetness:[...wetness],contact:[...contact]});
+      return result;
+    }
+    return {rt,state:p,step,tyreThermal:rt.tyreThermal,turbo:rt.turbo};
   }
 
   // ---- Burnout -------------------------------------------------------------------------------------
@@ -3377,6 +3484,7 @@
   }
   // Optimal upshift points from the engine map: shift where the next gear gives more wheel torque.
   function optimalShiftRpms(state, em) {
+    if(Array.isArray(state.tune.shiftRpms)&&state.tune.shiftRpms.length===effectiveGearing(state).gears.length-1)return state.tune.shiftRpms.map(x=>clamp(Number(x)||em.revLimit-150,2000,em.revLimit-50));
     const trans = getPart(state, 'transmission'), out = [];
     const shiftGearing = effectiveGearing(state);
     for (let gi = 0; gi < shiftGearing.gears.length - 1; gi++) {
@@ -3447,7 +3555,7 @@
       const n2oOn = cfg.nitrous !== false && (rc && rc.nitrous ? rt.state.t >= rc.nitrous.delayS : rt.state.gear >= 1);
       const lifted = Number.isFinite(cfg.liftAtM) && rt.state.x >= cfg.liftAtM;
       const p = rt.step(0.01, { flatShift: !!cfg.flatShift, clutchDumpS: cfg.clutchDumpS, pedal, nitrous: n2oOn && !lifted, throttle: !lifted });
-      if (!lifted && !rt.state.shift && p.gearIndex < rt.gears.length - 1 && p.rpm >= shiftRpm[p.gearIndex]) rt.requestShift();
+      if (!lifted && !rt.state.shift && p.gearIndex < rt.gears.length - 1 && rt.shouldAutoShift(shiftRpm[p.gearIndex])) rt.requestShift('auto');
       timing.observe(p.t, p.distanceM);
       if (zero100 == null && p.speedKmh >= 100) zero100 = p.t;
       traceClock += 0.01;
@@ -3460,7 +3568,7 @@
       sixtyFt: milestones.sixtyFt, threeThirty: milestones.threeThirty, eighth: milestones.eighth, eighthKmh: milestones.eighthKmh,
       thousandFt: milestones.thousandFt, quarter: milestones.quarter, trapKmh: milestones.trapKmh, zeroTo100: zero100,
       rolloutS: milestones.rolloutS, launchToFinishS: milestones.launchToFinishS,
-      finishTotalTime: milestones.launchToFinishS + Math.max(0, reaction), wheelspinPct: rt.state.maxWheelspin * 100, shifts: rt.state.shiftLog.length,
+      converter: rt.point().converter, shiftEvents:rt.state.shiftLog, finishTotalTime: milestones.launchToFinishS + Math.max(0, reaction), wheelspinPct: rt.state.maxWheelspin * 100, shifts: rt.state.shiftLog.length,
       totalMassKg: rt.massKg, trace, shiftRpms: shiftRpm, maxClutchTempC: rt.state.clutchC, limiterTimeS: rt.state.limiterS,
       knockEvents: rt.state.knockEvents, kcMaxRetardDeg: rt.state.kcMaxDeg, knockDamagePct: rt.state.knockDamage,
       headLiftS: rt.state.headLiftS, n2oShotS: rt.state.n2oShotS, n2oMaxHp: rt.state.n2oMaxHp, n2oUsedKg: (rt.state.bottleStartKg ?? 0) - rt.state.bottleKg, n2oLeanS: rt.state.n2oLeanS,
@@ -4390,7 +4498,7 @@
     const spin = Number(r.wheelspinPct) || 0;
     if (spin > 45) {
       add('bad', `Wielspin ${Math.round(spin)} %`,
-        `De banden draaiden een groot deel van de run door. 60 ft ${Number(r.sixtyFt || 0).toFixed(3)} s.`,
+        `De piekslip was hoog; dit zegt niet hoe lang de banden doorslipten. 60 ft ${Number(r.sixtyFt || 0).toFixed(3)} s.`,
         state.tune.tractionControl === false
           ? 'Zet tractiecontrole aan (Tune → Beveiliging), of neem laaddruk in de 1e versnelling terug.'
           : 'Verlaag de doelslip van de tractiecontrole, neem laaddruk in de 1e versnelling terug, of meer band/prep.');
@@ -4417,7 +4525,7 @@
     }
     if (Number(r.limiterTimeS) > 0.35) {
       add('warn', `Begrenzer ${Number(r.limiterTimeS).toFixed(2)} s`, 'Tijd op de begrenzer is tijd zonder koppel.',
-        'Schakel eerder, of kies een nauwere tandwielspreiding zodat het toerental minder ver terugvalt.');
+        trace.some(p=>p.gear>=gearing.gears.length && p.rpm>=revLimit-120) ? 'Hoogste versnelling: kies een langere eindoverbrenging (lager getal) of grotere passende band. Niet nogmaals opschakelen.' : 'Controleer bandenslip en converterslip vóór het aanpassen van de schakelgrens.');
     }
 
     // Driveline and engine health during the pass.
@@ -5045,6 +5153,7 @@
     buildEngineMap,
     engineMapLookup,
     createRaceRuntime,
+    createPreparationRuntime, PREPARATION,
     createBurnoutRuntime,
     hopWearPct,
     hopMode,
@@ -5139,7 +5248,7 @@
     createMapOptimizer,
     createGripOptimizer,
     raceAdvice,
-    effectiveGearing,
+    effectiveGearing, converterOptions, drivelineCandidates, applyDrivelineCandidate, evaluateDriveline, drivelineFingerprint, DRIVELINE_GOALS,
     GRIP_PARAMS,
     // exported for tooling and tests: the reference-build search and the tuner-versus-reference check need
     // to judge a build by exactly the margins the game judges a map by
